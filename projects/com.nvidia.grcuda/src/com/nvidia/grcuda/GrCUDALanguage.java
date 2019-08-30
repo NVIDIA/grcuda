@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda;
 
+import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.nodes.ExpressionNode;
@@ -52,6 +53,9 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
         context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
         if (CUMLRegistry.isCUMLEnabled()) {
             new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());
+        }
+        if (CUBLASRegistry.isCUBLASEnabled()) {
+            new CUBLASRegistry(context).registerCUBLASFunctions(context.getFunctionTable());
         }
         return context;
     }
