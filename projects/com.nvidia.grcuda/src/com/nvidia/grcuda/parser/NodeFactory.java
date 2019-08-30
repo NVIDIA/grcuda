@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,14 +29,19 @@
 package com.nvidia.grcuda.parser;
 
 import java.util.ArrayList;
+
 import org.antlr.v4.runtime.Token;
+
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.nodes.ArithmeticNode;
 import com.nvidia.grcuda.nodes.ArrayNode;
+import com.nvidia.grcuda.nodes.ArrayNodeGen;
 import com.nvidia.grcuda.nodes.CallNode;
+import com.nvidia.grcuda.nodes.CallNodeGen;
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.IdentifierNode;
+import com.nvidia.grcuda.nodes.IdentifierNodeGen;
 import com.nvidia.grcuda.nodes.IntegerLiteral;
 import com.nvidia.grcuda.nodes.StringLiteral;
 import com.oracle.truffle.api.source.Source;
@@ -49,31 +55,26 @@ public class NodeFactory {
     }
 
     public ArrayNode createArrayNode(Token typeToken, ArrayList<ExpressionNode> sizeNodes) throws ParserException {
-        return new ArrayNode(lookupType(typeToken), sizeNodes);
+        return ArrayNodeGen.create(lookupType(typeToken), sizeNodes);
     }
 
     public ArithmeticNode createBinary(Token opToken, ExpressionNode leftNode, ExpressionNode rightNode) {
         final ArithmeticNode result;
         switch (opToken.getText()) {
             case "+":
-                result = new ArithmeticNode(ArithmeticNode.Operation.ADD, leftNode,
-                                rightNode);
+                result = new ArithmeticNode(ArithmeticNode.Operation.ADD, leftNode, rightNode);
                 break;
             case "-":
-                result = new ArithmeticNode(ArithmeticNode.Operation.SUBTRACT, leftNode,
-                                rightNode);
+                result = new ArithmeticNode(ArithmeticNode.Operation.SUBTRACT, leftNode, rightNode);
                 break;
             case "*":
-                result = new ArithmeticNode(ArithmeticNode.Operation.MULTIPLY, leftNode,
-                                rightNode);
+                result = new ArithmeticNode(ArithmeticNode.Operation.MULTIPLY, leftNode, rightNode);
                 break;
             case "/":
-                result = new ArithmeticNode(ArithmeticNode.Operation.DIVIDE, leftNode,
-                                rightNode);
+                result = new ArithmeticNode(ArithmeticNode.Operation.DIVIDE, leftNode, rightNode);
                 break;
             case "%":
-                result = new ArithmeticNode(ArithmeticNode.Operation.MODULO, leftNode,
-                                rightNode);
+                result = new ArithmeticNode(ArithmeticNode.Operation.MODULO, leftNode, rightNode);
                 break;
             default:
                 // should not happen due to lexer
@@ -83,15 +84,15 @@ public class NodeFactory {
     }
 
     public CallNode createCallNode(Token identifierToken, ExpressionNode[] arguments) {
-        return new CallNode(createIdentifier(identifierToken), arguments);
+        return CallNodeGen.create(createIdentifier(identifierToken), arguments);
     }
 
     public IdentifierNode createIdentifier(Token identifierToken) {
-        return new IdentifierNode(identifierToken.getText(), "");
+        return IdentifierNodeGen.create(identifierToken.getText(), "");
     }
 
     public IdentifierNode createIdentifierInNamespace(Token identifierToken, Token namespaceToken) {
-        return new IdentifierNode(identifierToken.getText(), namespaceToken.getText());
+        return IdentifierNodeGen.create(identifierToken.getText(), namespaceToken.getText());
 
     }
 

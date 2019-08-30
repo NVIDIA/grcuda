@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,9 +28,15 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public class ConfiguredKernel implements TruffleObject {
 
     private final Kernel kernel;
@@ -40,13 +47,21 @@ public class ConfiguredKernel implements TruffleObject {
         this.config = config;
     }
 
-    public void launch(Object[] kernelArgs) {
-        kernel.launch(config, kernelArgs);
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return ConfiguredKernelForeign.ACCESS;
+    @ExportMessage
+    Object execute(Object[] arguments,
+                    @CachedLibrary(limit = "3") InteropLibrary int32Access,
+                    @CachedLibrary(limit = "3") InteropLibrary int64Access,
+                    @CachedLibrary(limit = "3") InteropLibrary floatAccess,
+                    @CachedLibrary(limit = "3") InteropLibrary doubleAccess) throws UnsupportedTypeException, ArityException {
+        kernel.incrementLaunchCount();
+        try (KernelArguments args = kernel.createKernelArguments(arguments, int32Access, int64Access, floatAccess, doubleAccess)) {
+            kernel.getCudaRuntime().cuLaunchKernel(kernel, config, args);
+        }
+        return this;
     }
-
 }

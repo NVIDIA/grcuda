@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +31,7 @@ package com.nvidia.grcuda.cuml;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
@@ -37,14 +39,18 @@ import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class CUMLRegistry {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     private static final String DEFAULT_LIBRARY = "libcuml.so";
     private static final String NAMESPACE = "ML";
     private static final String CUML_ENABLED_PROPERTY_KEY = "rapidsai.cuml.enabled";
@@ -52,7 +58,6 @@ public class CUMLRegistry {
 
     private final GrCUDAContext context;
     private final String libraryPath;
-    private final Node executeNode = Message.EXECUTE.createNode();
 
     @CompilationFinal private TruffleObject cumlCreateFunction;
 
@@ -81,11 +86,12 @@ public class CUMLRegistry {
         cumlCreateFunction = new Function(
                         CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().getName(), NAMESPACE) {
             @Override
-            public Object execute(VirtualFrame frame) {
+            @TruffleBoundary
+            public Object call(Object[] arguments) throws ArityException {
+                checkArgumentLength(arguments, 0);
                 try {
                     try (UnsafeHelper.Integer32Object handle = UnsafeHelper.createInteger32Object()) {
-                        Object result = ForeignAccess.sendExecute(executeNode, cumlCreateFunctionNFI,
-                                        handle.getAddress());
+                        Object result = INTEROP.execute(cumlCreateFunctionNFI, handle.getAddress());
                         checkCUMLReturnCode(result, "cumlCreate");
                         return handle.getValue();
                     }
@@ -100,17 +106,12 @@ public class CUMLRegistry {
         cumlDestroyFunction = new Function(
                         CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName(), NAMESPACE) {
             @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                if (arguments.length != 2) {   // arg 0 is the function itself
-                    throw new RuntimeException("cumlDestroy expects 1 argument.");
-                }
-                if (!(arguments[1] instanceof Integer)) {
-                    throw new RuntimeException("argument 1 of bind must be an integer (handle)");
-                }
-                Object handle = arguments[1];
+            @TruffleBoundary
+            public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
+                checkArgumentLength(arguments, 1);
+                Object handle = expectInt(arguments[0]);
                 try {
-                    Object result = ForeignAccess.sendExecute(executeNode, cumlDestroyFunctionNFI, handle);
+                    Object result = INTEROP.execute(cumlDestroyFunctionNFI, handle);
                     checkCUMLReturnCode(result, "cumlDestroy");
                     return result;
                 } catch (InteropException e) {
@@ -128,14 +129,12 @@ public class CUMLRegistry {
             final Function wrapperFunction = new Function(factory.getName(), NAMESPACE) {
 
                 @Override
-                public Object execute(VirtualFrame frame) {
+                @TruffleBoundary
+                public Object call(Object[] arguments) {
                     try {
                         if (cumlHandle == null) {
-                            Object result = ForeignAccess.sendExecute(executeNode, cumlCreateFunction);
-                            if (!(result instanceof Integer)) {
-                                throw new RuntimeException("handle must be int");
-                            }
-                            cumlHandle = (Integer) result;
+                            Object result = INTEROP.execute(cumlCreateFunction);
+                            cumlHandle = expectInt(result);
                         }
                     } catch (InteropException e) {
                         throw new RuntimeException(e);
@@ -144,17 +143,11 @@ public class CUMLRegistry {
                     // Argument 0 is the function name in the frame, removing argument 0 and
                     // replacing
                     // it with the handle argument does not change the size of the argument array.
-                    Object[] frameWithFunction = frame.getArguments();
-                    Object[] argsWithHandle = new Object[frameWithFunction.length];
-                    System.arraycopy(frameWithFunction, 1, argsWithHandle, 1,
-                                    frameWithFunction.length - 1);
+                    Object[] argsWithHandle = new Object[arguments.length + 1];
+                    System.arraycopy(arguments, 0, argsWithHandle, 1, arguments.length);
                     argsWithHandle[0] = cumlHandle;
-                    return call(argsWithHandle);
-                }
-
-                private Object call(Object... args) {
                     try {
-                        Object result = ForeignAccess.sendExecute(executeNode, nfiFunction, args);
+                        Object result = INTEROP.execute(nfiFunction, argsWithHandle);
                         checkCUMLReturnCode(result, nfiFunction.getName());
                         return result;
                     } catch (InteropException e) {
@@ -169,7 +162,7 @@ public class CUMLRegistry {
     private void cuMLShutdown() {
         if (cumlHandle != null) {
             try {
-                Object result = ForeignAccess.sendExecute(executeNode, cumlDestroyFunction, cumlHandle);
+                Object result = INTEROP.execute(cumlDestroyFunction, cumlHandle);
                 checkCUMLReturnCode(result, CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName());
             } catch (InteropException e) {
                 throw new RuntimeException(e);
@@ -177,19 +170,19 @@ public class CUMLRegistry {
         }
     }
 
-    private void checkCUMLReturnCode(Object result, String function) {
-        if (!(result instanceof Integer)) {
-            throw new RuntimeException(
-                            "expected return code as Integer object in " + function + ", got " +
-                                            result.getClass().getName());
+    private static void checkCUMLReturnCode(Object result, String function) {
+        int returnCode;
+        try {
+            returnCode = INTEROP.asInt(result);
+        } catch (UnsupportedMessageException e) {
+            throw new RuntimeException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
         }
-        int returnCode = (Integer) result;
         if (returnCode != 0) {
             throw new CUDAException(returnCode, cumlReturnCodeToString(returnCode), function);
         }
     }
 
-    private String cumlReturnCodeToString(int returnCode) {
+    private static String cumlReturnCodeToString(int returnCode) {
         switch (returnCode) {
             case 0:
                 return "CUML_SUCCESS";

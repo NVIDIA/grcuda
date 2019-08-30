@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,41 +28,23 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 
 public final class ExternalFunction extends Function {
 
-    private final TruffleObject externalFunction;
-    private final Node executeNode = Message.EXECUTE.createNode();
+    private final Object externalFunction;
 
-    public ExternalFunction(String name, String namespace, TruffleObject externalFunction) {
+    public ExternalFunction(String name, String namespace, Object externalFunction) {
         super(name, namespace);
         this.externalFunction = externalFunction;
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object[] functionWithArguments = frame.getArguments();
-        Object[] arguments;
-        if (functionWithArguments.length > 1) {
-            arguments = new Object[functionWithArguments.length - 1];
-            System.arraycopy(functionWithArguments, 1, arguments, 0,
-                            functionWithArguments.length - 1);
-        } else {
-            arguments = new Object[0];
-        }
-
-        try {
-            return ForeignAccess.sendExecute(executeNode, externalFunction, arguments);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw new RuntimeException(e);
-        }
+    @TruffleBoundary
+    protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        return INTEROP.execute(externalFunction, arguments);
     }
 }

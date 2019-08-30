@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,8 +29,11 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.GrCUDALanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
+import com.nvidia.grcuda.gpu.CUDAException;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public final class BindFunction extends Function {
 
@@ -38,19 +42,17 @@ public final class BindFunction extends Function {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object[] arguments = frame.getArguments();
-        if (arguments.length != 4) {   // arg 0 is the function itself
-            throw new RuntimeException("bind function expects three arguments.");
-        }
-        String libraryFile = expectString(arguments[1], "argument 1 of bind must be string (library file)");
-        String symbolName = expectString(arguments[2], "argument 2 of bind must be string (symbol name)");
-        String signature = expectString(arguments[3], "argument 3 of bind must be string (signature)");
+    @TruffleBoundary
+    public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
+        checkArgumentLength(arguments, 3);
+
+        String libraryFile = expectString(arguments[0], "argument 1 of bind must be string (library file)");
+        String symbolName = expectString(arguments[1], "argument 2 of bind must be string (symbol name)");
+        String signature = expectString(arguments[2], "argument 3 of bind must be string (signature)");
         try {
-            return GrCUDALanguage.getCurrentLanguage().getContext().
-                                  getCUDARuntime().getSymbol(libraryFile, symbolName, signature);
-        } catch (InteropException e) {
-            throw new RuntimeException(e);
+            return GrCUDALanguage.getCurrentLanguage().getContextReference().get().getCUDARuntime().getSymbol(libraryFile, symbolName, signature);
+        } catch (UnknownIdentifierException e) {
+            throw new CUDAException(symbolName + " not found in " + libraryFile);
         }
     }
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,12 +30,15 @@ package com.nvidia.grcuda.functions;
 
 import java.util.ArrayList;
 import java.util.Optional;
+
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public final class DeviceArrayFunction extends Function {
 
@@ -46,17 +50,17 @@ public final class DeviceArrayFunction extends Function {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object[] arguments = frame.getArguments();
-        if (arguments.length < 3) {   // arg 0 is the function itself
-            throw new RuntimeException("DeviceArray function expects at least two arguments.");
+    @TruffleBoundary
+    public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
+        if (arguments.length < 2) {
+            throw ArityException.create(2, arguments.length);
         }
-        String typeName = expectString(arguments[1], "argument 1 of DeviceArray must be string (type name)");
+        String typeName = expectString(arguments[1], "first argument of DeviceArray must be string (type name)");
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
-        for (int i = 2; i < arguments.length; ++i) {
+        for (int i = 1; i < arguments.length; ++i) {
             Object arg = arguments[i];
-            if (isString(arg)) {
+            if (INTEROP.isString(arg)) {
                 if (useColumnMajor.isPresent()) {
                     throw new RuntimeException("string option already provided");
                 } else {
@@ -72,8 +76,7 @@ public final class DeviceArrayFunction extends Function {
                     }
                 }
             } else {
-                Number numElements = expectNumber(arg, "expected number argument for dimension size");
-                long n = numElements.longValue();
+                long n = expectLong(arg, "expected number argument for dimension size");
                 if (n < 1) {
                     throw new RuntimeException("array dimension less than 1");
                 }

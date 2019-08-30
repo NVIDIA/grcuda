@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,14 +31,25 @@ package com.nvidia.grcuda.gpu;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import com.nvidia.grcuda.DeviceArray;
-import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 
+import com.nvidia.grcuda.DeviceArray;
+import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+@ExportLibrary(InteropLibrary.class)
 public final class Kernel implements TruffleObject {
 
     private final CUDARuntime cudaRuntime;
@@ -69,90 +81,64 @@ public final class Kernel implements TruffleObject {
         this.ptxCode = ptx;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return KernelForeign.ACCESS;
-    }
-
-    public void launch(KernelConfig config, Object[] kernelArgs) {
+    public void incrementLaunchCount() {
         launchCount++;
-        try (KernelArguments args = createKernelArguments(kernelArgs)) {
-            cudaRuntime.cuLaunchKernel(this, config, args);
-        }
     }
 
-    private Node isBoxed = Message.IS_BOXED.createNode();
-    private Node unbox = Message.UNBOX.createNode();
-
-    private Number getNumber(Object valueObj, int argIdx) {
-        // This special case is necessary for R. In R every value is an array, i.e., scalars
-        // are arrays of length on. In such cases, the underlying value can be obtained
-        // by unboxing. This methods tries to unbox a TruffleObject.
-        if (valueObj instanceof TruffleObject) {
-            TruffleObject truffleValue = (TruffleObject) valueObj;
-            // Check if value is a boxed type and if so unbox it.
-            // This is necessary for R, since scalars in R are arrays of length 1.
-            if (ForeignAccess.sendIsBoxed(isBoxed, truffleValue)) {
-                try {
-                    valueObj = ForeignAccess.sendUnbox(unbox, truffleValue);
-                } catch (UnsupportedMessageException ex) {
-                    throw new RuntimeException("UNBOX message not supported on type " + truffleValue);
-                }
-            }
-        }
-        if (!(valueObj instanceof Number)) {
-            throw new RuntimeException("argument " + (argIdx + 1) + " expected Number type, but is " + valueObj.getClass().getName());
-        }
-        return ((Number) valueObj);
+    public CUDARuntime getCudaRuntime() {
+        return cudaRuntime;
     }
 
-    private KernelArguments createKernelArguments(Object[] args) {
+    public ArgumentType[] getArgumentTypes() {
+        return argumentTypes;
+    }
+
+    KernelArguments createKernelArguments(Object[] args, InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary floatAccess, InteropLibrary doubleAccess)
+                    throws UnsupportedTypeException, ArityException {
         if (args.length != argumentTypes.length) {
-            throw new IllegalArgumentException("expected " +
-                            argumentTypes.length + " kernel arguments, got " + args.length);
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(argumentTypes.length, args.length);
         }
         KernelArguments kernelArgs = new KernelArguments(args.length);
-        int argIdx = 0;
-        for (ArgumentType type : argumentTypes) {
-            Number number;
-            switch (type) {
-                case INT32:
-                    number = getNumber(args[argIdx], argIdx);
-                    UnsafeHelper.Integer32Object int32 = UnsafeHelper.createInteger32Object();
-                    int32.setValue(number.intValue());
-                    kernelArgs.setArgument(argIdx, int32);
-                    break;
-                case INT64:
-                    number = getNumber(args[argIdx], argIdx);
-                    UnsafeHelper.Integer64Object int64 = UnsafeHelper.createInteger64Object();
-                    int64.setValue(number.longValue());
-                    kernelArgs.setArgument(argIdx, int64);
-                    break;
-                case FLOAT32:
-                    number = getNumber(args[argIdx], argIdx);
-                    UnsafeHelper.Float32Object fp32 = UnsafeHelper.createFloat32Object();
-                    fp32.setValue(number.floatValue());
-                    kernelArgs.setArgument(argIdx, fp32);
-                    break;
-                case FLOAT64:
-                    number = getNumber(args[argIdx], argIdx);
-                    UnsafeHelper.Float64Object fp64 = UnsafeHelper.createFloat64Object();
-                    fp64.setValue(number.doubleValue());
-                    kernelArgs.setArgument(argIdx, fp64);
-                    break;
-                case POINTER:
-                    if (args[argIdx] instanceof DeviceArray) {
-                        DeviceArray deviceArray = (DeviceArray) args[argIdx];
-                        UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
-                        pointer.setValueOfPointer(deviceArray.getPointer());
-                        kernelArgs.setArgument(argIdx, pointer);
-                    } else {
-                        throw new IllegalArgumentException("argument " + (argIdx + 1) +
-                                        " expected DeviceArray type, " + args[argIdx].getClass().getName());
-                    }
-                    break;
+        for (int argIdx = 0; argIdx < argumentTypes.length; argIdx++) {
+            ArgumentType type = argumentTypes[argIdx];
+            try {
+                switch (type) {
+                    case INT32:
+                        UnsafeHelper.Integer32Object int32 = UnsafeHelper.createInteger32Object();
+                        int32.setValue(int32Access.asInt(args[argIdx]));
+                        kernelArgs.setArgument(argIdx, int32);
+                        break;
+                    case INT64:
+                        UnsafeHelper.Integer64Object int64 = UnsafeHelper.createInteger64Object();
+                        int64.setValue(int64Access.asLong(args[argIdx]));
+                        kernelArgs.setArgument(argIdx, int64);
+                        break;
+                    case FLOAT32:
+                        UnsafeHelper.Float32Object fp32 = UnsafeHelper.createFloat32Object();
+                        fp32.setValue(floatAccess.asFloat(args[argIdx]));
+                        kernelArgs.setArgument(argIdx, fp32);
+                        break;
+                    case FLOAT64:
+                        UnsafeHelper.Float64Object fp64 = UnsafeHelper.createFloat64Object();
+                        fp64.setValue(doubleAccess.asDouble(args[argIdx]));
+                        kernelArgs.setArgument(argIdx, fp64);
+                        break;
+                    case POINTER:
+                        if (args[argIdx] instanceof DeviceArray) {
+                            DeviceArray deviceArray = (DeviceArray) args[argIdx];
+                            UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
+                            pointer.setValueOfPointer(deviceArray.getPointer());
+                            kernelArgs.setArgument(argIdx, pointer);
+                        } else {
+                            CompilerDirectives.transferToInterpreter();
+                            throw UnsupportedTypeException.create(new Object[]{args[argIdx]}, "expected DeviceArray type");
+                        }
+                        break;
+                }
+            } catch (UnsupportedMessageException e) {
+                throw UnsupportedTypeException.create(new Object[]{args[argIdx]}, "expected " + type);
             }
-            argIdx += 1;
         }
         return kernelArgs;
     }
@@ -220,6 +206,132 @@ public final class Kernel implements TruffleObject {
 
     public int getLaunchCount() {
         return launchCount;
+    }
+
+    // implementation of InteropLibrary
+
+    protected static final String PTX = "ptx";
+    protected static final String NAME = "name";
+    protected static final String LAUNCH_COUNT = "launchCount";
+    private static final MemberSet MEMBERS = new MemberSet(PTX, NAME, LAUNCH_COUNT);
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return MEMBERS;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberReadable(String member) {
+        return PTX.equals(member) || NAME.equals(member) || LAUNCH_COUNT.equals(member);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    abstract static class ReadMember {
+        @Specialization(guards = "PTX.equals(member)")
+        public static String readMemberPtx(Kernel receiver, String member) {
+            String ptx = receiver.getPTX();
+            if (ptx == null) {
+                return "<no PTX code>";
+            } else {
+                return ptx;
+            }
+        }
+
+        @Specialization(guards = "NAME.equals(member)")
+        public static String readMemberName(Kernel receiver, String member) {
+            return receiver.getKernelName();
+        }
+
+        @Specialization(guards = "LAUNCH_COUNT.equals(member)")
+        public static int readMemberLaunchCount(Kernel receiver, String member) {
+            return receiver.getLaunchCount();
+        }
+
+        @Fallback
+        public static Object readMemberOther(Kernel receiver, String member) throws UnknownIdentifierException {
+            throw UnknownIdentifierException.create(member);
+        }
+    }
+
+    private static int extractNumber(Object valueObj, String argumentName, InteropLibrary access) throws UnsupportedTypeException {
+        try {
+            return access.asInt(valueObj);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{valueObj}, "integer expected for " + argumentName);
+        }
+    }
+
+    private static Dim3 extractDim3(Object valueObj, String argumentName, InteropLibrary access, InteropLibrary elementAccess) throws UnsupportedTypeException {
+        if (access.hasArrayElements(valueObj)) {
+            long size;
+            try {
+                size = access.getArraySize(valueObj);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RuntimeException("unexpected behavior");
+            }
+            if (size < 1 || size > 3) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(new Object[]{valueObj}, argumentName + " needs to have between 1 and 3 elements");
+            }
+            int[] dim3 = new int[]{1, 1, 1};
+            final char[] suffix = {'x', 'y', 'z'};
+            for (int i = 0; i < size; i++) {
+                Object elementObj;
+                try {
+                    elementObj = access.readArrayElement(valueObj, i);
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new RuntimeException("unexpected behavior");
+                } catch (InvalidArrayIndexException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedTypeException.create(new Object[]{valueObj}, argumentName + " needs to have between 1 and 3 elements");
+                }
+                dim3[i] = extractNumber(elementObj, "dim3." + suffix[i], elementAccess);
+            }
+            return new Dim3(dim3[0], dim3[1], dim3[2]);
+        }
+        return new Dim3(extractNumber(valueObj, argumentName, access));
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] arguments,
+                    @CachedLibrary(limit = "3") InteropLibrary gridSizeAccess,
+                    @CachedLibrary(limit = "3") InteropLibrary gridSizeElementAccess,
+                    @CachedLibrary(limit = "3") InteropLibrary blockSizeAccess,
+                    @CachedLibrary(limit = "3") InteropLibrary blockSizeElementAccess,
+                    @CachedLibrary(limit = "3") InteropLibrary sharedMemoryAccess) throws UnsupportedTypeException, ArityException {
+        int dynamicSharedMemoryBytes;
+        if (arguments.length == 2) {
+            dynamicSharedMemoryBytes = 0;
+        } else if (arguments.length == 3) {
+            // dynamic shared memory specified
+            dynamicSharedMemoryBytes = extractNumber(arguments[2], "dynamicSharedMemory", sharedMemoryAccess);
+        } else {
+            throw ArityException.create(2, arguments.length);
+        }
+
+        Dim3 gridSize = extractDim3(arguments[0], "gridSize", gridSizeAccess, gridSizeElementAccess);
+        Dim3 blockSize = extractDim3(arguments[1], "blockSize", blockSizeAccess, blockSizeElementAccess);
+        KernelConfig config = new KernelConfig(gridSize, blockSize, dynamicSharedMemoryBytes);
+
+        return new ConfiguredKernel(this, config);
     }
 }
 

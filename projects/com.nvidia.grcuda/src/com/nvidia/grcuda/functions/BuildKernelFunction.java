@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +29,9 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class BuildKernelFunction extends Function {
     private final CUDARuntime cudaRuntime;
@@ -39,14 +42,14 @@ public class BuildKernelFunction extends Function {
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object[] arguments = frame.getArguments();
-        if (arguments.length != 4) {   // arg 0 is the function itself
-            throw new RuntimeException("buildkernel function expects three arguments.");
-        }
-        String code = expectString(arguments[1], "argument 1 of buildkernel must be string (kernel code)");
-        String kernelName = expectString(arguments[2], "argument 2 of buildkernel must be string (kernel name)");
-        String kernelSignature = expectString(arguments[3], "argument 3 of buildkernel must be string (signature of kernel)");
+    @TruffleBoundary
+    public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
+        checkArgumentLength(arguments, 3);
+
+        String code = expectString(arguments[0], "argument 1 of buildkernel must be string (kernel code)");
+        String kernelName = expectString(arguments[1], "argument 2 of buildkernel must be string (kernel name)");
+        String kernelSignature = expectString(arguments[2], "argument 3 of buildkernel must be string (signature of kernel)");
+
         return this.cudaRuntime.buildKernel(code, kernelName, kernelSignature);
     }
 }

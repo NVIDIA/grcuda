@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +34,6 @@ import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.parser.ParserAntlr;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -46,15 +46,9 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     public static final String ID = "grcuda";
 
-    @CompilationFinal private GrCUDAContext context;
-
-    public GrCUDAContext getContext() {
-        return context;
-    }
-
     @Override
     protected GrCUDAContext createContext(Env env) {
-        context = new GrCUDAContext(env);
+        GrCUDAContext context = new GrCUDAContext(env);
         context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
         if (CUMLRegistry.isCUMLEnabled()) {
             new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());

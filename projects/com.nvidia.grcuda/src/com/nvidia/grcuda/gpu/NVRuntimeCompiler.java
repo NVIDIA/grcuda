@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,19 +29,21 @@
 package com.nvidia.grcuda.gpu;
 
 import java.util.ArrayList;
+
 import com.nvidia.grcuda.gpu.UnsafeHelper.PointerArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.StringObject;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 
 public class NVRuntimeCompiler {
 
+    // using this slow/uncached instance since all calls are non-critical
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     public final CUDARuntime runtime;
-    private final Node executeNode = Message.EXECUTE.createNode();
-    private final Node unboxNode = Message.UNBOX.createNode();
+
     private static final int MAX_LOG_SIZE = 1 << 20;
 
     public NVRuntimeCompiler(CUDARuntime runtime) {
@@ -63,11 +66,12 @@ public class NVRuntimeCompiler {
         }
     }
 
+    @TruffleBoundary
     public NVRTCProgram createProgram(String source, String programName) {
         NVRTCProgram program = new NVRTCProgram();
         try {
-            TruffleObject callable = getSymbol(NVRTCFunction.NVRTC_CREATEPROGRAM);
-            Object result = ForeignAccess.sendExecute(executeNode, callable,
+            Object callable = getSymbol(NVRTCFunction.NVRTC_CREATEPROGRAM);
+            Object result = INTEROP.execute(callable,
                             program.getAddress(), source, programName,
                             0, // number of headers
                             0, // pointer to headers (NULL if numHeaders == 0)
@@ -81,17 +85,19 @@ public class NVRuntimeCompiler {
         }
     }
 
+    @TruffleBoundary
     public void nvrtcAddNameExpression(NVRTCProgram program, String name) {
         NVRTCFunction function = NVRTCFunction.NVRTC_ADDNAMEDEXPRESSION;
         try {
-            TruffleObject callable = getSymbol(function);
-            Object result = ForeignAccess.sendExecute(executeNode, callable, program.getValue(), name);
+            Object callable = getSymbol(function);
+            Object result = INTEROP.execute(callable, program.getValue(), name);
             checkNVRTCReturnCode(result, function.symbolName);
         } catch (InteropException e) {
             throw new RuntimeException(e);
         }
     }
 
+    @TruffleBoundary
     public NVRTCResult nvrtcCompileProgram(NVRTCProgram program, String... opts) {
         if (opts.length == 0) {
             return nvrtcCompileProgramInternal(program, 0, 0L);
@@ -114,11 +120,12 @@ public class NVRuntimeCompiler {
         }
     }
 
+    @TruffleBoundary
     private NVRTCResult nvrtcCompileProgramInternal(NVRTCProgram program, int numOpts, long addressOfOptStringPointerArray) {
         NVRTCFunction function = NVRTCFunction.NVRTC_COMPILEPROGRAM;
         try {
-            TruffleObject callable = getSymbol(function);
-            Object result = ForeignAccess.sendExecute(executeNode, callable,
+            Object callable = getSymbol(function);
+            Object result = INTEROP.execute(callable,
                             program.getValue(),
                             numOpts, addressOfOptStringPointerArray);
             return toNVRTCResult(result);
@@ -127,13 +134,14 @@ public class NVRuntimeCompiler {
         }
     }
 
+    @TruffleBoundary
     public String getProgramLog(NVRTCProgram program) {
         int logSize;
         try (UnsafeHelper.Integer64Object sizeBytes = new UnsafeHelper.Integer64Object()) {
             try {
                 sizeBytes.setValue(0);
-                TruffleObject callable = getSymbol(NVRTCFunction.NVRTC_GETPROGRAMLOGSIZE);
-                Object result = ForeignAccess.sendExecute(executeNode, callable, program.getValue(), sizeBytes.getAddress());
+                Object callable = getSymbol(NVRTCFunction.NVRTC_GETPROGRAMLOGSIZE);
+                Object result = INTEROP.execute(callable, program.getValue(), sizeBytes.getAddress());
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPROGRAMLOGSIZE.symbolName);
                 logSize = (int) sizeBytes.getValue();
                 if (logSize < 0 || logSize > MAX_LOG_SIZE) {  // upper limit to prevent OoM
@@ -145,8 +153,8 @@ public class NVRuntimeCompiler {
         }
         try (UnsafeHelper.StringObject buffer = UnsafeHelper.createStringObject(logSize)) {
             try {
-                TruffleObject callable = getSymbol(NVRTCFunction.NVRTC_GETPROGRAMLOG);
-                Object result = ForeignAccess.sendExecute(executeNode, callable, program.getValue(), buffer.getAddress());
+                Object callable = getSymbol(NVRTCFunction.NVRTC_GETPROGRAMLOG);
+                Object result = INTEROP.execute(callable, program.getValue(), buffer.getAddress());
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPROGRAMLOG.symbolName);
                 return buffer.getZeroTerminatedString();
             } catch (InteropException e) {
@@ -155,13 +163,14 @@ public class NVRuntimeCompiler {
         }
     }
 
+    @TruffleBoundary
     public String getPTX(NVRTCProgram program) {
         int ptxSize;
         try (UnsafeHelper.Integer64Object sizeBytes = new UnsafeHelper.Integer64Object()) {
             try {
                 sizeBytes.setValue(0);
-                TruffleObject callable = getSymbol(NVRTCFunction.NVRTC_GETPTXSIZE);
-                Object result = ForeignAccess.sendExecute(executeNode, callable, program.getValue(), sizeBytes.getAddress());
+                Object callable = getSymbol(NVRTCFunction.NVRTC_GETPTXSIZE);
+                Object result = INTEROP.execute(callable, program.getValue(), sizeBytes.getAddress());
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPTXSIZE.symbolName);
                 ptxSize = (int) sizeBytes.getValue();
                 if (ptxSize < 0 || ptxSize > MAX_LOG_SIZE) {  // upper limit to prevent OoM
@@ -173,8 +182,8 @@ public class NVRuntimeCompiler {
         }
         try (UnsafeHelper.StringObject buffer = UnsafeHelper.createStringObject(ptxSize)) {
             try {
-                TruffleObject callable = getSymbol(NVRTCFunction.NVRTC_GETPTX);
-                Object result = ForeignAccess.sendExecute(executeNode, callable, program.getValue(), buffer.getAddress());
+                Object callable = getSymbol(NVRTCFunction.NVRTC_GETPTX);
+                Object result = INTEROP.execute(callable, program.getValue(), buffer.getAddress());
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPTX.symbolName);
                 return buffer.getZeroTerminatedString();
             } catch (InteropException e) {
@@ -183,12 +192,12 @@ public class NVRuntimeCompiler {
         }
     }
 
+    @TruffleBoundary
     public String nvrtcGetLoweredName(NVRTCProgram program, String kernelName) {
         try (UnsafeHelper.PointerObject cString = new UnsafeHelper.PointerObject()) {
             try {
-                TruffleObject callable = getSymbol(NVRTCFunction.NVRTC_GETLOWEREDNAME);
-                Object result = ForeignAccess.sendExecute(executeNode, callable, program.getValue(),
-                                kernelName, cString.getAddress());
+                Object callable = getSymbol(NVRTCFunction.NVRTC_GETLOWEREDNAME);
+                Object result = INTEROP.execute(callable, program.getValue(), kernelName, cString.getAddress());
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETLOWEREDNAME.symbolName);
                 return UnsafeHelper.StringObject.getUncheckedZeroTerminatedString(cString.getValueOfPointer());
             } catch (InteropException e) {
@@ -197,18 +206,19 @@ public class NVRuntimeCompiler {
         }
     }
 
+    @TruffleBoundary
     public String nvrtcGetErrorString(int errorCode) {
         NVRTCFunction function = NVRTCFunction.NVRTC_GETERRORSTRING;
         try {
-            TruffleObject callable = getSymbol(function);
-            TruffleObject result = (TruffleObject) ForeignAccess.sendExecute(executeNode, callable, errorCode);
-            return ForeignAccess.sendUnbox(unboxNode, result).toString();
+            Object callable = getSymbol(function);
+            Object result = INTEROP.execute(callable, errorCode);
+            return INTEROP.asString(result);
         } catch (InteropException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public TruffleObject getSymbol(NVRTCFunction function) throws InteropException {
+    public Object getSymbol(NVRTCFunction function) throws UnknownIdentifierException {
         return runtime.getSymbol(CUDARuntime.NVRTC_LIBRARY_NAME, function.symbolName, function.signature);
     }
 
@@ -224,7 +234,7 @@ public class NVRuntimeCompiler {
         }
     }
 
-    private NVRTCResult toNVRTCResult(Object result) {
+    private static NVRTCResult toNVRTCResult(Object result) {
         if (!(result instanceof Integer)) {
             throw new RuntimeException(
                             "expected return code as Integer object for nvrtcResult, got " +
@@ -256,6 +266,7 @@ public class NVRuntimeCompiler {
         }
 
         @Override
+        @TruffleBoundary
         public void close() {
             if (!initialized) {
                 nvrtcProgram.close();
@@ -263,9 +274,8 @@ public class NVRuntimeCompiler {
             }
             NVRTCFunction function = NVRTCFunction.NVRTC_DESTROYPROGRAM;
             try {
-                TruffleObject callable = getSymbol(function);
-                Object result = ForeignAccess.sendExecute(executeNode, callable,
-                                nvrtcProgram.getAddress());
+                Object callable = getSymbol(function);
+                Object result = INTEROP.execute(callable, nvrtcProgram.getAddress());
                 checkNVRTCReturnCode(result, function.symbolName);
             } catch (InteropException e) {
                 throw new RuntimeException(e);

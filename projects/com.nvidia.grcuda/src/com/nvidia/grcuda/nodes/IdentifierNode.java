@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +29,16 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.Optional;
+
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 
-public class IdentifierNode extends ExpressionNode {
+public abstract class IdentifierNode extends ExpressionNode {
 
     private final String identifierName;
     private final String namespace;
@@ -56,11 +61,12 @@ public class IdentifierNode extends ExpressionNode {
         return namespace;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        FunctionTable functionTable = GrCUDALanguage.getCurrentLanguage().getContext().getFunctionTable();
+    @Specialization
+    protected Object doDefault(@CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
+        FunctionTable functionTable = context.getFunctionTable();
         Optional<Function> maybeFunction = functionTable.lookupFunction(identifierName, namespace);
         if (!maybeFunction.isPresent()) {
+            CompilerDirectives.transferToInterpreter();
             throw new RuntimeException("Function '" + identifierName + "' not found in namespace '" + namespace + "'");
         }
         return maybeFunction.get();
