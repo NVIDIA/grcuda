@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,8 +54,6 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
         this.thisDimension = dim;
         this.offset = offset;
         this.stride = stride;
-        // System.out.printf("MultiDimDeviceArrayView(dim=%d, offset=%d, stride=%d)\n", dim, offset,
-        // stride);
     }
 
     public int getDimension() {
@@ -110,14 +109,12 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
     @ExportMessage
     Object readArrayElement(long index,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
-        // System.out.println("MultiDimDeviceArrayView::readArrayElement(" + index + ')');
         if ((index < 0) || (index >= mdDeviceArray.getElementsInDimension(thisDimension))) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
         if ((thisDimension + 1) == mdDeviceArray.getNumberDimensions()) {
             long flatIndex = offset + index * stride;
-            // System.out.println("R access " + flatIndex);
             switch (elementTypeProfile.profile(mdDeviceArray.getElementType())) {
                 case BYTE:
                 case CHAR:
@@ -136,12 +133,7 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
             return null;
         } else {
             long off = offset + index * stride;
-            long newStride;
-            if (mdDeviceArray.isColumnMajorFormat()) {
-                newStride = stride * mdDeviceArray.getElementsInDimension(thisDimension);
-            } else {
-                newStride = stride / mdDeviceArray.getElementsInDimension(thisDimension + 1);
-            }
+            long newStride = mdDeviceArray.getStrideInDimension(thisDimension + 1);
             return new MultiDimDeviceArrayView(mdDeviceArray, thisDimension + 1, off, newStride);
         }
     }
@@ -150,14 +142,12 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
     void writeArrayElement(long index, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException, InvalidArrayIndexException {
-        // System.out.println("MultiDimDeviceArrayView::writeArrayElement(" + index + ')');
         if ((index < 0) || (index >= mdDeviceArray.getElementsInDimension(thisDimension))) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
         if ((thisDimension + 1) == mdDeviceArray.getNumberDimensions()) {
             long flatIndex = offset + index * stride;
-            // System.out.println("W access " + flatIndex);
             try {
                 switch (elementTypeProfile.profile(mdDeviceArray.getElementType())) {
                     case BYTE:
@@ -183,10 +173,10 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
                 }
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " +
-                                mdDeviceArray.getElementType());
+                throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " + mdDeviceArray.getElementType());
             }
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("tried to write non-last dimension in MultiDimDeviceArrayView");
         }
     }

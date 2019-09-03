@@ -58,13 +58,14 @@ public class MultiDimDeviceArray implements TruffleObject {
     /** Number of elements in each dimension. */
     private final long[] elementsPerDimension;
 
+    /** Stride in each dimension. */
+    private final long[] stridePerDimension;
+
     /** Total number of elements stored in the array. */
     private final long totalElementCount;
 
     /** true if data is stored in column-major format (Fortran), false row-major (C). */
     private boolean columnMajor;
-
-    private final long stride;
 
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
@@ -87,10 +88,27 @@ public class MultiDimDeviceArray implements TruffleObject {
         this.elementType = elementType;
         this.elementsPerDimension = new long[dimensions.length];
         System.arraycopy(dimensions, 0, this.elementsPerDimension, 0, dimensions.length);
+        this.stridePerDimension = computeStride(dimensions, columnMajor);
         this.totalElementCount = prod;
         this.columnMajor = useColumnMajor;
-        this.stride = computeStrideInDim(0);
         this.nativeView = runtime.cudaMallocManaged(getSizeBytes());
+    }
+
+    private static long[] computeStride(long[] dimensions, boolean columnMajor) {
+        long prod = 1;
+        long[] stride = new long[dimensions.length];
+        if (columnMajor) {
+            for (int i = 0; i < dimensions.length; i++) {
+                stride[i] = prod;
+                prod *= dimensions[i];
+            }
+        } else {
+            for (int i = dimensions.length - 1; i >= 0; i--) {
+                stride[i] = prod;
+                prod *= dimensions[i];
+            }
+        }
+        return stride;
     }
 
     public final int getNumberDimensions() {
@@ -105,10 +123,18 @@ public class MultiDimDeviceArray implements TruffleObject {
 
     public final long getElementsInDimension(int dimension) {
         if (dimension < 0 || dimension >= elementsPerDimension.length) {
-            throw new IllegalArgumentException("invalid dimension index " + dimension +
-                            ", valid [0, " + elementsPerDimension.length + ']');
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException("invalid dimension index " + dimension + ", valid [0, " + elementsPerDimension.length + ']');
         }
         return elementsPerDimension[dimension];
+    }
+
+    public long getStrideInDimension(int dimension) {
+        if (dimension < 0 || dimension >= stridePerDimension.length) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException("invalid dimension index " + dimension + ", valid [0, " + stridePerDimension.length + ']');
+        }
+        return stridePerDimension[dimension];
     }
 
     final boolean isIndexValidInDimension(long index, int dimension) {
@@ -178,51 +204,13 @@ public class MultiDimDeviceArray implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isArrayElementModifiable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
-    final long computeStrideInDim(int dim) {
-        long prod = 1;
-        if (columnMajor) {
-            for (int i = 0; i < dim; i++) {
-                prod *= elementsPerDimension[i];
-            }
-        } else {
-            for (int i = dim + 1; i < getNumberDimensions(); i++) {
-                prod *= elementsPerDimension[i];
-            }
-        }
-        return prod;
-    }
-
-    @ExportMessage
     Object readArrayElement(long index) throws InvalidArrayIndexException {
-        // System.out.println("MultiDimDeviceArray::readArrayElement(" + index + ')');
         if ((index < 0) || (index >= elementsPerDimension[0])) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        long offset = index * stride;
-        long newStride;
-        if (columnMajor) {
-            newStride = elementsPerDimension[0];
-        } else {
-            newStride = stride / elementsPerDimension[1];
-        }
-        return new MultiDimDeviceArrayView(this, 1, offset, newStride);
-    }
-
-    @ExportMessage
-    void writeArrayElement(@SuppressWarnings("unused") long index, @SuppressWarnings("unused") Object value) {
-        throw new IllegalStateException("attempting to write MultiDimensionArray directly");
+        long offset = index * stridePerDimension[0];
+        return new MultiDimDeviceArrayView(this, 1, offset, stridePerDimension[1]);
     }
 
     @ExportMessage
