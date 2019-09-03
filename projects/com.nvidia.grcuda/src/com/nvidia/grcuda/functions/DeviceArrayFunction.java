@@ -55,7 +55,7 @@ public final class DeviceArrayFunction extends Function {
         if (arguments.length < 2) {
             throw ArityException.create(2, arguments.length);
         }
-        String typeName = expectString(arguments[1], "first argument of DeviceArray must be string (type name)");
+        String typeName = expectString(arguments[0], "first argument of DeviceArray must be string (type name)");
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
         for (int i = 1; i < arguments.length; ++i) {
