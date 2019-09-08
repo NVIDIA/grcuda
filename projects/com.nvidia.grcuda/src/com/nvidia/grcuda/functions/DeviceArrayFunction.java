@@ -52,13 +52,27 @@ public final class DeviceArrayFunction extends Function {
     @Override
     @TruffleBoundary
     public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 2) {
-            throw ArityException.create(2, arguments.length);
+        if (arguments.length < 1) {
+            throw ArityException.create(1, arguments.length);
         }
         String typeName = expectString(arguments[0], "first argument of DeviceArray must be string (type name)");
+        ElementType elementType;
+        try {
+            elementType = ElementType.lookupType(typeName);
+        } catch (TypeException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+        if (arguments.length == 1) {
+            return new TypedDeviceArrayFunction(runtime, elementType);
+        } else {
+            return createArray(arguments, 1, elementType, runtime);
+        }
+    }
+
+    static Object createArray(Object[] arguments, int start, ElementType elementType, CUDARuntime runtime) throws UnsupportedTypeException {
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
-        for (int i = 1; i < arguments.length; ++i) {
+        for (int i = start; i < arguments.length; ++i) {
             Object arg = arguments[i];
             if (INTEROP.isString(arg)) {
                 if (useColumnMajor.isPresent()) {
@@ -83,15 +97,10 @@ public final class DeviceArrayFunction extends Function {
                 elementsPerDim.add(n);
             }
         }
-        try {
-            ElementType elementType = ElementType.lookupType(typeName);
-            if (elementsPerDim.size() == 1) {
-                return new DeviceArray(runtime, elementsPerDim.get(0), elementType);
-            }
-            long[] dimensions = elementsPerDim.stream().mapToLong(l -> l).toArray();
-            return new MultiDimDeviceArray(runtime, elementType, dimensions, useColumnMajor.orElse(false));
-        } catch (TypeException e) {
-            throw new RuntimeException(e.getMessage());
+        if (elementsPerDim.size() == 1) {
+            return new DeviceArray(runtime, elementsPerDim.get(0), elementType);
         }
+        long[] dimensions = elementsPerDim.stream().mapToLong(l -> l).toArray();
+        return new MultiDimDeviceArray(runtime, elementType, dimensions, useColumnMajor.orElse(false));
     }
 }

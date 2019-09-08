@@ -118,15 +118,18 @@ public abstract class Function implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isExecutable() {
+    public final boolean isExecutable() {
         return true;
     }
 
     @ExportMessage
-    final Object execute(@SuppressWarnings("unused") Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+    public Object execute(@SuppressWarnings("unused") Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         return call(arguments);
     }
 
-    protected abstract Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException;
+    @SuppressWarnings("unused")
+    protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
 }
