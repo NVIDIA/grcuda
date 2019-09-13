@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,12 +30,61 @@ package com.nvidia.grcuda;
 
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
+@ExportLibrary(InteropLibrary.class)
 public final class DeviceArray implements TruffleObject {
+
+    private static final MemberSet PUBLIC_MEMBERS = new MemberSet();
+    private static final MemberSet MEMBERS = new MemberSet("pointer");
+
+    @ExportLibrary(InteropLibrary.class)
+    public static final class MemberSet implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final String[] values;
+
+        public MemberSet(String... values) {
+            this.values = values;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        public boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        public long getArraySize() {
+            return values.length;
+        }
+
+        @ExportMessage
+        public boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < values.length;
+        }
+
+        @ExportMessage
+        public Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if ((index < 0) || (index >= values.length)) {
+                CompilerDirectives.transferToInterpreter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            return values[(int) index];
+        }
+    }
 
     private final CUDARuntime runtime;
 
@@ -68,24 +118,55 @@ public final class DeviceArray implements TruffleObject {
         return nativeView.getStartAddress();
     }
 
-    public boolean isIndexValid(long index) {
-        return (index >= 0) && (index < numElements);
+    @Override
+    public String toString() {
+        return "DeviceArray(elementType=" + elementType + ", numElements=" + numElements + ", nativeView=" + nativeView + ')';
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return DeviceArrayForeign.ACCESS;
+    protected void finalize() {
+        runtime.cudaFree(nativeView);
     }
 
-    long getSizeElements() {
+    // Implementation of InteropLibrary
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    long getArraySize() {
         return numElements;
     }
 
-    Number readElement(long index) {
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < numElements;
+    }
+
+    @ExportMessage
+    boolean isArrayElementModifiable(long index) {
+        return index >= 0 && index < numElements;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
+        return false;
+    }
+
+    @ExportMessage
+    Object readArrayElement(long index,
+                    @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
+
         if ((index < 0) || (index >= numElements)) {
-            throw new ArrayIndexOutOfBoundsException();
+            CompilerDirectives.transferToInterpreter();
+            throw InvalidArrayIndexException.create(index);
+
         }
-        switch (elementType) {
+        switch (elementTypeProfile.profile(elementType)) {
             case BYTE:
             case CHAR:
                 return nativeView.getByte(index);
@@ -103,99 +184,82 @@ public final class DeviceArray implements TruffleObject {
         return null;
     }
 
-    void writeElement(long index, Number value) {
+    @ExportMessage
+    void writeArrayElement(long index, Object value,
+                    @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
+                    @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException, InvalidArrayIndexException {
+
         if ((index < 0) || (index >= numElements)) {
-            throw new ArrayIndexOutOfBoundsException();
+            CompilerDirectives.transferToInterpreter();
+            throw InvalidArrayIndexException.create(index);
         }
-        switch (elementType) {
-            case BYTE:
-            case CHAR:
-                nativeView.setByte(index, value.byteValue());
-                break;
-            case SHORT:
-                nativeView.setShort(index, value.shortValue());
-                break;
-            case INT:
-                nativeView.setInt(index, value.intValue());
-                break;
-            case LONG:
-                nativeView.setLong(index, value.longValue());
-                break;
-            case FLOAT:
-                nativeView.setFloat(index, value.floatValue());
-                break;
-            case DOUBLE:
-                nativeView.setDouble(index, value.doubleValue());
-                break;
-        }
-    }
+        try {
+            switch (elementTypeProfile.profile(elementType)) {
 
-    @Override
-    public String toString() {
-        return "DeviceArray(elementType=" + elementType +
-                        ", numElements=" + numElements + ", nativeView=" + nativeView + ')';
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        runtime.cudaFree(nativeView);
-        super.finalize();
-    }
-
-    public static final class ReadElementNode extends Node {
-        private final ValueProfile profile = ValueProfile.createIdentityProfile();
-
-        public Number readElement(DeviceArray deviceArray, long index) {
-            if ((index < 0) || (index >= deviceArray.numElements)) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-            switch (profile.profile(deviceArray.elementType)) {
                 case BYTE:
                 case CHAR:
-                    return deviceArray.nativeView.getByte(index);
+                    nativeView.setByte(index, valueLibrary.asByte(value));
+                    break;
                 case SHORT:
-                    return deviceArray.nativeView.getShort(index);
+                    nativeView.setShort(index, valueLibrary.asShort(value));
+                    break;
                 case INT:
-                    return deviceArray.nativeView.getInt(index);
+                    nativeView.setInt(index, valueLibrary.asInt(value));
+                    break;
                 case LONG:
-                    return deviceArray.nativeView.getLong(index);
+                    nativeView.setLong(index, valueLibrary.asLong(value));
+                    break;
                 case FLOAT:
-                    return deviceArray.nativeView.getFloat(index);
+                    // going via "double" to allow floats to be initialized with doubles
+                    nativeView.setFloat(index, (float) valueLibrary.asDouble(value));
+                    break;
                 case DOUBLE:
-                    return deviceArray.nativeView.getDouble(index);
+                    nativeView.setDouble(index, valueLibrary.asDouble(value));
+                    break;
             }
-            return null;
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " + elementType);
         }
     }
 
-    public static final class WriteElementNode extends Node {
-        private final ValueProfile profile = ValueProfile.createIdentityProfile();
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
+    }
 
-        public void writeElement(DeviceArray deviceArray, long index, Number value) {
-            if ((index < 0) || (index >= deviceArray.numElements)) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-            switch (profile.profile(deviceArray.elementType)) {
-                case BYTE:
-                case CHAR:
-                    deviceArray.nativeView.setByte(index, value.byteValue());
-                    break;
-                case SHORT:
-                    deviceArray.nativeView.setShort(index, value.shortValue());
-                    break;
-                case INT:
-                    deviceArray.nativeView.setInt(index, value.intValue());
-                    break;
-                case LONG:
-                    deviceArray.nativeView.setLong(index, value.longValue());
-                    break;
-                case FLOAT:
-                    deviceArray.nativeView.setFloat(index, value.floatValue());
-                    break;
-                case DOUBLE:
-                    deviceArray.nativeView.setDouble(index, value.doubleValue());
-                    break;
-            }
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getMembers(boolean includeInternal) {
+        return includeInternal ? MEMBERS : PUBLIC_MEMBERS;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberReadable(String member,
+                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
+        return "pointer".equals(memberProfile.profile(member));
+    }
+
+    @ExportMessage
+    Object readMember(String member,
+                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
+        if (!isMemberReadable(member, memberProfile)) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.create(member);
         }
+        return getPointer();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return getPointer();
     }
 }

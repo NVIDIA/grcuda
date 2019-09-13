@@ -1,4 +1,5 @@
 # Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -87,17 +88,16 @@ def transform(lines):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print('file argument missing', file=sys.stderr)
+    if len(sys.argv) < 2:
+        print('file arguments missing', file=sys.stderr)
         sys.exit(1)
 
-    file_name = sys.argv[1]
-    with open(file_name, 'rt') as in_lines:
-        out_lines = transform(in_lines)
-
-    with open(file_name, 'w') as out_file:
-        out_file.write(out_lines)
-
+    file_names = sys.argv[1:]
+    for file_name in file_names:
+        with open(file_name, 'rt') as in_lines:
+            out_lines = transform(in_lines)
+        with open(file_name, 'w') as out_file:
+            out_file.write(out_lines)
 
 if __name__ == '__main__':
     main()

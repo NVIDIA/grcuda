@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +35,10 @@ public final class GrCUDAException extends RuntimeException implements TruffleEx
     private static final long serialVersionUID = 8614211550329856579L;
 
     private final Node node;
+
+    public GrCUDAException(String message) {
+        this(message, null);
+    }
 
     public GrCUDAException(String message, Node node) {
         super(message);

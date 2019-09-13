@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,34 +29,38 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.Optional;
+
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 
-public class CallNode extends ExpressionNode {
+public abstract class CallNode extends ExpressionNode {
 
     @Child private IdentifierNode identifier;
     @Children private ExpressionNode[] argumentNodes;
-    @Child private Node executeNode = Message.EXECUTE.createNode();
 
     public CallNode(IdentifierNode identifier, ExpressionNode[] argumentNodes) {
         this.identifier = identifier;
         this.argumentNodes = argumentNodes;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
+    @Specialization
+    Object doDefault(VirtualFrame frame,
+                    @CachedLibrary(limit = "2") InteropLibrary interop,
+                    @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
         String namespace = identifier.getNamespace();
         String functionName = identifier.getIdentifierName();
-        FunctionTable table = GrCUDALanguage.getCurrentLanguage().getContext().getFunctionTable();
+        FunctionTable table = context.getFunctionTable();
         Optional<Function> maybeFunction = table.lookupFunction(functionName, namespace);
         if (!maybeFunction.isPresent()) {
             throw new GrCUDAException("function '" + functionName +
@@ -67,7 +72,7 @@ public class CallNode extends ExpressionNode {
             argumentValues[i] = argumentNodes[i].execute(frame);
         }
         try {
-            return ForeignAccess.sendExecute(executeNode, function, argumentValues);
+            return interop.execute(function, argumentValues);
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
             throw new RuntimeException((e));
         }

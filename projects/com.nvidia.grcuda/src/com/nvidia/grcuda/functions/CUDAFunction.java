@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,28 +28,10 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-
 public abstract class CUDAFunction extends Function {
 
     public CUDAFunction(CUDAFunctionFactory factory) {
         super(factory.getName(), factory.getNamespace());
     }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object[] functionWithArguments = frame.getArguments();
-        Object[] arguments;
-        if (functionWithArguments.length > 1) {
-            arguments = new Object[functionWithArguments.length - 1];
-            System.arraycopy(functionWithArguments, 1, arguments, 0,
-                            functionWithArguments.length - 1);
-        } else {
-            arguments = new Object[0];
-        }
-        return call(arguments);
-    }
-
-    public abstract Object call(Object... args);
 
 }

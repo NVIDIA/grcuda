@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,28 +28,27 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public abstract class Function implements TruffleObject {
+
+    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private final String name;
     private final String namespace;
-    private final Node isBoxed = Message.IS_BOXED.createNode();
-    private final Node unbox = Message.UNBOX.createNode();
 
     protected Function(String name, String namespace) {
         this.name = name;
         this.namespace = namespace;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return FunctionForeign.ACCESS;
     }
 
     public String getName() {
@@ -59,76 +59,55 @@ public abstract class Function implements TruffleObject {
         return namespace;
     }
 
-    public abstract Object execute(VirtualFrame frame);
-
-    protected boolean isString(Object obj) {
-        if (obj instanceof String) {
-            return true;
-        } else if (obj instanceof TruffleObject) {
-            // see if the TruffleObject unboxes into a string
-            TruffleObject truffleObj = (TruffleObject) obj;
-            if (ForeignAccess.sendIsBoxed(isBoxed, truffleObj)) {
-                try {
-                    Object unboxedObj = ForeignAccess.sendUnbox(unbox, truffleObj);
-                    return unboxedObj instanceof String;
-                } catch (UnsupportedMessageException e) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        } else {
-            return false;
+    protected static String expectString(Object argument, String errorMessage) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            return INTEROP.asString(argument);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{argument}, errorMessage);
         }
     }
 
-    protected String expectString(Object argument, String errorMessage) {
-        if (argument instanceof String) {
-            return (String) argument;
-        } else if (argument instanceof TruffleObject) {
-            TruffleObject argTruffleValue = (TruffleObject) argument;
-            if (ForeignAccess.sendIsBoxed(isBoxed, argTruffleValue)) {
-                try {
-                    Object valueObj = ForeignAccess.sendUnbox(unbox, argTruffleValue);
-                    if (valueObj instanceof String) {
-                        return (String) valueObj;
-                    } else {
-                        throw new RuntimeException(errorMessage + ": unboxed value has type " +
-                                        valueObj.getClass().getName());
-                    }
-                } catch (UnsupportedMessageException ex) {
-                    throw new RuntimeException("UNBOX message not supported on type " + argTruffleValue);
-                }
-            } else {
-                throw new RuntimeException(errorMessage + ": got TruffleObject " + argument.getClass().getName());
-            }
-        } else {
-            throw new RuntimeException(errorMessage + ": got " + argument.getClass().getName());
+    protected static int expectInt(Object number) throws UnsupportedTypeException {
+        try {
+            return INTEROP.asInt(number);
+        } catch (UnsupportedMessageException e) {
+            throw UnsupportedTypeException.create(new Object[]{number}, "expected integer number argument");
         }
     }
 
-    protected Number expectNumber(Object argument, String errorMessage) {
-        if (argument instanceof Number) {
-            return (Number) argument;
-        } else if (argument instanceof TruffleObject) {
-            TruffleObject argTruffleValue = (TruffleObject) argument;
-            if (ForeignAccess.sendIsBoxed(isBoxed, argTruffleValue)) {
-                try {
-                    Object valueObj = ForeignAccess.sendUnbox(unbox, argTruffleValue);
-                    if (valueObj instanceof Number) {
-                        return (Number) valueObj;
-                    } else {
-                        throw new RuntimeException(errorMessage + ": unboxed value has type " +
-                                        valueObj.getClass().getName());
-                    }
-                } catch (UnsupportedMessageException ex) {
-                    throw new RuntimeException("UNBOX message not supported on type " + argTruffleValue);
-                }
-            } else {
-                throw new RuntimeException(errorMessage + ": got TruffleObject " + argument.getClass().getName());
-            }
-        } else {
-            throw new RuntimeException(errorMessage + ": got " + argument.getClass().getName());
+    protected static long expectLong(Object number, String message) throws UnsupportedTypeException {
+        try {
+            return INTEROP.asLong(number);
+        } catch (UnsupportedMessageException e) {
+            throw UnsupportedTypeException.create(new Object[]{number}, message);
         }
     }
+
+    protected static long expectLong(Object number) throws UnsupportedTypeException {
+        return expectLong(number, "expected long number argument");
+    }
+
+    protected static void checkArgumentLength(Object[] arguments, int expected) throws ArityException {
+        if (arguments.length != expected) {
+            throw ArityException.create(expected, arguments.length);
+        }
+    }
+
+    // InteropLibrary implementation
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    final boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    final Object execute(@SuppressWarnings("unused") Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        return call(arguments);
+    }
+
+    protected abstract Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException;
+
 }

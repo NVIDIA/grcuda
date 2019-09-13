@@ -1,4 +1,5 @@
 # Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,23 +31,18 @@ QUIETLY$(MX_VERBOSE) = @
 SOURCE=${PARSER_PATH}/GrCUDA.g4
 STAMP=${PARSER_PATH}/GrCUDA.g4.stamp
 
-GEN_FILES=${OUTPUT_PATH}/GrCUDALexer.java \
-					${OUTPUT_PATH}/GrCUDAParser.java \
-					${OUTPUT_PATH}/GrCUDABaseVisitor.java \
-					${OUTPUT_PATH}/GrCUDABaseListener.java \
-					${OUTPUT_PATH}/GrCUDAVisitor.java \
-					${OUTPUT_PATH}/GrCUDAListener.java
+GEN_FILES=${OUTPUT_PATH}/GrCUDALexer.java ${OUTPUT_PATH}/GrCUDAParser.java
 
 .PHONY: default clean
 default: ${GEN_FILES}
 
 ${STAMP}: ${SOURCE}
 	$(QUIETLY) touch $@
-	$(QUIETLY) ${JAVA_HOME}/bin/java -cp ${ANTLR_JAR} org.antlr.v4.Tool -visitor -package ${PARSER_PKG} -o ${OUTPUT_PATH} ${SOURCE}
+	$(QUIETLY) ${JAVA_HOME}/bin/java -cp ${ANTLR_JAR} org.antlr.v4.Tool -no-visitor -no-listener -package ${PARSER_PKG} -o ${OUTPUT_PATH} ${SOURCE}
 
 
 ${OUTPUT_PATH}/%.java: ${STAMP}
-	$(QUIETLY) python ${POSTPROCESSOR} $@
+	$(QUIETLY) python3 ${POSTPROCESSOR} ${GEN_FILES}
 
 clean:
 	rm -f ${TARGETS}

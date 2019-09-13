@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +29,11 @@
 package com.nvidia.grcuda.gpu;
 
 import java.util.EnumSet;
-import java.util.Hashtable;
+import java.util.HashMap;
 
 public final class DriverAPIErrorMessages {
 
-    private static final Hashtable<Integer, String> codeMap = new Hashtable<>();
+    private static final HashMap<Integer, String> codeMap = new HashMap<>();
 
     static {
         EnumSet.allOf(ErrorCode.class).forEach(code -> codeMap.put(code.getErrorCode(), code.name()));

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,28 +29,33 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.ArrayList;
+
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class ArrayNode extends ExpressionNode {
+public abstract class ArrayNode extends ExpressionNode {
 
     @Children private ExpressionNode[] sizeNodes;
 
     private final ElementType elementType;
 
-    public ArrayNode(ElementType elementType, ArrayList<ExpressionNode> sizeNodes) {
+    ArrayNode(ElementType elementType, ArrayList<ExpressionNode> sizeNodes) {
         this.elementType = elementType;
         this.sizeNodes = new ExpressionNode[sizeNodes.size()];
         sizeNodes.toArray(this.sizeNodes);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        final CUDARuntime runtime = GrCUDALanguage.getCurrentLanguage().getContext().getCUDARuntime();
+    @Specialization
+    Object doDefault(VirtualFrame frame,
+                    @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
+        final CUDARuntime runtime = context.getCUDARuntime();
         long[] elementsPerDim = new long[sizeNodes.length];
         int dim = 0;
         for (ExpressionNode sizeNode : sizeNodes) {
