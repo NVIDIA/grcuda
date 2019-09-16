@@ -29,7 +29,6 @@
 package com.nvidia.grcuda;
 
 import java.util.Arrays;
-
 import com.nvidia.grcuda.DeviceArray.MemberSet;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;

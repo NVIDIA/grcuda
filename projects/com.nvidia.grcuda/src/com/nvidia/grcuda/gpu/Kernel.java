@@ -31,7 +31,6 @@ package com.nvidia.grcuda.gpu;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.DeviceArray.MemberSet;
 import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;

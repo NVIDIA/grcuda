@@ -29,7 +29,6 @@
 package com.nvidia.grcuda.gpu;
 
 import java.util.ArrayList;
-
 import com.nvidia.grcuda.gpu.UnsafeHelper.PointerArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.StringObject;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

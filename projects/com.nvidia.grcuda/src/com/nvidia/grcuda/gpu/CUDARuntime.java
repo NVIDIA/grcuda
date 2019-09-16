@@ -30,9 +30,7 @@ package com.nvidia.grcuda.gpu;
 
 import java.util.EnumSet;
 import java.util.HashMap;
-
 import org.graalvm.collections.Pair;
-
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.functions.CUDAFunction;

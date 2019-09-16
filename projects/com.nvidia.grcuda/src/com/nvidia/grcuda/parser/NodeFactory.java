@@ -29,9 +29,7 @@
 package com.nvidia.grcuda.parser;
 
 import java.util.ArrayList;
-
 import org.antlr.v4.runtime.Token;
-
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.nodes.ArithmeticNode;
