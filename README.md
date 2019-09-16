@@ -1,6 +1,6 @@
 # grCUDA: Polyglot GPU Access
 
-This Tuffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.org). The goal is to
+This Truffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.org). The goal is to
 
 1) make data exchange between the host language and the GPU efficient without burdening the programmer.
 
@@ -71,7 +71,7 @@ $SOME_DIR/graalvm-ce-19.0.0/bin/node --polyglot --jvm \
 100
 ```
 
-The next example shows how to launch an existing compiled GPU kernel from JavaScript.
+The next example shows how to launch an existing compiled GPU kernel from Python.
 The CUDA kernel
 
 ```C
@@ -84,7 +84,7 @@ __global__ void increment(int *arr, int n) {
 }
 ```
 
-is compiled using `nvcc --cubin` into a cubin binary. The kernel function can be loaded from this cubin and bound to a callable object in the host language, here JavaScript.
+is compiled using `nvcc --cubin` into a cubin binary. The kernel function can be loaded from this cubin and bound to a callable object in the host language, here Python.
 
 ```Python
 import polyglot
