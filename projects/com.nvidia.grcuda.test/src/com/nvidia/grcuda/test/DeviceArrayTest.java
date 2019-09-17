@@ -27,48 +27,137 @@
  */
 package com.nvidia.grcuda.test;
 
+import java.util.Arrays;
+import java.util.Collection;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class DeviceArrayTest {
+    @Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                        {"char", (byte) 42, 100},
+                        {"short", (short) 42, 100},
+                        {"int", 42, 100},
+                        {"long", 42L, 100},
+                        {"float", 42.0f, 100},
+                        {"double", 42.0, 100},
+        });
+    }
+
+    private final String dataTypeString;
+    private final Object testValue;
+    private final int arrayLength;
+
+    public DeviceArrayTest(String dataTypeString, Object testValue, int arrayLength) {
+        this.dataTypeString = dataTypeString;
+        this.testValue = testValue;
+        this.arrayLength = arrayLength;
+    }
+
     @Test
-    public void testDeviceArrayCreation() {
+    public void testDeviceArrayCreationFromArrayExpression() {
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
-            int length = 1000;
-            Value deviceArray = context.eval("grcuda", "double[" + length + "]");
+            Value deviceArray = context.eval("grcuda", dataTypeString + "[" + arrayLength + "]");
             assertTrue(deviceArray.hasArrayElements());
-            assertEquals(length, deviceArray.getArraySize());
+            assertEquals(arrayLength, deviceArray.getArraySize());
         }
     }
 
     @Test
-    public void testDoubleDeviceArrayGet() {
+    public void testDeviceArrayCreationFromDeviceArrayConstructor() {
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
-            int length = 1000;
-            Value deviceArray = context.eval("grcuda", "double[" + length + "]");
+            Value deviceArrayFunc = context.eval("grcuda", "DeviceArray");
+            Value deviceArray = deviceArrayFunc.execute(dataTypeString, arrayLength);
             assertTrue(deviceArray.hasArrayElements());
-            assertEquals(length, deviceArray.getArraySize());
-            Value firstElement = deviceArray.getArrayElement(0);
-            assertTrue(firstElement.fitsInDouble());
-            assertEquals(0.0, firstElement.asDouble(), 1e-6);
+            assertEquals(arrayLength, deviceArray.getArraySize());
+        }
+    }
+
+    private void checkEquality(Object expected, Value actual) {
+        switch (dataTypeString) {
+            case "char":
+                assertTrue(actual.fitsInByte());
+                assertEquals(((Number) expected).byteValue(), actual.asByte());
+                break;
+            case "short":
+                assertTrue(actual.fitsInShort());
+                assertEquals(((Number) expected).shortValue(), actual.asShort());
+                break;
+            case "int":
+                assertTrue(actual.fitsInInt());
+                assertEquals(((Number) expected).intValue(), actual.asInt());
+                break;
+            case "long":
+                assertTrue(actual.fitsInLong());
+                assertEquals(((Number) expected).longValue(), actual.asLong());
+                break;
+            case "float":
+                assertTrue(actual.fitsInFloat());
+                assertEquals(((Number) expected).floatValue(), actual.asFloat(), 1e-6);
+                break;
+            case "double":
+                assertTrue(actual.fitsInDouble());
+                assertEquals(((Number) expected).doubleValue(), actual.asDouble(), 1e-6);
+                break;
+            default:
+                throw new RuntimeException("invalid type " + dataTypeString);
+        }
+    }
+
+    private void setElement(Value array, int index, Number value) {
+        switch (dataTypeString) {
+            case "char":
+                array.setArrayElement(index, value.byteValue());
+                break;
+            case "short":
+                array.setArrayElement(index, value.shortValue());
+                break;
+            case "int":
+                array.setArrayElement(index, value.intValue());
+                break;
+            case "long":
+                array.setArrayElement(index, value.longValue());
+                break;
+            case "float":
+                array.setArrayElement(index, value.floatValue());
+                break;
+            case "double":
+                array.setArrayElement(index, value.doubleValue());
+                break;
+            default:
+                throw new RuntimeException("invalid type " + dataTypeString);
         }
     }
 
     @Test
-    public void testDoubleDeviceArraySetAndGetsSetValue() {
+    public void testDeviceArrayGetValue() {
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
-            int length = 1000;
-            Value deviceArray = context.eval("grcuda", "double[" + length + "]");
+            Value deviceArray = context.eval("grcuda", dataTypeString + "[" + arrayLength + "]");
             assertTrue(deviceArray.hasArrayElements());
-            assertEquals(length, deviceArray.getArraySize());
-            double d = 42.0;
-            deviceArray.setArrayElement(0, d);
+            assertEquals(arrayLength, deviceArray.getArraySize());
             Value firstElement = deviceArray.getArrayElement(0);
-            assertTrue(firstElement.fitsInDouble());
-            assertEquals(d, firstElement.asDouble(), 1e-6);
+            checkEquality(0, firstElement);
+        }
+    }
+
+    @Test
+    public void testDeviceArraySetAndGetsSetValue() {
+        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+            Value deviceArray = context.eval("grcuda", dataTypeString + "[" + arrayLength + "]");
+            assertTrue(deviceArray.hasArrayElements());
+            assertEquals(arrayLength, deviceArray.getArraySize());
+            final Number value = (Number) testValue;
+            setElement(deviceArray, 0, value);
+            Value firstElement = deviceArray.getArrayElement(0);
+            checkEquality(value, firstElement);
         }
     }
 }
