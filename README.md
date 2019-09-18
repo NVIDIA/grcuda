@@ -1,4 +1,4 @@
-# grCUDA: Polyglot GPU Access
+# grCUDA: Polyglot GPU Access in GraalVM
 
 This Truffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.org). The goal is to
 
@@ -6,7 +6,7 @@ This Truffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.
 
 2) allow programmers to invoke _existing_ GPU kernels from their host language.
 
-Supported and tested host languages:
+Supported and tested GraalVM languages:
 
 - Python
 - JavaScript/NodeJS
@@ -15,18 +15,17 @@ Supported and tested host languages:
 - Java
 - C and Rust through the Graal Sulong Component
 
-For details and features of grCUDA language see
-the [grCUDA documentation](docs/language.md).
+For details and features of grCUDA language see the [grCUDA documentation](docs/language.md).
 
-Binding and launching of precompiled kernels is described in the
-[polyglot kernel launch](docs/launchkernel.md) documentation.
+How to bind precompiled kernels to callables, compile and launch kernels is
+described in the [polyglot kernel launch](docs/launchkernel.md) documentation.
 
 ## Using grCUDA in the GraalVM
 
-grCUDA can be used in [GraalVM binaries](https://www.graalvm.org/downloads/)
-(`lli`, `graalpython`, `js`, `R`, and `ruby`). The JAR file containing the
-grCUDA must be appended to the class path. Note that `--jvm` and
-`--polyglot` must be specified too.
+grCUDA can be used in the binaries of the GraalVM languages (`lli`, `graalpython`,
+`js`, `R`, and `ruby)`. The JAR file containing grCUDA must be appended to the classpath
+or copied into `jre/languages/grcuda` of the Graal installation. Note that `--jvm`
+and `--polyglot` must be specified in both cases as well.
 
 The following example shows how create a GPU kernel and two device arrays
 in JavaScript (NodeJS) and invoke the kernel:
@@ -61,10 +60,8 @@ for (let i = 0; i < n; ++i) {
 }
 ```
 
-```bash
-$SOME_DIR/graalvm-ce-19.0.0/bin/node --polyglot --jvm \
-  --vm.Dtruffle.class.path.append=`pwd`/mxbuild/dists/jdk1.8/grcuda.jar \
-  example.js
+```console
+$GRAALVM_DIR/bin/node --polyglot --jvm example.js
 1
 2
 ...
@@ -84,7 +81,7 @@ __global__ void increment(int *arr, int n) {
 }
 ```
 
-is compiled using `nvcc --cubin` into a cubin binary. The kernel function can be loaded from this cubin and bound to a callable object in the host language, here Python.
+is compiled using `nvcc --cubin` into a cubin file. The kernel function can be loaded from the cubin and bound to a callable object in the host language, here Python.
 
 ```Python
 import polyglot
@@ -105,11 +102,9 @@ for i in range(n):
   print(device_array[i])
 ```
 
-```bash
+```console
 nvcc --cubin  --generate-code arch=compute_70,code=sm_70 kernel.cu
-$SOME_DIR/graalvm-ce-19.0.0/bin/graalpython --polyglot --jvm \
-  --vm.Dtruffle.class.path.append=`pwd`/mxbuild/dists/jdk1.8/grcuda.jar \
-  example.py
+$GRAALVM_DIR/bin/graalpython --polyglot --jvm example.py
 1
 2
 ...
@@ -118,6 +113,67 @@ $SOME_DIR/graalvm-ce-19.0.0/bin/graalpython --polyglot --jvm \
 
 For more details on how to invoke existing GPU kernels, see the
 Documentation on [polyglot kernel launches](docs/launchkernel.md).
+
+## Installation
+
+grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases) and manually copied into a GraalVM installation.
+
+1. Download GraalVM CE 19.2.0.1 for Linux `graalvm-ce-linux-amd64-19.2.0.1.tar.gz`
+   from [GitHub](https://github.com/oracle/graal/releases) and untar it in your
+   installation directory.
+
+   ```console
+   cd <your installation directory>
+   tar xfz graalvm-ce-linux-amd64-19.2.0.1.tar.gz
+   export GRAALVM_DIR=`pwd`/graalvm-ce-19.2.0.1
+   ```
+
+2. Download the grCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases)
+
+   ```console
+   cd $GRAALVM_DIR/jre/languages
+   mkdir grcuda
+   cp <download folder>/grcuda-0.1.0.jar grcuda
+   ```
+
+3. Test grCUDA in Node.JS from GraalVM.
+
+   ```console
+   cd $GRAALVM_DIR/bin
+   ./node --jvm --polyglot
+   > arr = Polyglot.eval('grcuda', 'int[5]')
+   [Array: null prototype] [ 0, 0, 0, 0, 0 ]
+   ```
+
+4. Download other GraalVM languages.
+
+   ```console
+   cd $GRAAL_VM/bin
+   ./gu available
+   ./gu install python
+   ./gu install R
+   ./gu install ruby
+   ```
+
+## Instructions to build grCUDA from Sources
+
+grCUDA requires the [mx build tool](https://github.com/graalvm/mx). Clone the mx reposistory and
+add the directory into `$PATH`, such that the `mx` can be invoked from the command line.
+
+Build grCUDA and the unit tests:
+
+```console
+cd <directory containing this REAMDE>
+mx build
+```
+
+Note that this will also checkout the graal repository.
+
+To run unit tests:
+
+```bash
+mx unittest com.nvidia
+```
 
 ## Using grCUDA in a JDK
 
@@ -136,18 +192,4 @@ mx --dynamicimports graalpython --cp-sfx `pwd`/mxbuild/dists/jdk1.8/grcuda.jar \
 >>> da[0] = 1.2
 >>> da[0:10]
 [1.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-```
-
-## Build Instructions
-
-To build the language and the unit tests:
-
-```bash
-mx build
-```
-
-To run unit tests:
-
-```bash
-mx unittest com.nvidia
 ```
