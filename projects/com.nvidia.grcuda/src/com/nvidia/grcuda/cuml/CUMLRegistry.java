@@ -31,7 +31,6 @@ package com.nvidia.grcuda.cuml;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
-
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;

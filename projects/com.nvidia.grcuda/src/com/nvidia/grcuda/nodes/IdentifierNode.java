@@ -29,7 +29,6 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.Optional;
-
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.functions.Function;

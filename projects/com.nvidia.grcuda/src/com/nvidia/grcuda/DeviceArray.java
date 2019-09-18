@@ -124,8 +124,9 @@ public final class DeviceArray implements TruffleObject {
     }
 
     @Override
-    protected void finalize() {
+    protected void finalize() throws Throwable {
         runtime.cudaFree(nativeView);
+        super.finalize();
     }
 
     // Implementation of InteropLibrary

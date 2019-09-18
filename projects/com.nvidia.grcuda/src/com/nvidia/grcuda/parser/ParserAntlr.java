@@ -36,6 +36,7 @@ public final class ParserAntlr {
     public ParserAntlr() {
     }
 
+    @SuppressWarnings("static-method")
     public ExpressionNode parse(Source source) throws ParserException {
         return GrCUDAParser.parseCUDA(source);
     }

@@ -29,7 +29,6 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.ArrayList;
-
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAContext;
