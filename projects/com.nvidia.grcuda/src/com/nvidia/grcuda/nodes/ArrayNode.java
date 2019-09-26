@@ -35,6 +35,7 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -60,6 +61,7 @@ public abstract class ArrayNode extends ExpressionNode {
         for (ExpressionNode sizeNode : sizeNodes) {
             Object size = sizeNode.execute(frame);
             if (!(size instanceof Number)) {
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException("size in dimension " + dim + " must be a number");
             }
             elementsPerDim[dim] = ((Number) size).longValue();

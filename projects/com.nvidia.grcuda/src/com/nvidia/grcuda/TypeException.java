@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,12 +28,15 @@
  */
 package com.nvidia.grcuda;
 
+import com.oracle.truffle.api.CompilerAsserts;
+
 public class TypeException extends Exception {
 
     private static final long serialVersionUID = -7313402629647154160L;
 
     TypeException(String message) {
         super(message);
+        CompilerAsserts.neverPartOfCompilation();
     }
 
 }

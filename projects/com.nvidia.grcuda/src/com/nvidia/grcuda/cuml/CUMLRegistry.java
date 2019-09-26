@@ -37,6 +37,7 @@ import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -95,6 +96,7 @@ public class CUMLRegistry {
                         return handle.getValue();
                     }
                 } catch (InteropException e) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new RuntimeException(e);
                 }
             }
@@ -114,6 +116,7 @@ public class CUMLRegistry {
                     checkCUMLReturnCode(result, "cumlDestroy");
                     return result;
                 } catch (InteropException e) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new RuntimeException(e);
                 }
             }
@@ -136,6 +139,7 @@ public class CUMLRegistry {
                             cumlHandle = expectInt(result);
                         }
                     } catch (InteropException e) {
+                        CompilerDirectives.transferToInterpreter();
                         throw new RuntimeException(e);
                     }
 
@@ -150,6 +154,7 @@ public class CUMLRegistry {
                         checkCUMLReturnCode(result, nfiFunction.getName());
                         return result;
                     } catch (InteropException e) {
+                        CompilerDirectives.transferToInterpreter();
                         throw new RuntimeException(e);
                     }
                 }
@@ -164,6 +169,7 @@ public class CUMLRegistry {
                 Object result = INTEROP.execute(cumlDestroyFunction, cumlHandle);
                 checkCUMLReturnCode(result, CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName());
             } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException(e);
             }
         }
@@ -174,9 +180,11 @@ public class CUMLRegistry {
         try {
             returnCode = INTEROP.asInt(result);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new RuntimeException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
         }
         if (returnCode != 0) {
+            CompilerDirectives.transferToInterpreter();
             throw new CUDAException(returnCode, cumlReturnCodeToString(returnCode), function);
         }
     }

@@ -34,6 +34,7 @@ import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -62,6 +63,7 @@ public abstract class CallNode extends ExpressionNode {
         FunctionTable table = context.getFunctionTable();
         Optional<Function> maybeFunction = table.lookupFunction(functionName, namespace);
         if (!maybeFunction.isPresent()) {
+            CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException("function '" + functionName +
                             "' not found in namespace '" + namespace + "'", this);
         }
@@ -73,6 +75,7 @@ public abstract class CallNode extends ExpressionNode {
         try {
             return interop.execute(function, argumentValues);
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new RuntimeException((e));
         }
     }

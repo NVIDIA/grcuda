@@ -36,6 +36,7 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.functions.CUDAFunctionFactory;
 import com.nvidia.grcuda.functions.FunctionTable;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ArityException;
@@ -235,12 +236,14 @@ public final class CUDARuntime {
 
     private void checkCUDAReturnCode(Object result, String function) {
         if (!(result instanceof Integer)) {
+            CompilerDirectives.transferToInterpreter();
             throw new RuntimeException(
                             "expected return code as Integer object in " + function + ", got " +
                                             result.getClass().getName());
         }
         Integer returnCode = (Integer) result;
         if (returnCode != 0) {
+            CompilerDirectives.transferToInterpreter();
             throw new CUDAException(returnCode, cudaGetErrorString(returnCode), function);
         }
     }

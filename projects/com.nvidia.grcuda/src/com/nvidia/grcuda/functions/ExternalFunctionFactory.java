@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +29,7 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 
 public class ExternalFunctionFactory {
@@ -65,6 +67,7 @@ public class ExternalFunctionFactory {
             return new ExternalFunction(name, namespace,
                             cudaRuntime.getSymbol(libraryPath, symbolName, nfiSignature));
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new RuntimeException(e);
         }
     }

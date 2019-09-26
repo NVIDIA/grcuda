@@ -72,6 +72,7 @@ public class MultiDimDeviceArray implements TruffleObject {
     public MultiDimDeviceArray(CUDARuntime runtime, ElementType elementType, long[] dimensions,
                     boolean useColumnMajor) {
         if (dimensions.length < 2) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException(
                             "MultiDimDeviceArray requires at least two dimension, use DeviceArray instead");
         }
@@ -79,6 +80,7 @@ public class MultiDimDeviceArray implements TruffleObject {
         long prod = 1;
         for (long n : dimensions) {
             if (n < 1) {
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalArgumentException("invalid size of dimension " + n);
             }
             prod *= n;
