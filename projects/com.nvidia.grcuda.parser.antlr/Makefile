@@ -39,7 +39,9 @@ default: ${GEN_FILES} ${STAMP}
 ${STAMP}: ${SOURCE}
 	$(QUIETLY) touch $@
 	$(QUIETLY) ${JAVA_HOME}/bin/java -cp ${ANTLR_JAR} org.antlr.v4.Tool -no-visitor -no-listener -package ${PARSER_PKG} -o ${OUTPUT_PATH} ${SOURCE}
-	$(QUIETLY) python3 ${POSTPROCESSOR} ${GEN_FILES}
+
+${GEN_FILES}: %.java: ${STAMP}
+	$(QUIETLY) python3 ${POSTPROCESSOR} $@
 
 clean:
 	rm -f ${TARGETS}
