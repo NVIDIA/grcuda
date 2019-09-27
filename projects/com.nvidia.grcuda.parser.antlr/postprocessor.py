@@ -93,7 +93,6 @@ def main():
         sys.exit(1)
 
     file_names = sys.argv[1:]
-    print(file_names)
     for file_name in file_names:
         with open(file_name, 'rt') as in_lines:
             out_lines = transform(in_lines)
