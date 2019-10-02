@@ -264,4 +264,43 @@ public class MultiDimArrayTest {
             matrix.getArrayElement(0).setArrayElement(53, 42);
         }
     }
+
+    /** CUDA C++ source code of incrementing kernel. */
+    private static final String INC2D_KERNEL_SOURCE = "template <typename T>                         \n" +
+                    "__global__ void inc2d(T *matrix, int num_dim1, int num_dim2) {                  \n" +
+                    "  const int num_elements = num_dim1 * num_dim2;                                 \n" +
+                    "  for (auto idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;    \n" +
+                    "       idx += gridDim.x * blockDim.x) {                                         \n" +
+                    "    matrix[idx] += (T{} + 1);                                                   \n" +
+                    "  }                                                                             \n" +
+                    "}\n";
+    /** NFI Signature of incrementing kernel. */
+    private static final String INC2D_KERNEL_SIGNATURE = "pointer, sint32, sint32";
+
+    @Test
+    public void test2DimArrayAsKernelArgument() {
+        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+            final Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
+            final int numDim1 = 19;
+            final int numDim2 = 53;
+            Value matrix = deviceArrayConstructor.execute("int", numDim1, numDim2);
+            assertEquals(numDim1, matrix.getArraySize());
+            assertEquals(numDim2, matrix.getArrayElement(0).getArraySize());
+            for (int i = 0; i < numDim1; i++) {
+                for (int j = 0; j < numDim2; j++) {
+                    matrix.getArrayElement(i).setArrayElement(j, i * numDim2 + j);
+                }
+            }
+            final Value buildKernel = context.eval("grcuda", "buildkernel");
+            final Value kernel = buildKernel.execute(INC2D_KERNEL_SOURCE, "inc2d<int>", INC2D_KERNEL_SIGNATURE);
+            final int blocks = 80;
+            final int threadsPerBlock = 256;
+            kernel.execute(blocks, threadsPerBlock).execute(matrix, numDim1, numDim2);
+            for (int i = 0; i < numDim1; i++) {
+                for (int j = 0; j < numDim2; j++) {
+                    assertEquals(i * numDim2 + j + 1, matrix.getArrayElement(i).getArrayElement(j).asInt());
+                }
+            }
+        }
+    }
 }

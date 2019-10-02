@@ -167,10 +167,10 @@ public class MultiDimDeviceArray implements TruffleObject {
 
     @Override
     public String toString() {
-        return "DeviceArray(elementType=" + elementType +
+        return "MultiDimDeviceArray(elementType=" + elementType +
                         ", dims=" + Arrays.toString(elementsPerDimension) +
                         ", Elements=" + totalElementCount +
-                        ", size=" + getSizeBytes() + " bytes, " +
+                        ", size=" + getSizeBytes() + " bytes" +
                         ", nativeView=" + nativeView + ')';
     }
 

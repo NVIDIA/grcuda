@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -126,6 +127,11 @@ public final class Kernel implements TruffleObject {
                     case POINTER:
                         if (args[argIdx] instanceof DeviceArray) {
                             DeviceArray deviceArray = (DeviceArray) args[argIdx];
+                            UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
+                            pointer.setValueOfPointer(deviceArray.getPointer());
+                            kernelArgs.setArgument(argIdx, pointer);
+                        } else if (args[argIdx] instanceof MultiDimDeviceArray) {
+                            MultiDimDeviceArray deviceArray = (MultiDimDeviceArray) args[argIdx];
                             UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
                             pointer.setValueOfPointer(deviceArray.getPointer());
                             kernelArgs.setArgument(argIdx, pointer);
