@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+  Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -56,12 +57,6 @@
       <property name="format" value="^[A-Z][_a-zA-Z0-9]*$"/>
     </module>
     <module name="AvoidStarImport"/>
-    <module name="ImportOrder">
-      <property name="groups" value="/^java\./,javax,org"/>
-      <property name="ordered" value="true"/>
-      <property name="option" value="above"/>
-      <property name="sortStaticImportsAlphabetically" value="true"/>
-    </module>
     <module name="RedundantImport"/>
     <module name="UnusedImports"/>
     <module name="LineLength">
