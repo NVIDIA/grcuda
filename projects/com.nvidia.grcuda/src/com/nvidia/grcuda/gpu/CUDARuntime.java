@@ -149,6 +149,23 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
+    public void cudaMemcpy(long destPointer, long fromPointer, long numBytesToCopy) {
+        try {
+            Object callable = getSymbol(CUDARuntimeFunction.CUDA_MEMCPY);
+            if (numBytesToCopy < 0) {
+                throw new IllegalArgumentException("requested negative number of bytes to copy " + numBytesToCopy);
+            }
+            // cudaMemcpyKind from driver_types.h (default: direction of transfer is inferred
+            // from the pointer values, uses virtual addressing)
+            final long cudaMemcpyDefault = 4;
+            Object result = INTEROP.execute(callable, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
+            checkCUDAReturnCode(result, "cudaMemcpy");
+        } catch (InteropException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @TruffleBoundary
     public void cudaDeviceReset() {
         try {
             Object callable = getSymbol(CUDARuntimeFunction.CUDA_DEVICERESET);
@@ -422,6 +439,32 @@ public final class CUDARuntime {
                         try {
                             Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_SETDEVICE);
                             Object result = INTEROP.execute(callable, device);
+                            cudaRuntime.checkCUDAReturnCode(result, getName());
+                        } catch (InteropException e) {
+                            throw new RuntimeException(e);
+                        }
+                        return null;
+                    }
+                };
+            }
+        }),
+        CUDA_MEMCPY(new CUDAFunctionFactory("cudaMemcpy", "", "(pointer, pointer, uint64, sint32): sint32") {
+            @Override
+            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
+                return new CUDAFunction(this) {
+                    @Override
+                    @TruffleBoundary
+                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
+                        checkArgumentLength(args, 3);
+                        long destPointer = expectLong(args[0]);
+                        long fromPointer = expectLong(args[1]);
+                        long numBytesToCopy = expectPositiveLong(args[2]);
+                        // cudaMemcpyKind from driver_types.h (default: direction of transfer is
+                        // inferred from the pointer values, uses virtual addressing)
+                        final long cudaMemcpyDefault = 4;
+                        try {
+                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_MEMCPY);
+                            Object result = INTEROP.execute(callable, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
                             cudaRuntime.checkCUDAReturnCode(result, getName());
                         } catch (InteropException e) {
                             throw new RuntimeException(e);

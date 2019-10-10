@@ -28,12 +28,14 @@
  */
 package com.nvidia.grcuda;
 
+import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -48,8 +50,12 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 @ExportLibrary(InteropLibrary.class)
 public final class DeviceArray implements TruffleObject {
 
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet();
-    private static final MemberSet MEMBERS = new MemberSet("pointer");
+    private static final String POINTER = "pointer";
+    private static final String COPY_FROM = "copyFrom";
+    private static final String COPY_TO = "copyTo";
+
+    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO);
+    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO);
 
     @ExportLibrary(InteropLibrary.class)
     public static final class MemberSet implements TruffleObject {
@@ -138,7 +144,7 @@ public final class DeviceArray implements TruffleObject {
     }
 
     @ExportMessage
-    long getArraySize() {
+    public long getArraySize() {
         return numElements;
     }
 
@@ -240,7 +246,7 @@ public final class DeviceArray implements TruffleObject {
     @SuppressWarnings("static-method")
     boolean isMemberReadable(String member,
                     @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        return "pointer".equals(memberProfile.profile(member));
+        return POINTER.equals(memberProfile.profile(member)) || COPY_FROM.equals(memberProfile.profile(member)) || COPY_TO.equals(memberProfile.profile(member));
     }
 
     @ExportMessage
@@ -250,7 +256,32 @@ public final class DeviceArray implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.create(member);
         }
-        return getPointer();
+        if (POINTER.equals(member)) {
+            return getPointer();
+        }
+        if (COPY_FROM.equals(member)) {
+            return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.FROM_POINTER);
+        }
+        if (COPY_TO.equals(member)) {
+            return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.TO_POINTER);
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw UnknownIdentifierException.create(member);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberInvocable(String member) {
+        return COPY_FROM.equals(member) || COPY_TO.equals(member);
+    }
+
+    @ExportMessage
+    Object invokeMember(String member,
+                    Object[] arguments,
+                    @CachedLibrary(limit = "1") InteropLibrary interopRead,
+                    @CachedLibrary(limit = "1") InteropLibrary interopExecute)
+                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+        return interopExecute.execute(interopRead.readMember(this, member), arguments);
     }
 
     @ExportMessage
@@ -262,5 +293,23 @@ public final class DeviceArray implements TruffleObject {
     @ExportMessage
     long asPointer() {
         return getPointer();
+    }
+
+    public void copyFrom(long fromPointer, long numCopyElements) throws IndexOutOfBoundsException {
+        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
+        if (numBytesToCopy > getSizeBytes()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException();
+        }
+        runtime.cudaMemcpy(getPointer(), fromPointer, numBytesToCopy);
+    }
+
+    public void copyTo(long toPointer, long numCopyElements) throws IndexOutOfBoundsException {
+        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
+        if (numBytesToCopy > getSizeBytes()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException();
+        }
+        runtime.cudaMemcpy(toPointer, getPointer(), numBytesToCopy);
     }
 }
