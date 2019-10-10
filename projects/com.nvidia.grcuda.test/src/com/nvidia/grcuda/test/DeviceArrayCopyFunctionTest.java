@@ -89,4 +89,50 @@ public class DeviceArrayCopyFunctionTest {
             }
         }
     }
+
+    @Test
+    public void testDeviceArrayCopyFromDeviceArray() {
+        final int numElements = 1000;
+        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+            Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
+            // create device array initialize its elements.
+            Value sourceDeviceArray = createDeviceArray.execute("int", numElements);
+            for (int i = 0; i < numElements; ++i) {
+                sourceDeviceArray.setArrayElement(i, i + 1);
+            }
+            // create destination device array initialize its elements to zero.
+            Value destinationDeviceArray = createDeviceArray.execute("int", numElements);
+            for (int i = 0; i < numElements; ++i) {
+                destinationDeviceArray.setArrayElement(i, 0);
+            }
+            destinationDeviceArray.invokeMember("copyFrom", sourceDeviceArray, numElements);
+            // Verify content of device array
+            for (int i = 0; i < numElements; ++i) {
+                assertEquals(i + 1, destinationDeviceArray.getArrayElement(i).asInt());
+            }
+        }
+    }
+
+    @Test
+    public void testDeviceArrayCopyToDeviceArray() {
+        final int numElements = 1000;
+        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+            Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
+            // create device array initialize its elements.
+            Value sourceDeviceArray = createDeviceArray.execute("int", numElements);
+            for (int i = 0; i < numElements; ++i) {
+                sourceDeviceArray.setArrayElement(i, i + 1);
+            }
+            // create destination device array initialize its elements to zero.
+            Value destinationDeviceArray = createDeviceArray.execute("int", numElements);
+            for (int i = 0; i < numElements; ++i) {
+                destinationDeviceArray.setArrayElement(i, 0);
+            }
+            sourceDeviceArray.invokeMember("copyTo", destinationDeviceArray, numElements);
+            // Verify content of device array
+            for (int i = 0; i < numElements; ++i) {
+                assertEquals(i + 1, destinationDeviceArray.getArrayElement(i).asInt());
+            }
+        }
+    }
 }
