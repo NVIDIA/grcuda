@@ -31,6 +31,7 @@ package com.nvidia.grcuda.gpu;
 import java.util.ArrayList;
 import com.nvidia.grcuda.gpu.UnsafeHelper.PointerArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.StringObject;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -49,6 +50,7 @@ public class NVRuntimeCompiler {
         this.runtime = runtime;
     }
 
+    @TruffleBoundary
     public PTXKernel compileKernel(String code, String kernelName, String moduleName, String... compileOpts) {
         try (NVRTCProgram program = createProgram(code, moduleName)) {
             nvrtcAddNameExpression(program, kernelName);
@@ -222,6 +224,7 @@ public class NVRuntimeCompiler {
     }
 
     private void checkNVRTCReturnCode(Object result, String functionName) {
+        CompilerAsserts.neverPartOfCompilation();
         if (!(result instanceof Integer)) {
             throw new RuntimeException(
                             "expected return code as Integer object in " + functionName + ", got " +
@@ -234,6 +237,7 @@ public class NVRuntimeCompiler {
     }
 
     private static NVRTCResult toNVRTCResult(Object result) {
+        CompilerAsserts.neverPartOfCompilation();
         if (!(result instanceof Integer)) {
             throw new RuntimeException(
                             "expected return code as Integer object for nvrtcResult, got " +

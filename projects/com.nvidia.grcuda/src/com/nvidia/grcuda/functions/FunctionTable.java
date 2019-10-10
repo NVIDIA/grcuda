@@ -30,6 +30,8 @@ package com.nvidia.grcuda.functions;
 
 import java.util.HashMap;
 import java.util.Optional;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class FunctionTable {
@@ -57,6 +59,7 @@ public final class FunctionTable {
     }
 
     private static String getKeyFromName(String functionName, String namespace) {
+        CompilerAsserts.neverPartOfCompilation();
         return namespace + "::" + functionName;
     }
 }

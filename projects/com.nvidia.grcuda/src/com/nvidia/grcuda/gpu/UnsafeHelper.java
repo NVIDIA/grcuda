@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +31,10 @@ package com.nvidia.grcuda.gpu;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import sun.misc.Unsafe;
 
 public class UnsafeHelper {
@@ -94,7 +99,7 @@ public class UnsafeHelper {
         }
     }
 
-    static class PointerObject extends MemoryObject {
+    static final class PointerObject extends MemoryObject {
 
         PointerObject() {
             super(unsafe.allocateMemory(unsafe.addressSize()));
@@ -109,7 +114,7 @@ public class UnsafeHelper {
         }
     }
 
-    static class PointerArray extends MemoryObject {
+    static final class PointerArray extends MemoryObject {
 
         private final int numElements;
 
@@ -120,13 +125,14 @@ public class UnsafeHelper {
 
         public void setValueAt(int index, long pointerValue) {
             if ((index < 0) || (index >= numElements)) {
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalArgumentException(index + " is out of range");
             }
             unsafe.putAddress(getAddress() + index * unsafe.addressSize(), pointerValue);
         }
     }
 
-    static class StringObject extends MemoryObject {
+    static final class StringObject extends MemoryObject {
         private final int maxLength;
 
         StringObject(int numBytes) {
@@ -134,6 +140,7 @@ public class UnsafeHelper {
             maxLength = numBytes;
         }
 
+        @TruffleBoundary
         static StringObject fromJavaString(String javaString) {
             byte[] bytes = javaString.getBytes(Charset.forName("ISO-8859-1"));
             StringObject so = new StringObject(bytes.length + 1); // + 1 for \NULL terminator
@@ -144,6 +151,7 @@ public class UnsafeHelper {
             return so;
         }
 
+        @TruffleBoundary
         public static String getUncheckedZeroTerminatedString(long address) {
             ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
             int offset = 0;
@@ -158,6 +166,7 @@ public class UnsafeHelper {
             return new String(byteStream.toByteArray(), 0, offset, Charset.forName("ISO-8859-1"));
         }
 
+        @TruffleBoundary
         String getZeroTerminatedString() {
             byte[] bytes = new byte[maxLength];
             int offset = 0;
@@ -173,7 +182,7 @@ public class UnsafeHelper {
         }
     }
 
-    public static class Integer32Object extends MemoryObject {
+    public static final class Integer32Object extends MemoryObject {
 
         Integer32Object() {
             super(unsafe.allocateMemory(4));
@@ -188,7 +197,7 @@ public class UnsafeHelper {
         }
     }
 
-    public static class Integer64Object extends MemoryObject {
+    public static final class Integer64Object extends MemoryObject {
 
         Integer64Object() {
             super(unsafe.allocateMemory(8));
@@ -203,7 +212,7 @@ public class UnsafeHelper {
         }
     }
 
-    public static class Float64Object extends MemoryObject {
+    public static final class Float64Object extends MemoryObject {
 
         Float64Object() {
             super(unsafe.allocateMemory(8));
@@ -218,7 +227,7 @@ public class UnsafeHelper {
         }
     }
 
-    public static class Float32Object extends MemoryObject {
+    public static final class Float32Object extends MemoryObject {
 
         Float32Object() {
             super(unsafe.allocateMemory(4));

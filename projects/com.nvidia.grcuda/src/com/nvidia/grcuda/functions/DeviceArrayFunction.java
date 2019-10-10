@@ -30,6 +30,7 @@ package com.nvidia.grcuda.functions;
 
 import java.util.ArrayList;
 import java.util.Optional;
+
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.MultiDimDeviceArray;

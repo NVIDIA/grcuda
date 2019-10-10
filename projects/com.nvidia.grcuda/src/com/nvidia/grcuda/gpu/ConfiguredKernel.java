@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda.gpu;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -53,6 +54,7 @@ public class ConfiguredKernel implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object execute(Object[] arguments,
                     @CachedLibrary(limit = "3") InteropLibrary int32Access,
                     @CachedLibrary(limit = "3") InteropLibrary int64Access,

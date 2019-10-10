@@ -35,6 +35,7 @@ import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.DeviceArray.MemberSet;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -142,6 +143,7 @@ public final class Kernel implements TruffleObject {
                         break;
                 }
             } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.create(new Object[]{args[argIdx]}, "expected " + type);
             }
         }
@@ -149,6 +151,7 @@ public final class Kernel implements TruffleObject {
     }
 
     private static ArgumentType[] parseSignature(String kernelSignature) {
+        CompilerAsserts.neverPartOfCompilation();
         ArrayList<ArgumentType> args = new ArrayList<>();
         for (String s : kernelSignature.trim().split(",")) {
             ArgumentType type;
@@ -329,6 +332,7 @@ public final class Kernel implements TruffleObject {
             // dynamic shared memory specified
             dynamicSharedMemoryBytes = extractNumber(arguments[2], "dynamicSharedMemory", sharedMemoryAccess);
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw ArityException.create(2, arguments.length);
         }
 

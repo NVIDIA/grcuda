@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +30,7 @@ package com.nvidia.grcuda.parser;
 
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.parser.antlr.GrCUDAParser;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.Source;
 
 public final class ParserAntlr {
@@ -38,6 +40,7 @@ public final class ParserAntlr {
 
     @SuppressWarnings("static-method")
     public ExpressionNode parse(Source source) throws ParserException {
+        CompilerAsserts.neverPartOfCompilation();
         return GrCUDAParser.parseCUDA(source);
     }
 }
