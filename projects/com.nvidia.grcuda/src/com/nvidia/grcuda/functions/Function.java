@@ -91,6 +91,14 @@ public abstract class Function implements TruffleObject {
         return expectLong(number, "expected long number argument");
     }
 
+    protected static int expectPositiveInt(Object number) throws UnsupportedTypeException {
+        int value = expectInt(number);
+        if (value < 0) {
+            throw UnsupportedTypeException.create(new Object[]{number}, "expected positive int number argument");
+        }
+        return value;
+    }
+
     protected static long expectPositiveLong(Object number) throws UnsupportedTypeException {
         long value = expectLong(number);
         if (value < 0) {

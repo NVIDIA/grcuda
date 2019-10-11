@@ -36,6 +36,7 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.functions.CUDAFunctionFactory;
 import com.nvidia.grcuda.functions.FunctionTable;
+import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -203,6 +204,35 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
+    public int cudaGetDevice() {
+        try {
+            Object callable = getSymbol(CUDARuntimeFunction.CUDA_GETDEVICE);
+            try (Integer32Object deviceId = UnsafeHelper.createInteger32Object()) {
+                Object result = INTEROP.execute(callable, deviceId.getAddress());
+                checkCUDAReturnCode(result, "cudaGetDevice");
+                return deviceId.getValue();
+            }
+
+        } catch (InteropException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @TruffleBoundary
+    public int cudaDeviceGetAttribute(CUDADeviceAttribute attribute, int deviceId) {
+        try {
+            Object callable = getSymbol(CUDARuntimeFunction.CUDA_DEVICEGETATTRIBUTE);
+            try (Integer32Object value = UnsafeHelper.createInteger32Object()) {
+                Object result = INTEROP.execute(callable, value.getAddress(), attribute.getAttributeCode(), deviceId);
+                checkCUDAReturnCode(result, "cudaDeviceGetAttribute");
+                return value.getValue();
+            }
+        } catch (InteropException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @TruffleBoundary
     public String cudaGetErrorString(int errorCode) {
         try {
             Object callable = getSymbol(CUDARuntimeFunction.CUDA_GETERRORSTRING);
@@ -272,19 +302,21 @@ public final class CUDARuntime {
     }
 
     public enum CUDARuntimeFunction {
-        CUDA_GETDEVICECOUNT(new CUDAFunctionFactory("cudaGetDeviceCount", "", "(pointer): sint32") {
+        CUDA_DEVICEGETATTRIBUTE(new CUDAFunctionFactory("cudaDeviceGetAttribute", "", "(pointer, sint32, sint32): sint32") {
             @Override
             public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
                 return new CUDAFunction(this) {
                     @Override
                     @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException {
-                        checkArgumentLength(args, 0);
-                        try (UnsafeHelper.Integer32Object deviceCount = UnsafeHelper.createInteger32Object()) {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_GETDEVICECOUNT);
-                            Object result = INTEROP.execute(callable, deviceCount.getAddress());
+                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
+                        checkArgumentLength(args, 2);
+                        int attributeCode = expectInt(args[0]);
+                        int deviceId = expectInt(args[1]);
+                        try (UnsafeHelper.Integer32Object value = UnsafeHelper.createInteger32Object()) {
+                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_DEVICEGETATTRIBUTE);
+                            Object result = INTEROP.execute(callable, value.getAddress(), attributeCode, deviceId);
                             cudaRuntime.checkCUDAReturnCode(result, getName());
-                            return deviceCount.getValue();
+                            return value.getValue();
                         } catch (InteropException e) {
                             throw new RuntimeException(e);
                         }
@@ -292,7 +324,6 @@ public final class CUDARuntime {
                 };
             }
         }),
-
         CUDA_DEVICERESET(new CUDAFunctionFactory("cudaDeviceReset", "", "(): sint32") {
             @Override
             public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
@@ -357,6 +388,46 @@ public final class CUDARuntime {
                             Object result = INTEROP.execute(callable, addr);
                             cudaRuntime.checkCUDAReturnCode(result, getName());
                             return null;
+                        } catch (InteropException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+            }
+        }),
+        CUDA_GETDEVICE(new CUDAFunctionFactory("cudaGetDevice", "", "(pointer): sint32") {
+            @Override
+            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
+                return new CUDAFunction(this) {
+                    @Override
+                    @TruffleBoundary
+                    public Object call(Object[] args) throws ArityException {
+                        checkArgumentLength(args, 0);
+                        try (UnsafeHelper.Integer32Object deviceId = UnsafeHelper.createInteger32Object()) {
+                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_GETDEVICE);
+                            Object result = INTEROP.execute(callable, deviceId.getAddress());
+                            cudaRuntime.checkCUDAReturnCode(result, getName());
+                            return deviceId.getValue();
+                        } catch (InteropException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+            }
+        }),
+        CUDA_GETDEVICECOUNT(new CUDAFunctionFactory("cudaGetDeviceCount", "", "(pointer): sint32") {
+            @Override
+            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
+                return new CUDAFunction(this) {
+                    @Override
+                    @TruffleBoundary
+                    public Object call(Object[] args) throws ArityException {
+                        checkArgumentLength(args, 0);
+                        try (UnsafeHelper.Integer32Object deviceCount = UnsafeHelper.createInteger32Object()) {
+                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_GETDEVICECOUNT);
+                            Object result = INTEROP.execute(callable, deviceCount.getAddress());
+                            cudaRuntime.checkCUDAReturnCode(result, getName());
+                            return deviceCount.getValue();
                         } catch (InteropException e) {
                             throw new RuntimeException(e);
                         }
@@ -776,6 +847,123 @@ public final class CUDARuntime {
         }
     }
 
+    /** CUDA device attributes from driver_types.h CUDA header. */
+    public enum CUDADeviceAttribute {
+        MAX_THREADS_PER_BLOCK("maxThreadsPerBlock", 1),
+        MAX_BLOCK_DIMX("maxBlockDimX", 2),
+        MAX_BLOCK_DIMY("maxBlockDimY", 3),
+        MAX_BLOCK_DIMZ("maxBlockDimZ", 4),
+        MAX_GRID_DIMX("maxGridDimX", 5),
+        MAX_GRID_DIMY("maxGridDimY", 6),
+        MAX_GRID_DIMZ("maxGridDimZ", 7),
+        MAX_SHARED_MEMORY_PER_BLOCK("maxSharedMemoryPerBlock", 8),
+        TOTAL_CONSTANT_MEMORY("totalConstantMemory", 9),
+        WARPSIZE("warpSize", 10),
+        MAX_PITCH("maxPitch", 11),
+        MAX_REGISTERS_PER_BLOCK("maxRegistersPerBlock", 12),
+        CLOCK_RATE("clockRate", 13),
+        TEXTURE_ALIGNMENT("textureAlignment", 14),
+        GPU_OVERLAP("gpuOverlap", 15),
+        MULTI_PROCESSOR_COUNT("multiProcessorCount", 16),
+        KERNEL_EXEC_TIMEOUT("kernelExecTimeout", 17),
+        INTEGRATED("integrated", 18),
+        CAN_MAP_HOST_MEMORY("canMapHostMemory", 19),
+        COMPUTE_MODE("computeMode", 20),
+        MAX_TEXTURE1D_WIDTH("maxTexture1DWidth", 21),
+        MAX_TEXTURE2D_WIDTH("maxTexture2DWidth", 22),
+        MAX_TEXTURE2D_HEIGHT("maxTexture2DHeight", 23),
+        MAX_TEXTURE3D_WIDTH("maxTexture3DWidth", 24),
+        MAX_TEXTURE3D_HEIGHT("maxTexture3DHeight", 25),
+        MAX_TEXTURE3D_DEPTH("maxTexture3DDepth", 26),
+        MAX_TEXTURE2D_LAYERED_WIDTH("maxTexture2DLayeredWidth", 27),
+        MAX_TEXTURE2D_LAYERED_HEIGHT("maxTexture2DLayeredHeight", 28),
+        MAX_TEXTURE2D_LAYERED_LAYERS("maxTexture2DLayeredLayers", 29),
+        SURFACE_ALIGNMENT("surfaceAlignment", 30),
+        CONCURRENT_KERNELS("concurrentKernels", 31),
+        ECC_ENABLED("eccEnabled", 32),
+        PCI_BUS_ID("pciBusId", 33),
+        PCI_DEVICE_ID("pciDeviceId", 34),
+        TCC_DRIVER("tccDriver", 35),
+        MEMORY_CLOCK_RATE("memoryClockRate", 36),
+        GLOBAL_MEMORY_BUS_WIDTH("globalMemoryBusWidth", 37),
+        L2_CACHE_SIZE("l2CacheSize", 38),
+        MAX_THREADS_PER_MULTIPROCESSOR("maxThreadsPerMultiProcessor", 39),
+        ASYNC_ENGINE_COUNT("asyncEngineCount", 40),
+        UNIFIED_ADDRESSING("unifiedAddressing", 41),
+        MAX_TEXTURE1D_LAYERED_WIDTH("maxTexture1DLayeredWidth", 42),
+        MAX_TEXTURE1D_LAYERED_LAYERS("maxTexture1DLayeredLayers", 43),
+        MAX_TEXTURE2D_GATHER_WIDTH("maxTexture2DGatherWidth", 45),
+        MAX_TEXTURE2D_GATHER_HEIGHT("maxTexture2DGatherHeight", 46),
+        MAX_TEXTURE3D_WIDTH_ALT("maxTexture3DWidthAlt", 47),
+        MAX_TEXTURE3D_HEIGHT_ALT("maxTexture3DHeightAlt", 48),
+        MAX_TEXTURE3D_DEPTH_ALT("maxTexture3DDepthAlt", 49),
+        PCI_DOMAIN_ID("pciDomainId", 50),
+        TEXTURE_PITCH_ALIGNMENT("texturePitchAlignment", 51),
+        MAX_TEXTURE_CUBEMAP_WIDTH("maxTextureCubemapWidth", 52),
+        MAX_TEXTURE_CUBEMAP_LAYERED_WIDTH("maxTextureCubemapLayeredWidth", 53),
+        MAX_TEXTURE_CUBEMAP_LAYERED_LAYERS("maxTextureCubemapLayeredLayers", 54),
+        MAX_SURFACE1D_WIDTH("maxSurface1DWidth", 55),
+        MAX_SURFACE2D_WIDTH("maxSurface2DWidth", 56),
+        MAX_SURFACE2D_HEIGHT("maxSurface2DHeight", 57),
+        MAX_SURFACE3D_WIDTH("maxSurface3DWidth", 58),
+        MAX_SURFACE3D_HEIGHT("maxSurface3DHeight", 59),
+        MAX_SURFACE3D_DEPTH("maxSurface3DDepth", 60),
+        MAX_SURFACE1D_LAYERED_WIDTH("maxSurface1DLayeredWidth", 61),
+        MAX_SURFACE1D_LAYERED_LAYERS("maxSurface1DLayeredLayers", 62),
+        MAX_SURFACE2D_LAYERED_WIDTH("maxSurface2DLayeredWidth", 63),
+        MAX_SURFACE2D_LAYERED_HEIGHT("maxSurface2DLayeredHeight", 64),
+        MAX_SURFACE2D_LAYERED_LAYERS("maxSurface2DLayeredLayers", 65),
+        MAX_SURFACE_CUBEMAP_WIDTH("maxSurfaceCubemapWidth", 66),
+        MAX_SURFACE_CUBEMAP_LAYERED_WIDTH("maxSurfaceCubemapLayeredWidth", 67),
+        MAX_SURFACE_CUBEMAP_LAYERED_LAYERS("maxSurfaceCubemapLayeredLayers", 68),
+        MAX_TEXTURE1D_LINEAR_WIDTH("maxTexture1DLinearWidth", 69),
+        MAX_TEXTURE2D_LINEAR_WIDTH("maxTexture2DLinearWidth", 70),
+        MAX_TEXTURE2D_LINEAR_HEIGHT("maxTexture2DLinearHeight", 71),
+        MAX_TEXTURE2D_LINEAR_PITCH("maxTexture2DLinearPitch", 72),
+        MAX_TEXTURE2D_MIPMAPPED_WIDTH("maxTexture2DMipmappedWidth", 73),
+        MAX_TEXTURE2D_MIPMAPPED_HEIGHT("maxTexture2DMipmappedHeight", 74),
+        COMPUTE_CAPABILITY_MAJOR("computeCapabilityMajor", 75),
+        COMPUTE_CAPABILITY_MINOR("computeCapabilityMinor", 76),
+        MAX_TEXTURE1D_MIPMAPPED_WIDTH("maxTexture1DMipmappedWidth", 77),
+        STREAM_PRIORITIES_SUPPORTED("streamPrioritiesSupported", 78),
+        GLOBAL_L1_CACHE_SUPPORTED("globalL1CacheSupported", 79),
+        LOCAL_L1_CACHE_SUPPORTED("localL1CacheSupported", 80),
+        MAX_SHARED_MEMORY_PER_MULTIPROCESSOR("maxSharedMemoryPerMultiprocessor", 81),
+        MAX_REGISTERS_PER_MULTIPROCESSOR("maxRegistersPerMultiprocessor", 82),
+        MANAGED_MEMORY("managedMemory", 83),
+        IS_MULTI_GPU_BOARD("isMultiGpuBoard", 84),
+        MULTI_GPU_BOARD_GROUP_ID("multiGpuBoardGroupID", 85),
+        HOST_NATIVE_ATOMIC_SUPPORTED("hostNativeAtomicSupported", 86),
+        SINGLE_TO_DOUBLE_PRECISION_PERF_RATIO("singleToDoublePrecisionPerfRatio", 87),
+        PAGEABLE_MEMORY_ACCESS("pageableMemoryAccess", 88),
+        CONCURRENT_MANAGED_ACCESS("concurrentManagedAccess", 89),
+        COMPUTE_PREEMPTION_SUPPORTED("computePreemptionSupported", 90),
+        CAN_USE_HOST_POINTER_FOR_REGISTERED_MEM("canUseHostPointerForRegisteredMem", 91),
+        COOPERATIVE_LAUNCH("cooperativeLaunch", 95),
+        COOPERATIVE_MULTI_DEVICE_LAUNCH("cooperativeMultiDeviceLaunch", 96),
+        MAX_SHARED_MEMORY_PER_BLOCK_OPTIN("maxSharedMemoryPerBlockOptin", 97),
+        CAN_FLUSH_REMOTE_WRITES("canFlushRemoteWrites", 98),
+        HOST_REGISTER_SUPPORTED("hostRegisterSupported", 99),
+        PAGEABLE_MEMORY_ACCESS_USES_HOST_PAGE_TABLES("pageableMemoryAccessUsesHostPageTables", 100),
+        DIRECT_MANAGED_MEM_ACCESS_FROM_HOST("directManagedMemAccessFromHost", 101);
+
+        final String attributeName;
+        final int attributeCode;
+
+        String getAttributeName() {
+            return attributeName;
+        }
+
+        int getAttributeCode() {
+            return attributeCode;
+        }
+
+        CUDADeviceAttribute(String name, int code) {
+            this.attributeName = name;
+            this.attributeCode = code;
+        }
+    }
+
     final class CUModule {
         final String cubinFile;
         final long module;
@@ -821,4 +1009,5 @@ public final class CUDARuntime {
             return cubinFile.hashCode();
         }
     }
+
 }
