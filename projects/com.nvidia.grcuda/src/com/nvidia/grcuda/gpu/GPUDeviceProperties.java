@@ -28,8 +28,11 @@
  */
 package com.nvidia.grcuda.gpu;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 
 import com.nvidia.grcuda.gpu.CUDARuntime.CUDADeviceAttribute;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -84,7 +87,9 @@ public final class GPUDeviceProperties implements TruffleObject {
         if (value == null) {
             DeviceProperty prop = PROPERTY_SET.getProperty(member);
             value = prop.getValue(deviceId, runtime);
-            properties.put(member, value);
+            if (prop.isStaticProperty()) {
+                properties.put(member, value);
+            }
         }
         return value;
     }
@@ -105,6 +110,18 @@ public final class GPUDeviceProperties implements TruffleObject {
             EnumSet.allOf(CUDADeviceAttribute.class).forEach(attr -> {
                 propertyMap.put(attr.getAttributeName(), new DeviceAttributeProperty(attr));
             });
+            // add 'free device memory' and 'total device memory' properties for cudaMemGetInfo
+            DeviceMemoryPropertyAccessor accessor = new DeviceMemoryPropertyAccessor();
+
+            // add 'device name' property for cudaGetDeviceProperties()
+            // Note that this is an expensive call!
+
+            List<DeviceProperty> additionalProps = Arrays.<DeviceProperty> asList(
+                            new TotalDeviceMemoryProperty(accessor),
+                            new FreeDeviceMemoryProperty(accessor),
+                            new DeviceNameProperty());
+            additionalProps.forEach((prop) -> propertyMap.put(prop.getName(), prop));
+
             String[] propertyNames = new String[propertyMap.size()];
             this.names = propertyMap.keySet().toArray(propertyNames);
         }
@@ -144,6 +161,7 @@ public final class GPUDeviceProperties implements TruffleObject {
     }
 
     private interface DeviceProperty {
+        boolean isStaticProperty();
 
         String getName();
 
@@ -159,6 +177,10 @@ public final class GPUDeviceProperties implements TruffleObject {
             this.attribute = attribute;
         }
 
+        public boolean isStaticProperty() {
+            return true;
+        }
+
         public String getName() {
             return getName();
         }
@@ -166,5 +188,96 @@ public final class GPUDeviceProperties implements TruffleObject {
         public Object getValue(int deviceId, CUDARuntime runtime) {
             return runtime.cudaDeviceGetAttribute(attribute, deviceId);
         }
+    }
+
+    private static class DeviceMemoryPropertyAccessor {
+
+        private Optional<DeviceMemoryInfo> info = Optional.empty();
+
+        private void getTotalAndFreeDeviceMemory(int deviceId, CUDARuntime runtime) {
+            int currentDevice = runtime.cudaGetDevice();
+            try {
+                if (currentDevice != deviceId) {
+                    runtime.cudaSetDevice(deviceId);
+                }
+                info = Optional.of(runtime.cudaMemGetInfo());
+            } finally {
+                if (currentDevice != deviceId) {
+                    runtime.cudaSetDevice(currentDevice);
+                }
+            }
+        }
+
+        long getTotalDeviceMemory(int deviceId, CUDARuntime runtime) {
+            // total memory is a static property, always get current value
+            if (!info.isPresent()) {
+                getTotalAndFreeDeviceMemory(deviceId, runtime);
+            }
+            return info.get().getTotalBytes();
+        }
+
+        long getFreeDeviceMemory(int deviceId, CUDARuntime runtime) {
+            // free memory is a dynamic property, always get current value
+            getTotalAndFreeDeviceMemory(deviceId, runtime);
+            return info.get().getFreeBytes();
+        }
+    }
+
+    private static class TotalDeviceMemoryProperty implements DeviceProperty {
+
+        private final DeviceMemoryPropertyAccessor accessor;
+
+        TotalDeviceMemoryProperty(DeviceMemoryPropertyAccessor accessor) {
+            this.accessor = accessor;
+        }
+
+        public boolean isStaticProperty() {
+            return true;
+        }
+
+        public String getName() {
+            return "totalDeviceMemory";
+        }
+
+        public Object getValue(int deviceId, CUDARuntime runtime) {
+            return accessor.getTotalDeviceMemory(deviceId, runtime);
+        }
+    }
+
+    private static class FreeDeviceMemoryProperty implements DeviceProperty {
+
+        private final DeviceMemoryPropertyAccessor accessor;
+
+        FreeDeviceMemoryProperty(DeviceMemoryPropertyAccessor accessor) {
+            this.accessor = accessor;
+        }
+
+        public boolean isStaticProperty() {
+            return false;
+        }
+
+        public String getName() {
+            return "freeDeviceMemory";
+        }
+
+        public Object getValue(int deviceId, CUDARuntime runtime) {
+            return accessor.getFreeDeviceMemory(deviceId, runtime);
+        }
+    }
+
+    private static class DeviceNameProperty implements DeviceProperty {
+
+        public boolean isStaticProperty() {
+            return true;
+        }
+
+        public String getName() {
+            return "deviceName";
+        }
+
+        public Object getValue(int deviceId, CUDARuntime runtime) {
+            return runtime.getDeviceName(deviceId);
+        }
+
     }
 }

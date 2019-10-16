@@ -29,12 +29,17 @@
 package com.nvidia.grcuda.gpu;
 
 import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.NoneValue;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -44,13 +49,17 @@ public final class Device implements TruffleObject {
 
     private static final String ID = "id";
     private static final String PROPERTIES = "properties";
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(ID, PROPERTIES);
+    private static final String IS_CURRENT = "isCurrent";
+    private static final String SET_CURRENT = "setCurrent";
+    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(ID, PROPERTIES, IS_CURRENT, SET_CURRENT);
 
     private final int deviceId;
     private final GPUDeviceProperties properties;
+    private final CUDARuntime runtime;
 
     public Device(int deviceId, CUDARuntime runtime) {
         this.deviceId = deviceId;
+        this.runtime = runtime;
         this.properties = new GPUDeviceProperties(deviceId, runtime);
     }
 
@@ -61,6 +70,20 @@ public final class Device implements TruffleObject {
     @Override
     public String toString() {
         return "Device(id=" + deviceId + ")";
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof Device) {
+            Device otherDevice = (Device) other;
+            return otherDevice.deviceId == deviceId;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return deviceId;
     }
 
     // Implementation of Truffle API
@@ -79,25 +102,103 @@ public final class Device implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isMemberReadable(String member,
-                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        return ID.equals(memberProfile.profile(member)) || PROPERTIES.equals(memberProfile.profile(member));
+    boolean isMemberReadable(String memberName,
+                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
+        return ID.equals(memberProfile.profile(memberName)) || PROPERTIES.equals(memberProfile.profile(memberName)) ||
+                        IS_CURRENT.equals(memberProfile.profile(memberName)) ||
+                        SET_CURRENT.equals(memberProfile.profile(memberName));
     }
 
     @ExportMessage
-    Object readMember(String member,
-                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
-        if (!isMemberReadable(member, memberProfile)) {
+    Object readMember(String memberName,
+                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
+        if (!isMemberReadable(memberName, memberProfile)) {
             CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.create(member);
+            throw UnknownIdentifierException.create(memberName);
         }
-        if (ID.equals(member)) {
+        if (ID.equals(memberName)) {
             return deviceId;
         }
-        if (PROPERTIES.equals(member)) {
+        if (PROPERTIES.equals(memberName)) {
             return properties;
         }
+        if (IS_CURRENT.equals(memberName)) {
+            return new IsCurrentFunction(deviceId, runtime);
+        }
+        if (SET_CURRENT.equals(memberName)) {
+            return new SetCurrentFunction(deviceId, runtime);
+        }
         CompilerDirectives.transferToInterpreter();
-        throw UnknownIdentifierException.create(member);
+        throw UnknownIdentifierException.create(memberName);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberInvocable(String memberName) {
+        return IS_CURRENT.equals(memberName) || SET_CURRENT.equals(memberName);
+    }
+
+    @ExportMessage
+    Object invokeMember(String memberName,
+                    Object[] arguments,
+                    @CachedLibrary(limit = "1") InteropLibrary interopRead,
+                    @CachedLibrary(limit = "1") InteropLibrary interopExecute)
+                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+        return interopExecute.execute(interopRead.readMember(this, memberName), arguments);
+    }
+}
+
+@ExportLibrary(InteropLibrary.class)
+final class IsCurrentFunction implements TruffleObject {
+    private final int deviceId;
+    private final CUDARuntime runtime;
+
+    IsCurrentFunction(int deviceId, CUDARuntime runtime) {
+        this.deviceId = deviceId;
+        this.runtime = runtime;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isExecutable() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public Object execute(Object[] arguments) throws ArityException {
+        if (arguments.length != 0) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(0, arguments.length);
+        }
+        return runtime.cudaGetDevice() == deviceId;
+    }
+}
+
+@ExportLibrary(InteropLibrary.class)
+class SetCurrentFunction implements TruffleObject {
+    private int deviceId;
+    private final CUDARuntime runtime;
+
+    SetCurrentFunction(int deviceId, CUDARuntime runtime) {
+        this.deviceId = deviceId;
+        this.runtime = runtime;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isExecutable() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public Object execute(Object[] arguments) throws ArityException {
+        if (arguments.length != 0) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(0, arguments.length);
+        }
+        runtime.cudaSetDevice(deviceId);
+        return NoneValue.get();
     }
 }

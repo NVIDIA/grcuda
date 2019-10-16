@@ -29,25 +29,24 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.Device;
+import com.nvidia.grcuda.gpu.DeviceList;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-public class GetDeviceFunction extends Function {
-
+public class GetDevicesFunction extends Function {
     private final CUDARuntime runtime;
 
-    public GetDeviceFunction(CUDARuntime runtime) {
-        super("getdevice", "");
+    public GetDevicesFunction(CUDARuntime runtime) {
+        super("getdevices", "");
         this.runtime = runtime;
     }
 
     @Override
     @TruffleBoundary
     public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
-        checkArgumentLength(arguments, 1);
-        int deviceId = expectPositiveInt(arguments[0]);
-        return new Device(deviceId, runtime);
+        checkArgumentLength(arguments, 0);
+        int numDevices = runtime.cudaGetDeviceCount();
+        return new DeviceList(numDevices, runtime);
     }
 }

@@ -35,6 +35,7 @@ import com.nvidia.grcuda.functions.BuildKernelFunction;
 import com.nvidia.grcuda.functions.DeviceArrayFunction;
 import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.functions.GetDeviceFunction;
+import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 
@@ -57,6 +58,7 @@ public final class GrCUDAContext {
         functionTable.registerFunction(new DeviceArrayFunction(cudaRuntime));
         functionTable.registerFunction(new BindKernelFunction(cudaRuntime));
         functionTable.registerFunction(new BuildKernelFunction(cudaRuntime));
+        functionTable.registerFunction(new GetDevicesFunction(cudaRuntime));
         functionTable.registerFunction(new GetDeviceFunction(cudaRuntime));
     }
 

@@ -26,28 +26,40 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.functions;
+package com.nvidia.grcuda;
 
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.Device;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
 
-public class GetDeviceFunction extends Function {
+/**
+ * None is a singleton object that will always returned of a function or a member returns `void`.
+ *
+ * This is to satisfy the post-condition in the Truffle call contract for invokeMember and execute,
+ * which states the the result type must be either a boxed primitive type or a TruffleObject.
+ *
+ */
+@ExportLibrary(InteropLibrary.class)
+public class NoneValue implements TruffleObject {
 
-    private final CUDARuntime runtime;
+    private static final NoneValue singleton = new NoneValue();
 
-    public GetDeviceFunction(CUDARuntime runtime) {
-        super("getdevice", "");
-        this.runtime = runtime;
+    public static NoneValue get() {
+        return singleton;
     }
 
     @Override
-    @TruffleBoundary
-    public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
-        checkArgumentLength(arguments, 1);
-        int deviceId = expectPositiveInt(arguments[0]);
-        return new Device(deviceId, runtime);
+    public String toString() {
+        return "NoneValue";
+    }
+
+    @Override
+    public int hashCode() {
+        return 123456789;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof NoneValue;
     }
 }
