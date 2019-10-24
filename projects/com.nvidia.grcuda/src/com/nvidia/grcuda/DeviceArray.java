@@ -246,9 +246,8 @@ public final class DeviceArray implements TruffleObject {
     @SuppressWarnings("static-method")
     boolean isMemberReadable(String memberName,
                     @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        return POINTER.equals(memberProfile.profile(memberName)) ||
-                        COPY_FROM.equals(memberProfile.profile(memberName)) ||
-                        COPY_TO.equals(memberProfile.profile(memberName));
+        String name = memberProfile.profile(memberName);
+        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name);
     }
 
     @ExportMessage

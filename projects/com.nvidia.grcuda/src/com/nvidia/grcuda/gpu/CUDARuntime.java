@@ -175,12 +175,11 @@ public final class CUDARuntime {
             final String symbol = "cudaMemGetInfo";
             final String nfiSignature = "(pointer, pointer): sint32";
             Object callable = getSymbol(CUDA_RUNTIME_LIBRARY_NAME, symbol, nfiSignature);
-            try (Integer64Object freeBytes = UnsafeHelper.createInteger64Object()) {
-                try (Integer64Object totalBytes = UnsafeHelper.createInteger64Object()) {
-                    Object result = INTEROP.execute(callable, freeBytes.getAddress(), totalBytes.getAddress());
-                    checkCUDAReturnCode(result, symbol);
-                    return new DeviceMemoryInfo(freeBytes.getValue(), totalBytes.getValue());
-                }
+            try (Integer64Object freeBytes = UnsafeHelper.createInteger64Object();
+                            Integer64Object totalBytes = UnsafeHelper.createInteger64Object()) {
+                Object result = INTEROP.execute(callable, freeBytes.getAddress(), totalBytes.getAddress());
+                checkCUDAReturnCode(result, symbol);
+                return new DeviceMemoryInfo(freeBytes.getValue(), totalBytes.getValue());
             }
         } catch (InteropException e) {
             throw new RuntimeException(e);

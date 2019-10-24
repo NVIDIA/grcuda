@@ -104,9 +104,9 @@ public final class Device implements TruffleObject {
     @SuppressWarnings("static-method")
     boolean isMemberReadable(String memberName,
                     @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        return ID.equals(memberProfile.profile(memberName)) || PROPERTIES.equals(memberProfile.profile(memberName)) ||
-                        IS_CURRENT.equals(memberProfile.profile(memberName)) ||
-                        SET_CURRENT.equals(memberProfile.profile(memberName));
+        String name = memberProfile.profile(memberName);
+        return ID.equals(name) || PROPERTIES.equals(name) ||
+                        IS_CURRENT.equals(name) || SET_CURRENT.equals(name);
     }
 
     @ExportMessage

@@ -265,8 +265,8 @@ See description in the [polyglot kernel launch](docs/launchkernel.md) documentat
 
 ### getdevices() and getdevice() Functions
 
-The `get_devices()` functions returns an array that contains all visible
-CUDA devices. `get_device(k)` returns the `k` visible device, with
+The `getdevices()` functions returns an array that contains all visible
+CUDA devices. `getdevice(k)` returns the `k` visible device, with
 `k` ranging from 0 to the number of visible devices - 1.
 
 ```text

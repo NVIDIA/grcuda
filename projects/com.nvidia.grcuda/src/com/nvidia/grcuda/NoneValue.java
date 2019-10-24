@@ -31,6 +31,7 @@ package com.nvidia.grcuda;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * None is a singleton object that will always returned of a function or a member returns `void`.
@@ -61,5 +62,10 @@ public class NoneValue implements TruffleObject {
     @Override
     public boolean equals(Object other) {
         return other instanceof NoneValue;
+    }
+
+    @ExportMessage
+    public boolean isNull() {
+        return true;
     }
 }
