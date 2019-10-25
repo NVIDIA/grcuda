@@ -244,44 +244,45 @@ public final class DeviceArray implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isMemberReadable(String member,
-                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        return POINTER.equals(memberProfile.profile(member)) || COPY_FROM.equals(memberProfile.profile(member)) || COPY_TO.equals(memberProfile.profile(member));
+    boolean isMemberReadable(String memberName,
+                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
+        String name = memberProfile.profile(memberName);
+        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name);
     }
 
     @ExportMessage
-    Object readMember(String member,
-                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
-        if (!isMemberReadable(member, memberProfile)) {
+    Object readMember(String memberName,
+                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
+        if (!isMemberReadable(memberName, memberProfile)) {
             CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.create(member);
+            throw UnknownIdentifierException.create(memberName);
         }
-        if (POINTER.equals(member)) {
+        if (POINTER.equals(memberName)) {
             return getPointer();
         }
-        if (COPY_FROM.equals(member)) {
+        if (COPY_FROM.equals(memberName)) {
             return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.FROM_POINTER);
         }
-        if (COPY_TO.equals(member)) {
+        if (COPY_TO.equals(memberName)) {
             return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.TO_POINTER);
         }
         CompilerDirectives.transferToInterpreter();
-        throw UnknownIdentifierException.create(member);
+        throw UnknownIdentifierException.create(memberName);
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isMemberInvocable(String member) {
-        return COPY_FROM.equals(member) || COPY_TO.equals(member);
+    boolean isMemberInvocable(String memberName) {
+        return COPY_FROM.equals(memberName) || COPY_TO.equals(memberName);
     }
 
     @ExportMessage
-    Object invokeMember(String member,
+    Object invokeMember(String memberName,
                     Object[] arguments,
                     @CachedLibrary(limit = "1") InteropLibrary interopRead,
                     @CachedLibrary(limit = "1") InteropLibrary interopExecute)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
-        return interopExecute.execute(interopRead.readMember(this, member), arguments);
+        return interopExecute.execute(interopRead.readMember(this, memberName), arguments);
     }
 
     @ExportMessage

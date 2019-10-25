@@ -263,6 +263,157 @@ buildkernel(
 
 See description in the [polyglot kernel launch](docs/launchkernel.md) documentation for details.
 
+### getdevices() and getdevice() Functions
+
+The `getdevices()` functions returns an array that contains all visible
+CUDA devices. `getdevice(k)` returns the `k` visible device, with
+`k` ranging from 0 to the number of visible devices - 1.
+
+```text
+devices = getdevices()
+device = getdevice(deviceOrdinal)
+```
+
+`deviceOrdinal`: integer `k` that for the kth device, `k` from 0 to
+the number of visible devices
+(see [cudaGetDevice](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html))
+
+Both functions return `Devices` objects which have the following members:
+
+Attribute `id`: the device ID (ordinal)
+
+Attribute `properties`: property objects containing device attributes
+returned by the CUDA runtime `cudaDeviceGetAttributeGet()`,
+`cudaMemgetInfo()` and `cuDeviceGetName()`.
+
+Method `isCurrent()`: method returns true iff `id` is the device
+on which the currently active host thread executes device code.
+
+Method `setCurrent()`: method sets `id` as the device the
+currently active host thread should execute device code.
+
+**Example:**
+
+```Python
+devices = polyglot.eval(language='grcuda', 'getdevices()')
+device0 = polyglot.eval(language='grcuda', 'getdevice(0)')
+# identical to device0 = devices[0]
+
+for device in devices:
+    print('{}: {}, {} multiprocessors'.format(device.id,
+       device.property.deviceName,
+       device.property.multiProcessorCount))
+# example output
+# 0: TITAN V, 80 multiprocessors
+# 1: Quadro GP100, 56 multiprocessors
+device0.setCurrent()
+print(device0.isCurrent())  # true
+```
+
+Table: Device Properties Names (see also
+[CUDA Runtime Documentation](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html))
+| Property Name
+|-------------------------------------------|
+| `asyncEngineCount`                        |
+| `canFlushRemoteWrites`                    |
+| `canMapHostMemory`                        |
+| `canUseHostPointerForRegisteredMem`       |
+| `clockRate`                               |
+| `computeCapabilityMajor`                  |
+| `computeCapabilityMinor`                  |
+| `computeMode`                             |
+| `computePreemptionSupported`              |
+| `concurrentKernels`                       |
+| `concurrentManagedAccess`                 |
+| `cooperativeLaunch`                       |
+| `cooperativeMultiDeviceLaunch`            |
+| `deviceName`                              |
+| `directManagedMemAccessFromHost`          |
+| `eccEnabled`                              |
+| `freeDeviceMemory`                        |
+| `globalL1CacheSupported`                  |
+| `globalMemoryBusWidth`                    |
+| `gpuOverlap`                              |
+| `hostNativeAtomicSupported`               |
+| `hostRegisterSupported`                   |
+| `integrated`                              |
+| `isMultiGpuBoard`                         |
+| `kernelExecTimeout`                       |
+| `l2CacheSize`                             |
+| `localL1CacheSupported`                   |
+| `managedMemory`                           |
+| `maxBlockDimX`                            |
+| `maxBlockDimY`                            |
+| `maxBlockDimZ`                            |
+| `maxGridDimX`                             |
+| `maxGridDimY`                             |
+| `maxGridDimZ`                             |
+| `maxPitch`                                |
+| `maxRegistersPerBlock`                    |
+| `maxRegistersPerMultiprocessor`           |
+| `maxSharedMemoryPerBlock`                 |
+| `maxSharedMemoryPerBlockOptin`            |
+| `maxSharedMemoryPerMultiprocessor`        |
+| `maxSurface1DLayeredLayers`               |
+| `maxSurface1DWidth`                       |
+| `maxSurface2DHeight`                      |
+| `maxSurface2DLayeredHeight`               |
+| `maxSurface2DLayeredLayers`               |
+| `maxSurface2DLayeredWidth`                |
+| `maxSurface2DWidth`                       |
+| `maxSurface3DDepth`                       |
+| `maxSurface3DHeight`                      |
+| `maxSurface3DWidth`                       |
+| `maxSurfaceCubemapLayeredLayers`          |
+| `maxSurfaceCubemapLayeredWidth`           |
+| `maxSurfaceCubemapWidth`                  |
+| `maxTexture1DLayeredLayers`               |
+| `maxTexture1DLayeredWidth`                |
+| `maxTexture1DLinearWidth`                 |
+| `maxTexture1DMipmappedWidth`              |
+| `maxTexture1DWidth`                       |
+| `maxTexture2DGatherHeight`                |
+| `maxTexture2DGatherWidth`                 |
+| `maxTexture2DHeight`                      |
+| `maxTexture2DLayeredHeight`               |
+| `maxTexture2DLayeredLayers`               |
+| `maxTexture2DLayeredWidth`                |
+| `maxTexture2DLinearHeight`                |
+| `maxTexture2DLinearPitch`                 |
+| `maxTexture2DLinearWidth`                 |
+| `maxTexture2DMipmappedHeight`             |
+| `maxTexture2DMipmappedWidth`              |
+| `maxTexture2DWidth`                       |
+| `maxTexture3DDepth`                       |
+| `maxTexture3DDepthAlt`                    |
+| `maxTexture3DHeight`                      |
+| `maxTexture3DHeightAlt`                   |
+| `maxTexture3DWidth`                       |
+| `maxTexture3DWidthAlt`                    |
+| `maxTextureCubemapLayeredLayers`          |
+| `maxTextureCubemapLayeredWidth`           |
+| `maxTextureCubemapWidth`                  |
+| `maxThreadsPerBlock`                      |
+| `maxThreadsPerMultiProcessor`             |
+| `memoryClockRate`                         |
+| `multiGpuBoardGroupID`                    |
+| `multiProcessorCount`                     |
+| `pageableMemoryAccess`                    |
+| `pageableMemoryAccessUsesHostPageTables`  |
+| `pciBusId`                                |
+| `pciDeviceId`                             |
+| `pciDomainId`                             |
+| `singleToDoublePrecisionPerfRatio`        |
+| `streamPrioritiesSupported`               |
+| `surfaceAlignment`                        |
+| `tccDriver`                               |
+| `textureAlignment`                        |
+| `texturePitchAlignment`                   |
+| `totalConstantMemory`                     |
+| `totalDeviceMemory`                       |
+| `unifiedAddressing`                       |
+| `warpSize`                                |
+
 ### DeviceArray Constructor Function
 
 In addition to arrays expression, device arrays can also be
