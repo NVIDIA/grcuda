@@ -94,7 +94,7 @@ public final class Kernel implements TruffleObject {
         return argumentTypes;
     }
 
-    KernelArguments createKernelArguments(Object[] args, InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary floatAccess, InteropLibrary doubleAccess)
+    KernelArguments createKernelArguments(Object[] args, InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
                     throws UnsupportedTypeException, ArityException {
         if (args.length != argumentTypes.length) {
             CompilerDirectives.transferToInterpreter();
@@ -117,7 +117,8 @@ public final class Kernel implements TruffleObject {
                         break;
                     case FLOAT32:
                         UnsafeHelper.Float32Object fp32 = UnsafeHelper.createFloat32Object();
-                        fp32.setValue(floatAccess.asFloat(args[argIdx]));
+                        // going via "double" to allow floats to be initialized with doubles
+                        fp32.setValue((float) doubleAccess.asDouble(args[argIdx]));
                         kernelArgs.setArgument(argIdx, fp32);
                         break;
                     case FLOAT64:
@@ -144,7 +145,7 @@ public final class Kernel implements TruffleObject {
                 }
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{args[argIdx]}, "expected " + type);
+                throw UnsupportedTypeException.create(new Object[]{args[argIdx]}, "expected type " + type);
             }
         }
         return kernelArgs;
