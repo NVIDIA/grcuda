@@ -33,6 +33,7 @@ import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.parser.ParserAntlr;
+import com.nvidia.grcuda.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -52,6 +53,9 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
         context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
         if (CUMLRegistry.isCUMLEnabled()) {
             new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());
+        }
+        if (TensorRTRegistry.isTensorRTEnabled()) {
+            new TensorRTRegistry(context).registerTensorRTFunctions(context.getFunctionTable());
         }
         return context;
     }

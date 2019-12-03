@@ -15,33 +15,6 @@ static void cudaTry_(cudaError_t err, const char* file, int line) {
 }
 
 
-char* read_binary_file(const char * const file_name, size_t *file_num_bytes) {
-  FILE *engine_file = fopen(file_name, "r");
-  if (engine_file == NULL) {
-    perror("unable to read engine file");
-    return NULL;
-  }
-  fseek(engine_file, 0, SEEK_END);
-  size_t size_bytes = ftell(engine_file);
-  if (file_num_bytes != NULL) {
-    *file_num_bytes = size_bytes;
-  }
-  rewind(engine_file);
-  char *buffer = malloc(size_bytes);
-  if (buffer == NULL) {
-    fclose(engine_file);
-    return NULL;
-  }
-  if (fread(buffer, 1, size_bytes, engine_file) != size_bytes) {
-    fprintf(stderr, "invalid read count in fread\n");
-    fclose(engine_file);
-    return NULL;
-  }
-  fclose(engine_file);
-  return buffer;
-}
-
-
 float* read_pgm_file(const char * const file_name, int *width, int *height) {
   FILE *image_file = fopen(file_name, "r");
   if (image_file == NULL) {
@@ -108,15 +81,8 @@ int main(int argc, char **argv) {
   int return_code = -1;
   trt_error_t res;
 
-  // read engine file
-  size_t engine_file_num_bytes;
-  char* engine_file_buf = read_binary_file(engine_file_name, &engine_file_num_bytes);
-  if (engine_file_buf == NULL) {
-    goto destroy_runtime;
-  }
   // deserialize engine
-  engine_handle_t engine = deserializeCudaEngine(runtime, engine_file_buf, engine_file_num_bytes);
-  free(engine_file_buf);
+  engine_handle_t engine = deserializeCudaEngine(runtime, engine_file_name);
   if (engine < 0) {
     fprintf(stderr, "unable to deserialize engine\n");
     goto destroy_runtime;

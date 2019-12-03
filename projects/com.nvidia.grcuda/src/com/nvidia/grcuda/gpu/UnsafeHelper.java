@@ -114,7 +114,7 @@ public class UnsafeHelper {
         }
     }
 
-    static final class PointerArray extends MemoryObject {
+    public static final class PointerArray extends MemoryObject {
 
         private final int numElements;
 

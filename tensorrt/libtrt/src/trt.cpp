@@ -1,4 +1,5 @@
 #include <atomic>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -72,12 +73,22 @@ runtime_handle_t createInferRuntime() {
   return handle;
 }
 
-engine_handle_t deserializeCudaEngine(runtime_handle_t handle, void* buffer, size_t num_bytes) {
+engine_handle_t deserializeCudaEngine(runtime_handle_t handle, const char *engine_file_name) {
   auto runtime = runtimeFromHandle(handle);
   if (runtime == nullptr) {
     return TRT_INVALID_HANDLE;
   }
-  auto engine = runtime->deserializeCudaEngine(buffer, num_bytes, nullptr);
+  std::ifstream plan_file(engine_file_name, std::ios::in | std::ios::binary);
+  if (!plan_file) {
+    return TRT_ENGINE_FILE_NOT_FOUND;
+  }
+  plan_file.seekg(0, std::ios::end);
+  std::size_t length = plan_file.tellg();
+  plan_file.seekg(0, std::ios::beg);
+  std::unique_ptr<char[]> engine_buffer(new char[length]);
+  plan_file.read(engine_buffer.get(), length);
+  plan_file.close();
+  auto engine = runtime->deserializeCudaEngine(engine_buffer.get(), length, nullptr);
   if (engine == nullptr) {
     return TRT_ENGINE_DESERIALIZATION_ERROR;
   }
