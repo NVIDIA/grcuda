@@ -236,7 +236,7 @@ public final class DeviceArray implements TruffleObject {
             }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " + elementType);
+            throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " + elementType + " " + value.getClass() + " " + value);
         }
     }
 

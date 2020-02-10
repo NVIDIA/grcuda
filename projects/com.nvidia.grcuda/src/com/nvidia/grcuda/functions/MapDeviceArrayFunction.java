@@ -86,13 +86,13 @@ abstract class MapArrayNode extends Node {
                 element = interop.readArrayElement(source, i);
             } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new GrCUDAException("cannot read array element " + i);
+                throw new GrCUDAException("cannot read array element " + i + ": " + e.getMessage());
             }
             try {
                 result.writeArrayElement(i, element, elementInterop, elementTypeProfile);
             } catch (UnsupportedTypeException | InvalidArrayIndexException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new GrCUDAException("cannot coerce array element at index " + i + " to " + elementType);
+                throw new GrCUDAException("cannot coerce array element at index " + i + " to " + elementType + ": " + e.getMessage());
             }
         }
 
