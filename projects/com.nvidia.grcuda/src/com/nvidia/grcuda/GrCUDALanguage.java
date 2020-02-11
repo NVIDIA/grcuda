@@ -45,6 +45,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 @TruffleLanguage.Registration(id = GrCUDALanguage.ID, name = "grcuda", version = "0.1", internal = false)
 public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
+    public static final boolean mock = Boolean.getBoolean("grCUDA.mockup");
+
     public static final String ID = "grcuda";
 
     @Override

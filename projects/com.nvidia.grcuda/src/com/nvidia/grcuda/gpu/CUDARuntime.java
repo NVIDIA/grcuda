@@ -30,9 +30,12 @@ package com.nvidia.grcuda.gpu;
 
 import java.util.EnumSet;
 import java.util.HashMap;
+
 import org.graalvm.collections.Pair;
+
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.functions.CUDAFunctionFactory;
@@ -72,15 +75,17 @@ public final class CUDARuntime {
 
     public CUDARuntime(GrCUDAContext context, Env env) {
         this.context = context;
-        TruffleObject libcudart = (TruffleObject) env.parse(
-                        Source.newBuilder("nfi", "load " + "lib" + CUDA_RUNTIME_LIBRARY_NAME + ".so", "cudaruntime").build()).call();
-        TruffleObject libcuda = (TruffleObject) env.parse(
-                        Source.newBuilder("nfi", "load " + "lib" + CUDA_LIBRARY_NAME + ".so", "cuda").build()).call();
-        TruffleObject libnvrtc = (TruffleObject) env.parse(
-                        Source.newBuilder("nfi", "load " + "lib" + NVRTC_LIBRARY_NAME + ".so", "nvrtc").build()).call();
-        loadedLibraries.put(CUDA_RUNTIME_LIBRARY_NAME, libcudart);
-        loadedLibraries.put(CUDA_LIBRARY_NAME, libcuda);
-        loadedLibraries.put(NVRTC_LIBRARY_NAME, libnvrtc);
+        if (!GrCUDALanguage.mock) {
+            TruffleObject libcudart = (TruffleObject) env.parse(
+                            Source.newBuilder("nfi", "load " + "lib" + CUDA_RUNTIME_LIBRARY_NAME + ".so", "cudaruntime").build()).call();
+            TruffleObject libcuda = (TruffleObject) env.parse(
+                            Source.newBuilder("nfi", "load " + "lib" + CUDA_LIBRARY_NAME + ".so", "cuda").build()).call();
+            TruffleObject libnvrtc = (TruffleObject) env.parse(
+                            Source.newBuilder("nfi", "load " + "lib" + NVRTC_LIBRARY_NAME + ".so", "nvrtc").build()).call();
+            loadedLibraries.put(CUDA_RUNTIME_LIBRARY_NAME, libcudart);
+            loadedLibraries.put(CUDA_LIBRARY_NAME, libcuda);
+            loadedLibraries.put(NVRTC_LIBRARY_NAME, libnvrtc);
+        }
         nvrtc = new NVRuntimeCompiler(this);
         context.addDisposable(this::shutdown);
     }
@@ -108,10 +113,15 @@ public final class CUDARuntime {
         final int cudaMemAttachGlobal = 0x01;
         try {
             try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
-                Object callable = getSymbol(CUDARuntimeFunction.CUDA_MALLOCMANAGED);
-                Object result = INTEROP.execute(callable, outPointer.getAddress(), numBytes, cudaMemAttachGlobal);
-                checkCUDAReturnCode(result, "cudaMallocManaged");
-                long addressAllocatedMemory = outPointer.getValueOfPointer();
+                long addressAllocatedMemory;
+                if (GrCUDALanguage.mock) {
+                    addressAllocatedMemory = UnsafeHelper.getUnsafe().allocateMemory(numBytes);
+                } else {
+                    Object callable = getSymbol(CUDARuntimeFunction.CUDA_MALLOCMANAGED);
+                    Object result = INTEROP.execute(callable, outPointer.getAddress(), numBytes, cudaMemAttachGlobal);
+                    checkCUDAReturnCode(result, "cudaMallocManaged");
+                    addressAllocatedMemory = outPointer.getValueOfPointer();
+                }
                 return new LittleEndianNativeArrayView(addressAllocatedMemory, numBytes);
             }
         } catch (InteropException e) {
@@ -122,9 +132,13 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaFree(LittleEndianNativeArrayView memory) {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_FREE);
-            Object result = INTEROP.execute(callable, memory.getStartAddress());
-            checkCUDAReturnCode(result, "cudaFree");
+            if (GrCUDALanguage.mock) {
+                UnsafeHelper.getUnsafe().freeMemory(memory.getStartAddress());
+            } else {
+                Object callable = getSymbol(CUDARuntimeFunction.CUDA_FREE);
+                Object result = INTEROP.execute(callable, memory.getStartAddress());
+                checkCUDAReturnCode(result, "cudaFree");
+            }
         } catch (InteropException e) {
             throw new RuntimeException(e);
         }
@@ -133,9 +147,13 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaFree(GPUPointer pointer) {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_FREE);
-            Object result = INTEROP.execute(callable, pointer.getRawPointer());
-            checkCUDAReturnCode(result, "cudaFree");
+            if (GrCUDALanguage.mock) {
+                UnsafeHelper.getUnsafe().freeMemory(pointer.getRawPointer());
+            } else {
+                Object callable = getSymbol(CUDARuntimeFunction.CUDA_FREE);
+                Object result = INTEROP.execute(callable, pointer.getRawPointer());
+                checkCUDAReturnCode(result, "cudaFree");
+            }
         } catch (InteropException e) {
             throw new RuntimeException(e);
         }
