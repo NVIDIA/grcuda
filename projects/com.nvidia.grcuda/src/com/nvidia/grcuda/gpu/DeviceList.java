@@ -103,18 +103,6 @@ public final class DeviceList implements TruffleObject, Iterable<Device> {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasMembers() {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return null;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
     boolean hasArrayElements() {
         return true;
     }
