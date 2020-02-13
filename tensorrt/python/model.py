@@ -47,10 +47,15 @@
 # Users Notice.
 #
 
-# This file contains functions for training a TensorFlow model
+"""This file contains functions for training a TensorFlow model"""
+
+import datetime
 import tensorflow as tf
 import numpy as np
 
+if not tf.__version__.startswith('1.'):
+    print('Graph freezing only supported in TF 1.x')
+    exit(1)
 
 
 def process_dataset():
@@ -81,24 +86,30 @@ def create_model():
 def save(model, filename):
     # First freeze the graph and remove training nodes.
     output_names = model.output.op.name
-    sess = tf.keras.backend.get_session()
-    frozen_graph = tf.graph_util.convert_variables_to_constants(sess, sess.graph.as_graph_def(), [output_names])
-    frozen_graph = tf.graph_util.remove_training_nodes(frozen_graph)
+    sess = tf.compat.v1.keras.backend.get_session()
+    frozen_graph = tf.compat.v1.graph_util.convert_variables_to_constants(sess, sess.graph.as_graph_def(), [output_names])
+    frozen_graph = tf.compat.v1.graph_util.remove_training_nodes(frozen_graph)
     # Save the model
     with open(filename, "wb") as ofile:
         ofile.write(frozen_graph.SerializeToString())
 
+
 def main():
+    print('using TensorFlow version: ', tf.__version__)
     x_train, y_train, x_test, y_test = process_dataset()
     model = create_model()
     model.summary()
 
     # Train the model on the data
     num_epochs = 5
-    model.fit(x_train, y_train, batch_size=32, epochs=num_epochs)
+    log_dir = 'logs/train' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1, update_freq='epoch', write_grads=True)
+    model.fit(x_train, y_train, batch_size=128, validation_split=0.1, epochs=num_epochs, callbacks=[tensorboard_callback])
 
     # Evaluate the model on test data
-    eval_loss, eval_accuracy = model.evaluate(x_test, y_test)
+    log_dir = 'logs/test' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1, update_freq='batch', write_grads=True)
+    eval_loss, eval_accuracy = model.evaluate(x_test, y_test, callbacks=[tensorboard_callback])
     print(f'after {num_epochs} training epochs: eval loss={eval_loss}, eval accuracy={eval_accuracy}')
 
     # Save model

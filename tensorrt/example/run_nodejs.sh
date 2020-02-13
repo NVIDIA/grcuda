@@ -28,19 +28,14 @@
 
 set -o errexit
 
-
 GRCUDA_JAR="/home/muellerr/proj/oracle/workspace_dev/grcuda/mxbuild/dists/jdk1.8/grcuda.jar"
 GRAALVM_DIR="/home/muellerr/proj/oracle/graalvm"
-LIBCUML=/data/proj/rapids/cuml/cpp/build/libcuml.so
 LIBTRT=/home/muellerr/proj/oracle/workspace_dev/grcuda/tensorrt/libtrt/build/libtrt.so
-
-LD_LIBRARY_PATH=/home/muellerr/proj/tensorrt/TensorRT-6.0.1.5/lib:$LD_LIBRARY_PATH
+LD_LIBRARY_PATH=/home/muellerr/proj/tensorrt/TensorRT-7.0.0.11/lib:$LD_LIBRARY_PATH
 
 
 ${GRAALVM_DIR}/bin/node --polyglot --jvm \
-  --vm.Drapidsai.cuml.enabled=1 \
-  --vm.Drapidsai.cuml.libpath=$LIBCUML \
-  --vm.Dtensorrt.enabled=0 \
+  --vm.Dtensorrt.enabled=1 \
   --vm.Dtensorrt.libpath=$LIBTRT \
   --vm.Dtruffle.class.path.append=$GRCUDA_JAR \
   $*

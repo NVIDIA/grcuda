@@ -127,7 +127,7 @@ public class TensorRTRegistry {
     }
 
     public static boolean isTensorRTEnabled() {
-        return System.getProperty(TRT_ENABLED_PROPERTY_KEY) != null;
+        return System.getProperty(TRT_ENABLED_PROPERTY_KEY, "0").equals("1");
     }
 
     public enum TensorRTFunctionNFI {
