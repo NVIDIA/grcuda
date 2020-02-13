@@ -37,6 +37,7 @@ import java.util.Optional;
 import com.nvidia.grcuda.gpu.CUDARuntime.CUDADeviceAttribute;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -72,12 +73,14 @@ public final class GPUDeviceProperties implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     @SuppressWarnings("static-method")
     boolean isMemberReadable(String member) {
         return PROPERTY_SET.contains(member);
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
         if (!isMemberReadable(member)) {
             CompilerDirectives.transferToInterpreter();
@@ -146,11 +149,13 @@ public final class GPUDeviceProperties implements TruffleObject {
         }
 
         @ExportMessage
+        @TruffleBoundary
         public boolean isArrayElementReadable(long index) {
             return index >= 0 && index < propertyMap.size();
         }
 
         @ExportMessage
+        @TruffleBoundary
         public Object readArrayElement(long index) throws InvalidArrayIndexException {
             if ((index < 0) || (index >= propertyMap.size())) {
                 CompilerDirectives.transferToInterpreter();
