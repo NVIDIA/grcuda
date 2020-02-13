@@ -31,12 +31,21 @@ package com.nvidia.grcuda.functions;
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDALanguage;
+import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -45,8 +54,11 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 @GenerateUncached
@@ -54,14 +66,94 @@ abstract class MapArrayNode extends Node {
 
     abstract Object execute(Object source, ElementType elementType, CUDARuntime runtime);
 
+    private static final FrameDescriptor DESCRIPTOR = new FrameDescriptor();
+    private static final FrameSlot SIZE_SLOT = DESCRIPTOR.addFrameSlot("size", FrameSlotKind.Long);
+    private static final FrameSlot INDEX_SLOT = DESCRIPTOR.addFrameSlot("index", FrameSlotKind.Long);
+    private static final FrameSlot SOURCE_SLOT = DESCRIPTOR.addFrameSlot("source", FrameSlotKind.Object);
+    private static final FrameSlot RESULT_SLOT = DESCRIPTOR.addFrameSlot("result", FrameSlotKind.Object);
+
+    private static final class RepeatingLoopNode extends Node implements RepeatingNode {
+        @Child private InteropLibrary interop;
+        @Child private InteropLibrary elementInterop = InteropLibrary.getFactory().createDispatched(3);
+        private final ValueProfile elementTypeProfile = ValueProfile.createIdentityProfile();
+        private final ConditionProfile loopProfile = ConditionProfile.createCountingProfile();
+
+        public RepeatingLoopNode(InteropLibrary interop) {
+            this.interop = interop;
+        }
+
+        public boolean executeRepeating(VirtualFrame frame) {
+            try {
+                long size = frame.getLong(SIZE_SLOT);
+                long index = frame.getLong(INDEX_SLOT);
+                Object source = frame.getObject(SOURCE_SLOT);
+                DeviceArray result = (DeviceArray) frame.getObject(RESULT_SLOT);
+
+                if (loopProfile.profile(index >= size)) {
+                    return false;
+                }
+                iteration(index, source, result, interop, elementInterop, elementTypeProfile);
+                frame.setLong(INDEX_SLOT, index + 1);
+                return true;
+            } catch (FrameSlotTypeException e1) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RuntimeException(e1);
+            }
+        }
+
+        public static void iteration(long index, Object source, DeviceArray result, InteropLibrary interop, InteropLibrary elementInterop, ValueProfile elementTypeProfile) {
+            Object element;
+            try {
+                element = interop.readArrayElement(source, index);
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new GrCUDAException("cannot read array element " + index + ": " + e.getMessage());
+            }
+            try {
+                result.writeArrayElement(index, element, elementInterop, elementTypeProfile);
+            } catch (UnsupportedTypeException | InvalidArrayIndexException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new GrCUDAException("cannot coerce array element at index " + index + " to " + result.getElementType() + ": " + e.getMessage());
+            }
+        }
+    }
+
+    private static final class LoopRootNode extends RootNode {
+
+        @Child private LoopNode loop;
+
+        protected LoopRootNode(InteropLibrary interop) {
+            super(GrCUDALanguage.getCurrentLanguage(), DESCRIPTOR);
+            loop = Truffle.getRuntime().createLoopNode(new RepeatingLoopNode(interop));
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            frame.setLong(SIZE_SLOT, (long) frame.getArguments()[0]);
+            frame.setLong(INDEX_SLOT, 0);
+            frame.setObject(SOURCE_SLOT, frame.getArguments()[1]);
+            frame.setObject(RESULT_SLOT, frame.getArguments()[2]);
+            loop.executeLoop(frame);
+            return NoneValue.get();
+        }
+    }
+
+    protected CallTarget createLoop(InteropLibrary interop) {
+        return Truffle.getRuntime().createCallTarget(new LoopRootNode(interop));
+    }
+
+    protected CallTarget createUncachedLoop() {
+        return null;
+    }
+
     @Specialization(limit = "3")
     Object doMap(Object source, ElementType elementType, CUDARuntime runtime,
                     @CachedLibrary("source") InteropLibrary interop,
                     @CachedLibrary(limit = "3") InteropLibrary elementInterop,
-                    @Cached("createCountingProfile()") LoopConditionProfile loopProfile,
-                    @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) {
+                    @Cached("createIdentityProfile()") ValueProfile elementTypeProfile,
+                    @Cached(value = "createLoop(interop)", uncached = "createUncachedLoop()") CallTarget loop) {
 
-        if (source instanceof DeviceArray) {
+        if (source instanceof DeviceArray && ((DeviceArray) source).getElementType() == elementType) {
             return source;
         }
 
@@ -77,25 +169,15 @@ abstract class MapArrayNode extends Node {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException("cannot read array size");
         }
-        loopProfile.profileCounted(size);
         DeviceArray result = new DeviceArray(runtime, size, elementType);
 
-        for (int i = 0; loopProfile.inject(i < size); i++) {
-            Object element;
-            try {
-                element = interop.readArrayElement(source, i);
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new GrCUDAException("cannot read array element " + i + ": " + e.getMessage());
-            }
-            try {
-                result.writeArrayElement(i, element, elementInterop, elementTypeProfile);
-            } catch (UnsupportedTypeException | InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new GrCUDAException("cannot coerce array element at index " + i + " to " + elementType + ": " + e.getMessage());
+        if (loop != null) {
+            loop.call(size, source, result);
+        } else {
+            for (int i = 0; i < size; i++) {
+                RepeatingLoopNode.iteration(i, source, result, interop, elementInterop, elementTypeProfile);
             }
         }
-
         return result;
     }
 }

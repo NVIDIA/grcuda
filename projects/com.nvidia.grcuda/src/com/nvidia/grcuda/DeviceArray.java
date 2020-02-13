@@ -135,6 +135,10 @@ public final class DeviceArray implements TruffleObject {
         return nativeView.getStartAddress();
     }
 
+    public ElementType getElementType() {
+        return elementType;
+    }
+
     @Override
     public String toString() {
         return "DeviceArray(elementType=" + elementType + ", numElements=" + numElements + ", nativeView=" + nativeView + ')';
