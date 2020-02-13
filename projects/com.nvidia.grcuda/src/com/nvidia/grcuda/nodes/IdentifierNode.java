@@ -61,7 +61,8 @@ public abstract class IdentifierNode extends ExpressionNode {
     }
 
     @Specialization
-    protected Object doDefault(@CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
+    protected Object doDefault(
+                    @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
         FunctionTable functionTable = context.getFunctionTable();
         Optional<Function> maybeFunction = functionTable.lookupFunction(identifierName, namespace);
         if (!maybeFunction.isPresent()) {

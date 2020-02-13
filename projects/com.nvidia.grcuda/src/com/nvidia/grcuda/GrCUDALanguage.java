@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda;
 
+import org.graalvm.options.OptionDescriptors;
+
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.gpu.CUDAException;
@@ -45,18 +47,16 @@ import com.oracle.truffle.api.interop.TruffleObject;
 @TruffleLanguage.Registration(id = GrCUDALanguage.ID, name = "grcuda", version = "0.1", internal = false)
 public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
-    public static final boolean mock = Boolean.getBoolean("grCUDA.mockup");
-
     public static final String ID = "grcuda";
 
     @Override
     protected GrCUDAContext createContext(Env env) {
         GrCUDAContext context = new GrCUDAContext(env);
         context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
-        if (CUMLRegistry.isCUMLEnabled()) {
+        if (CUMLRegistry.isCUMLEnabled(context)) {
             new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());
         }
-        if (CUBLASRegistry.isCUBLASEnabled()) {
+        if (CUBLASRegistry.isCUBLASEnabled(context)) {
             new CUBLASRegistry(context).registerCUBLASFunctions(context.getFunctionTable());
         }
         return context;
@@ -85,5 +85,10 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     @Override
     protected void disposeContext(GrCUDAContext cxt) {
         cxt.disposeAll();
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new GrCUDAOptionsOptionDescriptors();
     }
 }

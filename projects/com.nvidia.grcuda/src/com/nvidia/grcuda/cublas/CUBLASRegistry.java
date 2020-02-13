@@ -31,6 +31,7 @@ package com.nvidia.grcuda.cublas;
 import java.util.ArrayList;
 
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
@@ -47,10 +48,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class CUBLASRegistry {
-    private static final String DEFAULT_LIBRARY = "libcublas.so";
+    public static final String DEFAULT_LIBRARY = "libcublas.so";
     private static final String NAMESPACE = "BLAS";
-    private static final String CUBLAS_ENABLED_PROPERTY_KEY = "rapidsai.cublas.enabled";
-    private static final String CUBLAS_LIBRARY_PROPERTY_KEY = "rapidsai.cublas.libpath";
 
     private final GrCUDAContext context;
     private final String libraryPath;
@@ -64,7 +63,7 @@ public class CUBLASRegistry {
 
     public CUBLASRegistry(GrCUDAContext context) {
         this.context = context;
-        libraryPath = System.getProperty(CUBLAS_LIBRARY_PROPERTY_KEY, DEFAULT_LIBRARY);
+        libraryPath = GrCUDAOptions.getOption(context, GrCUDAOptions.CuBLASLibrary);
         context.addDisposable(this::cuBLASShutdown);
     }
 
@@ -77,8 +76,7 @@ public class CUBLASRegistry {
 
         // create wrapper for cublasCreate: cublasError_t cublasCreate(long* handle) -> int
         // cublasCreate()
-        cublasCreateFunction = new Function(
-                        CUBLAS_CUBLASCREATE.getName(), NAMESPACE) {
+        cublasCreateFunction = new Function(CUBLAS_CUBLASCREATE.getName(), NAMESPACE) {
             @Override
             @TruffleBoundary
             public Object call(Object[] arguments) throws ArityException {
@@ -95,8 +93,7 @@ public class CUBLASRegistry {
 
         // create wrapper for cublasDestroy: cublasError_t cublasDestroy(long handle) -> void
         // cublasDestroy(long handle)
-        cublasDestroyFunction = new Function(
-                        CUBLAS_CUBLASDESTROY.getName(), NAMESPACE) {
+        cublasDestroyFunction = new Function(CUBLAS_CUBLASDESTROY.getName(), NAMESPACE) {
             @Override
             @TruffleBoundary
             public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
@@ -200,8 +197,8 @@ public class CUBLASRegistry {
         }
     }
 
-    public static boolean isCUBLASEnabled() {
-        return System.getProperty(CUBLAS_ENABLED_PROPERTY_KEY) != null;
+    public static boolean isCUBLASEnabled(GrCUDAContext context) {
+        return GrCUDAOptions.getOption(context, GrCUDAOptions.CuBLASEnabled);
     }
 
     private static final ExternalFunctionFactory CUBLAS_CUBLASCREATE = new ExternalFunctionFactory("cublasCreate", NAMESPACE, "cublasCreate_v2", "(pointer): sint32");

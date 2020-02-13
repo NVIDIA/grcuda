@@ -28,6 +28,7 @@
 package com.nvidia.grcuda.gpu;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class CUDAException extends RuntimeException implements TruffleException {
@@ -44,6 +45,10 @@ public class CUDAException extends RuntimeException implements TruffleException 
 
     public CUDAException(String message) {
         super(message);
+    }
+
+    public CUDAException(InteropException e) {
+        super(e.getMessage());
     }
 
     @Override

@@ -28,10 +28,39 @@
  */
 package com.nvidia.grcuda.functions;
 
-public abstract class CUDAFunction extends Function {
+import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-    public CUDAFunction(CUDAFunctionFactory factory) {
-        super(factory.getName(), factory.getNamespace());
+public final class CUDAFunction extends Function {
+
+    public interface Spec {
+        Object call(CUDARuntime cudaRuntime, Object[] args) throws InteropException, ArityException, UnsupportedTypeException;
+
+        String getName();
+
+        String getNamespace();
     }
 
+    private final Spec function;
+    private final CUDARuntime runtime;
+
+    public CUDAFunction(Spec function, CUDARuntime runtime) {
+        super(function.getName(), function.getNamespace());
+        this.function = function;
+        this.runtime = runtime;
+    }
+
+    @Override
+    @TruffleBoundary
+    protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        try {
+            return function.call(runtime, arguments);
+        } catch (InteropException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
@@ -51,10 +52,8 @@ public class CUMLRegistry {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    private static final String DEFAULT_LIBRARY = "libcuml.so";
+    public static final String DEFAULT_LIBRARY = "libcuml.so";
     private static final String NAMESPACE = "ML";
-    private static final String CUML_ENABLED_PROPERTY_KEY = "rapidsai.cuml.enabled";
-    private static final String CUML_LIBRARY_PROPERTY_KEY = "rapidsai.cuml.libpath";
 
     private final GrCUDAContext context;
     private final String libraryPath;
@@ -71,7 +70,7 @@ public class CUMLRegistry {
 
     public CUMLRegistry(GrCUDAContext context) {
         this.context = context;
-        libraryPath = System.getProperty(CUML_LIBRARY_PROPERTY_KEY, DEFAULT_LIBRARY);
+        libraryPath = GrCUDAOptions.getOption(context, GrCUDAOptions.CuMLLibrary);
         context.addDisposable(this::cuMLShutdown);
     }
 
@@ -83,18 +82,15 @@ public class CUMLRegistry {
                         context.getCUDARuntime(), libraryPath);
 
         // create wrapper for cumlCreate: cumlError_t cumlCreate(int* handle) -> int cumlCreate()
-        cumlCreateFunction = new Function(
-                        CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().getName(), NAMESPACE) {
+        cumlCreateFunction = new Function(CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().getName(), NAMESPACE) {
             @Override
             @TruffleBoundary
             public Object call(Object[] arguments) throws ArityException {
                 checkArgumentLength(arguments, 0);
-                try {
-                    try (UnsafeHelper.Integer32Object handle = UnsafeHelper.createInteger32Object()) {
-                        Object result = INTEROP.execute(cumlCreateFunctionNFI, handle.getAddress());
-                        checkCUMLReturnCode(result, "cumlCreate");
-                        return handle.getValue();
-                    }
+                try (UnsafeHelper.Integer32Object handle = UnsafeHelper.createInteger32Object()) {
+                    Object result = INTEROP.execute(cumlCreateFunctionNFI, handle.getAddress());
+                    checkCUMLReturnCode(result, "cumlCreate");
+                    return handle.getValue();
                 } catch (InteropException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new RuntimeException(e);
@@ -104,8 +100,7 @@ public class CUMLRegistry {
 
         // create wrapper for cumlDestroy: cumlError_t cumlDestroy(int handle) -> void
         // cumlDestroy(int handle)
-        cumlDestroyFunction = new Function(
-                        CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName(), NAMESPACE) {
+        cumlDestroyFunction = new Function(CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName(), NAMESPACE) {
             @Override
             @TruffleBoundary
             public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
@@ -202,8 +197,8 @@ public class CUMLRegistry {
         }
     }
 
-    public static boolean isCUMLEnabled() {
-        return System.getProperty(CUML_ENABLED_PROPERTY_KEY) != null;
+    public static boolean isCUMLEnabled(GrCUDAContext context) {
+        return GrCUDAOptions.getOption(context, GrCUDAOptions.CuMLEnabled);
     }
 
     public enum CUMLFunctionNFI {
