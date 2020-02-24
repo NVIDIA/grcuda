@@ -70,6 +70,9 @@ final class MapException extends RuntimeException implements TruffleException {
     }
 }
 
+/**
+ * Base class for "abstract" argument descriptors.
+ */
 abstract class MapArgObjectBase implements TruffleObject {
     protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
@@ -77,6 +80,10 @@ abstract class MapArgObjectBase implements TruffleObject {
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
 }
 
+/**
+ * Base class for "bound" argument descriptors, which have been processed in the context of a
+ * specific list of arguments.
+ */
 abstract class MapBoundArgObjectBase implements TruffleObject {
 }
 
