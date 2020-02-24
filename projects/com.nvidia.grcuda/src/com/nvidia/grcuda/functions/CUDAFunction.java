@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda.functions;
 
+import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -41,15 +42,13 @@ public final class CUDAFunction extends Function {
         Object call(CUDARuntime cudaRuntime, Object[] args) throws InteropException, ArityException, UnsupportedTypeException;
 
         String getName();
-
-        String getNamespace();
     }
 
     private final Spec function;
     private final CUDARuntime runtime;
 
     public CUDAFunction(Spec function, CUDARuntime runtime) {
-        super(function.getName(), function.getNamespace());
+        super(function.getName());
         this.function = function;
         this.runtime = runtime;
     }
@@ -60,7 +59,7 @@ public final class CUDAFunction extends Function {
         try {
             return function.call(runtime, arguments);
         } catch (InteropException e) {
-            throw new RuntimeException(e);
+            throw new CUDAException(e);
         }
     }
 }

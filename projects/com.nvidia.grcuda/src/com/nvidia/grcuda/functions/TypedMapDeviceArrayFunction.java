@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@ public final class TypedMapDeviceArrayFunction extends Function {
     private final ElementType elementType;
 
     public TypedMapDeviceArrayFunction(CUDARuntime runtime, ElementType elementType) {
-        super("TypedMapDeviceArray", "");
+        super("TypedMapDeviceArray");
         this.runtime = runtime;
         this.elementType = elementType;
     }

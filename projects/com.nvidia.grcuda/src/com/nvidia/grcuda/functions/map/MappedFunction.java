@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.nvidia.grcuda.functions.map;
+
+import static com.nvidia.grcuda.functions.map.MapFunction.checkArity;
+
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -69,8 +73,11 @@ final class MapException extends RuntimeException implements TruffleException {
 abstract class MapArgObjectBase implements TruffleObject {
     protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    protected abstract MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
+    protected abstract MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
+}
+
+abstract class MapBoundArgObjectBase implements TruffleObject {
 }
 
 final class MapArgObjectArgument extends MapArgObjectBase {
@@ -82,7 +89,7 @@ final class MapArgObjectArgument extends MapArgObjectBase {
     }
 
     @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet) {
+    protected MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet) {
         int index;
         try {
             index = INTEROP.asInt(INTEROP.readMember(argumentSet, name));
@@ -100,18 +107,13 @@ final class MapArgObjectArgument extends MapArgObjectBase {
 }
 
 @ExportLibrary(InteropLibrary.class)
-final class MapBoundArgObjectArgument extends MapArgObjectBase {
+final class MapBoundArgObjectArgument extends MapBoundArgObjectBase {
     final String name;
     final int index;
 
     MapBoundArgObjectArgument(String name, int index) {
         this.name = name;
         this.index = index;
-    }
-
-    @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
     }
 
     @Override
@@ -128,10 +130,7 @@ final class MapBoundArgObjectArgument extends MapArgObjectBase {
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedLibrary(limit = "1") InteropLibrary interop) throws ArityException {
-        if (arguments.length != 3) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
-        }
+        checkArity(arguments, 3);
         try {
             return interop.readArrayElement(arguments[0], index);
         } catch (InvalidArrayIndexException e) {
@@ -139,24 +138,19 @@ final class MapBoundArgObjectArgument extends MapArgObjectBase {
             throw new MapException("cannot get argument '" + name + "' at index " + index + ", too few arguments");
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new MapException("cannot get shredded argument '" + name + "' at index " + index + ", invalid arguments object");
+            throw new MapException("cannot get argument argument '" + name + "' at index " + index + ", invalid arguments object");
         }
     }
 }
 
 @ExportLibrary(InteropLibrary.class)
-final class MapShreddedArgObjectArgument extends MapArgObjectBase {
+final class MapBoundShreddedArgObjectArgument extends MapBoundArgObjectBase {
     final String name;
     final int index;
 
-    MapShreddedArgObjectArgument(String name, int index) {
+    MapBoundShreddedArgObjectArgument(String name, int index) {
         this.name = name;
         this.index = index;
-    }
-
-    @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
     }
 
     @Override
@@ -173,10 +167,7 @@ final class MapShreddedArgObjectArgument extends MapArgObjectBase {
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedLibrary(limit = "1") InteropLibrary interop) throws ArityException {
-        if (arguments.length != 3) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
-        }
+        checkArity(arguments, 3);
         try {
             return interop.readArrayElement(arguments[1], index);
         } catch (InvalidArrayIndexException e) {
@@ -189,7 +180,6 @@ final class MapShreddedArgObjectArgument extends MapArgObjectBase {
     }
 }
 
-@ExportLibrary(InteropLibrary.class)
 final class MapArgObjectSize extends MapArgObjectBase {
     @CompilationFinal(dimensions = 1) final MapArgObjectBase[] values;
 
@@ -199,22 +189,33 @@ final class MapArgObjectSize extends MapArgObjectBase {
     }
 
     @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
+    protected MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        MapArgObjectBase[] newValues = new MapArgObjectBase[values.length];
+        MapBoundArgObjectBase[] newValues = new MapBoundArgObjectBase[values.length];
         for (int i = 0; i < values.length; i++) {
             newValues[i] = values[i].bind(argumentSet, shreddedArgumentSet, valueSet);
         }
-        return new MapArgObjectSize(newValues);
+        return new MapBoundArgObjectSize(newValues);
     }
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder("size(");
-        for (int i = 0; i < values.length; i++) {
-            str.append(i == 0 ? "" : ", ").append(values[i]);
-        }
-        return str.append(")").toString();
+        return "size" + Arrays.toString(values);
+    }
+}
+
+@ExportLibrary(InteropLibrary.class)
+final class MapBoundArgObjectSize extends MapBoundArgObjectBase {
+    @CompilationFinal(dimensions = 1) final MapBoundArgObjectBase[] values;
+
+    MapBoundArgObjectSize(MapBoundArgObjectBase[] values) {
+        assert values.length >= 1;
+        this.values = values;
+    }
+
+    @Override
+    public String toString() {
+        return "size" + Arrays.toString(values);
     }
 
     @ExportMessage
@@ -259,7 +260,6 @@ final class MapArgObjectSize extends MapArgObjectBase {
     }
 }
 
-@ExportLibrary(InteropLibrary.class)
 final class MapArgObjectValue extends MapArgObjectBase {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
@@ -275,7 +275,7 @@ final class MapArgObjectValue extends MapArgObjectBase {
     }
 
     @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
+    protected MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
         Object[] newArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -310,7 +310,7 @@ final class MapArgObjectValue extends MapArgObjectBase {
 }
 
 @ExportLibrary(InteropLibrary.class)
-final class MapBoundArgObjectValue extends MapArgObjectBase {
+final class MapBoundArgObjectValue extends MapBoundArgObjectBase {
 
     final Object function;
     @CompilationFinal(dimensions = 1) final Object[] args;
@@ -322,11 +322,6 @@ final class MapBoundArgObjectValue extends MapArgObjectBase {
         this.index = index;
         this.function = function;
         this.args = args;
-    }
-
-    @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
     }
 
     @Override
@@ -397,7 +392,6 @@ final class MapBoundArgObjectValue extends MapArgObjectBase {
     }
 }
 
-@ExportLibrary(InteropLibrary.class)
 final class MapArgObjectMember extends MapArgObjectBase {
     final MapArgObjectBase parent;
     final String name;
@@ -408,9 +402,25 @@ final class MapArgObjectMember extends MapArgObjectBase {
     }
 
     @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
+    protected MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        return new MapArgObjectMember(name, parent.bind(argumentSet, shreddedArgumentSet, valueSet));
+        return new MapBoundArgObjectMember(name, parent.bind(argumentSet, shreddedArgumentSet, valueSet));
+    }
+
+    @Override
+    public String toString() {
+        return parent + "." + name;
+    }
+}
+
+@ExportLibrary(InteropLibrary.class)
+final class MapBoundArgObjectMember extends MapBoundArgObjectBase {
+    final MapBoundArgObjectBase parent;
+    final String name;
+
+    MapBoundArgObjectMember(String name, MapBoundArgObjectBase parent) {
+        this.parent = parent;
+        this.name = name;
     }
 
     @Override
@@ -442,7 +452,6 @@ final class MapArgObjectMember extends MapArgObjectBase {
     }
 }
 
-@ExportLibrary(InteropLibrary.class)
 final class MapArgObjectElement extends MapArgObjectBase {
     final MapArgObjectBase parent;
     final long index;
@@ -453,9 +462,25 @@ final class MapArgObjectElement extends MapArgObjectBase {
     }
 
     @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
+    protected MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        return new MapArgObjectElement(index, parent.bind(argumentSet, shreddedArgumentSet, valueSet));
+        return new MapBoundArgObjectElement(index, parent.bind(argumentSet, shreddedArgumentSet, valueSet));
+    }
+
+    @Override
+    public String toString() {
+        return parent + "[" + index + "]";
+    }
+}
+
+@ExportLibrary(InteropLibrary.class)
+final class MapBoundArgObjectElement extends MapBoundArgObjectBase {
+    final MapBoundArgObjectBase parent;
+    final long index;
+
+    MapBoundArgObjectElement(long index, MapBoundArgObjectBase parent) {
+        this.parent = parent;
+        this.index = index;
     }
 
     @Override
@@ -498,9 +523,25 @@ final class MapArgObjectMap extends MapArgObjectBase {
     }
 
     @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
+    protected MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        return new MapArgObjectMap(function, parent.bind(argumentSet, shreddedArgumentSet, valueSet));
+        return new MapBoundArgObjectMap(function, parent.bind(argumentSet, shreddedArgumentSet, valueSet));
+    }
+
+    @Override
+    public String toString() {
+        return parent + ".map(" + function.getClass().getSimpleName() + ")";
+    }
+}
+
+@ExportLibrary(InteropLibrary.class)
+final class MapBoundArgObjectMap extends MapBoundArgObjectBase {
+    final MapBoundArgObjectBase parent;
+    final Object function;
+
+    MapBoundArgObjectMap(Object function, MapBoundArgObjectBase parent) {
+        this.parent = parent;
+        this.function = function;
     }
 
     @Override
@@ -532,7 +573,6 @@ final class MapArgObjectMap extends MapArgObjectBase {
     }
 }
 
-@ExportLibrary(InteropLibrary.class)
 final class MapArgObjectShred extends MapArgObjectBase {
     final MapArgObjectBase parent;
 
@@ -541,7 +581,7 @@ final class MapArgObjectShred extends MapArgObjectBase {
     }
 
     @Override
-    protected MapArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
+    protected MapBoundArgObjectBase bind(Object argumentSet, Object shreddedArgumentSet, Object valueSet)
                     throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
         if (parent instanceof MapArgObjectArgument) {
             MapArgObjectArgument argument = (MapArgObjectArgument) parent;
@@ -560,11 +600,25 @@ final class MapArgObjectShred extends MapArgObjectBase {
                 CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException("cannot resolve shredded argument index for '" + argument.name + "'");
             }
-            return new MapShreddedArgObjectArgument(argument.name, shreddedIndex);
+            return new MapBoundShreddedArgObjectArgument(argument.name, shreddedIndex);
 
         } else {
-            return new MapArgObjectShred(parent.bind(argumentSet, shreddedArgumentSet, valueSet));
+            return new MapBoundArgObjectShred(parent.bind(argumentSet, shreddedArgumentSet, valueSet));
         }
+    }
+
+    @Override
+    public String toString() {
+        return parent + ".shred()";
+    }
+}
+
+@ExportLibrary(InteropLibrary.class)
+final class MapBoundArgObjectShred extends MapBoundArgObjectBase {
+    final MapBoundArgObjectBase parent;
+
+    MapBoundArgObjectShred(MapBoundArgObjectBase parent) {
+        this.parent = parent;
     }
 
     @Override

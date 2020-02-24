@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,11 +86,11 @@ public class NodeFactory {
     }
 
     public IdentifierNode createIdentifier(Token identifierToken) {
-        return IdentifierNodeGen.create(identifierToken.getText(), "");
+        return IdentifierNodeGen.create(identifierToken.getText());
     }
 
     public IdentifierNode createIdentifierInNamespace(Token identifierToken, Token namespaceToken) {
-        return IdentifierNodeGen.create(identifierToken.getText(), namespaceToken.getText());
+        return IdentifierNodeGen.create(namespaceToken.getText(), identifierToken.getText());
 
     }
 

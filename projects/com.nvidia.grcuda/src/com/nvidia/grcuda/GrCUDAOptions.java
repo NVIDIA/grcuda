@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,6 @@ import org.graalvm.options.OptionStability;
 
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
 
 @Option.Group(GrCUDALanguage.ID)
@@ -44,13 +43,13 @@ public final class GrCUDAOptions {
     }
 
     @Option(category = OptionCategory.USER, help = "Enable cuBLAS support.", stability = OptionStability.STABLE) //
-    public static final OptionKey<Boolean> CuBLASEnabled = new OptionKey<>(false);
+    public static final OptionKey<Boolean> CuBLASEnabled = new OptionKey<>(true);
 
     @Option(category = OptionCategory.USER, help = "Set the location of the cublas library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> CuBLASLibrary = new OptionKey<>(CUBLASRegistry.DEFAULT_LIBRARY);
 
     @Option(category = OptionCategory.USER, help = "Enable cuML support.", stability = OptionStability.STABLE) //
-    public static final OptionKey<Boolean> CuMLEnabled = new OptionKey<>(false);
+    public static final OptionKey<Boolean> CuMLEnabled = new OptionKey<>(true);
 
     @Option(category = OptionCategory.USER, help = "Set the location of the cuml library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> CuMLLibrary = new OptionKey<>(CUMLRegistry.DEFAULT_LIBRARY);
@@ -58,8 +57,4 @@ public final class GrCUDAOptions {
     @Option(category = OptionCategory.INTERNAL, help = "Use GrCUDA without loading CUDA runtime libraries (with severely limited functionality).", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> MockupCUDA = new OptionKey<>(false);
 
-    @TruffleBoundary
-    public static <T> T getOption(GrCUDAContext context, OptionKey<T> key) {
-        return context.getEnv().getOptions().get(key);
-    }
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +28,9 @@
  */
 package com.nvidia.grcuda.gpu;
 
+import java.util.Arrays;
+import java.util.Optional;
+
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
@@ -35,12 +39,17 @@ public class CUDAException extends RuntimeException implements TruffleException 
 
     private static final long serialVersionUID = 8808625867900726781L;
 
-    public CUDAException(int errorCode, String functionName) {
-        super("CUDA error " + errorCode + " in " + functionName);
+    public CUDAException(int errorCode, String[] functionName) {
+        super("CUDA error " + errorCode + " in " + format(functionName));
     }
 
-    public CUDAException(int errorCode, String message, String functionName) {
-        super(message + '(' + errorCode + ") in " + functionName);
+    public CUDAException(int errorCode, String message, String[] functionName) {
+        super(message + '(' + errorCode + ") in " + format(functionName));
+    }
+
+    public static String format(String[] name) {
+        Optional<String> result = Arrays.asList(name).stream().reduce((a, b) -> a + "::" + b);
+        return result.orElse("<empty>");
     }
 
     public CUDAException(String message) {

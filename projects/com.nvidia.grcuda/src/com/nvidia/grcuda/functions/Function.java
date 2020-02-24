@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,22 +41,16 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public abstract class Function implements TruffleObject {
 
-    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    public static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private final String name;
-    private final String namespace;
 
-    protected Function(String name, String namespace) {
+    protected Function(String name) {
         this.name = name;
-        this.namespace = namespace;
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getNamespace() {
-        return namespace;
     }
 
     protected static String expectString(Object argument, String errorMessage) throws UnsupportedTypeException {
@@ -131,5 +125,4 @@ public abstract class Function implements TruffleObject {
     protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
-
 }

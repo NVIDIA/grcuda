@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@ package com.nvidia.grcuda.functions.map;
 import java.util.Arrays;
 
 import com.nvidia.grcuda.DeviceArray.MemberSet;
-import com.nvidia.grcuda.functions.Function;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -47,55 +46,57 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public final class MapFunction extends Function {
+public final class MapFunction extends com.nvidia.grcuda.functions.Function {
 
     protected static final String RET = "ret";
     protected static final String ARG = "arg";
     protected static final String SIZE = "size";
     protected static final String VALUE = "value";
-    private static final MemberSet MEMBERS = new MemberSet(ARG, SIZE, VALUE);
+    private static final MemberSet MEMBERS = new MemberSet(RET, ARG, SIZE, VALUE);
 
     private final Object returnValue;
 
     public MapFunction() {
-        super("map", "");
+        super("map");
         this.returnValue = new MapArgObject(new MapArgObjectValue("return", null, new Object[0]));
     }
 
     public MapFunction(Object returnValue) {
-        super("map", "");
+        super("map");
         this.returnValue = returnValue;
     }
 
     // Java API
 
     @SuppressWarnings("static-method")
-    public MapFunction ret(Object value) throws ArityException {
-        return new MapRetFunction().execute(new Object[]{value});
+    public MapFunction ret(Object value) {
+        return new MapFunction(value);
     }
 
     @SuppressWarnings("static-method")
-    public MapArgObject arg(String name) throws ArityException, UnsupportedTypeException {
-        return new MapArgFunction().execute(new Object[]{name});
+    public MapArgObject arg(String name) {
+        return new MapArgObject(new MapArgObjectArgument(name));
     }
 
     @SuppressWarnings("static-method")
-    public MapArgObject size(Object... arguments) throws ArityException, UnsupportedTypeException {
-        return new MapSizeFunction().execute(arguments);
+    public MapArgObject size(MapArgObject first, MapArgObject... additional) {
+        MapArgObjectBase[] values = new MapArgObjectBase[1 + additional.length];
+        values[0] = first.value;
+        for (int i = 0; i < additional.length; i++) {
+            values[i + 1] = additional[i].value;
+        }
+        return new MapArgObject(new MapArgObjectSize(values));
     }
 
     @SuppressWarnings("static-method")
-    public MapArgObject value(String name) throws ArityException, UnsupportedTypeException {
-        return new MapValueFunction().execute(new Object[]{name});
+    public MapArgObject value(String name) {
+        return new MapArgObject(new MapArgObjectValue(name, null, new Object[0]));
     }
 
     @SuppressWarnings("static-method")
-    public MapArgObject value(String name, Object function, Object... arguments) throws ArityException, UnsupportedTypeException {
-        Object[] args = new Object[arguments.length + 2];
-        args[0] = name;
-        args[1] = function;
-        System.arraycopy(arguments, 0, args, 2, arguments.length);
-        return new MapValueFunction().execute(args);
+    public MapArgObject value(String name, Object function, Object... arguments) {
+        return new MapArgObject(new MapArgObjectValue(name, function, arguments));
+
     }
 
     public MappedFunction map(Object function, Object... arguments) throws ArityException, UnsupportedTypeException {
@@ -106,6 +107,27 @@ public final class MapFunction extends Function {
     }
 
     // Interop API
+
+    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    static void checkArity(Object[] arguments, int expectedArity) throws ArityException {
+        if (arguments.length != expectedArity) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(expectedArity, arguments.length);
+        }
+    }
+
+    static String checkString(Object argument, String message) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
+        if (INTEROP.isString(argument)) {
+            try {
+                return INTEROP.asString(argument);
+            } catch (UnsupportedMessageException e) {
+                // fallthrough
+            }
+        }
+        throw UnsupportedTypeException.create(new Object[]{argument}, message);
+    }
 
     @ExportMessage
     @SuppressWarnings("static-method")
@@ -130,22 +152,50 @@ public final class MapFunction extends Function {
     abstract static class ReadMember {
         @Specialization(guards = "RET.equals(member)")
         static MapFunctionBase readMemberRet(MapFunction receiver, String member) {
-            return new MapRetFunction();
+            return new MapFunctionBase(arguments -> {
+                checkArity(arguments, 1);
+                return receiver.ret(arguments[0]);
+            });
         }
 
         @Specialization(guards = "ARG.equals(member)")
         static MapFunctionBase readMemberArg(MapFunction receiver, String member) {
-            return new MapArgFunction();
+            return new MapFunctionBase(arguments -> {
+                checkArity(arguments, 1);
+                String name = checkString(arguments[0], "name of input argument expected");
+                return receiver.arg(name);
+            });
         }
 
         @Specialization(guards = "SIZE.equals(member)")
         static MapFunctionBase readMemberSize(MapFunction receiver, String member) {
-            return new MapSizeFunction();
+            return new MapFunctionBase(arguments -> {
+                if (arguments.length == 0) {
+                    throw ArityException.create(1, 0);
+                }
+                try {
+                    return receiver.size((MapArgObject) arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length, MapArgObject[].class));
+                } catch (ClassCastException | ArrayStoreException e) {
+                    throw UnsupportedTypeException.create(arguments, "expected argument objects");
+                }
+            });
         }
 
         @Specialization(guards = "VALUE.equals(member)")
         static MapFunctionBase readMemberValue(MapFunction receiver, String member) {
-            return new MapValueFunction();
+            return new MapFunctionBase(arguments -> {
+                if (arguments.length < 1) {
+                    throw ArityException.create(1, arguments.length);
+                }
+                String name = checkString(arguments[0], "name of created value expected");
+                if (arguments.length == 1) {
+                    return receiver.value(name);
+                } else {
+                    Object function = arguments[1];
+                    Object[] args = Arrays.copyOfRange(arguments, 2, arguments.length);
+                    return receiver.value(name, function, args);
+                }
+            });
         }
 
         @Fallback
@@ -220,65 +270,18 @@ public final class MapFunction extends Function {
     }
 }
 
-abstract class MapFunctionBase implements TruffleObject {
-
-    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
-
-    protected void checkArity(Object[] arguments, int expectedArity) throws ArityException {
-        if (arguments.length != expectedArity) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(expectedArity, arguments.length);
-        }
-    }
-
-    protected String asString(Object argument, String message) throws UnsupportedTypeException {
-        CompilerAsserts.neverPartOfCompilation();
-        if (INTEROP.isString(argument)) {
-            try {
-                return INTEROP.asString(argument);
-            } catch (UnsupportedMessageException e) {
-                // fallthrough
-            }
-        }
-        throw UnsupportedTypeException.create(new Object[]{argument}, message);
-    }
-}
-
 @ExportLibrary(InteropLibrary.class)
-final class MapArgFunction extends MapFunctionBase {
+final class MapFunctionBase implements TruffleObject {
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isExecutable() {
-        return true;
+    interface Spec {
+        Object apply(Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException;
     }
 
-    @ExportMessage
-    MapArgObject execute(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        checkArity(arguments, 1);
-        String name = asString(arguments[0], "name of input argument expected");
-        return new MapArgObject(new MapArgObjectArgument(name));
+    private final Spec op;
+
+    MapFunctionBase(Spec op) {
+        this.op = op;
     }
-}
-
-@ExportLibrary(InteropLibrary.class)
-final class MapRetFunction extends MapFunctionBase {
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    MapFunction execute(Object[] arguments) throws ArityException {
-        checkArity(arguments, 1);
-        return new MapFunction(arguments[0]);
-    }
-}
-
-@ExportLibrary(InteropLibrary.class)
-final class MapSizeFunction extends MapFunctionBase {
 
     @ExportMessage
     @SuppressWarnings("static-method")
@@ -288,73 +291,7 @@ final class MapSizeFunction extends MapFunctionBase {
 
     @ExportMessage
     @TruffleBoundary
-    @SuppressWarnings("static-method")
-    MapArgObject execute(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length == 0) {
-            throw ArityException.create(1, 0);
-        }
-        MapArgObjectBase[] values = new MapArgObjectBase[arguments.length];
-        for (int i = 0; i < arguments.length; i++) {
-            Object argument = arguments[i];
-            if (argument instanceof MapArgObject) {
-                MapArgObject object = (MapArgObject) argument;
-                values[i] = object.value;
-            } else {
-                throw UnsupportedTypeException.create(new Object[]{argument}, "expected argument object");
-            }
-        }
-        return new MapArgObject(new MapArgObjectSize(values));
-    }
-}
-
-@ExportLibrary(InteropLibrary.class)
-final class MapValueFunction extends MapFunctionBase {
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    MapArgObject execute(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 1) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
-        }
-        String name = asString(arguments[0], "name of created value expected");
-        if (arguments.length == 1) {
-            return new MapArgObject(new MapArgObjectValue(name, null, new Object[0]));
-        } else {
-            Object function = arguments[1];
-            Object[] args = Arrays.copyOfRange(arguments, 2, arguments.length);
-            return new MapArgObject(new MapArgObjectValue(name, function, args));
-        }
-    }
-}
-
-@ExportLibrary(InteropLibrary.class)
-final class MapReturnFunction extends MapFunctionBase {
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    MapArgObject execute(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 1) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
-        }
-        String name = asString(arguments[0], "name of created value expected");
-        if (arguments.length == 1) {
-            return new MapArgObject(new MapArgObjectValue(name, null, new Object[0]));
-        } else {
-            Object function = arguments[1];
-            Object[] args = Arrays.copyOfRange(arguments, 2, arguments.length);
-            return new MapArgObject(new MapArgObjectValue(name, function, args));
-        }
+    Object execute(Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        return op.apply(arguments);
     }
 }

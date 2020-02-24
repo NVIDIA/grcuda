@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@ public final class DeviceArrayFunction extends Function {
     private final CUDARuntime runtime;
 
     public DeviceArrayFunction(CUDARuntime runtime) {
-        super("DeviceArray", "");
+        super("DeviceArray");
         this.runtime = runtime;
     }
 
@@ -78,15 +78,13 @@ public final class DeviceArrayFunction extends Function {
                 if (useColumnMajor.isPresent()) {
                     throw new RuntimeException("string option already provided");
                 } else {
-                    String strArg = expectString(arg,
-                                    "string argument expected that specifies order ('C' or 'F')");
+                    String strArg = expectString(arg, "string argument expected that specifies order ('C' or 'F')");
                     if (strArg.equals("f") || strArg.equals("F")) {
                         useColumnMajor = Optional.of(true);
                     } else if (strArg.equals("c") || strArg.equals("C")) {
                         useColumnMajor = Optional.of(false);
                     } else {
-                        throw new RuntimeException("invalid string argument '" + strArg +
-                                        "', only \"C\" or \"F\" are allowed");
+                        throw new RuntimeException("invalid string argument '" + strArg + "', only \"C\" or \"F\" are allowed");
                     }
                 }
             } else {

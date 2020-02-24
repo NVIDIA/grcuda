@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,11 +27,15 @@
  */
 package com.nvidia.grcuda.functions.map;
 
+import static com.nvidia.grcuda.functions.map.MapFunction.checkArity;
+
 import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -40,7 +44,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public final class MapArgObject extends MapFunctionBase {
+public final class MapArgObject implements TruffleObject {
 
     // This returns only a certain set of members, although any member can be read.
     protected static final String BIND = "bind";
@@ -57,16 +61,22 @@ public final class MapArgObject extends MapFunctionBase {
 
     // Java API
 
-    public MapArgObject map(Object function, Object... arguments) throws UnsupportedTypeException {
-        return new MapArgObject(new MapArgObjectMember(MAP, value)).executeMap(function, arguments);
+    public MapArgObject map(Object function) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!MapFunction.INTEROP.isExecutable(function)) {
+            throw UnsupportedTypeException.create(new Object[]{function}, "expecting executable mapping function");
+        }
+        return new MapArgObject(new MapArgObjectMap(function, value));
     }
 
     public MapArgObject shred() {
-        return new MapArgObject(new MapArgObjectMember(SHRED, value)).executeShred();
+        CompilerAsserts.neverPartOfCompilation();
+        return new MapArgObject(new MapArgObjectShred(value));
     }
 
     public String describe() {
-        return new MapArgObject(new MapArgObjectMember(DESCRIBE, value)).executeDescribe();
+        CompilerAsserts.neverPartOfCompilation();
+        return value.toString();
     }
 
     // Interop API
@@ -80,6 +90,7 @@ public final class MapArgObject extends MapFunctionBase {
     @ExportMessage
     @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        // This returns a fixed set, although any member can be read.
         return MEMBERS;
     }
 
@@ -95,9 +106,10 @@ public final class MapArgObject extends MapFunctionBase {
         return new MapArgObject(new MapArgObjectMember(member, value));
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isMemberInvocable(String member) {
-        return isMemberReadable(member);
+        return MEMBERS.constainsValue(member);
     }
 
     @ExportMessage
@@ -133,7 +145,7 @@ public final class MapArgObject extends MapFunctionBase {
 
     @ExportMessage
     boolean isExecutable() {
-        // can be executed if this refers to "map"
+        // can be executed if this refers to "map", "shred", etc.
         return value instanceof MapArgObjectMember && MEMBERS.constainsValue(((MapArgObjectMember) value).name);
     }
 
@@ -144,13 +156,15 @@ public final class MapArgObject extends MapFunctionBase {
             MapArgObjectMember member = (MapArgObjectMember) value;
             if (MAP.equals(member.name)) {
                 checkArity(arguments, 1);
-                return executeMap(arguments[0], arguments);
+                return new MapArgObject(member.parent).map(arguments[0]);
             } else if (SHRED.equals(member.name)) {
                 checkArity(arguments, 0);
-                return executeShred();
+                CompilerAsserts.neverPartOfCompilation();
+                return new MapArgObject(member.parent).shred();
             } else if (DESCRIBE.equals(member.name)) {
                 checkArity(arguments, 0);
-                return executeDescribe();
+                CompilerAsserts.neverPartOfCompilation();
+                return new MapArgObject(member.parent).describe();
             } else if (BIND.equals(member.name)) {
                 checkArity(arguments, 3);
                 return member.parent.bind(arguments[0], arguments[1], arguments[2]);
@@ -158,21 +172,5 @@ public final class MapArgObject extends MapFunctionBase {
         }
         CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
-    }
-
-    private String executeDescribe() {
-        return ((MapArgObjectMember) value).parent.toString();
-    }
-
-    private MapArgObject executeShred() {
-        return new MapArgObject(new MapArgObjectShred(((MapArgObjectMember) value).parent));
-    }
-
-    private MapArgObject executeMap(Object function, Object[] arguments) throws UnsupportedTypeException {
-        if (!INTEROP.isExecutable(function)) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.create(arguments, "expecting executable mapping function");
-        }
-        return new MapArgObject(new MapArgObjectMap(function, ((MapArgObjectMember) value).parent));
     }
 }

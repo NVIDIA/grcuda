@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,8 +28,11 @@
  */
 package com.nvidia.grcuda.functions;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
@@ -39,6 +42,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -52,6 +56,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -61,6 +66,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
+/**
+ * This node is conceptually a simple memcpy operation, but it can take arbitrary Truffle objects as
+ * input and uses {@link InteropLibrary} to access them. The target is a {@link DeviceArray}. The
+ * actual work is done behind a {@link CallTarget} so that it can be compiled separately.
+ */
 @GenerateUncached
 abstract class MapArrayNode extends Node {
 
@@ -73,8 +83,10 @@ abstract class MapArrayNode extends Node {
     private static final FrameSlot RESULT_SLOT = DESCRIPTOR.addFrameSlot("result", FrameSlotKind.Object);
 
     private static final class RepeatingLoopNode extends Node implements RepeatingNode {
+
         @Child private InteropLibrary interop;
         @Child private InteropLibrary elementInterop = InteropLibrary.getFactory().createDispatched(3);
+
         private final ValueProfile elementTypeProfile = ValueProfile.createIdentityProfile();
         private final ConditionProfile loopProfile = ConditionProfile.createCountingProfile();
 
@@ -92,7 +104,19 @@ abstract class MapArrayNode extends Node {
                 if (loopProfile.profile(index >= size)) {
                     return false;
                 }
-                iteration(index, source, result, interop, elementInterop, elementTypeProfile);
+                Object element;
+                try {
+                    element = interop.readArrayElement(source, index);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new GrCUDAException("cannot read array element " + index + ": " + e.getMessage());
+                }
+                try {
+                    result.writeArrayElement(index, element, elementInterop, elementTypeProfile);
+                } catch (UnsupportedTypeException | InvalidArrayIndexException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new GrCUDAException("cannot coerce array element at index " + index + " to " + result.getElementType() + ": " + e.getMessage());
+                }
                 frame.setLong(INDEX_SLOT, index + 1);
                 return true;
             } catch (FrameSlotTypeException e1) {
@@ -100,31 +124,23 @@ abstract class MapArrayNode extends Node {
                 throw new RuntimeException(e1);
             }
         }
-
-        public static void iteration(long index, Object source, DeviceArray result, InteropLibrary interop, InteropLibrary elementInterop, ValueProfile elementTypeProfile) {
-            Object element;
-            try {
-                element = interop.readArrayElement(source, index);
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new GrCUDAException("cannot read array element " + index + ": " + e.getMessage());
-            }
-            try {
-                result.writeArrayElement(index, element, elementInterop, elementTypeProfile);
-            } catch (UnsupportedTypeException | InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new GrCUDAException("cannot coerce array element at index " + index + " to " + result.getElementType() + ": " + e.getMessage());
-            }
-        }
     }
 
     private static final class LoopRootNode extends RootNode {
 
+        private final Class<?> clazz;
+
         @Child private LoopNode loop;
 
-        protected LoopRootNode(InteropLibrary interop) {
+        protected LoopRootNode(Object source, Class<?> clazz) {
             super(GrCUDALanguage.getCurrentLanguage(), DESCRIPTOR);
-            loop = Truffle.getRuntime().createLoopNode(new RepeatingLoopNode(interop));
+            this.clazz = clazz;
+            this.loop = Truffle.getRuntime().createLoopNode(new RepeatingLoopNode(InteropLibrary.getFactory().create(source)));
+        }
+
+        @Override
+        public String toString() {
+            return clazz == null ? super.toString() : "grcuda map for " + clazz.getSimpleName();
         }
 
         @Override
@@ -138,20 +154,25 @@ abstract class MapArrayNode extends Node {
         }
     }
 
-    protected CallTarget createLoop(InteropLibrary interop) {
-        return Truffle.getRuntime().createCallTarget(new LoopRootNode(interop));
+    protected CallTarget createLoop(Object source) {
+        return Truffle.getRuntime().createCallTarget(new LoopRootNode(source, null));
     }
 
-    protected CallTarget createUncachedLoop() {
-        return null;
+    protected CallTarget createUncachedLoop(Object source, GrCUDAContext context) {
+        ConcurrentHashMap<Class<?>, CallTarget> uncachedCallTargets = context.getMapCallTargets();
+        DynamicDispatchLibrary dispatch = DynamicDispatchLibrary.getFactory().getUncached(source);
+        Class<?> clazz = dispatch.dispatch(source);
+        if (clazz == null) {
+            clazz = source.getClass();
+        }
+        return uncachedCallTargets.computeIfAbsent(clazz, c -> Truffle.getRuntime().createCallTarget(new LoopRootNode(source, c)));
     }
 
     @Specialization(limit = "3")
     Object doMap(Object source, ElementType elementType, CUDARuntime runtime,
                     @CachedLibrary("source") InteropLibrary interop,
-                    @CachedLibrary(limit = "3") InteropLibrary elementInterop,
-                    @Cached("createIdentityProfile()") ValueProfile elementTypeProfile,
-                    @Cached(value = "createLoop(interop)", uncached = "createUncachedLoop()") CallTarget loop) {
+                    @CachedContext(GrCUDALanguage.class) @SuppressWarnings("unused") GrCUDAContext context,
+                    @Cached(value = "createLoop(source)", uncached = "createUncachedLoop(source, context)") CallTarget loop) {
 
         if (source instanceof DeviceArray && ((DeviceArray) source).getElementType() == elementType) {
             return source;
@@ -170,25 +191,23 @@ abstract class MapArrayNode extends Node {
             throw new GrCUDAException("cannot read array size");
         }
         DeviceArray result = new DeviceArray(runtime, size, elementType);
-
-        if (loop != null) {
-            loop.call(size, source, result);
-        } else {
-            for (int i = 0; i < size; i++) {
-                RepeatingLoopNode.iteration(i, source, result, interop, elementInterop, elementTypeProfile);
-            }
-        }
+        loop.call(size, source, result);
         return result;
     }
 }
 
+/**
+ * This function can be called with either two arguments (type and source) and will create a new
+ * {@link DeviceArray} with data from the given source, or one argument (type), which will return a
+ * version of the function that is curried with the given type.
+ */
 @ExportLibrary(InteropLibrary.class)
 public final class MapDeviceArrayFunction extends Function {
 
     private final CUDARuntime runtime;
 
     public MapDeviceArrayFunction(CUDARuntime runtime) {
-        super("MapDeviceArray", "");
+        super("MapDeviceArray");
         this.runtime = runtime;
     }
 
@@ -201,7 +220,7 @@ public final class MapDeviceArrayFunction extends Function {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(1, arguments.length);
         }
-        String typeName = elementTypeStringProfile.profile(expectString(arguments[0], "first argument of DeviceArray must be string (type name)"));
+        String typeName = elementTypeStringProfile.profile(expectString(arguments[0], "first argument of MapDeviceArray must be string (type name)"));
         ElementType elementType;
         try {
             elementType = elementTypeProfile.profile(ElementType.lookupType(typeName));

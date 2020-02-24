@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,40 +25,31 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.functions;
+package com.nvidia.grcuda.functions.map;
 
-import java.util.HashMap;
-import java.util.Optional;
-
-import com.oracle.truffle.api.CompilerAsserts;
+import com.nvidia.grcuda.functions.Function;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public final class FunctionTable {
+@ExportLibrary(InteropLibrary.class)
+public final class ShredFunction extends Function {
 
-    private final HashMap<String, Function> functionMap = new HashMap<>();
-
-    public FunctionTable registerFunction(Function function) {
-        String functionName = function.getName();
-        String namespace = function.getNamespace();
-        String key = getKeyFromName(functionName, namespace);
-        if (functionMap.containsKey(key)) {
-            throw new RuntimeException("function '" + namespace + "::" + functionName + "' already exists.");
-        }
-        functionMap.put(key, function);
-        return this;
+    public ShredFunction() {
+        super("shred");
     }
 
+    @Override
+    @ExportMessage
     @TruffleBoundary
-    public Optional<Function> lookupFunction(String functionName, String namespace) {
-        // A TruffleBoundary stops forced-inlining.
-        // Here it is required because of the access to the HashMap, which uses
-        // recursive method calls in the lookup. If the inlining is not stopped, the Graal
-        // would continue infinitely.
-        return Optional.ofNullable(functionMap.get(getKeyFromName(functionName, namespace)));
-    }
-
-    private static String getKeyFromName(String functionName, String namespace) {
-        CompilerAsserts.neverPartOfCompilation();
-        return namespace + "::" + functionName;
+    public ShreddedObject execute(Object[] arguments) throws ArityException, UnsupportedTypeException {
+        MapFunction.checkArity(arguments, 1);
+        if (arguments.length == 0) {
+            throw ArityException.create(1, 0);
+        }
+        return new ShreddedObject(arguments[0]);
     }
 }

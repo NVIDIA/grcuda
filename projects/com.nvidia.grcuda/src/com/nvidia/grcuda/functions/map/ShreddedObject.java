@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +39,12 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+/**
+ * A "shredded" object is transparently transformed into a "struct of arrays" representation, even
+ * if the underlying data structure has an "array of structs" layout. If a member is read that is
+ * not available on the wrapped object, a temporary object is returned that will delay the read
+ * until an array access is performed.
+ */
 @ExportLibrary(InteropLibrary.class)
 final class ShreddedObject implements TruffleObject {
 

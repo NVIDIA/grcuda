@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020,    Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +32,9 @@ import java.util.Optional;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
+import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.functions.FunctionTable;
+import com.nvidia.grcuda.gpu.CUDAException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,14 +59,12 @@ public abstract class CallNode extends ExpressionNode {
     Object doDefault(VirtualFrame frame,
                     @CachedLibrary(limit = "2") InteropLibrary interop,
                     @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
-        String namespace = identifier.getNamespace();
-        String functionName = identifier.getIdentifierName();
-        FunctionTable table = context.getFunctionTable();
-        Optional<Function> maybeFunction = table.lookupFunction(functionName, namespace);
+        String[] functionName = identifier.getIdentifierName();
+        Namespace table = context.getRootNamespace();
+        Optional<Function> maybeFunction = table.lookupFunction(functionName);
         if (!maybeFunction.isPresent()) {
             CompilerDirectives.transferToInterpreter();
-            throw new GrCUDAException("function '" + functionName +
-                            "' not found in namespace '" + namespace + "'", this);
+            throw new GrCUDAException("function '" + CUDAException.format(functionName) + "' not found", this);
         }
         Function function = maybeFunction.get();
         Object[] argumentValues = new Object[argumentNodes.length];

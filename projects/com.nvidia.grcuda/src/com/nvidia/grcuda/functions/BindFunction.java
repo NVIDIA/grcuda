@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 public final class BindFunction extends Function {
 
     public BindFunction() {
-        super("bind", "");
+        super("bind");
     }
 
     @Override
@@ -51,7 +51,7 @@ public final class BindFunction extends Function {
         String symbolName = expectString(arguments[1], "argument 2 of bind must be string (symbol name)");
         String signature = expectString(arguments[2], "argument 3 of bind must be string (signature)");
         try {
-            return GrCUDALanguage.getCurrentLanguage().getContextReference().get().getCUDARuntime().getSymbol(libraryFile, symbolName, signature);
+            return GrCUDALanguage.getCurrentLanguage().getContextReference().get().getCUDARuntime().getSymbol(libraryFile, symbolName, signature, "");
         } catch (UnknownIdentifierException e) {
             CompilerDirectives.transferToInterpreter();
             throw new CUDAException(symbolName + " not found in " + libraryFile);

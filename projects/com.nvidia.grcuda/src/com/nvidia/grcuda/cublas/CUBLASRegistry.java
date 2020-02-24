@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,16 +28,20 @@
  */
 package com.nvidia.grcuda.cublas;
 
+import static com.nvidia.grcuda.functions.Function.INTEROP;
+import static com.nvidia.grcuda.functions.Function.expectLong;
+
 import java.util.ArrayList;
 
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAOptions;
+import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -49,7 +53,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class CUBLASRegistry {
     public static final String DEFAULT_LIBRARY = "libcublas.so";
-    private static final String NAMESPACE = "BLAS";
+    public static final String DEFAULT_LIBRARY_HINT = " (CuBLAS library location can be set via the --grcuda.CuBLASLibrary= option. " +
+                    "CuBLAS support can be disabled via --grcuda.CuBLASEnabled=false.";
+    public static final String NAMESPACE = "BLAS";
 
     private final GrCUDAContext context;
     private final String libraryPath;
@@ -63,85 +69,61 @@ public class CUBLASRegistry {
 
     public CUBLASRegistry(GrCUDAContext context) {
         this.context = context;
-        libraryPath = GrCUDAOptions.getOption(context, GrCUDAOptions.CuBLASLibrary);
-        context.addDisposable(this::cuBLASShutdown);
+        libraryPath = context.getOption(GrCUDAOptions.CuBLASLibrary);
     }
 
-    public void registerCUBLASFunctions(FunctionTable functionTable) {
-        // create NFI function objects for handle creation and destruction
-        cublasCreateFunctionNFI = CUBLAS_CUBLASCREATE.makeFunction(
-                        context.getCUDARuntime(), libraryPath);
-        cublasDestroyFunctionNFI = CUBLAS_CUBLASDESTROY.makeFunction(
-                        context.getCUDARuntime(), libraryPath);
+    private void ensureInitialized() {
+        if (cublasHandle == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
 
-        // create wrapper for cublasCreate: cublasError_t cublasCreate(long* handle) -> int
-        // cublasCreate()
-        cublasCreateFunction = new Function(CUBLAS_CUBLASCREATE.getName(), NAMESPACE) {
-            @Override
-            @TruffleBoundary
-            public Object call(Object[] arguments) throws ArityException {
-                checkArgumentLength(arguments, 0);
-                try (UnsafeHelper.Integer64Object handle = UnsafeHelper.createInteger64Object()) {
-                    Object result = INTEROP.execute(cublasCreateFunctionNFI, handle.getAddress());
-                    checkCUBLASReturnCode(result, "cublasCreate");
-                    return handle.getValue();
-                } catch (InteropException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        };
+            // create NFI function objects for handle creation and destruction
 
-        // create wrapper for cublasDestroy: cublasError_t cublasDestroy(long handle) -> void
-        // cublasDestroy(long handle)
-        cublasDestroyFunction = new Function(CUBLAS_CUBLASDESTROY.getName(), NAMESPACE) {
-            @Override
-            @TruffleBoundary
-            public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-                checkArgumentLength(arguments, 1);
-                long handle = expectLong(arguments[0]);
-                try {
-                    Object result = INTEROP.execute(cublasDestroyFunctionNFI, handle);
-                    checkCUBLASReturnCode(result, "cublasDestroy");
-                    return result;
-                } catch (InteropException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        };
+            cublasCreateFunctionNFI = CUBLAS_CUBLASCREATE.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
+            cublasDestroyFunctionNFI = CUBLAS_CUBLASDESTROY.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
 
-        // Create function wrappers (decorators for all functions except handle con- and
-        // destruction)
-        for (ExternalFunctionFactory factory : functions) {
-            final Function nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath);
-            final Function wrapperFunction = new Function(factory.getName(), NAMESPACE) {
-
+            // create wrapper for cublasCreate: cublasError_t cublasCreate(long* handle) -> int
+            // cublasCreate()
+            cublasCreateFunction = new Function(CUBLAS_CUBLASCREATE.getName()) {
                 @Override
                 @TruffleBoundary
-                protected Object call(Object[] arguments) {
-                    try {
-                        if (cublasHandle == null) {
-                            Object result = INTEROP.execute(cublasCreateFunction);
-                            cublasHandle = expectLong(result);
-                        }
+                public Object call(Object[] arguments) throws ArityException {
+                    checkArgumentLength(arguments, 0);
+                    try (UnsafeHelper.Integer64Object handle = UnsafeHelper.createInteger64Object()) {
+                        Object result = INTEROP.execute(cublasCreateFunctionNFI, handle.getAddress());
+                        checkCUBLASReturnCode(result, "cublasCreate");
+                        return handle.getValue();
                     } catch (InteropException e) {
                         throw new RuntimeException(e);
                     }
+                }
+            };
 
-                    Object[] argsWithHandle = new Object[arguments.length + 1];
-                    System.arraycopy(arguments, 0, argsWithHandle, 1, arguments.length);
-                    argsWithHandle[0] = cublasHandle;
-
+            // create wrapper for cublasDestroy: cublasError_t cublasDestroy(long handle) -> void
+            // cublasDestroy(long handle)
+            cublasDestroyFunction = new Function(CUBLAS_CUBLASDESTROY.getName()) {
+                @Override
+                @TruffleBoundary
+                public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
+                    checkArgumentLength(arguments, 1);
+                    long handle = expectLong(arguments[0]);
                     try {
-                        Object result = INTEROP.execute(nfiFunction, argsWithHandle);
-                        context.getCUDARuntime().cudaDeviceSynchronize();
-                        checkCUBLASReturnCode(result, nfiFunction.getName());
+                        Object result = INTEROP.execute(cublasDestroyFunctionNFI, handle);
+                        checkCUBLASReturnCode(result, "cublasDestroy");
                         return result;
                     } catch (InteropException e) {
                         throw new RuntimeException(e);
                     }
                 }
             };
-            functionTable.registerFunction(wrapperFunction);
+
+            try {
+                Object result = INTEROP.execute(cublasCreateFunction);
+                cublasHandle = expectLong(result);
+
+                context.addDisposable(this::cuBLASShutdown);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -151,13 +133,49 @@ public class CUBLASRegistry {
             try {
                 Object result = InteropLibrary.getFactory().getUncached().execute(cublasDestroyFunction, cublasHandle);
                 checkCUBLASReturnCode(result, CUBLAS_CUBLASDESTROY.getName());
+                cublasHandle = null;
             } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    private static void checkCUBLASReturnCode(Object result, String function) {
+    public void registerCUBLASFunctions(Namespace namespace) {
+        // Create function wrappers (decorators for all functions except handle con- and
+        // destruction)
+        for (ExternalFunctionFactory factory : functions) {
+            final Function wrapperFunction = new Function(factory.getName()) {
+
+                private Function nfiFunction;
+
+                @Override
+                @TruffleBoundary
+                protected Object call(Object[] arguments) {
+                    ensureInitialized();
+
+                    Object[] argsWithHandle = new Object[arguments.length + 1];
+                    System.arraycopy(arguments, 0, argsWithHandle, 1, arguments.length);
+                    argsWithHandle[0] = cublasHandle;
+
+                    try {
+                        if (nfiFunction == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
+                        }
+                        Object result = INTEROP.execute(nfiFunction, argsWithHandle);
+                        context.getCUDARuntime().cudaDeviceSynchronize();
+                        checkCUBLASReturnCode(result, nfiFunction.getName());
+                        return result;
+                    } catch (InteropException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            };
+            namespace.addFunction(wrapperFunction);
+        }
+    }
+
+    private static void checkCUBLASReturnCode(Object result, String... function) {
         CompilerAsserts.neverPartOfCompilation();
         int returnCode;
         try {
@@ -197,20 +215,16 @@ public class CUBLASRegistry {
         }
     }
 
-    public static boolean isCUBLASEnabled(GrCUDAContext context) {
-        return GrCUDAOptions.getOption(context, GrCUDAOptions.CuBLASEnabled);
-    }
-
-    private static final ExternalFunctionFactory CUBLAS_CUBLASCREATE = new ExternalFunctionFactory("cublasCreate", NAMESPACE, "cublasCreate_v2", "(pointer): sint32");
-    private static final ExternalFunctionFactory CUBLAS_CUBLASDESTROY = new ExternalFunctionFactory("cublasDestroy", NAMESPACE, "cublasDestroy_v2", "(sint64): sint32");
+    private static final ExternalFunctionFactory CUBLAS_CUBLASCREATE = new ExternalFunctionFactory("cublasCreate", "cublasCreate_v2", "(pointer): sint32");
+    private static final ExternalFunctionFactory CUBLAS_CUBLASDESTROY = new ExternalFunctionFactory("cublasDestroy", "cublasDestroy_v2", "(sint64): sint32");
 
     private static final ArrayList<ExternalFunctionFactory> functions = new ArrayList<>();
 
     static {
         for (char type : new char[]{'S', 'D', 'C', 'Z'}) {
-            functions.add(new ExternalFunctionFactory("cublas" + type + "axpy", NAMESPACE, "cublas" + type + "axpy_v2",
+            functions.add(new ExternalFunctionFactory("cublas" + type + "axpy", "cublas" + type + "axpy_v2",
                             "(sint64, sint32, pointer, pointer, sint32, pointer, sint32): sint32"));
-            functions.add(new ExternalFunctionFactory("cublas" + type + "gemm", NAMESPACE, "cublas" + type + "gemm_v2",
+            functions.add(new ExternalFunctionFactory("cublas" + type + "gemm", "cublas" + type + "gemm_v2",
                             "(sint64, sint32, sint32, sint32, sint32, sint32, pointer, pointer, sint32, pointer, sint32, pointer, pointer, sint32): sint32"));
         }
     }

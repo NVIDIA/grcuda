@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,9 +40,9 @@ import org.graalvm.collections.Pair;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAOptions;
+import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.functions.CUDAFunction;
-import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -81,17 +81,21 @@ public final class CUDARuntime {
 
     public CUDARuntime(GrCUDAContext context, Env env) {
         this.context = context;
-        this.mockup = GrCUDAOptions.getOption(context, GrCUDAOptions.MockupCUDA);
+        this.mockup = context.getOption(GrCUDAOptions.MockupCUDA);
         if (!mockup) {
-            TruffleObject libcudart = (TruffleObject) env.parseInternal(
-                            Source.newBuilder("nfi", "load " + "lib" + CUDA_RUNTIME_LIBRARY_NAME + ".so", "cudaruntime").build()).call();
-            TruffleObject libcuda = (TruffleObject) env.parseInternal(
-                            Source.newBuilder("nfi", "load " + "lib" + CUDA_LIBRARY_NAME + ".so", "cuda").build()).call();
-            TruffleObject libnvrtc = (TruffleObject) env.parseInternal(
-                            Source.newBuilder("nfi", "load " + "lib" + NVRTC_LIBRARY_NAME + ".so", "nvrtc").build()).call();
-            loadedLibraries.put(CUDA_RUNTIME_LIBRARY_NAME, libcudart);
-            loadedLibraries.put(CUDA_LIBRARY_NAME, libcuda);
-            loadedLibraries.put(NVRTC_LIBRARY_NAME, libnvrtc);
+            try {
+                TruffleObject libcudart = (TruffleObject) env.parseInternal(
+                                Source.newBuilder("nfi", "load " + "lib" + CUDA_RUNTIME_LIBRARY_NAME + ".so", "cudaruntime").build()).call();
+                TruffleObject libcuda = (TruffleObject) env.parseInternal(
+                                Source.newBuilder("nfi", "load " + "lib" + CUDA_LIBRARY_NAME + ".so", "cuda").build()).call();
+                TruffleObject libnvrtc = (TruffleObject) env.parseInternal(
+                                Source.newBuilder("nfi", "load " + "lib" + NVRTC_LIBRARY_NAME + ".so", "nvrtc").build()).call();
+                loadedLibraries.put(CUDA_RUNTIME_LIBRARY_NAME, libcudart);
+                loadedLibraries.put(CUDA_LIBRARY_NAME, libcuda);
+                loadedLibraries.put(NVRTC_LIBRARY_NAME, libnvrtc);
+            } catch (UnsatisfiedLinkError e) {
+                throw new CUDAException(e.getMessage());
+            }
         }
         nvrtc = new NVRuntimeCompiler(this);
         context.addDisposable(this::shutdown);
@@ -207,7 +211,7 @@ public final class CUDARuntime {
         try {
             final String symbol = "cudaMemGetInfo";
             final String nfiSignature = "(pointer, pointer): sint32";
-            Object callable = getSymbol(CUDA_RUNTIME_LIBRARY_NAME, symbol, nfiSignature);
+            Object callable = getSymbol(CUDA_RUNTIME_LIBRARY_NAME, symbol, nfiSignature, "");
             try (Integer64Object freeBytes = UnsafeHelper.createInteger64Object();
                             Integer64Object totalBytes = UnsafeHelper.createInteger64Object()) {
                 Object result = INTEROP.execute(callable, freeBytes.getAddress(), totalBytes.getAddress());
@@ -304,23 +308,27 @@ public final class CUDARuntime {
      * @return a callable as a TruffleObject
      */
     @TruffleBoundary
-    public Object getSymbol(String libraryPath, String symbolName, String signature) throws UnknownIdentifierException {
+    public Object getSymbol(String libraryPath, String symbolName, String signature, String hint) throws UnknownIdentifierException {
         Pair<String, String> functionKey = Pair.create(libraryPath, symbolName);
         Object callable = boundFunctions.get(functionKey);
         if (callable == null) {
             // symbol does not exist or not yet bound
             TruffleObject library = loadedLibraries.get(libraryPath);
             if (library == null) {
-                // library does not exist or is not loaded yet
-                library = (TruffleObject) context.getEnv().parseInternal(
-                                Source.newBuilder("nfi", "load \"" + libraryPath + "\"", libraryPath).build()).call();
+                try {
+                    // library does not exist or is not loaded yet
+                    library = (TruffleObject) context.getEnv().parseInternal(
+                                    Source.newBuilder("nfi", "load \"" + libraryPath + "\"", libraryPath).build()).call();
+                } catch (UnsatisfiedLinkError e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new CUDAException("unable to load shared library '" + libraryPath + "': " + e.getMessage() + hint);
+                }
                 loadedLibraries.put(libraryPath, library);
             }
-            Object symbol;
             try {
-                symbol = INTEROP.readMember(library, symbolName);
+                Object symbol = INTEROP.readMember(library, symbolName);
                 callable = INTEROP.invokeMember(symbol, "bind", signature);
-            } catch (UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
+            } catch (UnsatisfiedLinkError | UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new CUDAException("unexpected behavior: " + e.getMessage());
             }
@@ -329,7 +337,7 @@ public final class CUDARuntime {
         return callable;
     }
 
-    private void checkCUDAReturnCode(Object result, String function) {
+    private void checkCUDAReturnCode(Object result, String... function) {
         if (!(result instanceof Integer)) {
             CompilerDirectives.transferToInterpreter();
             throw new CUDAException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
@@ -341,9 +349,9 @@ public final class CUDARuntime {
         }
     }
 
-    public void registerCUDAFunctions(FunctionTable functionTable) {
+    public void registerCUDAFunctions(Namespace rootNamespace) {
         for (CUDARuntimeFunction function : CUDARuntimeFunction.values()) {
-            functionTable.registerFunction(new CUDAFunction(function, this));
+            rootNamespace.addFunction(new CUDAFunction(function, this));
         }
     }
 
@@ -490,12 +498,8 @@ public final class CUDARuntime {
             return name;
         }
 
-        public String getNamespace() {
-            return "";
-        }
-
         public Object getSymbol(CUDARuntime runtime) throws UnknownIdentifierException {
-            return runtime.getSymbol(CUDA_RUNTIME_LIBRARY_NAME, getName(), nfiSignature);
+            return runtime.getSymbol(CUDA_RUNTIME_LIBRARY_NAME, name, nfiSignature, "");
         }
     }
 
@@ -731,7 +735,7 @@ public final class CUDARuntime {
     }
 
     @SuppressWarnings("static-method")
-    private static void checkCUReturnCode(Object result, String function) {
+    private static void checkCUReturnCode(Object result, String... function) {
         int returnCode;
         try {
             returnCode = INTEROP.asInt(result);
@@ -781,7 +785,7 @@ public final class CUDARuntime {
         }
 
         public Object getSymbol(CUDARuntime runtime) throws UnknownIdentifierException {
-            return runtime.getSymbol(CUDA_LIBRARY_NAME, symbolName, signature);
+            return runtime.getSymbol(CUDA_LIBRARY_NAME, symbolName, signature, "");
         }
     }
 

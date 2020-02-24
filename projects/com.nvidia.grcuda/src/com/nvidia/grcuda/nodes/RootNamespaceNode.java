@@ -26,36 +26,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.functions;
+package com.nvidia.grcuda.nodes;
 
-import com.nvidia.grcuda.ElementType;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDALanguage;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 
-/**
- * Special curried version of the device array creation function that is specific to a data type.
- */
-public final class TypedDeviceArrayFunction extends Function {
+public abstract class RootNamespaceNode extends ExpressionNode {
 
-    private final CUDARuntime runtime;
-    private final ElementType elementType;
-
-    public TypedDeviceArrayFunction(CUDARuntime runtime, ElementType elementType) {
-        super("TypedDeviceArray");
-        this.runtime = runtime;
-        this.elementType = elementType;
-    }
-
-    @Override
-    @TruffleBoundary
-    public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 1) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
-        }
-        return DeviceArrayFunction.createArray(arguments, 0, elementType, runtime);
+    @Specialization
+    protected Object doDefault(
+                    @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
+        return context.getRootNamespace();
     }
 }

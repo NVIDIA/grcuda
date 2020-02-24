@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,10 @@ package com.nvidia.grcuda;
 
 import org.graalvm.options.OptionDescriptors;
 
-import com.nvidia.grcuda.cublas.CUBLASRegistry;
-import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
+import com.nvidia.grcuda.nodes.RootNamespaceNodeGen;
 import com.nvidia.grcuda.parser.ParserAntlr;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -51,15 +50,7 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     @Override
     protected GrCUDAContext createContext(Env env) {
-        GrCUDAContext context = new GrCUDAContext(env);
-        context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
-        if (CUMLRegistry.isCUMLEnabled(context)) {
-            new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());
-        }
-        if (CUBLASRegistry.isCUBLASEnabled(context)) {
-            new CUBLASRegistry(context).registerCUBLASFunctions(context.getFunctionTable());
-        }
-        return context;
+        return new GrCUDAContext(env);
     }
 
     @Override
@@ -73,7 +64,14 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws CUDAException {
-        ExpressionNode expression = new ParserAntlr().parse(request.getSource());
+        String text = request.getSource().getCharacters().toString();
+        ExpressionNode expression;
+        if (text.isEmpty()) {
+            // eval("") returns the root namespace
+            expression = RootNamespaceNodeGen.create();
+        } else {
+            expression = new ParserAntlr().parse(request.getSource());
+        }
         GrCUDARootNode newParserRoot = new GrCUDARootNode(this, expression);
         return Truffle.getRuntime().createCallTarget(newParserRoot);
     }

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,18 +29,25 @@
 package com.nvidia.grcuda;
 
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.options.OptionKey;
+
+import com.nvidia.grcuda.cublas.CUBLASRegistry;
+import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.functions.BindFunction;
 import com.nvidia.grcuda.functions.BindKernelFunction;
 import com.nvidia.grcuda.functions.BuildKernelFunction;
 import com.nvidia.grcuda.functions.DeviceArrayFunction;
-import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.functions.GetDeviceFunction;
 import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.MapDeviceArrayFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
+import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 
 /**
@@ -51,21 +58,35 @@ public final class GrCUDAContext {
 
     private final Env env;
     private final CUDARuntime cudaRuntime;
-    private final FunctionTable functionTable = new FunctionTable().registerFunction(new BindFunction());
+    private final Namespace rootNamespace;
     private final ArrayList<Runnable> disposables = new ArrayList<>();
     private AtomicInteger moduleId = new AtomicInteger(0);
     private boolean cudaInitialized = false;
 
+    private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
+
     public GrCUDAContext(Env env) {
         this.env = env;
         this.cudaRuntime = new CUDARuntime(this, env);
-        functionTable.registerFunction(new DeviceArrayFunction(cudaRuntime));
-        functionTable.registerFunction(new MapDeviceArrayFunction(cudaRuntime));
-        functionTable.registerFunction(new MapFunction());
-        functionTable.registerFunction(new BindKernelFunction(cudaRuntime));
-        functionTable.registerFunction(new BuildKernelFunction(cudaRuntime));
-        functionTable.registerFunction(new GetDevicesFunction(cudaRuntime));
-        functionTable.registerFunction(new GetDeviceFunction(cudaRuntime));
+
+        Namespace namespace = new Namespace(null);
+        namespace.addFunction(new BindFunction());
+        namespace.addFunction(new DeviceArrayFunction(cudaRuntime));
+        namespace.addFunction(new MapDeviceArrayFunction(cudaRuntime));
+        namespace.addFunction(new MapFunction());
+        namespace.addFunction(new ShredFunction());
+        namespace.addFunction(new BindKernelFunction(cudaRuntime));
+        namespace.addFunction(new BuildKernelFunction(cudaRuntime));
+        namespace.addFunction(new GetDevicesFunction(cudaRuntime));
+        namespace.addFunction(new GetDeviceFunction(cudaRuntime));
+        cudaRuntime.registerCUDAFunctions(namespace);
+        if (this.getOption(GrCUDAOptions.CuMLEnabled)) {
+            new CUMLRegistry(this).registerCUMLFunctions(namespace.addNamespace(CUMLRegistry.NAMESPACE));
+        }
+        if (this.getOption(GrCUDAOptions.CuBLASEnabled)) {
+            new CUBLASRegistry(this).registerCUBLASFunctions(namespace.addNamespace(CUBLASRegistry.NAMESPACE));
+        }
+        this.rootNamespace = namespace;
     }
 
     public Env getEnv() {
@@ -76,8 +97,8 @@ public final class GrCUDAContext {
         return cudaRuntime;
     }
 
-    public FunctionTable getFunctionTable() {
-        return functionTable;
+    public Namespace getRootNamespace() {
+        return rootNamespace;
     }
 
     public void addDisposable(Runnable disposable) {
@@ -100,5 +121,14 @@ public final class GrCUDAContext {
 
     public void setCUDAInitialized() {
         cudaInitialized = true;
+    }
+
+    public ConcurrentHashMap<Class<?>, CallTarget> getMapCallTargets() {
+        return uncachedMapCallTargets;
+    }
+
+    @TruffleBoundary
+    public <T> T getOption(OptionKey<T> key) {
+        return env.getOptions().get(key);
     }
 }
