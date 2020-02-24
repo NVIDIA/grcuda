@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda;
 
+import java.util.Arrays;
+
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
@@ -94,12 +96,7 @@ public final class DeviceArray implements TruffleObject {
 
         @TruffleBoundary
         public boolean constainsValue(String name) {
-            for (String value : values) {
-                if (value.equals(name)) {
-                    return true;
-                }
-            }
-            return false;
+            return Arrays.asList(values).contains(name);
         }
     }
 

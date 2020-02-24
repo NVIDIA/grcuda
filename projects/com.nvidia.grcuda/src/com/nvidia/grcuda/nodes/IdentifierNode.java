@@ -29,12 +29,12 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.Optional;
+
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.gpu.CUDAException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,7 +58,7 @@ public abstract class IdentifierNode extends ExpressionNode {
         Optional<Function> maybeFunction = rootNamespace.lookupFunction(identifierName);
         if (!maybeFunction.isPresent()) {
             CompilerDirectives.transferToInterpreter();
-            throw new GrCUDAException("Function '" + CUDAException.format(identifierName) + "' not found", this);
+            throw new GrCUDAException("Function '" + GrCUDAException.format(identifierName) + "' not found", this);
         }
         return maybeFunction.get();
     }

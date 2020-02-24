@@ -30,7 +30,6 @@ package com.nvidia.grcuda;
 
 import org.graalvm.options.OptionDescriptors;
 
-import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.nodes.RootNamespaceNodeGen;
@@ -63,7 +62,7 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     }
 
     @Override
-    protected CallTarget parse(ParsingRequest request) throws CUDAException {
+    protected CallTarget parse(ParsingRequest request) {
         String text = request.getSource().getCharacters().toString();
         ExpressionNode expression;
         if (text.isEmpty()) {

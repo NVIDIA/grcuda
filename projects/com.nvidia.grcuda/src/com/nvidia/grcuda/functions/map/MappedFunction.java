@@ -591,14 +591,14 @@ final class MapArgObjectShred extends MapArgObjectBase {
                 INTEROP.asInt(INTEROP.readMember(argumentSet, argument.name));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("cannot resolve argument index for '" + argument.name + "'");
+                throw new MapException("cannot resolve argument index for '" + argument.name + "'");
             }
             int shreddedIndex;
             try {
                 shreddedIndex = INTEROP.asInt(INTEROP.readMember(shreddedArgumentSet, argument.name));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("cannot resolve shredded argument index for '" + argument.name + "'");
+                throw new MapException("cannot resolve shredded argument index for '" + argument.name + "'");
             }
             return new MapBoundShreddedArgObjectArgument(argument.name, shreddedIndex);
 
@@ -706,7 +706,7 @@ public final class MappedFunction implements TruffleObject {
                     result[i] = valueInterop[i].execute(receiver.values[i], arguments, shredded, values);
                 } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
-                    throw new RuntimeException("cannot map parameter " + i, e);
+                    throw new MapException("cannot map parameter " + i + ": " + e.getMessage());
                 }
             }
             return result;
@@ -742,7 +742,7 @@ public final class MappedFunction implements TruffleObject {
                     mappedArguments[i] = valueInterop.execute(receiver.values[i], wrappedArguments, wrappedShreddedArguments, wrappedValueArguments);
                 } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
-                    throw new RuntimeException("cannot map parameter " + i, e);
+                    throw new MapException("cannot map parameter " + i + ": " + e.getMessage());
                 }
             }
             Object result = functionInterop.execute(receiver.function, mappedArguments);

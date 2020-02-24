@@ -33,6 +33,7 @@ import java.util.Optional;
 
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
@@ -60,7 +61,7 @@ public final class DeviceArrayFunction extends Function {
         try {
             elementType = ElementType.lookupType(typeName);
         } catch (TypeException e) {
-            throw new RuntimeException(e.getMessage());
+            throw new GrCUDAException(e.getMessage());
         }
         if (arguments.length == 1) {
             return new TypedDeviceArrayFunction(runtime, elementType);
@@ -76,7 +77,7 @@ public final class DeviceArrayFunction extends Function {
             Object arg = arguments[i];
             if (INTEROP.isString(arg)) {
                 if (useColumnMajor.isPresent()) {
-                    throw new RuntimeException("string option already provided");
+                    throw new GrCUDAException("string option already provided");
                 } else {
                     String strArg = expectString(arg, "string argument expected that specifies order ('C' or 'F')");
                     if (strArg.equals("f") || strArg.equals("F")) {
@@ -84,13 +85,13 @@ public final class DeviceArrayFunction extends Function {
                     } else if (strArg.equals("c") || strArg.equals("C")) {
                         useColumnMajor = Optional.of(false);
                     } else {
-                        throw new RuntimeException("invalid string argument '" + strArg + "', only \"C\" or \"F\" are allowed");
+                        throw new GrCUDAException("invalid string argument '" + strArg + "', only \"C\" or \"F\" are allowed");
                     }
                 }
             } else {
                 long n = expectLong(arg, "expected number argument for dimension size");
                 if (n < 1) {
-                    throw new RuntimeException("array dimension less than 1");
+                    throw new GrCUDAException("array dimension less than 1");
                 }
                 elementsPerDim.add(n);
             }

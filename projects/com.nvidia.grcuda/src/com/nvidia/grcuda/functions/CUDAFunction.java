@@ -28,7 +28,7 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.gpu.CUDAException;
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -59,7 +59,7 @@ public final class CUDAFunction extends Function {
         try {
             return function.call(runtime, arguments);
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 }

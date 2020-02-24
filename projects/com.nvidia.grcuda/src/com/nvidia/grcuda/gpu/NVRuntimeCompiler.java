@@ -29,6 +29,8 @@
 package com.nvidia.grcuda.gpu;
 
 import java.util.ArrayList;
+
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.gpu.UnsafeHelper.PointerArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.StringObject;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -82,7 +84,7 @@ public class NVRuntimeCompiler {
             return program;
         } catch (InteropException e) {
             program.close();
-            throw new RuntimeException(e);
+            throw new GrCUDAInternalException(e);
         }
     }
 
@@ -94,7 +96,7 @@ public class NVRuntimeCompiler {
             Object result = INTEROP.execute(callable, program.getValue(), name);
             checkNVRTCReturnCode(result, function.symbolName);
         } catch (InteropException e) {
-            throw new RuntimeException(e);
+            throw new GrCUDAInternalException(e);
         }
     }
 
@@ -131,7 +133,7 @@ public class NVRuntimeCompiler {
                             numOpts, addressOfOptStringPointerArray);
             return toNVRTCResult(result);
         } catch (InteropException e) {
-            throw new RuntimeException(e);
+            throw new GrCUDAInternalException(e);
         }
     }
 
@@ -146,10 +148,10 @@ public class NVRuntimeCompiler {
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPROGRAMLOGSIZE.symbolName);
                 logSize = (int) sizeBytes.getValue();
                 if (logSize < 0 || logSize > MAX_LOG_SIZE) {  // upper limit to prevent OoM
-                    throw new RuntimeException("Invalid string allocation length " + logSize + ", expected <1 MB");
+                    throw new GrCUDAInternalException("Invalid string allocation length " + logSize + ", expected <1 MB");
                 }
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
         try (UnsafeHelper.StringObject buffer = UnsafeHelper.createStringObject(logSize)) {
@@ -159,7 +161,7 @@ public class NVRuntimeCompiler {
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPROGRAMLOG.symbolName);
                 return buffer.getZeroTerminatedString();
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
@@ -175,10 +177,10 @@ public class NVRuntimeCompiler {
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPTXSIZE.symbolName);
                 ptxSize = (int) sizeBytes.getValue();
                 if (ptxSize < 0 || ptxSize > MAX_LOG_SIZE) {  // upper limit to prevent OoM
-                    throw new RuntimeException("Invalid string allocation length " + ptxSize + ", expected <1 MB");
+                    throw new GrCUDAInternalException("Invalid string allocation length " + ptxSize + ", expected <1 MB");
                 }
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
         try (UnsafeHelper.StringObject buffer = UnsafeHelper.createStringObject(ptxSize)) {
@@ -188,7 +190,7 @@ public class NVRuntimeCompiler {
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETPTX.symbolName);
                 return buffer.getZeroTerminatedString();
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
@@ -202,7 +204,7 @@ public class NVRuntimeCompiler {
                 checkNVRTCReturnCode(result, NVRTCFunction.NVRTC_GETLOWEREDNAME.symbolName);
                 return UnsafeHelper.StringObject.getUncheckedZeroTerminatedString(cString.getValueOfPointer());
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
@@ -215,7 +217,7 @@ public class NVRuntimeCompiler {
             Object result = INTEROP.execute(callable, errorCode);
             return INTEROP.asString(result);
         } catch (InteropException e) {
-            throw new RuntimeException(e);
+            throw new GrCUDAInternalException(e);
         }
     }
 
@@ -226,7 +228,7 @@ public class NVRuntimeCompiler {
     private void checkNVRTCReturnCode(Object result, String functionName) {
         CompilerAsserts.neverPartOfCompilation();
         if (!(result instanceof Integer)) {
-            throw new RuntimeException(
+            throw new GrCUDAInternalException(
                             "expected return code as Integer object in " + functionName + ", got " +
                                             result.getClass().getName());
         }
@@ -239,7 +241,7 @@ public class NVRuntimeCompiler {
     private static NVRTCResult toNVRTCResult(Object result) {
         CompilerAsserts.neverPartOfCompilation();
         if (!(result instanceof Integer)) {
-            throw new RuntimeException(
+            throw new GrCUDAInternalException(
                             "expected return code as Integer object for nvrtcResult, got " +
                                             result.getClass().getName());
         }
@@ -281,7 +283,7 @@ public class NVRuntimeCompiler {
                 Object result = INTEROP.execute(callable, nvrtcProgram.getAddress());
                 checkNVRTCReturnCode(result, function.symbolName);
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             } finally {
                 nvrtcProgram.close();
             }

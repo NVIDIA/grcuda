@@ -63,6 +63,7 @@ public final class GrCUDAContext {
     private AtomicInteger moduleId = new AtomicInteger(0);
     private boolean cudaInitialized = false;
 
+    // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
 
     public GrCUDAContext(Env env) {

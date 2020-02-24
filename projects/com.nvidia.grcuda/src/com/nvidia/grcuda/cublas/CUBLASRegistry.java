@@ -34,11 +34,12 @@ import static com.nvidia.grcuda.functions.Function.expectLong;
 import java.util.ArrayList;
 
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -93,7 +94,7 @@ public class CUBLASRegistry {
                         checkCUBLASReturnCode(result, "cublasCreate");
                         return handle.getValue();
                     } catch (InteropException e) {
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
                 }
             };
@@ -111,7 +112,7 @@ public class CUBLASRegistry {
                         checkCUBLASReturnCode(result, "cublasDestroy");
                         return result;
                     } catch (InteropException e) {
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
                 }
             };
@@ -122,7 +123,7 @@ public class CUBLASRegistry {
 
                 context.addDisposable(this::cuBLASShutdown);
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
@@ -135,7 +136,7 @@ public class CUBLASRegistry {
                 checkCUBLASReturnCode(result, CUBLAS_CUBLASDESTROY.getName());
                 cublasHandle = null;
             } catch (InteropException e) {
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
@@ -167,7 +168,7 @@ public class CUBLASRegistry {
                         checkCUBLASReturnCode(result, nfiFunction.getName());
                         return result;
                     } catch (InteropException e) {
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
                 }
             };
@@ -181,10 +182,10 @@ public class CUBLASRegistry {
         try {
             returnCode = InteropLibrary.getFactory().getUncached().asInt(result);
         } catch (UnsupportedMessageException e) {
-            throw new RuntimeException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
+            throw new GrCUDAInternalException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
         }
         if (returnCode != 0) {
-            throw new CUDAException(returnCode, cublasReturnCodeToString(returnCode), function);
+            throw new GrCUDAException(returnCode, cublasReturnCodeToString(returnCode), function);
         }
     }
 

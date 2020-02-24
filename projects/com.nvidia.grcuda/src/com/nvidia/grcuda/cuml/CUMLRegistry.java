@@ -35,11 +35,12 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -99,7 +100,7 @@ public class CUMLRegistry {
                         return handle.getValue();
                     } catch (InteropException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
                 }
             };
@@ -118,7 +119,7 @@ public class CUMLRegistry {
                         return result;
                     } catch (InteropException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
                 }
             };
@@ -129,7 +130,7 @@ public class CUMLRegistry {
                 context.addDisposable(this::cuMLShutdown);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
@@ -142,7 +143,7 @@ public class CUMLRegistry {
                 cumlHandle = null;
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
@@ -178,7 +179,7 @@ public class CUMLRegistry {
                         return result;
                     } catch (InteropException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
                 }
             };
@@ -192,11 +193,11 @@ public class CUMLRegistry {
             returnCode = INTEROP.asInt(result);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
+            throw new GrCUDAInternalException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
         }
         if (returnCode != 0) {
             CompilerDirectives.transferToInterpreter();
-            throw new CUDAException(returnCode, cumlReturnCodeToString(returnCode), function);
+            throw new GrCUDAException(returnCode, cumlReturnCodeToString(returnCode), function);
         }
     }
 

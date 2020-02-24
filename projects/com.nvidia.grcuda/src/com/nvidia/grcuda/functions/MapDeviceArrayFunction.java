@@ -34,6 +34,7 @@ import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.TypeException;
@@ -121,7 +122,7 @@ abstract class MapArrayNode extends Node {
                 return true;
             } catch (FrameSlotTypeException e1) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e1);
+                throw new GrCUDAException(e1.getMessage());
             }
         }
     }
@@ -226,7 +227,7 @@ public final class MapDeviceArrayFunction extends Function {
             elementType = elementTypeProfile.profile(ElementType.lookupType(typeName));
         } catch (TypeException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(e.getMessage());
+            throw new GrCUDAInternalException(e.getMessage());
         }
         if (arguments.length == 1) {
             return new TypedMapDeviceArrayFunction(runtime, elementType);

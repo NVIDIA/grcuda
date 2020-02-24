@@ -29,12 +29,13 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.Optional;
+
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.gpu.CUDAException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -64,7 +65,7 @@ public abstract class CallNode extends ExpressionNode {
         Optional<Function> maybeFunction = table.lookupFunction(functionName);
         if (!maybeFunction.isPresent()) {
             CompilerDirectives.transferToInterpreter();
-            throw new GrCUDAException("function '" + CUDAException.format(functionName) + "' not found", this);
+            throw new GrCUDAException("function '" + GrCUDAException.format(functionName) + "' not found", this);
         }
         Function function = maybeFunction.get();
         Object[] argumentValues = new Object[argumentNodes.length];
@@ -75,7 +76,7 @@ public abstract class CallNode extends ExpressionNode {
             return interop.execute(function, argumentValues);
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException((e));
+            throw new GrCUDAInternalException(e.getMessage(), this);
         }
     }
 }

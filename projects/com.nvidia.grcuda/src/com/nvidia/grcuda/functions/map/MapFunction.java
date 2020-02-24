@@ -30,6 +30,7 @@ package com.nvidia.grcuda.functions.map;
 import java.util.Arrays;
 
 import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -234,7 +235,7 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
                 try {
                     description = INTEROP.asString(last);
                 } catch (UnsupportedMessageException e) {
-                    throw new RuntimeException("mismatch between isString and asString");
+                    throw new GrCUDAInternalException("mismatch between isString and asString");
                 }
             }
         }
@@ -265,7 +266,7 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
             }
         } catch (UnsupportedMessageException | UnknownIdentifierException | ArityException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException("unable to bind argument " + argument);
+            throw new GrCUDAInternalException("unable to bind argument " + argument);
         }
     }
 }

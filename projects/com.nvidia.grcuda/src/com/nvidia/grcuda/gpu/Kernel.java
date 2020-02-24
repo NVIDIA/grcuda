@@ -31,8 +31,10 @@ package com.nvidia.grcuda.gpu;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -287,7 +289,7 @@ public final class Kernel implements TruffleObject {
                 size = access.getArraySize(valueObj);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("unexpected behavior");
+                throw new GrCUDAInternalException("unexpected behavior");
             }
             if (size < 1 || size > 3) {
                 CompilerDirectives.transferToInterpreter();
@@ -301,7 +303,7 @@ public final class Kernel implements TruffleObject {
                     elementObj = access.readArrayElement(valueObj, i);
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
-                    throw new RuntimeException("unexpected behavior");
+                    throw new GrCUDAInternalException("unexpected behavior");
                 } catch (InvalidArrayIndexException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw UnsupportedTypeException.create(new Object[]{valueObj}, argumentName + " needs to have between 1 and 3 elements");

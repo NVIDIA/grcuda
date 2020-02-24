@@ -83,7 +83,7 @@ final class ShreddedObject implements TruffleObject {
                 return memberInterop.readMember(delegate, member);
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("cannot read 'readable' member", e);
+                throw new MapException("cannot read 'readable' member: " + e.getMessage());
             }
         } else {
             if (memberInterop.hasArrayElements(delegate)) {
@@ -119,7 +119,7 @@ final class ShreddedObjectMember implements TruffleObject {
             return interop.getArraySize(delegate);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException("cannot get size from 'hasArrayElements' object", e);
+            throw new MapException("cannot get size from 'hasArrayElements' object:" + e.getMessage());
         }
     }
 

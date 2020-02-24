@@ -66,10 +66,10 @@ public final class Namespace implements TruffleObject {
 
     private void addInternal(String newName, Object newElement) {
         if (newName == null || newName.isEmpty()) {
-            throw new RuntimeException("cannot add elmenelement with name '" + newName + "' in namespace '" + name + "'");
+            throw new GrCUDAInternalException("cannot add elmenelement with name '" + newName + "' in namespace '" + name + "'");
         }
         if (map.containsKey(newName)) {
-            throw new RuntimeException("'" + newName + "' already exists in namespace '" + name + "'");
+            throw new GrCUDAInternalException("'" + newName + "' already exists in namespace '" + name + "'");
         }
         map.put(newName, newElement);
     }

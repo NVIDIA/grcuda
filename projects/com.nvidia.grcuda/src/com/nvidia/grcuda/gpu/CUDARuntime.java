@@ -39,6 +39,7 @@ import org.graalvm.collections.Pair;
 
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.NoneValue;
@@ -94,7 +95,7 @@ public final class CUDARuntime {
                 loadedLibraries.put(CUDA_LIBRARY_NAME, libcuda);
                 loadedLibraries.put(NVRTC_LIBRARY_NAME, libnvrtc);
             } catch (UnsatisfiedLinkError e) {
-                throw new CUDAException(e.getMessage());
+                throw new GrCUDAException(e.getMessage());
             }
         }
         nvrtc = new NVRuntimeCompiler(this);
@@ -125,7 +126,7 @@ public final class CUDARuntime {
             long addressAllocatedMemory = outPointer.getValueOfPointer();
             return new GPUPointer(addressAllocatedMemory);
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -144,7 +145,7 @@ public final class CUDARuntime {
             }
             return new LittleEndianNativeArrayView(addressAllocatedMemory, numBytes);
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -159,7 +160,7 @@ public final class CUDARuntime {
                 checkCUDAReturnCode(result, "cudaFree");
             }
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -174,7 +175,7 @@ public final class CUDARuntime {
                 checkCUDAReturnCode(result, "cudaFree");
             }
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -185,7 +186,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable);
             checkCUDAReturnCode(result, "cudaDeviceSynchronize");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -202,7 +203,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
             checkCUDAReturnCode(result, "cudaMemcpy");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -219,7 +220,7 @@ public final class CUDARuntime {
                 return new DeviceMemoryInfo(freeBytes.getValue(), totalBytes.getValue());
             }
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -230,7 +231,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable);
             checkCUDAReturnCode(result, "cudaDeviceReset");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -244,7 +245,7 @@ public final class CUDARuntime {
                 return deviceCount.getValue();
             }
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -255,7 +256,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable, device);
             checkCUDAReturnCode(result, "cudaSetDevice");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -267,7 +268,7 @@ public final class CUDARuntime {
             checkCUDAReturnCode(result, "cudaGetDevice");
             return deviceId.getValue();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -279,7 +280,7 @@ public final class CUDARuntime {
             checkCUDAReturnCode(result, "cudaDeviceGetAttribute");
             return value.getValue();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -295,7 +296,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable, errorCode);
             return INTEROP.asString(result);
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -321,7 +322,7 @@ public final class CUDARuntime {
                                     Source.newBuilder("nfi", "load \"" + libraryPath + "\"", libraryPath).build()).call();
                 } catch (UnsatisfiedLinkError e) {
                     CompilerDirectives.transferToInterpreter();
-                    throw new CUDAException("unable to load shared library '" + libraryPath + "': " + e.getMessage() + hint);
+                    throw new GrCUDAException("unable to load shared library '" + libraryPath + "': " + e.getMessage() + hint);
                 }
                 loadedLibraries.put(libraryPath, library);
             }
@@ -330,7 +331,7 @@ public final class CUDARuntime {
                 callable = INTEROP.invokeMember(symbol, "bind", signature);
             } catch (UnsatisfiedLinkError | UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new CUDAException("unexpected behavior: " + e.getMessage());
+                throw new GrCUDAException("unexpected behavior: " + e.getMessage());
             }
             boundFunctions.put(functionKey, callable);
         }
@@ -340,12 +341,12 @@ public final class CUDARuntime {
     private void checkCUDAReturnCode(Object result, String... function) {
         if (!(result instanceof Integer)) {
             CompilerDirectives.transferToInterpreter();
-            throw new CUDAException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
+            throw new GrCUDAException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
         }
         Integer returnCode = (Integer) result;
         if (returnCode != 0) {
             CompilerDirectives.transferToInterpreter();
-            throw new CUDAException(returnCode, cudaGetErrorString(returnCode), function);
+            throw new GrCUDAException(returnCode, cudaGetErrorString(returnCode), function);
         }
     }
 
@@ -395,7 +396,7 @@ public final class CUDARuntime {
                 } else if (pointerObj instanceof LittleEndianNativeArrayView) {
                     addr = ((LittleEndianNativeArrayView) pointerObj).getStartAddress();
                 } else {
-                    throw new CUDAException("expected GPUPointer or LittleEndianNativeArrayView");
+                    throw new GrCUDAException("expected GPUPointer or LittleEndianNativeArrayView");
                 }
                 callSymbol(cudaRuntime, addr);
                 return NoneValue.get();
@@ -544,7 +545,7 @@ public final class CUDARuntime {
     public CUModule cuModuleLoad(String cubinName) {
         assertCUDAInitialized();
         if (loadedModules.containsKey(cubinName)) {
-            throw new CUDAException("A module for " + cubinName + " was already loaded.");
+            throw new GrCUDAException("A module for " + cubinName + " was already loaded.");
         }
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULELOAD.getSymbol(this);
@@ -555,7 +556,7 @@ public final class CUDARuntime {
             loadedModules.put(cubinName, module);
             return module;
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -563,7 +564,7 @@ public final class CUDARuntime {
     public CUModule cuModuleLoadData(String ptx, String moduleName) {
         assertCUDAInitialized();
         if (loadedModules.containsKey(moduleName)) {
-            throw new CUDAException("A module for " + moduleName + " was already loaded.");
+            throw new GrCUDAException("A module for " + moduleName + " was already loaded.");
         }
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULELOADDATA.getSymbol(this);
@@ -574,7 +575,7 @@ public final class CUDARuntime {
             loadedModules.put(moduleName, module);
             return module;
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -585,7 +586,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable, module.module);
             checkCUReturnCode(result, "cuModuleUnload");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -598,7 +599,7 @@ public final class CUDARuntime {
             checkCUReturnCode(result, "cuModuleGetFunction");
             return functionPtr.getValue();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -610,7 +611,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable);
             checkCUReturnCode(result, "cuCtxSynchronize");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -636,7 +637,7 @@ public final class CUDARuntime {
             checkCUReturnCode(result, "cuLaunchKernel");
             cudaDeviceSynchronize();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -648,7 +649,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable, flags);
             checkCUReturnCode(result, "cuInit");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -660,7 +661,7 @@ public final class CUDARuntime {
             checkCUReturnCode(result, "cuDeviceGetCount");
             return devCount.getValue();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -673,7 +674,7 @@ public final class CUDARuntime {
             checkCUReturnCode(result, "cuDeviceGet");
             return deviceObj.getValue();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -686,7 +687,7 @@ public final class CUDARuntime {
             checkCUReturnCode(result, "cuDeviceGetName");
             return nameString.getZeroTerminatedString();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -698,7 +699,7 @@ public final class CUDARuntime {
             checkCUReturnCode(result, "cuCtxCreate");
             return pctx.getValueOfPointer();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -710,7 +711,7 @@ public final class CUDARuntime {
             checkCUReturnCode(result, "cuDevicePrimaryCtxRetain");
             return pctx.getValueOfPointer();
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -721,7 +722,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable, ctx);
             checkCUReturnCode(result, "cuCtxDestroy");
         } catch (InteropException e) {
-            throw new CUDAException(e);
+            throw new GrCUDAException(e);
         }
     }
 
@@ -741,12 +742,12 @@ public final class CUDARuntime {
             returnCode = INTEROP.asInt(result);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new CUDAException(
+            throw new GrCUDAException(
                             "expected return code as Integer object in " + function + ", got " +
                                             result.getClass().getName());
         }
         if (returnCode != 0) {
-            throw new CUDAException(returnCode, DriverAPIErrorMessages.getString(returnCode), function);
+            throw new GrCUDAException(returnCode, DriverAPIErrorMessages.getString(returnCode), function);
         }
     }
 

@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda.functions;
 
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
@@ -61,7 +62,7 @@ public class ExternalFunctionFactory {
             return new ExternalFunction(name, cudaRuntime.getSymbol(libraryPath, symbolName, nfiSignature, hint));
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(e);
+            throw new GrCUDAException(e);
         }
     }
 }

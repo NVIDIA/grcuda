@@ -28,8 +28,8 @@
  */
 package com.nvidia.grcuda.functions;
 
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
-import com.nvidia.grcuda.gpu.CUDAException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -54,7 +54,7 @@ public final class BindFunction extends Function {
             return GrCUDALanguage.getCurrentLanguage().getContextReference().get().getCUDARuntime().getSymbol(libraryFile, symbolName, signature, "");
         } catch (UnknownIdentifierException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new CUDAException(symbolName + " not found in " + libraryFile);
+            throw new GrCUDAException(symbolName + " not found in " + libraryFile);
         }
     }
 }
