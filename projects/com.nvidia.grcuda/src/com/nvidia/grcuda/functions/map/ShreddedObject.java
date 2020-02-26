@@ -99,7 +99,7 @@ final class ShreddedObject implements TruffleObject {
 @ExportLibrary(InteropLibrary.class)
 final class ShreddedObjectMember implements TruffleObject {
 
-    private final Object delegate;
+    final Object delegate;
     private final String member;
 
     ShreddedObjectMember(Object delegate, String member) {
