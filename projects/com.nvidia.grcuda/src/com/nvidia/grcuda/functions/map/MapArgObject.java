@@ -114,7 +114,7 @@ public final class MapArgObject implements TruffleObject {
 
     @ExportMessage
     Object invokeMember(String member, Object[] arguments,
-                    @CachedLibrary(limit = "1") InteropLibrary interopRead,
+                    @CachedLibrary("this") InteropLibrary interopRead,
                     @CachedLibrary(limit = "1") InteropLibrary interopExecute) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
         return interopExecute.execute(interopRead.readMember(this, member), arguments);
     }

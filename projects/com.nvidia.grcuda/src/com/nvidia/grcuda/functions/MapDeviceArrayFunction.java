@@ -214,6 +214,7 @@ public final class MapDeviceArrayFunction extends Function {
 
     @ExportMessage
     public Object execute(Object[] arguments,
+                    @CachedLibrary(limit = "2") InteropLibrary stringInterop,
                     @Cached("createIdentityProfile()") ValueProfile elementTypeStringProfile,
                     @Cached("createIdentityProfile()") ValueProfile elementTypeProfile,
                     @Cached MapArrayNode mapNode) throws ArityException, UnsupportedTypeException {
@@ -221,7 +222,12 @@ public final class MapDeviceArrayFunction extends Function {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(1, arguments.length);
         }
-        String typeName = elementTypeStringProfile.profile(expectString(arguments[0], "first argument of MapDeviceArray must be string (type name)"));
+        String typeName;
+        try {
+            typeName = elementTypeStringProfile.profile(stringInterop.asString(arguments[0]));
+        } catch (UnsupportedMessageException e1) {
+            throw UnsupportedTypeException.create(arguments, "first argument of MapDeviceArray must be string (type name)");
+        }
         ElementType elementType;
         try {
             elementType = elementTypeProfile.profile(ElementType.lookupType(typeName));

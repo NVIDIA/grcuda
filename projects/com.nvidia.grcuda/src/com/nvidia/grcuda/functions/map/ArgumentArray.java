@@ -28,7 +28,6 @@
 package com.nvidia.grcuda.functions.map;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -38,7 +37,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public final class ArgumentArray implements TruffleObject {
 
-    @CompilationFinal(dimensions = 1) private final Object[] values;
+    private final Object[] values;
 
     public ArgumentArray(Object[] values) {
         this.values = values;

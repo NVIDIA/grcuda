@@ -33,7 +33,7 @@ import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 
-public class ExternalFunctionFactory {
+public final class ExternalFunctionFactory {
 
     private final String name;
     private final String symbolName;

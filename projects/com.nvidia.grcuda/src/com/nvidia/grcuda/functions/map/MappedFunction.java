@@ -443,7 +443,7 @@ final class MapBoundArgObjectMember extends MapBoundArgObjectBase {
 
     @ExportMessage
     Object execute(Object[] arguments,
-                    @CachedLibrary(limit = "1") InteropLibrary parentInterop,
+                    @CachedLibrary("this.parent") InteropLibrary parentInterop,
                     @CachedLibrary(limit = "2") InteropLibrary memberInterop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
@@ -503,7 +503,7 @@ final class MapBoundArgObjectElement extends MapBoundArgObjectBase {
 
     @ExportMessage
     Object execute(Object[] arguments,
-                    @CachedLibrary(limit = "1") InteropLibrary parentInterop,
+                    @CachedLibrary("this.parent") InteropLibrary parentInterop,
                     @CachedLibrary(limit = "2") InteropLibrary elementInterop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
@@ -564,8 +564,8 @@ final class MapBoundArgObjectMap extends MapBoundArgObjectBase {
 
     @ExportMessage
     Object execute(Object[] arguments,
-                    @CachedLibrary(limit = "1") InteropLibrary parentInterop,
-                    @CachedLibrary(limit = "2") InteropLibrary mapInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                    @CachedLibrary("this.parent") InteropLibrary parentInterop,
+                    @CachedLibrary("this.function") InteropLibrary mapInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(3, arguments.length);
@@ -641,7 +641,7 @@ final class MapBoundArgObjectShred extends MapBoundArgObjectBase {
 
     @ExportMessage
     Object execute(Object[] arguments,
-                    @CachedLibrary(limit = "1") InteropLibrary parentInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                    @CachedLibrary("this.parent") InteropLibrary parentInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(3, arguments.length);
@@ -693,14 +693,14 @@ public final class MappedFunction implements TruffleObject {
                         @Cached("receiver") MappedFunction cachedReceiver,
                         @CachedLibrary("cachedReceiver.function") InteropLibrary functionInterop,
                         @CachedLibrary("cachedReceiver.returnValue") InteropLibrary resultInterop,
-                        @Cached(value = "createInterop(cachedReceiver)") InteropLibrary[] vallueInterop)
+                        @Cached(value = "createInterop(cachedReceiver)") InteropLibrary[] valueInterop)
                         throws IllegalStateException, UnsupportedTypeException, ArityException, UnsupportedMessageException {
             Object[] shredded = createShredded(cachedReceiver.shreddedArguments, arguments);
             Object[] values = new Object[receiver.valueCount];
             ArgumentArray wrappedArguments = new ArgumentArray(arguments);
             ArgumentArray wrappedShreddedArguments = new ArgumentArray(shredded);
             ArgumentArray wrappedValueArguments = new ArgumentArray(values);
-            Object[] mappedArguments = mapArguments(vallueInterop, cachedReceiver, wrappedArguments, wrappedShreddedArguments, wrappedValueArguments);
+            Object[] mappedArguments = mapArguments(valueInterop, cachedReceiver, wrappedArguments, wrappedShreddedArguments, wrappedValueArguments);
             Object result = functionInterop.execute(cachedReceiver.function, mappedArguments);
             return processResult(receiver, resultInterop, values, wrappedArguments, wrappedShreddedArguments, wrappedValueArguments, result);
         }

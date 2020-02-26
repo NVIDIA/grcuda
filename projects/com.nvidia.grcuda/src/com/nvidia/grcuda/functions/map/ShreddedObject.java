@@ -50,7 +50,7 @@ final class ShreddedObject implements TruffleObject {
 
     private static final MemberSet MEMBERS = new MemberSet();
 
-    private final Object delegate;
+    final Object delegate;
 
     ShreddedObject(Object delegate) {
         this.delegate = delegate;
@@ -77,7 +77,7 @@ final class ShreddedObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     public Object readMember(String member,
-                    @CachedLibrary(limit = "2") InteropLibrary memberInterop) {
+                    @CachedLibrary("this.delegate") InteropLibrary memberInterop) {
         if (memberInterop.isMemberReadable(delegate, member)) {
             try {
                 return memberInterop.readMember(delegate, member);
@@ -114,7 +114,7 @@ final class ShreddedObjectMember implements TruffleObject {
     }
 
     @ExportMessage
-    public long getArraySize(@CachedLibrary(limit = "2") InteropLibrary interop) {
+    public long getArraySize(@CachedLibrary("this.delegate") InteropLibrary interop) {
         try {
             return interop.getArraySize(delegate);
         } catch (UnsupportedMessageException e) {
@@ -125,14 +125,14 @@ final class ShreddedObjectMember implements TruffleObject {
 
     @ExportMessage
     public boolean isArrayElementReadable(long index,
-                    @CachedLibrary(limit = "2") InteropLibrary interop) {
+                    @CachedLibrary("this.delegate") InteropLibrary interop) {
         long size = getArraySize(interop);
         return index >= 0 && index < size;
     }
 
     @ExportMessage
     public Object readArrayElement(long index,
-                    @CachedLibrary(limit = "2") InteropLibrary interop,
+                    @CachedLibrary("this.delegate") InteropLibrary interop,
                     @CachedLibrary(limit = "2") InteropLibrary elementInterop) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index, interop)) {
             CompilerDirectives.transferToInterpreter();

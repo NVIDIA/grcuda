@@ -49,6 +49,7 @@ public final class ArgumentSet implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         String[] names = new String[nameList.size()];
         int pos = 0;

@@ -49,6 +49,9 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     @Override
     protected GrCUDAContext createContext(Env env) {
+        if (!env.isNativeAccessAllowed()) {
+            throw new GrCUDAException("cannot create CUDA context without native access");
+        }
         return new GrCUDAContext(env);
     }
 

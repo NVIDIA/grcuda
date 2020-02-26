@@ -58,25 +58,24 @@ public abstract class Function implements TruffleObject {
         try {
             return INTEROP.asString(argument);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{argument}, errorMessage);
         }
     }
 
     public static int expectInt(Object number) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
         try {
             return INTEROP.asInt(number);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{number}, "expected integer number argument");
         }
     }
 
     protected static long expectLong(Object number, String message) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
         try {
             return INTEROP.asLong(number);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{number}, message);
         }
     }

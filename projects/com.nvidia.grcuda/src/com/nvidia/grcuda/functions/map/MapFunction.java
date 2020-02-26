@@ -120,14 +120,11 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
 
     static String checkString(Object argument, String message) throws UnsupportedTypeException {
         CompilerAsserts.neverPartOfCompilation();
-        if (INTEROP.isString(argument)) {
-            try {
-                return INTEROP.asString(argument);
-            } catch (UnsupportedMessageException e) {
-                // fallthrough
-            }
+        try {
+            return INTEROP.asString(argument);
+        } catch (UnsupportedMessageException e) {
+            throw UnsupportedTypeException.create(new Object[]{argument}, message);
         }
-        throw UnsupportedTypeException.create(new Object[]{argument}, message);
     }
 
     @ExportMessage
@@ -212,7 +209,7 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
 
     @ExportMessage
     Object invokeMember(String member, Object[] arguments,
-                    @CachedLibrary(limit = "1") InteropLibrary interopRead,
+                    @CachedLibrary("this") InteropLibrary interopRead,
                     @CachedLibrary(limit = "1") InteropLibrary interopExecute) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
         return interopExecute.execute(interopRead.readMember(this, member), arguments);
     }
