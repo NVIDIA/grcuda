@@ -118,14 +118,14 @@ Documentation on [polyglot kernel launches](docs/launchkernel.md).
 
 grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases) and manually copied into a GraalVM installation.
 
-1. Download GraalVM CE 19.2.0.1 for Linux `graalvm-ce-linux-amd64-19.2.0.1.tar.gz`
+1. Download GraalVM CE 20.0.0 for Linux `graalvm-ce-java8-linux-amd64-20.0.0.tar.gz`
    from [GitHub](https://github.com/oracle/graal/releases) and untar it in your
    installation directory.
 
    ```console
    cd <your installation directory>
-   tar xfz graalvm-ce-linux-amd64-19.2.0.1.tar.gz
-   export GRAALVM_DIR=`pwd`/graalvm-ce-19.2.0.1
+   tar xfz graalvm-ce-java8-linux-amd64-20.0.0.tar.gz
+   export GRAALVM_DIR=`pwd`/graalvm-ce-java8-20.0.0
    ```
 
 2. Download the grCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases)

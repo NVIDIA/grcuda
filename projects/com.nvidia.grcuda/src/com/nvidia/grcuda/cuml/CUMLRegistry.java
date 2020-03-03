@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda.cuml;
 
+import static com.nvidia.grcuda.functions.Function.expectInt;
+
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -35,11 +37,11 @@ import java.util.List;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
+import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -54,10 +56,10 @@ public class CUMLRegistry {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    private static final String DEFAULT_LIBRARY = "libcuml.so";
-    private static final String NAMESPACE = "ML";
-    private static final String CUML_ENABLED_PROPERTY_KEY = "rapidsai.cuml.enabled";
-    private static final String CUML_LIBRARY_PROPERTY_KEY = "rapidsai.cuml.libpath";
+    public static final String DEFAULT_LIBRARY = "libcuml.so";
+    public static final String DEFAULT_LIBRARY_HINT = " (CuML library location can be set via the --grcuda.CuMLLibrary= option. " +
+                    "CuML support can be disabled via --grcuda.CuMLEnabled=false.";
+    public static final String NAMESPACE = "ML";
 
     private final GrCUDAContext context;
     private final String libraryPath;
@@ -74,74 +76,92 @@ public class CUMLRegistry {
 
     public CUMLRegistry(GrCUDAContext context) {
         this.context = context;
-        libraryPath = System.getProperty(CUML_LIBRARY_PROPERTY_KEY, DEFAULT_LIBRARY);
-        context.addDisposable(this::cuMLShutdown);
+        libraryPath = context.getOption(GrCUDAOptions.CuMLLibrary);
     }
 
-    public void registerCUMLFunctions(FunctionTable functionTable) {
-        // create NFI function objects for handle creation and destruction
-        cumlCreateFunctionNFI = CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().makeFunction(
-                        context.getCUDARuntime(), libraryPath);
-        cumlDestroyFunctionNFI = CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().makeFunction(
-                        context.getCUDARuntime(), libraryPath);
+    private void ensureInitialized() {
+        if (cumlHandle == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
 
-        // create wrapper for cumlCreate: cumlError_t cumlCreate(int* handle) -> int cumlCreate()
-        cumlCreateFunction = new Function(
-                        CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().getName(), NAMESPACE) {
-            @Override
-            @TruffleBoundary
-            public Object call(Object[] arguments) throws ArityException {
-                checkArgumentLength(arguments, 0);
-                try {
+            // create NFI function objects for handle creation and destruction
+            cumlCreateFunctionNFI = CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
+            cumlDestroyFunctionNFI = CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
+
+            // create wrapper for cumlCreate: cumlError_t cumlCreate(int* handle) -> int
+            // cumlCreate()
+            cumlCreateFunction = new Function(CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().getName(), NAMESPACE) {
+                @Override
+                @TruffleBoundary
+                public Object call(Object[] arguments) throws ArityException {
+                    checkArgumentLength(arguments, 0);
                     try (UnsafeHelper.Integer32Object handle = UnsafeHelper.createInteger32Object()) {
                         Object result = INTEROP.execute(cumlCreateFunctionNFI, handle.getAddress());
                         checkCUMLReturnCode(result, "cumlCreate");
                         return handle.getValue();
+                    } catch (InteropException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new GrCUDAInternalException(e);
                     }
-                } catch (InteropException e) {
-                    throw new GrCUDAInternalException(e);
                 }
-            }
-        };
+            };
 
-        // create wrapper for cumlDestroy: cumlError_t cumlDestroy(int handle) -> void
-        // cumlDestroy(int handle)
-        cumlDestroyFunction = new Function(
-                        CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName(), NAMESPACE) {
-            @Override
-            @TruffleBoundary
-            public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-                checkArgumentLength(arguments, 1);
-                Object handle = expectInt(arguments[0]);
-                try {
-                    Object result = INTEROP.execute(cumlDestroyFunctionNFI, handle);
-                    checkCUMLReturnCode(result, "cumlDestroy");
-                    return result;
-                } catch (InteropException e) {
-                    throw new GrCUDAInternalException(e);
+            // create wrapper for cumlDestroy: cumlError_t cumlDestroy(int handle) -> void
+            // cumlDestroy(int handle)
+            cumlDestroyFunction = new Function(CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName(), NAMESPACE) {
+                @Override
+                @TruffleBoundary
+                public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
+                    checkArgumentLength(arguments, 1);
+                    Object handle = expectInt(arguments[0]);
+                    try {
+                        Object result = INTEROP.execute(cumlDestroyFunctionNFI, handle);
+                        checkCUMLReturnCode(result, "cumlDestroy");
+                        return result;
+                    } catch (InteropException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new GrCUDAInternalException(e);
+                    }
                 }
-            }
-        };
+            };
 
+            try {
+                Object result = INTEROP.execute(cumlCreateFunction);
+                cumlHandle = expectInt(result);
+                context.addDisposable(this::cuMLShutdown);
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new GrCUDAInternalException(e);
+            }
+        }
+    }
+
+    private void cuMLShutdown() {
+        if (cumlHandle != null) {
+            try {
+                Object result = INTEROP.execute(cumlDestroyFunction, cumlHandle);
+                checkCUMLReturnCode(result, CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName());
+                cumlHandle = null;
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new GrCUDAInternalException(e);
+            }
+        }
+    }
+
+    public void registerCUMLFunctions(FunctionTable functionTable) {
         // Create function wrappers (decorators for all functions except handle con- and
         // destruction)
-        List<String> hiddenFunctions = Arrays.asList("cumlCreate", "cumlDestroy");
-        EnumSet.allOf(CUMLFunctionNFI.class).stream().filter(func -> !hiddenFunctions.contains(func.getFunctionFactory().getName())).forEach(func -> {
+        List<CUMLFunctionNFI> hiddenFunctions = Arrays.asList(CUMLFunctionNFI.CUML_CUMLCREATE, CUMLFunctionNFI.CUML_CUMLDESTROY);
+        EnumSet.allOf(CUMLFunctionNFI.class).stream().filter(func -> !hiddenFunctions.contains(func)).forEach(func -> {
             final ExternalFunctionFactory factory = func.getFunctionFactory();
-            final Function nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath);
             final Function wrapperFunction = new Function(factory.getName(), NAMESPACE) {
+
+                private Function nfiFunction;
 
                 @Override
                 @TruffleBoundary
                 public Object call(Object[] arguments) {
-                    try {
-                        if (cumlHandle == null) {
-                            Object result = INTEROP.execute(cumlCreateFunction);
-                            cumlHandle = expectInt(result);
-                        }
-                    } catch (InteropException e) {
-                        throw new GrCUDAInternalException(e);
-                    }
+                    ensureInitialized();
 
                     // Argument 0 is the function name in the frame, removing argument 0 and
                     // replacing
@@ -150,6 +170,10 @@ public class CUMLRegistry {
                     System.arraycopy(arguments, 0, argsWithHandle, 1, arguments.length);
                     argsWithHandle[0] = cumlHandle;
                     try {
+                        if (nfiFunction == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
+                        }
                         Object result = INTEROP.execute(nfiFunction, argsWithHandle);
                         checkCUMLReturnCode(result, nfiFunction.getName());
                         return result;
@@ -161,18 +185,6 @@ public class CUMLRegistry {
             };
             functionTable.registerFunction(wrapperFunction);
         });
-    }
-
-    private void cuMLShutdown() {
-        CompilerAsserts.neverPartOfCompilation();
-        if (cumlHandle != null) {
-            try {
-                Object result = INTEROP.execute(cumlDestroyFunction, cumlHandle);
-                checkCUMLReturnCode(result, CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName());
-            } catch (InteropException e) {
-                throw new GrCUDAInternalException(e);
-            }
-        }
     }
 
     private static void checkCUMLReturnCode(Object result, String... function) {
@@ -200,10 +212,6 @@ public class CUMLRegistry {
             default:
                 return "unknown error code: " + returnCode;
         }
-    }
-
-    public static boolean isCUMLEnabled() {
-        return System.getProperty(CUML_ENABLED_PROPERTY_KEY) != null;
     }
 
     public enum CUMLFunctionNFI {

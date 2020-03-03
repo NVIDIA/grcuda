@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda;
 
+import org.graalvm.options.OptionDescriptors;
+
 import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
@@ -49,7 +51,7 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     protected GrCUDAContext createContext(Env env) {
         GrCUDAContext context = new GrCUDAContext(env);
         context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
-        if (CUMLRegistry.isCUMLEnabled()) {
+        if (context.getOption(GrCUDAOptions.CuMLEnabled)) {
             new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());
         }
         return context;
@@ -78,5 +80,10 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     @Override
     protected void disposeContext(GrCUDAContext cxt) {
         cxt.disposeAll();
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new GrCUDAOptionsOptionDescriptors();
     }
 }
