@@ -279,7 +279,7 @@ public final class DeviceArray implements TruffleObject {
     @ExportMessage
     Object invokeMember(String memberName,
                     Object[] arguments,
-                    @CachedLibrary(limit = "1") InteropLibrary interopRead,
+                    @CachedLibrary("this") InteropLibrary interopRead,
                     @CachedLibrary(limit = "1") InteropLibrary interopExecute)
                     throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
         return interopExecute.execute(interopRead.readMember(this, memberName), arguments);
