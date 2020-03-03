@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +29,9 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.Optional;
+
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
@@ -66,7 +68,7 @@ public abstract class IdentifierNode extends ExpressionNode {
         Optional<Function> maybeFunction = functionTable.lookupFunction(identifierName, namespace);
         if (!maybeFunction.isPresent()) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException("Function '" + identifierName + "' not found in namespace '" + namespace + "'");
+            throw new GrCUDAException("Function '" + identifierName + "' not found in namespace '" + namespace + "'");
         }
         return maybeFunction.get();
     }

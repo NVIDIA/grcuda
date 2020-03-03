@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,12 +31,15 @@ package com.nvidia.grcuda.cuml;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.functions.FunctionTable;
-import com.nvidia.grcuda.gpu.CUDAException;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -96,8 +99,7 @@ public class CUMLRegistry {
                         return handle.getValue();
                     }
                 } catch (InteropException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new RuntimeException(e);
+                    throw new GrCUDAInternalException(e);
                 }
             }
         };
@@ -116,8 +118,7 @@ public class CUMLRegistry {
                     checkCUMLReturnCode(result, "cumlDestroy");
                     return result;
                 } catch (InteropException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new RuntimeException(e);
+                    throw new GrCUDAInternalException(e);
                 }
             }
         };
@@ -139,8 +140,7 @@ public class CUMLRegistry {
                             cumlHandle = expectInt(result);
                         }
                     } catch (InteropException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
 
                     // Argument 0 is the function name in the frame, removing argument 0 and
@@ -155,7 +155,7 @@ public class CUMLRegistry {
                         return result;
                     } catch (InteropException e) {
                         CompilerDirectives.transferToInterpreter();
-                        throw new RuntimeException(e);
+                        throw new GrCUDAInternalException(e);
                     }
                 }
             };
@@ -164,28 +164,28 @@ public class CUMLRegistry {
     }
 
     private void cuMLShutdown() {
+        CompilerAsserts.neverPartOfCompilation();
         if (cumlHandle != null) {
             try {
                 Object result = INTEROP.execute(cumlDestroyFunction, cumlHandle);
                 checkCUMLReturnCode(result, CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName());
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw new GrCUDAInternalException(e);
             }
         }
     }
 
-    private static void checkCUMLReturnCode(Object result, String function) {
+    private static void checkCUMLReturnCode(Object result, String... function) {
         int returnCode;
         try {
             returnCode = INTEROP.asInt(result);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
+            throw new GrCUDAInternalException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
         }
         if (returnCode != 0) {
             CompilerDirectives.transferToInterpreter();
-            throw new CUDAException(returnCode, cumlReturnCodeToString(returnCode), function);
+            throw new GrCUDAException(returnCode, cumlReturnCodeToString(returnCode), function);
         }
     }
 

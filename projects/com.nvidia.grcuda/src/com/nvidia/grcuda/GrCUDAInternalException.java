@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,30 +26,36 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.gpu;
+package com.nvidia.grcuda;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 
-public class CUDAException extends RuntimeException implements TruffleException {
+public final class GrCUDAInternalException extends RuntimeException implements TruffleException {
+    private static final long serialVersionUID = 8614211550329856579L;
 
-    private static final long serialVersionUID = 8808625867900726781L;
+    private final Node node;
 
-    public CUDAException(int errorCode, String functionName) {
-        super("CUDA error " + errorCode + " in " + functionName);
+    public GrCUDAInternalException(String message) {
+        this(message, null);
     }
 
-    public CUDAException(int errorCode, String message, String functionName) {
-        super(message + '(' + errorCode + ") in " + functionName);
-    }
-
-    public CUDAException(String message) {
+    public GrCUDAInternalException(String message, Node node) {
         super(message);
+        this.node = node;
+    }
+
+    public GrCUDAInternalException(InteropException e) {
+        this(e.getMessage());
+    }
+
+    public boolean isInternalError() {
+        return true;
     }
 
     @Override
     public Node getLocation() {
-        // null = location not available
-        return null;
+        return node;
     }
 }

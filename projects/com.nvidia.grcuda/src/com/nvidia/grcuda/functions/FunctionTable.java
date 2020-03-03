@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@ package com.nvidia.grcuda.functions;
 import java.util.HashMap;
 import java.util.Optional;
 
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -43,7 +44,7 @@ public final class FunctionTable {
         String namespace = function.getNamespace();
         String key = getKeyFromName(functionName, namespace);
         if (functionMap.containsKey(key)) {
-            throw new RuntimeException("function '" + namespace + "::" + functionName + "' already exists.");
+            throw new GrCUDAInternalException("function '" + namespace + "::" + functionName + "' already exists.");
         }
         functionMap.put(key, function);
         return this;
