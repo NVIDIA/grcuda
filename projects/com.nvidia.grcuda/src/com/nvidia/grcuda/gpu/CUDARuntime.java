@@ -306,7 +306,7 @@ public final class CUDARuntime {
     private void checkCUDAReturnCode(Object result, String... function) {
         if (!(result instanceof Integer)) {
             CompilerDirectives.transferToInterpreter();
-            throw new GrCUDAException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
+            throw new GrCUDAException("expected return code as Integer object in " + GrCUDAException.format(function) + ", got " + result.getClass().getName());
         }
         Integer returnCode = (Integer) result;
         if (returnCode != 0) {

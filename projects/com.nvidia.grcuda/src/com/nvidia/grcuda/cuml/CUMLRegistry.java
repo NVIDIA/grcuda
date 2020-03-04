@@ -181,7 +181,7 @@ public class CUMLRegistry {
             returnCode = INTEROP.asInt(result);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new GrCUDAInternalException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
+            throw new GrCUDAInternalException("expected return code as Integer object in " + GrCUDAException.format(function) + ", got " + result.getClass().getName());
         }
         if (returnCode != 0) {
             CompilerDirectives.transferToInterpreter();
