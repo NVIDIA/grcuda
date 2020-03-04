@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@ package com.nvidia.grcuda.parser;
 import java.util.ArrayList;
 import org.antlr.v4.runtime.Token;
 import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.nodes.ArithmeticNode;
 import com.nvidia.grcuda.nodes.ArrayNode;
@@ -76,7 +77,7 @@ public class NodeFactory {
                 break;
             default:
                 // should not happen due to lexer
-                throw new RuntimeException("unexpected operation: " + opToken.getText());
+                throw new GrCUDAInternalException("unexpected operation: " + opToken.getText());
         }
         return result;
     }
@@ -99,7 +100,7 @@ public class NodeFactory {
             return new IntegerLiteral(Integer.parseInt(literalToken.getText()));
         } catch (NumberFormatException e) {
             // ignore parse error cannot happen due to regular expression in lexer
-            throw new RuntimeException("unable to parse integer literal " + e.getMessage());
+            throw new GrCUDAInternalException("unable to parse integer literal " + e.getMessage());
         }
     }
 

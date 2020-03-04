@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,9 +29,11 @@
 package com.nvidia.grcuda.nodes;
 
 import java.util.ArrayList;
+
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.CUDARuntime;
@@ -62,7 +64,7 @@ public abstract class ArrayNode extends ExpressionNode {
             Object size = sizeNode.execute(frame);
             if (!(size instanceof Number)) {
                 CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException("size in dimension " + dim + " must be a number");
+                throw new GrCUDAInternalException("size in dimension " + dim + " must be a number", this);
             }
             elementsPerDim[dim] = ((Number) size).longValue();
             dim += 1;
