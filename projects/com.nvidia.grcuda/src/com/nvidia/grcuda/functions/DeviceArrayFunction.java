@@ -46,7 +46,7 @@ public final class DeviceArrayFunction extends Function {
     private final CUDARuntime runtime;
 
     public DeviceArrayFunction(CUDARuntime runtime) {
-        super("DeviceArray", "");
+        super("DeviceArray");
         this.runtime = runtime;
     }
 

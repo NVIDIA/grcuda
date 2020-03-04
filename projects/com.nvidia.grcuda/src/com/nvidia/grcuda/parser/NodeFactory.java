@@ -87,11 +87,11 @@ public class NodeFactory {
     }
 
     public IdentifierNode createIdentifier(Token identifierToken) {
-        return IdentifierNodeGen.create(identifierToken.getText(), "");
+        return IdentifierNodeGen.create(identifierToken.getText());
     }
 
     public IdentifierNode createIdentifierInNamespace(Token identifierToken, Token namespaceToken) {
-        return IdentifierNodeGen.create(identifierToken.getText(), namespaceToken.getText());
+        return IdentifierNodeGen.create(namespaceToken.getText(), identifierToken.getText());
 
     }
 

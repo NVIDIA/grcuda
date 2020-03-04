@@ -39,7 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 public final class BindFunction extends Function {
 
     public BindFunction() {
-        super("bind", "");
+        super("bind");
     }
 
     @Override

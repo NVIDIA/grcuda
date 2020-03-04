@@ -26,41 +26,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.functions;
+package com.nvidia.grcuda.nodes;
 
-import java.util.HashMap;
-import java.util.Optional;
+import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDALanguage;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 
-import com.nvidia.grcuda.GrCUDAInternalException;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+public abstract class RootNamespaceNode extends ExpressionNode {
 
-public final class FunctionTable {
-
-    private final HashMap<String, Function> functionMap = new HashMap<>();
-
-    public FunctionTable registerFunction(Function function) {
-        String functionName = function.getName();
-        String namespace = function.getNamespace();
-        String key = getKeyFromName(functionName, namespace);
-        if (functionMap.containsKey(key)) {
-            throw new GrCUDAInternalException("function '" + namespace + "::" + functionName + "' already exists.");
-        }
-        functionMap.put(key, function);
-        return this;
-    }
-
-    @TruffleBoundary
-    public Optional<Function> lookupFunction(String functionName, String namespace) {
-        // A TruffleBoundary stops forced-inlining.
-        // Here it is required because of the access to the HashMap, which uses
-        // recursive method calls in the lookup. If the inlining is not stopped, the Graal
-        // would continue infinitely.
-        return Optional.ofNullable(functionMap.get(getKeyFromName(functionName, namespace)));
-    }
-
-    private static String getKeyFromName(String functionName, String namespace) {
-        CompilerAsserts.neverPartOfCompilation();
-        return namespace + "::" + functionName;
+    @Specialization
+    protected Object doDefault(
+                    @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
+        return context.getRootNamespace();
     }
 }

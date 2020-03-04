@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,10 +28,38 @@
  */
 package com.nvidia.grcuda.functions;
 
-public abstract class CUDAFunction extends Function {
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-    public CUDAFunction(CUDAFunctionFactory factory) {
-        super(factory.getName(), factory.getNamespace());
+public final class CUDAFunction extends Function {
+
+    public interface Spec {
+        Object call(CUDARuntime cudaRuntime, Object[] args) throws InteropException, ArityException, UnsupportedTypeException;
+
+        String getName();
     }
 
+    private final Spec function;
+    private final CUDARuntime runtime;
+
+    public CUDAFunction(Spec function, CUDARuntime runtime) {
+        super(function.getName());
+        this.function = function;
+        this.runtime = runtime;
+    }
+
+    @Override
+    @TruffleBoundary
+    protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        try {
+            return function.call(runtime, arguments);
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
 }

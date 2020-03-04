@@ -30,7 +30,6 @@ package com.nvidia.grcuda;
 
 import org.graalvm.options.OptionDescriptors;
 
-import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.parser.ParserAntlr;
@@ -49,12 +48,10 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     @Override
     protected GrCUDAContext createContext(Env env) {
-        GrCUDAContext context = new GrCUDAContext(env);
-        context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
-        if (context.getOption(GrCUDAOptions.CuMLEnabled)) {
-            new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());
+        if (!env.isNativeAccessAllowed()) {
+            throw new GrCUDAException("cannot create CUDA context without native access");
         }
-        return context;
+        return new GrCUDAContext(env);
     }
 
     @Override
