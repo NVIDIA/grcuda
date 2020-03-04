@@ -124,7 +124,8 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.nvidia.grcuda",
-                "mx:JUNIT"
+                "mx:JUNIT",
+                "truffle:TRUFFLE_TEST"
             ],
             "checkstyle": "com.nvidia.grcuda",
             "javaCompliance": "1.8",
@@ -167,6 +168,7 @@ suite = {
             "exclude": ["mx:JUNIT"],
             "distDependencies": [
                 "GRCUDA",
+                "truffle:TRUFFLE_TEST"
             ],
             "sourcesPath": "grcuda.tests.src.zip",
             "testDistribution": True,
