@@ -270,7 +270,7 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public Object getSymbol(String libraryPath, String symbolName, String signature) throws UnknownIdentifierException {
-        return getSymbol(libraryPath, symbolName, signature);
+        return getSymbol(libraryPath, symbolName, signature, "");
     }
 
     @TruffleBoundary
