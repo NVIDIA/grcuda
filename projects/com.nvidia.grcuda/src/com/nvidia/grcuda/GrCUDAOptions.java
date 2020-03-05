@@ -26,50 +26,25 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.functions;
+package com.nvidia.grcuda;
 
-import com.nvidia.grcuda.GrCUDAException;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropException;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 
-public class ExternalFunctionFactory {
+import com.nvidia.grcuda.cuml.CUMLRegistry;
+import com.oracle.truffle.api.Option;
 
-    private final String name;
-    private final String symbolName;
-    private final String namespace;
-    private final String nfiSignature;
-
-    public ExternalFunctionFactory(String name, String namespace, String symbolName, String nfiSignature) {
-        this.name = name;
-        this.namespace = namespace;
-        this.symbolName = symbolName;
-        this.nfiSignature = nfiSignature;
+@Option.Group(GrCUDALanguage.ID)
+public final class GrCUDAOptions {
+    private GrCUDAOptions() {
+        // no instances
     }
 
-    public String getName() {
-        return name;
-    }
+    @Option(category = OptionCategory.USER, help = "Enable cuML support.", stability = OptionStability.STABLE) //
+    public static final OptionKey<Boolean> CuMLEnabled = new OptionKey<>(true);
 
-    public String getNamespace() {
-        return namespace;
-    }
+    @Option(category = OptionCategory.USER, help = "Set the location of the cuml library.", stability = OptionStability.STABLE) //
+    public static final OptionKey<String> CuMLLibrary = new OptionKey<>(CUMLRegistry.DEFAULT_LIBRARY);
 
-    public String getSymbolName() {
-        return symbolName;
-    }
-
-    public String getNFISignature() {
-        return nfiSignature;
-    }
-
-    public ExternalFunction makeFunction(CUDARuntime cudaRuntime, String libraryPath, String hint) {
-        try {
-            return new ExternalFunction(name, namespace,
-                            cudaRuntime.getSymbol(libraryPath, symbolName, nfiSignature, hint));
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new GrCUDAException(e);
-        }
-    }
 }

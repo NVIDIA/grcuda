@@ -270,6 +270,12 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public Object getSymbol(String libraryPath, String symbolName, String signature) throws UnknownIdentifierException {
+        return getSymbol(libraryPath, symbolName, signature, "");
+    }
+
+    @TruffleBoundary
+    public Object getSymbol(String libraryPath, String symbolName, String signature, String hint) throws UnknownIdentifierException {
+
         Pair<String, String> functionKey = Pair.create(libraryPath, symbolName);
         Object callable = boundFunctions.get(functionKey);
         if (callable == null) {
@@ -281,14 +287,13 @@ public final class CUDARuntime {
                     library = (TruffleObject) context.getEnv().parseInternal(
                                     Source.newBuilder("nfi", "load \"" + libraryPath + "\"", libraryPath).build()).call();
                 } catch (UnsatisfiedLinkError e) {
-                    throw new GrCUDAException("unable to load shared library '" + libraryPath + "': " + e.getMessage());
+                    throw new GrCUDAException("unable to load shared library '" + libraryPath + "': " + e.getMessage() + hint);
                 }
 
                 loadedLibraries.put(libraryPath, library);
             }
-            Object symbol;
             try {
-                symbol = INTEROP.readMember(library, symbolName);
+                Object symbol = INTEROP.readMember(library, symbolName);
                 callable = INTEROP.invokeMember(symbol, "bind", signature);
             } catch (UnsatisfiedLinkError | UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
                 throw new GrCUDAException("unexpected behavior: " + e.getMessage());

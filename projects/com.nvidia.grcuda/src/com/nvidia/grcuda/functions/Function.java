@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,11 +69,11 @@ public abstract class Function implements TruffleObject {
         }
     }
 
-    protected static int expectInt(Object number) throws UnsupportedTypeException {
+    public static int expectInt(Object number) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
         try {
             return INTEROP.asInt(number);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{number}, "expected integer number argument");
         }
     }

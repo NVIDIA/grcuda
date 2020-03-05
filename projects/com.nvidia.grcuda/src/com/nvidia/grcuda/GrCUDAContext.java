@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +30,9 @@ package com.nvidia.grcuda;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.options.OptionKey;
+
 import com.nvidia.grcuda.functions.BindFunction;
 import com.nvidia.grcuda.functions.BindKernelFunction;
 import com.nvidia.grcuda.functions.BuildKernelFunction;
@@ -37,6 +41,7 @@ import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.functions.GetDeviceFunction;
 import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 
 /**
@@ -94,5 +99,10 @@ public final class GrCUDAContext {
 
     public void setCUDAInitialized() {
         cudaInitialized = true;
+    }
+
+    @TruffleBoundary
+    public <T> T getOption(OptionKey<T> key) {
+        return env.getOptions().get(key);
     }
 }

@@ -484,10 +484,8 @@ Exposed functions from RAPIDS cuML (`libcuml.so`) are preregistered with
 the corresponding NFI signature in the namespace `ML`. The `cumlHandle_t` argument,
 is implicitly provided by grCUDA and, thus, must be omitted in the polyglot callable.
 
-The cuML function registry must be explicitly enabled by setting the property
-`rapidsai.cuml.enabled` to 1 or `true`.
-The absolute path to the `libcuml.so` shared
-library must be specified in the property `rapidsai.cuml.libpath`.
+The cuML function registry can be disabled by setting `--grcuda.CuMLEnabled=false`.
+The absolute path to the `libcuml.so` shared library must be specified in  `--grcuda.CuMLLibrary=`.
 
 Current set of **preregistered** cuML functions:
 
