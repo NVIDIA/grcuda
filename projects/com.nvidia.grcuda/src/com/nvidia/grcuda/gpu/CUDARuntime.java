@@ -28,18 +28,22 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import java.util.EnumSet;
+import static com.nvidia.grcuda.functions.Function.checkArgumentLength;
+import static com.nvidia.grcuda.functions.Function.expectInt;
+import static com.nvidia.grcuda.functions.Function.expectLong;
+import static com.nvidia.grcuda.functions.Function.expectPositiveLong;
+
 import java.util.HashMap;
 import org.graalvm.collections.Pair;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.functions.CUDAFunction;
-import com.nvidia.grcuda.functions.CUDAFunctionFactory;
-import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -94,10 +98,22 @@ public final class CUDARuntime {
     // using this slow/uncached instance since all calls are non-critical
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
+    interface CallSupport {
+        String getName();
+
+        Object getSymbol(CUDARuntime runtime) throws UnknownIdentifierException;
+
+        default void callSymbol(CUDARuntime runtime, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+            CompilerAsserts.neverPartOfCompilation();
+            Object result = INTEROP.execute(getSymbol(runtime), arguments);
+            runtime.checkCUDAReturnCode(result, getName());
+        }
+    }
+
     @TruffleBoundary
     public GPUPointer cudaMalloc(long numBytes) {
         try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_MALLOC);
+            Object callable = CUDARuntimeFunction.CUDA_MALLOC.getSymbol(this);
             Object result = INTEROP.execute(callable, outPointer.getAddress(), numBytes);
             checkCUDAReturnCode(result, "cudaMalloc");
             long addressAllocatedMemory = outPointer.getValueOfPointer();
@@ -111,7 +127,7 @@ public final class CUDARuntime {
     public LittleEndianNativeArrayView cudaMallocManaged(long numBytes) {
         final int cudaMemAttachGlobal = 0x01;
         try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_MALLOCMANAGED);
+            Object callable = CUDARuntimeFunction.CUDA_MALLOCMANAGED.getSymbol(this);
             Object result = INTEROP.execute(callable, outPointer.getAddress(), numBytes, cudaMemAttachGlobal);
             checkCUDAReturnCode(result, "cudaMallocManaged");
             long addressAllocatedMemory = outPointer.getValueOfPointer();
@@ -124,7 +140,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaFree(LittleEndianNativeArrayView memory) {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_FREE);
+            Object callable = CUDARuntimeFunction.CUDA_FREE.getSymbol(this);
             Object result = INTEROP.execute(callable, memory.getStartAddress());
             checkCUDAReturnCode(result, "cudaFree");
         } catch (InteropException e) {
@@ -135,7 +151,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaFree(GPUPointer pointer) {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_FREE);
+            Object callable = CUDARuntimeFunction.CUDA_FREE.getSymbol(this);
             Object result = INTEROP.execute(callable, pointer.getRawPointer());
             checkCUDAReturnCode(result, "cudaFree");
         } catch (InteropException e) {
@@ -146,7 +162,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaDeviceSynchronize() {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_DEVICESYNCHRONIZE);
+            Object callable = CUDARuntimeFunction.CUDA_DEVICESYNCHRONIZE.getSymbol(this);
             Object result = INTEROP.execute(callable);
             checkCUDAReturnCode(result, "cudaDeviceSynchronize");
         } catch (InteropException e) {
@@ -157,7 +173,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaMemcpy(long destPointer, long fromPointer, long numBytesToCopy) {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_MEMCPY);
+            Object callable = CUDARuntimeFunction.CUDA_MEMCPY.getSymbol(this);
             if (numBytesToCopy < 0) {
                 throw new IllegalArgumentException("requested negative number of bytes to copy " + numBytesToCopy);
             }
@@ -189,7 +205,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaDeviceReset() {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_DEVICERESET);
+            Object callable = CUDARuntimeFunction.CUDA_DEVICERESET.getSymbol(this);
             Object result = INTEROP.execute(callable);
             checkCUDAReturnCode(result, "cudaDeviceReset");
         } catch (InteropException e) {
@@ -200,7 +216,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public int cudaGetDeviceCount() {
         try (UnsafeHelper.Integer32Object deviceCount = UnsafeHelper.createInteger32Object()) {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_GETDEVICECOUNT);
+            Object callable = CUDARuntimeFunction.CUDA_GETDEVICECOUNT.getSymbol(this);
             Object result = INTEROP.execute(callable, deviceCount.getAddress());
             checkCUDAReturnCode(result, "cudaGetDeviceCount");
             return deviceCount.getValue();
@@ -212,7 +228,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaSetDevice(int device) {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_SETDEVICE);
+            Object callable = CUDARuntimeFunction.CUDA_SETDEVICE.getSymbol(this);
             Object result = INTEROP.execute(callable, device);
             checkCUDAReturnCode(result, "cudaSetDevice");
         } catch (InteropException e) {
@@ -223,7 +239,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public int cudaGetDevice() {
         try (Integer32Object deviceId = UnsafeHelper.createInteger32Object()) {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_GETDEVICE);
+            Object callable = CUDARuntimeFunction.CUDA_GETDEVICE.getSymbol(this);
             Object result = INTEROP.execute(callable, deviceId.getAddress());
             checkCUDAReturnCode(result, "cudaGetDevice");
             return deviceId.getValue();
@@ -235,7 +251,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public int cudaDeviceGetAttribute(CUDADeviceAttribute attribute, int deviceId) {
         try (Integer32Object value = UnsafeHelper.createInteger32Object()) {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_DEVICEGETATTRIBUTE);
+            Object callable = CUDARuntimeFunction.CUDA_DEVICEGETATTRIBUTE.getSymbol(this);
             Object result = INTEROP.execute(callable, value.getAddress(), attribute.getAttributeCode(), deviceId);
             checkCUDAReturnCode(result, "cudaDeviceGetAttribute");
             return value.getValue();
@@ -252,7 +268,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public String cudaGetErrorString(int errorCode) {
         try {
-            Object callable = getSymbol(CUDARuntimeFunction.CUDA_GETERRORSTRING);
+            Object callable = CUDARuntimeFunction.CUDA_GETERRORSTRING.getSymbol(this);
             Object result = INTEROP.execute(callable, errorCode);
             return INTEROP.asString(result);
         } catch (InteropException e) {
@@ -303,11 +319,6 @@ public final class CUDARuntime {
         return callable;
     }
 
-    private Object getSymbol(CUDARuntimeFunction function) throws UnknownIdentifierException {
-        return getSymbol(CUDA_RUNTIME_LIBRARY_NAME, function.getFunctionFactory().getName(),
-                        function.getFunctionFactory().getNFISignature());
-    }
-
     private void checkCUDAReturnCode(Object result, String... function) {
         if (!(result instanceof Integer)) {
             CompilerDirectives.transferToInterpreter();
@@ -320,271 +331,158 @@ public final class CUDARuntime {
         }
     }
 
-    public void registerCUDAFunctions(FunctionTable functionTable) {
-        EnumSet.allOf(CUDARuntimeFunction.class).forEach(
-                        func -> functionTable.registerFunction(
-                                        func.getFunctionFactory().makeFunction(this)));
+    public void registerCUDAFunctions(Namespace rootNamespace) {
+        for (CUDARuntimeFunction function : CUDARuntimeFunction.values()) {
+            rootNamespace.addFunction(new CUDAFunction(function, this));
+        }
     }
 
-    public enum CUDARuntimeFunction {
-        CUDA_DEVICEGETATTRIBUTE(new CUDAFunctionFactory("cudaDeviceGetAttribute", "", "(pointer, sint32, sint32): sint32") {
+    public enum CUDARuntimeFunction implements CUDAFunction.Spec, CallSupport {
+        CUDA_DEVICEGETATTRIBUTE("cudaDeviceGetAttribute", "(pointer, sint32, sint32): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
-                        checkArgumentLength(args, 2);
-                        int attributeCode = expectInt(args[0]);
-                        int deviceId = expectInt(args[1]);
-                        try (UnsafeHelper.Integer32Object value = UnsafeHelper.createInteger32Object()) {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_DEVICEGETATTRIBUTE);
-                            Object result = INTEROP.execute(callable, value.getAddress(), attributeCode, deviceId);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            return value.getValue();
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 2);
+                int attributeCode = expectInt(args[0]);
+                int deviceId = expectInt(args[1]);
+                try (UnsafeHelper.Integer32Object value = UnsafeHelper.createInteger32Object()) {
+                    callSymbol(cudaRuntime, value.getAddress(), attributeCode, deviceId);
+                    return value.getValue();
+                }
             }
-        }),
-        CUDA_DEVICERESET(new CUDAFunctionFactory("cudaDeviceReset", "", "(): sint32") {
+        },
+        CUDA_DEVICERESET("cudaDeviceReset", "(): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException {
-                        checkArgumentLength(args, 0);
-                        try {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_DEVICERESET);
-                            Object result = INTEROP.execute(callable);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            return NoneValue.get();
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, InteropException {
+                checkArgumentLength(args, 0);
+                callSymbol(cudaRuntime);
+                return NoneValue.get();
             }
-        }),
-        CUDA_DEVICESYNCHRONIZE(new CUDAFunctionFactory("cudaDeviceSynchronize", "", "(): sint32") {
+        },
+        CUDA_DEVICESYNCHRONIZE("cudaDeviceSynchronize", "(): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException {
-                        checkArgumentLength(args, 0);
-                        try {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_DEVICESYNCHRONIZE);
-                            Object result = INTEROP.execute(callable);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            return NoneValue.get();
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, InteropException, UnsupportedMessageException {
+                checkArgumentLength(args, 0);
+                callSymbol(cudaRuntime);
+                return NoneValue.get();
             }
-        }),
-        CUDA_FREE(new CUDAFunctionFactory("cudaFree", "", "(pointer): sint32") {
+        },
+        CUDA_FREE("cudaFree", "(pointer): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
-                        checkArgumentLength(args, 1);
-                        Object pointerObj = args[0];
-                        long addr;
-                        if (pointerObj instanceof GPUPointer) {
-                            addr = ((GPUPointer) pointerObj).getRawPointer();
-                        } else if (pointerObj instanceof LittleEndianNativeArrayView) {
-                            addr = ((LittleEndianNativeArrayView) pointerObj).getStartAddress();
-                        } else {
-                            throw new GrCUDAException("expected GPUPointer or LittleEndianNativeArrayView");
-                        }
-                        try {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_FREE);
-                            Object result = INTEROP.execute(callable, addr);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            return NoneValue.get();
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                Object pointerObj = args[0];
+                long addr;
+                if (pointerObj instanceof GPUPointer) {
+                    addr = ((GPUPointer) pointerObj).getRawPointer();
+                } else if (pointerObj instanceof LittleEndianNativeArrayView) {
+                    addr = ((LittleEndianNativeArrayView) pointerObj).getStartAddress();
+                } else {
+                    throw new GrCUDAException("expected GPUPointer or LittleEndianNativeArrayView");
+                }
+                callSymbol(cudaRuntime, addr);
+                return NoneValue.get();
             }
-        }),
-        CUDA_GETDEVICE(new CUDAFunctionFactory("cudaGetDevice", "", "(pointer): sint32") {
+        },
+        CUDA_GETDEVICE("cudaGetDevice", "(pointer): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException {
-                        checkArgumentLength(args, 0);
-                        try (UnsafeHelper.Integer32Object deviceId = UnsafeHelper.createInteger32Object()) {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_GETDEVICE);
-                            Object result = INTEROP.execute(callable, deviceId.getAddress());
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            return deviceId.getValue();
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, InteropException {
+                checkArgumentLength(args, 0);
+                try (UnsafeHelper.Integer32Object deviceId = UnsafeHelper.createInteger32Object()) {
+                    callSymbol(cudaRuntime, deviceId.getAddress());
+                    return deviceId.getValue();
+                }
             }
-        }),
-        CUDA_GETDEVICECOUNT(new CUDAFunctionFactory("cudaGetDeviceCount", "", "(pointer): sint32") {
+        },
+        CUDA_GETDEVICECOUNT("cudaGetDeviceCount", "(pointer): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException {
-                        checkArgumentLength(args, 0);
-                        try (UnsafeHelper.Integer32Object deviceCount = UnsafeHelper.createInteger32Object()) {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_GETDEVICECOUNT);
-                            Object result = INTEROP.execute(callable, deviceCount.getAddress());
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            return deviceCount.getValue();
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, InteropException {
+                checkArgumentLength(args, 0);
+                try (UnsafeHelper.Integer32Object deviceCount = UnsafeHelper.createInteger32Object()) {
+                    callSymbol(cudaRuntime, deviceCount.getAddress());
+                    return deviceCount.getValue();
+                }
             }
-        }),
-        CUDA_GETERRORSTRING(new CUDAFunctionFactory("cudaGetErrorString", "", "(sint32): string") {
+        },
+        CUDA_GETERRORSTRING("cudaGetErrorString", "(sint32): string") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
-                        checkArgumentLength(args, 1);
-                        int errorCode = expectInt(args[0]);
-                        try {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_GETERRORSTRING);
-                            Object result = INTEROP.execute(callable, errorCode);
-                            return INTEROP.asString(result);
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            @TruffleBoundary
+            public String call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                int errorCode = expectInt(args[0]);
+                Object result = INTEROP.execute(getSymbol(cudaRuntime), errorCode);
+                return INTEROP.asString(result);
             }
-        }),
-        CUDA_MALLOC(new CUDAFunctionFactory("cudaMalloc", "", "(pointer, uint64): sint32") {
+        },
+        CUDA_MALLOC("cudaMalloc", "(pointer, uint64): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
-                        checkArgumentLength(args, 1);
-                        long numBytes = expectLong(args[0]);
-                        try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_MALLOC);
-                            Object result = INTEROP.execute(callable, outPointer.getAddress(), numBytes);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            long addressAllocatedMemory = outPointer.getValueOfPointer();
-                            return new GPUPointer(addressAllocatedMemory);
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                long numBytes = expectLong(args[0]);
+                try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
+                    callSymbol(cudaRuntime, outPointer.getAddress(), numBytes);
+                    long addressAllocatedMemory = outPointer.getValueOfPointer();
+                    return new GPUPointer(addressAllocatedMemory);
+                }
             }
-        }),
-        CUDA_MALLOCMANAGED(new CUDAFunctionFactory("cudaMallocManaged", "", "(pointer, uint64, sint32): sint32") {
+        },
+        CUDA_MALLOCMANAGED("cudaMallocManaged", "(pointer, uint64, sint32): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
-                        checkArgumentLength(args, 1);
-                        final int cudaMemAttachGlobal = 0x01;
-                        long numBytes = expectLong(args[0]);
-                        try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_MALLOCMANAGED);
-                            Object result = INTEROP.execute(callable, outPointer.getAddress(), numBytes, cudaMemAttachGlobal);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                            long addressAllocatedMemory = outPointer.getValueOfPointer();
-                            return new GPUPointer(addressAllocatedMemory);
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                    }
-                };
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                final int cudaMemAttachGlobal = 0x01;
+                long numBytes = expectLong(args[0]);
+                try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
+                    callSymbol(cudaRuntime, outPointer.getAddress(), numBytes, cudaMemAttachGlobal);
+                    long addressAllocatedMemory = outPointer.getValueOfPointer();
+                    return new GPUPointer(addressAllocatedMemory);
+                }
             }
-        }),
-        CUDA_SETDEVICE(new CUDAFunctionFactory("cudaSetDevice", "", "(sint32): sint32") {
+        },
+        CUDA_SETDEVICE("cudaSetDevice", "(sint32): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
-                        checkArgumentLength(args, 1);
-                        int device = expectInt(args[0]);
-                        try {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_SETDEVICE);
-                            Object result = INTEROP.execute(callable, device);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                        return NoneValue.get();
-                    }
-                };
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                int device = expectInt(args[0]);
+                callSymbol(cudaRuntime, device);
+                return NoneValue.get();
             }
-        }),
-        CUDA_MEMCPY(new CUDAFunctionFactory("cudaMemcpy", "", "(pointer, pointer, uint64, sint32): sint32") {
+        },
+        CUDA_MEMCPY("cudaMemcpy", "(pointer, pointer, uint64, sint32): sint32") {
             @Override
-            public CUDAFunction makeFunction(CUDARuntime cudaRuntime) {
-                return new CUDAFunction(this) {
-                    @Override
-                    @TruffleBoundary
-                    public Object call(Object[] args) throws ArityException, UnsupportedTypeException {
-                        checkArgumentLength(args, 3);
-                        long destPointer = expectLong(args[0]);
-                        long fromPointer = expectLong(args[1]);
-                        long numBytesToCopy = expectPositiveLong(args[2]);
-                        // cudaMemcpyKind from driver_types.h (default: direction of transfer is
-                        // inferred from the pointer values, uses virtual addressing)
-                        final long cudaMemcpyDefault = 4;
-                        try {
-                            Object callable = cudaRuntime.getSymbol(CUDARuntimeFunction.CUDA_MEMCPY);
-                            Object result = INTEROP.execute(callable, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
-                            cudaRuntime.checkCUDAReturnCode(result, getName());
-                        } catch (InteropException e) {
-                            throw new GrCUDAException(e);
-                        }
-                        return NoneValue.get();
-                    }
-                };
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 3);
+                long destPointer = expectLong(args[0]);
+                long fromPointer = expectLong(args[1]);
+                long numBytesToCopy = expectPositiveLong(args[2]);
+                // cudaMemcpyKind from driver_types.h (default: direction of transfer is
+                // inferred from the pointer values, uses virtual addressing)
+                final long cudaMemcpyDefault = 4;
+                callSymbol(cudaRuntime, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
+                return NoneValue.get();
             }
-        });
+        };
 
-        private final CUDAFunctionFactory factory;
+        private final String name;
+        private final String nfiSignature;
 
-        public CUDAFunctionFactory getFunctionFactory() {
-            return factory;
+        CUDARuntimeFunction(String name, String nfiSignature) {
+            this.name = name;
+            this.nfiSignature = nfiSignature;
         }
 
-        CUDARuntimeFunction(CUDAFunctionFactory factory) {
-            this.factory = factory;
+        public String getName() {
+            return name;
         }
 
-    }
-
-    public Object getSymbol(CUDADriverFunction function) throws UnknownIdentifierException {
-        return getSymbol(CUDA_LIBRARY_NAME, function.symbolName, function.signature);
+        public Object getSymbol(CUDARuntime runtime) throws UnknownIdentifierException {
+            return runtime.getSymbol(CUDA_RUNTIME_LIBRARY_NAME, name, nfiSignature);
+        }
     }
 
     private HashMap<String, CUModule> loadedModules = new HashMap<>();
@@ -631,7 +529,7 @@ public final class CUDARuntime {
             throw new GrCUDAException("A module for " + cubinName + " was already loaded.");
         }
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
-            Object callable = getSymbol(CUDADriverFunction.CU_MODULELOAD);
+            Object callable = CUDADriverFunction.CU_MODULELOAD.getSymbol(this);
             Object result = INTEROP.execute(callable,
                             modulePtr.getAddress(), cubinName);
             checkCUReturnCode(result, "cuModuleLoad");
@@ -650,7 +548,7 @@ public final class CUDARuntime {
             throw new GrCUDAException("A module for " + moduleName + " was already loaded.");
         }
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
-            Object callable = getSymbol(CUDADriverFunction.CU_MODULELOADDATA);
+            Object callable = CUDADriverFunction.CU_MODULELOADDATA.getSymbol(this);
             Object result = INTEROP.execute(callable,
                             modulePtr.getAddress(), ptx);
             checkCUReturnCode(result, "cuModuleLoadData");
@@ -665,7 +563,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cuModuleUnload(CUModule module) {
         try {
-            Object callable = getSymbol(CUDADriverFunction.CU_MODULEUNLOAD);
+            Object callable = CUDADriverFunction.CU_MODULEUNLOAD.getSymbol(this);
             Object result = INTEROP.execute(callable, module.module);
             checkCUReturnCode(result, "cuModuleUnload");
         } catch (InteropException e) {
@@ -676,7 +574,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public long cuModuleGetFunction(CUModule kernelModule, String kernelName) {
         try (UnsafeHelper.Integer64Object functionPtr = UnsafeHelper.createInteger64Object()) {
-            Object callable = getSymbol(CUDADriverFunction.CU_MODULEGETFUNCTION);
+            Object callable = CUDADriverFunction.CU_MODULEGETFUNCTION.getSymbol(this);
             Object result = INTEROP.execute(callable,
                             functionPtr.getAddress(), kernelModule.module, kernelName);
             checkCUReturnCode(result, "cuModuleGetFunction");
@@ -690,7 +588,7 @@ public final class CUDARuntime {
     public void cuCtxSynchronize() {
         assertCUDAInitialized();
         try {
-            Object callable = getSymbol(CUDADriverFunction.CU_CTXSYNCHRONIZE);
+            Object callable = CUDADriverFunction.CU_CTXSYNCHRONIZE.getSymbol(this);
             Object result = INTEROP.execute(callable);
             checkCUReturnCode(result, "cuCtxSynchronize");
         } catch (InteropException e) {
@@ -701,7 +599,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cuLaunchKernel(Kernel kernel, KernelConfig config, KernelArguments args) {
         try {
-            Object callable = getSymbol(CUDADriverFunction.CU_LAUNCHKERNEL);
+            Object callable = CUDADriverFunction.CU_LAUNCHKERNEL.getSymbol(this);
             Dim3 gridSize = config.getGridSize();
             Dim3 blockSize = config.getBlockSize();
             Object result = INTEROP.execute(callable,
@@ -727,7 +625,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     private void cuInit() {
         try {
-            Object callable = getSymbol(CUDADriverFunction.CU_INIT);
+            Object callable = CUDADriverFunction.CU_INIT.getSymbol(this);
             int flags = 0; // must be zero as per CUDA Driver API documentation
             Object result = INTEROP.execute(callable, flags);
             checkCUReturnCode(result, "cuInit");
@@ -739,7 +637,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     private int cuDeviceGetCount() {
         try (UnsafeHelper.Integer32Object devCount = UnsafeHelper.createInteger32Object()) {
-            Object callable = getSymbol(CUDADriverFunction.CU_DEVICEGETCOUNT);
+            Object callable = CUDADriverFunction.CU_DEVICEGETCOUNT.getSymbol(this);
             Object result = INTEROP.execute(callable, devCount.getAddress());
             checkCUReturnCode(result, "cuDeviceGetCount");
             return devCount.getValue();
@@ -752,7 +650,7 @@ public final class CUDARuntime {
     private int cuDeviceGet(int deviceOrdinal) {
         assertCUDAInitialized();
         try (UnsafeHelper.Integer32Object deviceObj = UnsafeHelper.createInteger32Object()) {
-            Object callable = getSymbol(CUDADriverFunction.CU_DEVICEGET);
+            Object callable = CUDADriverFunction.CU_DEVICEGET.getSymbol(this);
             Object result = INTEROP.execute(callable, deviceObj.getAddress(), deviceOrdinal);
             checkCUReturnCode(result, "cuDeviceGet");
             return deviceObj.getValue();
@@ -765,7 +663,7 @@ public final class CUDARuntime {
     private String cuDeviceGetName(int cuDeviceId) {
         final int maxLength = 256;
         try (UnsafeHelper.StringObject nameString = new UnsafeHelper.StringObject(maxLength)) {
-            Object callable = getSymbol(CUDADriverFunction.CU_DEVICEGETNAME);
+            Object callable = CUDADriverFunction.CU_DEVICEGETNAME.getSymbol(this);
             Object result = INTEROP.execute(callable, nameString.getAddress(), maxLength, cuDeviceId);
             checkCUReturnCode(result, "cuDeviceGetName");
             return nameString.getZeroTerminatedString();
@@ -777,7 +675,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     private long cuCtxCreate(int flags, int cudevice) {
         try (UnsafeHelper.PointerObject pctx = UnsafeHelper.createPointerObject()) {
-            Object callable = getSymbol(CUDADriverFunction.CU_CTXCREATE);
+            Object callable = CUDADriverFunction.CU_CTXCREATE.getSymbol(this);
             Object result = INTEROP.execute(callable, pctx.getAddress(), flags, cudevice);
             checkCUReturnCode(result, "cuCtxCreate");
             return pctx.getValueOfPointer();
@@ -789,7 +687,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     private long cuDevicePrimaryCtxRetain(int cudevice) {
         try (UnsafeHelper.PointerObject pctx = UnsafeHelper.createPointerObject()) {
-            Object callable = getSymbol(CUDADriverFunction.CU_DEVICEPRIMARYCTXRETAIN);
+            Object callable = CUDADriverFunction.CU_DEVICEPRIMARYCTXRETAIN.getSymbol(this);
             Object result = INTEROP.execute(callable, pctx.getAddress(), cudevice);
             checkCUReturnCode(result, "cuDevicePrimaryCtxRetain");
             return pctx.getValueOfPointer();
@@ -801,7 +699,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     private void cuCtxDestroy(long ctx) {
         try {
-            Object callable = getSymbol(CUDADriverFunction.CU_CTXCREATE);
+            Object callable = CUDADriverFunction.CU_CTXCREATE.getSymbol(this);
             Object result = INTEROP.execute(callable, ctx);
             checkCUReturnCode(result, "cuCtxDestroy");
         } catch (InteropException e) {
@@ -826,7 +724,7 @@ public final class CUDARuntime {
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException(
-                            "expected return code as Integer object in " + GrCUDAException.format(function) + ", got " +
+                            "expected return code as Integer object in " + function + ", got " +
                                             result.getClass().getName());
         }
         if (returnCode != 0) {
@@ -854,20 +752,22 @@ public final class CUDARuntime {
         CU_DEVICEGETNAME("cuDeviceGetName", "(pointer, sint32, sint32): sint32"),
         CU_DEVICEPRIMARYCTXRETAIN("cuDevicePrimaryCtxRetain", "(pointer, sint32): sint32"),
         CU_INIT("cuInit", "(uint32): sint32"),
-        CU_LAUNCHKERNEL(
-                        "cuLaunchKernel",
-                        "(uint64, uint32, uint32, uint32, uint32, uint32, uint32, uint32, uint64, pointer, pointer): sint32"),
+        CU_LAUNCHKERNEL("cuLaunchKernel", "(uint64, uint32, uint32, uint32, uint32, uint32, uint32, uint32, uint64, pointer, pointer): sint32"),
         CU_MODULELOAD("cuModuleLoad", "(pointer, string): sint32"),
         CU_MODULELOADDATA("cuModuleLoadData", "(pointer, string): sint32"),
         CU_MODULEUNLOAD("cuModuleUnload", "(uint64): sint32"),
         CU_MODULEGETFUNCTION("cuModuleGetFunction", "(pointer, uint64, string): sint32");
 
-        final String symbolName;
-        final String signature;
+        private final String symbolName;
+        private final String signature;
 
-        CUDADriverFunction(String symbolName, String signature) {
+        CUDADriverFunction(String symbolName, String nfiSignature) {
             this.symbolName = symbolName;
-            this.signature = signature;
+            this.signature = nfiSignature;
+        }
+
+        public Object getSymbol(CUDARuntime runtime) throws UnknownIdentifierException {
+            return runtime.getSymbol(CUDA_LIBRARY_NAME, symbolName, signature);
         }
     }
 

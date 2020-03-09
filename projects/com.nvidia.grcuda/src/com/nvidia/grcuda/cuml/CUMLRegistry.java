@@ -38,9 +38,9 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDAOptions;
+import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.functions.FunctionTable;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -89,7 +89,7 @@ public class CUMLRegistry {
 
             // create wrapper for cumlCreate: cumlError_t cumlCreate(int* handle) -> int
             // cumlCreate()
-            cumlCreateFunction = new Function(CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().getName(), NAMESPACE) {
+            cumlCreateFunction = new Function(CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().getName()) {
                 @Override
                 @TruffleBoundary
                 public Object call(Object[] arguments) throws ArityException {
@@ -107,7 +107,7 @@ public class CUMLRegistry {
 
             // create wrapper for cumlDestroy: cumlError_t cumlDestroy(int handle) -> void
             // cumlDestroy(int handle)
-            cumlDestroyFunction = new Function(CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName(), NAMESPACE) {
+            cumlDestroyFunction = new Function(CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName()) {
                 @Override
                 @TruffleBoundary
                 public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
@@ -148,13 +148,13 @@ public class CUMLRegistry {
         }
     }
 
-    public void registerCUMLFunctions(FunctionTable functionTable) {
+    public void registerCUMLFunctions(Namespace namespace) {
         // Create function wrappers (decorators for all functions except handle con- and
         // destruction)
         List<CUMLFunctionNFI> hiddenFunctions = Arrays.asList(CUMLFunctionNFI.CUML_CUMLCREATE, CUMLFunctionNFI.CUML_CUMLDESTROY);
         EnumSet.allOf(CUMLFunctionNFI.class).stream().filter(func -> !hiddenFunctions.contains(func)).forEach(func -> {
             final ExternalFunctionFactory factory = func.getFunctionFactory();
-            final Function wrapperFunction = new Function(factory.getName(), NAMESPACE) {
+            final Function wrapperFunction = new Function(factory.getName()) {
 
                 private Function nfiFunction;
 
@@ -183,7 +183,7 @@ public class CUMLRegistry {
                     }
                 }
             };
-            functionTable.registerFunction(wrapperFunction);
+            namespace.addFunction(wrapperFunction);
         });
     }
 
@@ -215,20 +215,10 @@ public class CUMLRegistry {
     }
 
     public enum CUMLFunctionNFI {
-        CUML_CUMLCREATE(
-                        new ExternalFunctionFactory("cumlCreate",
-                                        NAMESPACE, "cumlCreate", "(pointer): sint32")),
-        CUML_CUMLDESTROY(
-                        new ExternalFunctionFactory("cumlDestroy",
-                                        NAMESPACE, "cumlDestroy", "(sint32): sint32")),
-        CUML_DBSCANFITDOUBLE(
-                        new ExternalFunctionFactory("cumlDpDbscanFit",
-                                        NAMESPACE, "cumlDpDbscanFit",
-                                        "(sint32, pointer, sint32, sint32, double, sint32, pointer, uint64, sint32): sint32")),
-        CUML_DBSCANFITFLOAT(
-                        new ExternalFunctionFactory("cumlSpDbscanFit",
-                                        NAMESPACE, "cumlSpDbscanFit",
-                                        "(sint32, pointer, sint32, sint32, float, sint32, pointer, uint64, sint32): sint32"));
+        CUML_CUMLCREATE(new ExternalFunctionFactory("cumlCreate", "cumlCreate", "(pointer): sint32")),
+        CUML_CUMLDESTROY(new ExternalFunctionFactory("cumlDestroy", "cumlDestroy", "(sint32): sint32")),
+        CUML_DBSCANFITDOUBLE(new ExternalFunctionFactory("cumlDpDbscanFit", "cumlDpDbscanFit", "(sint32, pointer, sint32, sint32, double, sint32, pointer, uint64, sint32): sint32")),
+        CUML_DBSCANFITFLOAT(new ExternalFunctionFactory("cumlSpDbscanFit", "cumlSpDbscanFit", "(sint32, pointer, sint32, sint32, float, sint32, pointer, uint64, sint32): sint32"));
 
         private final ExternalFunctionFactory factory;
 

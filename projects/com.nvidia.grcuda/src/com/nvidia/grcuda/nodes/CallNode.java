@@ -32,8 +32,8 @@ import java.util.Optional;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
+import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.functions.FunctionTable;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,16 +58,14 @@ public abstract class CallNode extends ExpressionNode {
     Object doDefault(VirtualFrame frame,
                     @CachedLibrary(limit = "2") InteropLibrary interop,
                     @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
-        String namespace = identifier.getNamespace();
-        String functionName = identifier.getIdentifierName();
-        FunctionTable table = context.getFunctionTable();
-        Optional<Function> maybeFunction = table.lookupFunction(functionName, namespace);
-        if (!maybeFunction.isPresent()) {
+        String[] functionName = identifier.getIdentifierName();
+        Namespace namespace = context.getRootNamespace();
+        Optional<Object> maybeFunction = namespace.lookup(functionName);
+        if (!maybeFunction.isPresent() || !(maybeFunction.get() instanceof Function)) {
             CompilerDirectives.transferToInterpreter();
-            throw new GrCUDAException("function '" + functionName +
-                            "' not found in namespace '" + namespace + "'", this);
+            throw new GrCUDAException("function '" + GrCUDAException.format(functionName) + "' not found", this);
         }
-        Function function = maybeFunction.get();
+        Function function = (Function) maybeFunction.get();
         Object[] argumentValues = new Object[argumentNodes.length];
         for (int i = 0; i < argumentNodes.length; i++) {
             argumentValues[i] = argumentNodes[i].execute(frame);

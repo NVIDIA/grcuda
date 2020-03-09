@@ -180,16 +180,4 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
             throw new IllegalStateException("tried to write non-last dimension in MultiDimDeviceArrayView");
         }
     }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasMembers() {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return null;
-    }
 }

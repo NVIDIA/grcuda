@@ -33,26 +33,20 @@ import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 
-public class ExternalFunctionFactory {
+public final class ExternalFunctionFactory {
 
     private final String name;
     private final String symbolName;
-    private final String namespace;
     private final String nfiSignature;
 
-    public ExternalFunctionFactory(String name, String namespace, String symbolName, String nfiSignature) {
+    public ExternalFunctionFactory(String name, String symbolName, String nfiSignature) {
         this.name = name;
-        this.namespace = namespace;
         this.symbolName = symbolName;
         this.nfiSignature = nfiSignature;
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getNamespace() {
-        return namespace;
     }
 
     public String getSymbolName() {
@@ -65,8 +59,7 @@ public class ExternalFunctionFactory {
 
     public ExternalFunction makeFunction(CUDARuntime cudaRuntime, String libraryPath, String hint) {
         try {
-            return new ExternalFunction(name, namespace,
-                            cudaRuntime.getSymbol(libraryPath, symbolName, nfiSignature, hint));
+            return new ExternalFunction(name, cudaRuntime.getSymbol(libraryPath, symbolName, nfiSignature, hint));
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException(e);
