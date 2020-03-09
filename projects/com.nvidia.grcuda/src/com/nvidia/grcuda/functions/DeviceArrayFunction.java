@@ -131,27 +131,23 @@ public final class DeviceArrayFunction extends Function {
         return MEMBERS;
     }
 
-    @ExportMessage
+    @ExportMessage(name = "isMemberReadable")
+    @ExportMessage(name = "isMemberInvocable")
     @SuppressWarnings("static-method")
-    boolean isMemberReadable(String memberName,
+    boolean isMemberExisting(String memberName,
                     @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
         String name = memberProfile.profile(memberName);
         return MAP.equals(name);
     }
 
     @ExportMessage
-    Object readMember(String memberName) throws UnknownIdentifierException {
-        if (MAP.equals(memberName)) {
+    Object readMember(String memberName,
+                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
+        if (MAP.equals(memberProfile.profile(memberName))) {
             return new MapDeviceArrayFunction(runtime);
         }
         CompilerDirectives.transferToInterpreter();
         throw UnknownIdentifierException.create(memberName);
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isMemberInvocable(String memberName) {
-        return MAP.equals(memberName);
     }
 
     @ExportMessage
