@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +28,14 @@
  */
 package com.nvidia.grcuda;
 
+import java.util.Arrays;
+
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
@@ -90,6 +93,11 @@ public final class DeviceArray implements TruffleObject {
             }
             return values[(int) index];
         }
+
+        @TruffleBoundary
+        public boolean constainsValue(String name) {
+            return Arrays.asList(values).contains(name);
+        }
     }
 
     private final CUDARuntime runtime;
@@ -122,6 +130,10 @@ public final class DeviceArray implements TruffleObject {
 
     public long getPointer() {
         return nativeView.getStartAddress();
+    }
+
+    public ElementType getElementType() {
+        return elementType;
     }
 
     @Override
@@ -192,7 +204,7 @@ public final class DeviceArray implements TruffleObject {
     }
 
     @ExportMessage
-    void writeArrayElement(long index, Object value,
+    public void writeArrayElement(long index, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException, InvalidArrayIndexException {
 

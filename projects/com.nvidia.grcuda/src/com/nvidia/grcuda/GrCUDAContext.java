@@ -29,6 +29,7 @@
 package com.nvidia.grcuda;
 
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.options.OptionKey;
@@ -40,7 +41,10 @@ import com.nvidia.grcuda.functions.BuildKernelFunction;
 import com.nvidia.grcuda.functions.DeviceArrayFunction;
 import com.nvidia.grcuda.functions.GetDeviceFunction;
 import com.nvidia.grcuda.functions.GetDevicesFunction;
+import com.nvidia.grcuda.functions.map.MapFunction;
+import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 
@@ -59,6 +63,9 @@ public final class GrCUDAContext {
     private AtomicInteger moduleId = new AtomicInteger(0);
     private volatile boolean cudaInitialized = false;
 
+    // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
+    private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
+
     public GrCUDAContext(Env env) {
         this.env = env;
         this.cudaRuntime = new CUDARuntime(this, env);
@@ -67,6 +74,8 @@ public final class GrCUDAContext {
         namespace.addNamespace(namespace);
         namespace.addFunction(new BindFunction());
         namespace.addFunction(new DeviceArrayFunction(cudaRuntime));
+        namespace.addFunction(new MapFunction());
+        namespace.addFunction(new ShredFunction());
         namespace.addFunction(new BindKernelFunction(cudaRuntime));
         namespace.addFunction(new BuildKernelFunction(cudaRuntime));
         namespace.addFunction(new GetDevicesFunction(cudaRuntime));
@@ -112,6 +121,10 @@ public final class GrCUDAContext {
 
     public void setCUDAInitialized() {
         cudaInitialized = true;
+    }
+
+    public ConcurrentHashMap<Class<?>, CallTarget> getMapCallTargets() {
+        return uncachedMapCallTargets;
     }
 
     @TruffleBoundary
