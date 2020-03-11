@@ -32,6 +32,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
+import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.oracle.truffle.api.Option;
 
@@ -40,6 +41,12 @@ public final class GrCUDAOptions {
     private GrCUDAOptions() {
         // no instances
     }
+
+    @Option(category = OptionCategory.USER, help = "Enable cuBLAS support.", stability = OptionStability.STABLE) //
+    public static final OptionKey<Boolean> CuBLASEnabled = new OptionKey<>(true);
+
+    @Option(category = OptionCategory.USER, help = "Set the location of the cublas library.", stability = OptionStability.STABLE) //
+    public static final OptionKey<String> CuBLASLibrary = new OptionKey<>(CUBLASRegistry.DEFAULT_LIBRARY);
 
     @Option(category = OptionCategory.USER, help = "Enable cuML support.", stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> CuMLEnabled = new OptionKey<>(true);

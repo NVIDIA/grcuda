@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.options.OptionKey;
 
+import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.functions.BindFunction;
 import com.nvidia.grcuda.functions.BindKernelFunction;
@@ -85,6 +86,11 @@ public final class GrCUDAContext {
             Namespace ml = new Namespace(CUMLRegistry.NAMESPACE);
             namespace.addNamespace(ml);
             new CUMLRegistry(this).registerCUMLFunctions(ml);
+        }
+        if (this.getOption(GrCUDAOptions.CuBLASEnabled)) {
+            Namespace blas = new Namespace(CUBLASRegistry.NAMESPACE);
+            namespace.addNamespace(blas);
+            new CUBLASRegistry(this).registerCUBLASFunctions(blas);
         }
         this.rootNamespace = namespace;
     }
