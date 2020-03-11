@@ -87,11 +87,11 @@ public class MultiDimDeviceArray implements TruffleObject {
         }
         this.runtime = runtime;
         this.elementType = elementType;
+        this.columnMajor = useColumnMajor;
         this.elementsPerDimension = new long[dimensions.length];
         System.arraycopy(dimensions, 0, this.elementsPerDimension, 0, dimensions.length);
         this.stridePerDimension = computeStride(dimensions, columnMajor);
         this.totalElementCount = prod;
-        this.columnMajor = useColumnMajor;
         this.nativeView = runtime.cudaMallocManaged(getSizeBytes());
     }
 
