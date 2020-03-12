@@ -225,6 +225,8 @@ public class CUBLASRegistry {
         for (char type : new char[]{'S', 'D', 'C', 'Z'}) {
             functions.add(new ExternalFunctionFactory("cublas" + type + "axpy", "cublas" + type + "axpy_v2",
                             "(sint64, sint32, pointer, pointer, sint32, pointer, sint32): sint32"));
+            functions.add(new ExternalFunctionFactory("cublas" + type + "gemv", "cublas" + type + "gemv_v2",
+                            "(sint64, sint32, sint32, sint32, pointer, pointer, sint32, pointer, sint32, pointer, pointer, sint32): sint32"));
             functions.add(new ExternalFunctionFactory("cublas" + type + "gemm", "cublas" + type + "gemm_v2",
                             "(sint64, sint32, sint32, sint32, sint32, sint32, pointer, pointer, sint32, pointer, sint32, pointer, pointer, sint32): sint32"));
         }
