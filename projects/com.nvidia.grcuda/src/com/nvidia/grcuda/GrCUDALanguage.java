@@ -28,8 +28,6 @@
  */
 package com.nvidia.grcuda;
 
-import org.graalvm.options.OptionDescriptors;
-
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.parser.ParserAntlr;
@@ -37,6 +35,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.options.OptionDescriptors;
 
 /**
  * grCUDA Truffle language that exposes the GPU device and CUDA runtime to polyglot Graal languages.
@@ -81,6 +80,6 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        return new GrCUDAOptionsOptionDescriptors();
+        return GrCUDAOptions.getOptionDescriptors();
     }
 }

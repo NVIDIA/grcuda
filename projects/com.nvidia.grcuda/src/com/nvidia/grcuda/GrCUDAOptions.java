@@ -29,12 +29,16 @@
 package com.nvidia.grcuda;
 
 import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.oracle.truffle.api.Option;
+
+import java.util.Arrays;
 
 @Option.Group(GrCUDALanguage.ID)
 public final class GrCUDAOptions {
@@ -44,14 +48,22 @@ public final class GrCUDAOptions {
 
     @Option(category = OptionCategory.USER, help = "Enable cuBLAS support.", stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> CuBLASEnabled = new OptionKey<>(true);
+    public static final OptionDescriptor CuBLASEnabledDescriptor = OptionDescriptor.newBuilder(CuBLASEnabled, "CuBLASEnabled").category(OptionCategory.USER).help("Enable cuBLAS support.").stability(OptionStability.STABLE).build();
 
     @Option(category = OptionCategory.USER, help = "Set the location of the cublas library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> CuBLASLibrary = new OptionKey<>(CUBLASRegistry.DEFAULT_LIBRARY);
+    public static final OptionDescriptor CuBLASLibraryDescriptor = OptionDescriptor.newBuilder(CuBLASLibrary, "CuBLASLibrary").category(OptionCategory.USER).help("Set the location of the cublas library.").stability(OptionStability.STABLE).build();
 
     @Option(category = OptionCategory.USER, help = "Enable cuML support.", stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> CuMLEnabled = new OptionKey<>(true);
+    public static final OptionDescriptor CuMLEnabledDescriptor = OptionDescriptor.newBuilder(CuMLEnabled, "CuMLEnabled").category(OptionCategory.USER).help("Enable cuML support.").stability(OptionStability.STABLE).build();
 
     @Option(category = OptionCategory.USER, help = "Set the location of the cuml library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> CuMLLibrary = new OptionKey<>(CUMLRegistry.DEFAULT_LIBRARY);
+    public static final OptionDescriptor CuMLLibraryDescriptor = OptionDescriptor.newBuilder(CuMLLibrary, "CuMLLibrary").category(OptionCategory.USER).help("Set the location of the cuml library.").stability(OptionStability.STABLE).build();
+
+    public static OptionDescriptors getOptionDescriptors() {
+        return OptionDescriptors.create(Arrays.asList(CuBLASEnabledDescriptor, CuBLASLibraryDescriptor, CuMLEnabledDescriptor, CuMLLibraryDescriptor));
+    }
 
 }
