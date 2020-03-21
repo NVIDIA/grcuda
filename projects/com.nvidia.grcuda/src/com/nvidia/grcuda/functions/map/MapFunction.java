@@ -141,7 +141,7 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
     @ExportMessage
     @SuppressWarnings("static-method")
     boolean isMemberReadable(String member) {
-        return MEMBERS.constainsValue(member);
+        return MEMBERS.containsValue(member);
     }
 
     @ExportMessage

@@ -109,7 +109,7 @@ public final class MapArgObject implements TruffleObject {
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isMemberInvocable(String member) {
-        return MEMBERS.constainsValue(member);
+        return MEMBERS.containsValue(member);
     }
 
     @ExportMessage
@@ -146,7 +146,7 @@ public final class MapArgObject implements TruffleObject {
     @ExportMessage
     boolean isExecutable() {
         // can be executed if this refers to "map", "shred", etc.
-        return value instanceof MapArgObjectMember && MEMBERS.constainsValue(((MapArgObjectMember) value).name);
+        return value instanceof MapArgObjectMember && MEMBERS.containsValue(((MapArgObjectMember) value).name);
     }
 
     @ExportMessage
