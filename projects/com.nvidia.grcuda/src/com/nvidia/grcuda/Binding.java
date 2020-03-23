@@ -28,44 +28,27 @@
  */
 package com.nvidia.grcuda;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
-public enum ElementType {
-    BYTE(1),
-    CHAR(2),
-    SHORT(2),
-    INT(4),
-    LONG(8),
-    FLOAT(4),
-    DOUBLE(8);
+public abstract class Binding {
+    protected final boolean hasCxxMangledName;
+    protected final String name;
+    protected final ArrayList<Argument> argumentList;
 
-    private final int sizeBytes;
-
-    ElementType(int sizeBytes) {
-        this.sizeBytes = sizeBytes;
+    public Binding(String name, ArrayList<Argument> argumentList, boolean hasCxxMangledName) {
+        this.name = name;
+        this.argumentList = argumentList;
+        this.hasCxxMangledName = hasCxxMangledName;
     }
 
-    public int getSizeBytes() {
-        return this.sizeBytes;
+    @Override
+    public String toString() {
+        String argString = argumentList.stream().map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
+        return "Binding(name=" + name + ", argumentList=" + argString + ", hasCxxMangledName=" + hasCxxMangledName + ")";
     }
 
-    public static ElementType lookupType(String type) throws TypeException {
-        switch (type) {
-            case "char":
-                return ElementType.BYTE;
-            case "short":
-                return ElementType.SHORT;
-            case "int":
-                return ElementType.INT;
-            case "long":
-                return ElementType.LONG;
-            case "float":
-                return ElementType.FLOAT;
-            case "double":
-                return ElementType.DOUBLE;
-            default:
-                CompilerDirectives.transferToInterpreter();
-                throw new TypeException("invalid type '" + type + "'");
-        }
+    public String getArgumentSignature() {
+        return argumentList.stream().map(Argument::toSignature).collect(Collectors.joining(", "));
     }
 }

@@ -38,7 +38,7 @@ import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.IdentifierNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.parser.NodeFactory;
-import com.nvidia.grcuda.parser.ParserException;
+import com.nvidia.grcuda.parser.GrCUDAParserException;
 import com.oracle.truffle.api.source.Source;
 }
 
@@ -55,7 +55,7 @@ public static ExpressionNode parseCUDA(Source source) {
     ParserErrorListener parserErrorListener = new ParserErrorListener(source);
     parser.addErrorListener(parserErrorListener);
     ExpressionNode expression = parser.expr().result;
-    Optional<ParserException> maybeException = parserErrorListener.getException();
+    Optional<GrCUDAParserException> maybeException = parserErrorListener.getException();
     if (maybeException.isPresent()) {
        throw maybeException.get();
     } else {
@@ -64,7 +64,7 @@ public static ExpressionNode parseCUDA(Source source) {
 }
 
 private static class ParserErrorListener extends BaseErrorListener {
-    private ParserException exception;
+    private GrCUDAParserException exception;
     private Source source;
 
     ParserErrorListener(Source source) {
@@ -75,10 +75,11 @@ private static class ParserErrorListener extends BaseErrorListener {
     public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine,
     	                    String msg, RecognitionException e) {
         Token token = (Token) offendingSymbol;
-        exception = new ParserException(msg, source, line, charPositionInLine, Math.max(token.getStopIndex() - token.getStartIndex(), 0));
+        exception = new GrCUDAParserException(msg, source, line, charPositionInLine,
+                                              Math.max(token.getStopIndex() - token.getStartIndex(), 0));
     }
     
-    public Optional<ParserException> getException() {
+    public Optional<GrCUDAParserException> getException() {
         return Optional.ofNullable(exception);
     }
 }

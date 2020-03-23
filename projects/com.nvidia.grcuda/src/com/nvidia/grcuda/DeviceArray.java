@@ -103,7 +103,7 @@ public final class DeviceArray implements TruffleObject {
     private final CUDARuntime runtime;
 
     /** Data type of elements stored in the array. */
-    private final ElementType elementType;
+    private final Type elementType;
 
     /** Total number of elements stored in the array. */
     private final long numElements;
@@ -116,7 +116,7 @@ public final class DeviceArray implements TruffleObject {
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public DeviceArray(CUDARuntime runtime, long numElements, ElementType elementType) {
+    public DeviceArray(CUDARuntime runtime, long numElements, Type elementType) {
         this.runtime = runtime;
         this.numElements = numElements;
         this.elementType = elementType;
@@ -132,7 +132,7 @@ public final class DeviceArray implements TruffleObject {
         return nativeView.getStartAddress();
     }
 
-    public ElementType getElementType() {
+    public Type getElementType() {
         return elementType;
     }
 

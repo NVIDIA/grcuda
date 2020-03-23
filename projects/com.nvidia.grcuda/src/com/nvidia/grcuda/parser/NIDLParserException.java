@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,36 +25,40 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.functions;
+package com.nvidia.grcuda.parser;
 
-import com.nvidia.grcuda.Type;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
-/**
- * Special curried version of the device array creation function that is specific to a data type.
- */
-public final class TypedDeviceArrayFunction extends Function {
+public class NIDLParserException extends RuntimeException implements TruffleException {
 
-    private final CUDARuntime runtime;
-    private final Type elementType;
+    private static final long serialVersionUID = -7520277230665801341L;
+    private final String message;
+    private final String filename;
+    private final int line;
+    private final int column;
 
-    public TypedDeviceArrayFunction(CUDARuntime runtime, Type elementType) {
-        super("TypedDeviceArray");
-        this.runtime = runtime;
-        this.elementType = elementType;
+    public NIDLParserException(String message, String filename, int line, int charPositionInLine) {
+        super(message);
+        this.message = message;
+        this.filename = filename;
+        this.line = line;
+        this.column = charPositionInLine;
     }
 
     @Override
-    @TruffleBoundary
-    public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 1) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
-        }
-        return DeviceArrayFunction.createArray(arguments, 0, elementType, runtime);
+    public String getMessage() {
+        return "NIDL parse error: [" + filename + " " + line + ":" + column + "] " + message;
+    }
+
+    @Override
+    public Node getLocation() {
+        // null = location not available
+        return null;
+    }
+
+    @Override
+    public boolean isSyntaxError() {
+        return true;
     }
 }

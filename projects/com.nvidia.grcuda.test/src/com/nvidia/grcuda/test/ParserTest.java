@@ -30,59 +30,59 @@ package com.nvidia.grcuda.test;
 
 import org.junit.Test;
 import com.nvidia.grcuda.parser.ParserAntlr;
-import com.nvidia.grcuda.parser.ParserException;
+import com.nvidia.grcuda.parser.GrCUDAParserException;
 import com.oracle.truffle.api.source.Source;
 
 public class ParserTest {
 
     @Test
-    public void testArrayExpressionWithIntLiteral() throws ParserException {
+    public void testArrayExpressionWithIntLiteral() throws GrCUDAParserException {
         parseString("double[1000]");
     }
 
     @Test
-    public void testArrayExpressionWithIntExpr() throws ParserException {
+    public void testArrayExpressionWithIntExpr() throws GrCUDAParserException {
         parseString("double[(100+200)*4]");
     }
 
-    @Test(expected = ParserException.class)
-    public void testArrayExpressionWithEmptyBracketsFails() throws ParserException {
+    @Test(expected = GrCUDAParserException.class)
+    public void testArrayExpressionWithEmptyBracketsFails() throws GrCUDAParserException {
         parseString("double[]");
     }
 
-    @Test(expected = ParserException.class)
-    public void testArrayExpressionWithIdentifierInBracketsFails() throws ParserException {
+    @Test(expected = GrCUDAParserException.class)
+    public void testArrayExpressionWithIdentifierInBracketsFails() throws GrCUDAParserException {
         parseString("double[foo]");
     }
 
     @Test
-    public void testNoArgsCall() throws ParserException {
+    public void testNoArgsCall() throws GrCUDAParserException {
         parseString("foo()");
         parseString("foo( )");
     }
 
     @Test
-    public void testBindCall() throws ParserException {
+    public void testBindCall() throws GrCUDAParserException {
         parseString("bind(\"libml.so\", \"dbscanFitDouble\", \"(pointer, sint32, sint32, double, sint32, pointer): void\")");
     }
 
     @Test
-    public void testBuiltinCallable() throws ParserException {
+    public void testBuiltinCallable() throws GrCUDAParserException {
         parseString("cudaMallocManaged");
     }
 
     @Test
-    public void testBuiltinCallableColonColon() throws ParserException {
+    public void testBuiltinCallableColonColon() throws GrCUDAParserException {
         parseString("::cudaMallocManaged");
     }
 
     @Test
-    public void testCallableInNamespace() throws ParserException {
+    public void testCallableInNamespace() throws GrCUDAParserException {
         parseString("ML::dbscanFitDouble");
     }
 
     @SuppressWarnings("static-method")
-    private void parseString(String sourceStr) throws ParserException {
+    private void parseString(String sourceStr) throws GrCUDAParserException {
         Source source = Source.newBuilder("cuda", sourceStr, "testsource").build();
         new ParserAntlr().parse(source);
     }

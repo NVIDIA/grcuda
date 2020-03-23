@@ -30,7 +30,7 @@ package com.nvidia.grcuda.parser;
 
 import java.util.ArrayList;
 import org.antlr.v4.runtime.Token;
-import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.nodes.ArithmeticNode;
@@ -53,7 +53,7 @@ public class NodeFactory {
         this.source = source;
     }
 
-    public ArrayNode createArrayNode(Token typeToken, ArrayList<ExpressionNode> sizeNodes) throws ParserException {
+    public ArrayNode createArrayNode(Token typeToken, ArrayList<ExpressionNode> sizeNodes) throws GrCUDAParserException {
         return ArrayNodeGen.create(lookupType(typeToken), sizeNodes);
     }
 
@@ -111,11 +111,11 @@ public class NodeFactory {
         return new StringLiteral(stringValue.substring(1, stringValue.length() - 1));
     }
 
-    private ElementType lookupType(Token typeToken) {
+    private Type lookupType(Token typeToken) {
         try {
-            return ElementType.lookupType(typeToken.getText());
+            return Type.fromGrCUDATypeString(typeToken.getText());
         } catch (TypeException e) {
-            throw new ParserException(e.getMessage(),
+            throw new GrCUDAParserException(e.getMessage(),
                             source,
                             typeToken.getLine(), typeToken.getCharPositionInLine(),
                             Math.max(typeToken.getStopIndex() - typeToken.getStartIndex(), 0));

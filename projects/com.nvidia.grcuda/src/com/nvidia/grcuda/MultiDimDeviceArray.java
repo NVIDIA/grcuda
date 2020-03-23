@@ -52,7 +52,7 @@ public class MultiDimDeviceArray implements TruffleObject {
     private final CUDARuntime runtime;
 
     /** Data type of the elements stored in the array. */
-    private final ElementType elementType;
+    private final Type elementType;
 
     /** Number of elements in each dimension. */
     private final long[] elementsPerDimension;
@@ -69,7 +69,7 @@ public class MultiDimDeviceArray implements TruffleObject {
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public MultiDimDeviceArray(CUDARuntime runtime, ElementType elementType, long[] dimensions,
+    public MultiDimDeviceArray(CUDARuntime runtime, Type elementType, long[] dimensions,
                     boolean useColumnMajor) {
         if (dimensions.length < 2) {
             CompilerDirectives.transferToInterpreter();
@@ -159,7 +159,7 @@ public class MultiDimDeviceArray implements TruffleObject {
         return nativeView.getStartAddress();
     }
 
-    final ElementType getElementType() {
+    final Type getElementType() {
         return elementType;
     }
 

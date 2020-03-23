@@ -28,7 +28,7 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.Type;
 import sun.misc.Unsafe;
 
 /**
@@ -41,59 +41,59 @@ public class LittleEndianNativeArrayView {
     private final long sizeInBytes;
 
     public void setByte(long index, byte value) {
-        unsafe.putByte(startAddress + index * ElementType.BYTE.getSizeBytes(), value);
+        unsafe.putByte(startAddress + index * Type.BYTE.getSizeBytes(), value);
     }
 
     public void setChar(long index, char value) {
-        unsafe.putChar(startAddress + index * ElementType.CHAR.getSizeBytes(), value);
+        unsafe.putChar(startAddress + index * Type.CHAR.getSizeBytes(), value);
     }
 
     public void setShort(long index, short value) {
-        unsafe.putShort(startAddress + index * ElementType.SHORT.getSizeBytes(), value);
+        unsafe.putShort(startAddress + index * Type.SHORT.getSizeBytes(), value);
     }
 
     public void setInt(long index, int value) {
-        unsafe.putInt(startAddress + index * ElementType.INT.getSizeBytes(), value);
+        unsafe.putInt(startAddress + index * Type.INT.getSizeBytes(), value);
     }
 
     public void setLong(long index, long value) {
-        unsafe.putLong(startAddress + index * ElementType.LONG.getSizeBytes(), value);
+        unsafe.putLong(startAddress + index * Type.LONG.getSizeBytes(), value);
     }
 
     public void setFloat(long index, float value) {
-        unsafe.putFloat(startAddress + index * ElementType.FLOAT.getSizeBytes(), value);
+        unsafe.putFloat(startAddress + index * Type.FLOAT.getSizeBytes(), value);
     }
 
     public void setDouble(long index, double value) {
-        unsafe.putDouble(startAddress + index * ElementType.DOUBLE.getSizeBytes(), value);
+        unsafe.putDouble(startAddress + index * Type.DOUBLE.getSizeBytes(), value);
     }
 
     public byte getByte(long index) {
-        return unsafe.getByte(startAddress + index * ElementType.BYTE.getSizeBytes());
+        return unsafe.getByte(startAddress + index * Type.BYTE.getSizeBytes());
     }
 
     public char getChar(long index) {
-        return unsafe.getChar(startAddress + index * ElementType.CHAR.getSizeBytes());
+        return unsafe.getChar(startAddress + index * Type.CHAR.getSizeBytes());
     }
 
     public short getShort(long index) {
-        return unsafe.getShort(startAddress + index * ElementType.SHORT.getSizeBytes());
+        return unsafe.getShort(startAddress + index * Type.SHORT.getSizeBytes());
     }
 
     public int getInt(long index) {
-        return unsafe.getInt(startAddress + index * ElementType.INT.getSizeBytes());
+        return unsafe.getInt(startAddress + index * Type.INT.getSizeBytes());
     }
 
     public long getLong(long index) {
-        return unsafe.getLong(startAddress + index * ElementType.LONG.getSizeBytes());
+        return unsafe.getLong(startAddress + index * Type.LONG.getSizeBytes());
     }
 
     public float getFloat(long index) {
-        return unsafe.getFloat(startAddress + index * ElementType.FLOAT.getSizeBytes());
+        return unsafe.getFloat(startAddress + index * Type.FLOAT.getSizeBytes());
     }
 
     public double getDouble(long index) {
-        return unsafe.getDouble(startAddress + index * ElementType.DOUBLE.getSizeBytes());
+        return unsafe.getDouble(startAddress + index * Type.DOUBLE.getSizeBytes());
     }
 
     public long getStartAddress() {

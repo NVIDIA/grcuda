@@ -41,3 +41,11 @@ mx.grcuda/eclipse-launches
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAListener.java
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAParser.java
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAVisitor.java
+/projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDL.g4.stamp
+/projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDL.interp
+/projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDL.tokens
+/projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDLLexer.interp
+/projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDLLexer.java
+/projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDLLexer.tokens
+/projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDLParser.java
+
