@@ -35,9 +35,9 @@ suite = {
     "versionConflictResolution": "latest",
     "url": "https://github.com/brighterion-rnd/grcuda",
     "scm" : {
-        "url" : "https://github.com/brighterion-rnd/grcuda",
-        "read" : "https://github.com/brighterion-rnd/grcuda.git",
-        "write" : "git@github.com:brighterion-rnd/grcuda.git",
+        "url" : "https://github.com/NVIDIA/grcuda",
+        "read" : "https://github.com/NVIDIA/grcuda.git",
+        "write" : "git@github.com:NVIDIA/grcuda.git",
     },
 
     "version": "1.0.0",
@@ -47,12 +47,6 @@ suite = {
     "developer": {
         "name": "grCUDA Developers",
         "organization": "grCUDA Developers",
-    },
-
-    "developer" : {
-        "name" : "Tristan Miano",
-        "organization" : "Mastercard, Inc.",
-        "email" : "Tristan.Miano@mastercard.com",
     },
 
 
@@ -80,10 +74,6 @@ suite = {
     #
     # --------------------------------------------------------------------------------------------------------------
     "repositories": {
-        "brighterion-rnd" : {
-            "url": "https://maven.jetbrains.space/brighterion-rnd/mvn-repo-brighterion-rnd",
-            "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "BSD-3", "MIT", "NCSA"],
-        }
     },
 
     "defaultLicense": "BSD-3",
