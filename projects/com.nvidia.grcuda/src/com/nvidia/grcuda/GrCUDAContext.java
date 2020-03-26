@@ -36,6 +36,7 @@ import org.graalvm.options.OptionKey;
 
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
+import com.nvidia.grcuda.functions.BindAllFunction;
 import com.nvidia.grcuda.functions.BindFunction;
 import com.nvidia.grcuda.functions.BindKernelFunction;
 import com.nvidia.grcuda.functions.BuildKernelFunction;
@@ -74,6 +75,7 @@ public final class GrCUDAContext {
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
         namespace.addNamespace(namespace);
         namespace.addFunction(new BindFunction());
+        namespace.addFunction(new BindAllFunction(cudaRuntime));
         namespace.addFunction(new DeviceArrayFunction(cudaRuntime));
         namespace.addFunction(new MapFunction());
         namespace.addFunction(new ShredFunction());

@@ -57,9 +57,9 @@ public static ExpressionNode parseCUDA(Source source) {
     ExpressionNode expression = parser.expr().result;
     Optional<GrCUDAParserException> maybeException = parserErrorListener.getException();
     if (maybeException.isPresent()) {
-       throw maybeException.get();
+      throw maybeException.get();
     } else {
-       return expression;
+      return expression;
     }
 }
 
@@ -68,19 +68,20 @@ private static class ParserErrorListener extends BaseErrorListener {
     private Source source;
 
     ParserErrorListener(Source source) {
-        this.source = source;
+      this.source = source;
     }
-  
+
     @Override
-    public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine,
-    	                    String msg, RecognitionException e) {
-        Token token = (Token) offendingSymbol;
-        exception = new GrCUDAParserException(msg, source, line, charPositionInLine,
-                                              Math.max(token.getStopIndex() - token.getStartIndex(), 0));
+    public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                            int line, int charPositionInLine,
+                            String msg, RecognitionException e) {
+      Token token = (Token) offendingSymbol;
+      exception = new GrCUDAParserException(msg, source, line, charPositionInLine,
+                                            Math.max(token.getStopIndex() - token.getStartIndex(), 0));
     }
-    
+
     public Optional<GrCUDAParserException> getException() {
-        return Optional.ofNullable(exception);
+      return Optional.ofNullable(exception);
     }
 }
 }
@@ -153,7 +154,7 @@ constFactor returns [ExpressionNode result]
 // lexer
 
 String: '"' StringChar* '"';
-Identifier: Letter (Letter | Digit)+;
+Identifier: Letter (Letter | Digit)*;
 IntegerLiteral: Digit+;
 
 fragment Digit: [0-9];
