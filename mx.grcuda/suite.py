@@ -30,7 +30,7 @@ suite = {
     #  METADATA
     #
     # --------------------------------------------------------------------------------------------------------------
-    "mxversion": "5.190.1",
+    "mxversion": "5.256.3",
     "name": "grcuda",
     "versionConflictResolution": "latest",
     "url": "https://github.com/brighterion-rnd/grcuda",
@@ -40,7 +40,7 @@ suite = {
         "write" : "git@github.com:brighterion-rnd/grcuda.git",
     },
 
-    "version": "1.0.0",
+    "version": "1.0.1",
     "release": False,
     "groupId": "com.nvidia.grcuda",
 
@@ -64,11 +64,12 @@ suite = {
     "imports": {
         "suites": [
             {
-                "name": "truffle",
-                "version": "c541f641249fb5d615aa8e375ddc950d3b5b3715",
-                "subdir": True,
-                "urls": [
-                    {"url": "https://github.com/oracle/graal", "kind": "git"},
+                "name" : "truffle",
+                "subdir" : True,
+                "version" : "b7bd713c07c5bd22269b21cd0e7690b48b50ba1e",
+                "urls" : [
+                    {"url": "https://github.com/oracle/graal.git", "kind": "git"},
+                  {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
                 ]
             },
         ],

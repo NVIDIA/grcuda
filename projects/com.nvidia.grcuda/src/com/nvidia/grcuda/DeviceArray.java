@@ -121,7 +121,7 @@ public final class DeviceArray implements TruffleObject {
         this.numElements = numElements;
         this.elementType = elementType;
         this.sizeBytes = numElements * elementType.getSizeBytes();
-        this.nativeView = runtime.cudaMallocManaged(this.sizeBytes);
+        this.nativeView = runtime.cudaMalloc(this.sizeBytes);
     }
 
     long getSizeBytes() {

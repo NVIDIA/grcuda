@@ -27,19 +27,21 @@
  */
 package com.nvidia.grcuda.test;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.function.Function;
-
+import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
+import com.nvidia.grcuda.gpu.OffheapMemory;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.function.Function;
+
+import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 public class CUBLASTest {
@@ -67,6 +69,46 @@ public class CUBLASTest {
 
     public CUBLASTest(char typeChar) {
         this.typeChar = typeChar;
+    }
+
+    @Test
+    public void testSetVector() {
+        String cudaType = "float";
+
+        final int numElements = 1000;
+        final int numBytesPerFloat = 4;
+        final int numBytes = numElements * numBytesPerFloat;
+        try (OffheapMemory hostMemory = new OffheapMemory(numBytes)) {
+            LittleEndianNativeArrayView hostArray = hostMemory.getLittleEndianView();
+            float[] original = new float[numElements];
+            for (int i = 0; i < numElements; ++i) {
+                float value = new java.util.Random().nextFloat();
+                original[i] = value;
+                hostArray.setFloat(i, value);
+            }
+            try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+                // create DeviceArray and copy content from off-heap host memory into it
+                Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
+                Value deviceArray = createDeviceArray.execute(cudaType, numElements);
+                deviceArray.invokeMember("copyFrom", hostMemory.getPointer(), numElements);
+
+                // Verify content of host array
+                for (int i = 0; i < numElements; ++i) {
+                    assertEquals(original[i], hostArray.getFloat(i), 1E-7f);
+                }
+
+                Value cublasSetVector = ctx.eval("grcuda", "cublasSetVector");
+                cublasSetVector.execute(numElements, numBytesPerFloat, hostMemory.getPointer(), 1, deviceArray, 1);
+
+                // Verify content of device array
+                for (int i = 0; i < numElements; ++i) {
+                    System.out.println(original[i] + ", " + deviceArray.getArrayElement(i).asFloat());
+                    assertEquals(original[i], deviceArray.getArrayElement(i).asFloat(), 1E-7f);
+                }
+
+            }
+        }
+
     }
 
     /**

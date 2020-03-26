@@ -63,6 +63,11 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     }
 
     @Override
+    protected Object getLanguageView(GrCUDAContext context, Object value) {
+        return super.getLanguageView(context, value);
+    }
+
+    @Override
     protected CallTarget parse(ParsingRequest request) {
         ExpressionNode expression = new ParserAntlr().parse(request.getSource());
         GrCUDARootNode newParserRoot = new GrCUDARootNode(this, expression);
@@ -71,6 +76,10 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     public static GrCUDALanguage getCurrentLanguage() {
         return TruffleLanguage.getCurrentLanguage(GrCUDALanguage.class);
+    }
+
+    public static GrCUDAContext getCurrentContext() {
+        return TruffleLanguage.getCurrentContext(GrCUDALanguage.class);
     }
 
     @Override

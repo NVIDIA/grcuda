@@ -28,13 +28,6 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import static com.nvidia.grcuda.functions.Function.checkArgumentLength;
-import static com.nvidia.grcuda.functions.Function.expectInt;
-import static com.nvidia.grcuda.functions.Function.expectLong;
-import static com.nvidia.grcuda.functions.Function.expectPositiveLong;
-
-import java.util.HashMap;
-import org.graalvm.collections.Pair;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -55,6 +48,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.collections.Pair;
+
+import java.util.HashMap;
+
+import static com.nvidia.grcuda.functions.Function.*;
 
 public final class CUDARuntime {
 
@@ -111,13 +109,13 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
-    public GPUPointer cudaMalloc(long numBytes) {
+    public LittleEndianNativeArrayView cudaMalloc(long numBytes) {
         try (UnsafeHelper.PointerObject outPointer = UnsafeHelper.createPointerObject()) {
             Object callable = CUDARuntimeFunction.CUDA_MALLOC.getSymbol(this);
             Object result = INTEROP.execute(callable, outPointer.getAddress(), numBytes);
             checkCUDAReturnCode(result, "cudaMalloc");
             long addressAllocatedMemory = outPointer.getValueOfPointer();
-            return new GPUPointer(addressAllocatedMemory);
+            return new LittleEndianNativeArrayView(addressAllocatedMemory, numBytes);
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -165,6 +163,36 @@ public final class CUDARuntime {
             Object callable = CUDARuntimeFunction.CUDA_DEVICESYNCHRONIZE.getSymbol(this);
             Object result = INTEROP.execute(callable);
             checkCUDAReturnCode(result, "cudaDeviceSynchronize");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    @TruffleBoundary
+    public void cudaMemcpyHostToDevice(long destPointer, long fromPointer, long numBytesToCopy) {
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_MEMCPY.getSymbol(this);
+            if (numBytesToCopy < 0) {
+                throw new IllegalArgumentException("requested negative number of bytes to copy " + numBytesToCopy);
+            }
+            final long cudaMemcpyDefault = 1;
+            Object result = INTEROP.execute(callable, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
+            checkCUDAReturnCode(result, "cudaMemcpy");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    @TruffleBoundary
+    public void cudaMemcpyDeviceToHost(long destPointer, long fromPointer, long numBytesToCopy) {
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_MEMCPY.getSymbol(this);
+            if (numBytesToCopy < 0) {
+                throw new IllegalArgumentException("requested negative number of bytes to copy " + numBytesToCopy);
+            }
+            final long cudaMemcpyDefault = 2;
+            Object result = INTEROP.execute(callable, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
+            checkCUDAReturnCode(result, "cudaMemcpy");
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }

@@ -28,9 +28,6 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import java.io.PrintStream;
-import java.util.ArrayList;
-
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.gpu.UnsafeHelper.PointerArray;
@@ -40,6 +37,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+
+import java.io.PrintStream;
+import java.util.ArrayList;
 
 public class NVRuntimeCompiler {
 
@@ -61,7 +61,7 @@ public class NVRuntimeCompiler {
             NVRTCResult compileResult = nvrtcCompileProgram(program, compileOpts);
             if (compileResult != NVRTCResult.NVRTC_SUCCESS) {
                 String compileLog = getProgramLog(program);
-                PrintStream err = new PrintStream(GrCUDALanguage.getCurrentLanguage().getContextReference().get().getEnv().err());
+                PrintStream err = new PrintStream(GrCUDALanguage.getCurrentContext().getEnv().err());
                 err.println("compile result: " + compileResult);
                 err.println("program log: " + compileLog);
                 throw new NVRTCException(compileResult.errorCode, compileLog);

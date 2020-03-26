@@ -28,11 +28,6 @@
  */
 package com.nvidia.grcuda.cublas;
 
-import static com.nvidia.grcuda.functions.Function.INTEROP;
-import static com.nvidia.grcuda.functions.Function.expectLong;
-
-import java.util.ArrayList;
-
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
@@ -51,6 +46,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+
+import java.util.ArrayList;
+
+import static com.nvidia.grcuda.functions.Function.INTEROP;
+import static com.nvidia.grcuda.functions.Function.expectLong;
 
 public class CUBLASRegistry {
     public static final String DEFAULT_LIBRARY = "libcublas.so";
@@ -222,6 +222,18 @@ public class CUBLASRegistry {
     private static final ArrayList<ExternalFunctionFactory> functions = new ArrayList<>();
 
     static {
+        /*
+        cublasStatus_t cublasSetVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
+        cublasStatus_t cublasGetVector(int n, int elemSize, const void *x, int incx, void *y, int incy)
+        cublasStatus_t cublasSetMatrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb)
+        cublasStatus_t cublasGetMatrix(int rows, int cols, int elemSize, const void *A, int lda, void *B, int ldb)
+        */
+        functions.add(new ExternalFunctionFactory("cublasSetVector", "cublasSetVector", "(sint32, sint32, pointer, sint32, pointer, sint32): sint32"));
+        functions.add(new ExternalFunctionFactory("cublasGetVector", "cublasGetVector", "(sint32, sint32, pointer, sint32, pointer, sint32): sint32"));
+
+        functions.add(new ExternalFunctionFactory("cublasSetMatrix", "cublasSetMatrix", "(sint32, sint32, sint32, pointer, sint32, pointer, sint32): sint32"));
+        functions.add(new ExternalFunctionFactory("cublasGetMatrix", "cublasGetMatrix", "(sint32, sint32, sint32, pointer, sint32, pointer, sint32): sint32"));
+
         for (char type : new char[]{'S', 'D', 'C', 'Z'}) {
             functions.add(new ExternalFunctionFactory("cublas" + type + "axpy", "cublas" + type + "axpy_v2",
                             "(sint64, sint32, pointer, pointer, sint32, pointer, sint32): sint32"));

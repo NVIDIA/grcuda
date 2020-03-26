@@ -16,6 +16,7 @@ workingsets.xml
 GRCUDA.dist
 GRCUDA_UNIT_TESTS.dist
 mx.grcuda/eclipse-launches
+mx.grcuda/suite.py
 *.json
 .checkstyle
 *.bc

@@ -27,20 +27,20 @@
  */
 package com.nvidia.grcuda.test;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+
+import static org.junit.Assert.*;
 
 public class BindKernelTest {
 
@@ -68,8 +68,11 @@ public class BindKernelTest {
         String cubinFileName = sourceFile.getParent() + File.separator + "inc_kernel.ptx";
 
         // Compile source file with NVCC
-        Process compiler = Runtime.getRuntime().exec("nvcc --ptx " +
-                        sourceFile.getAbsolutePath() + " -o " + cubinFileName);
+        String command = "nvcc " +
+                "--compiler-bindir=/usr/lib/llvm-8/bin/clang++ -ptx " +
+                sourceFile.getAbsolutePath() + " -o " + cubinFileName;
+        System.out.println(command);
+        Process compiler = Runtime.getRuntime().exec(command);
         BufferedReader output = new BufferedReader(new InputStreamReader(compiler.getErrorStream()));
         int nvccReturnCode = compiler.waitFor();
         output.lines().forEach(System.out::println);
