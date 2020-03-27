@@ -34,6 +34,7 @@ import java.util.ArrayList;
 
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
@@ -71,6 +72,7 @@ public final class Kernel implements TruffleObject {
         this.kernelFunction = kernelFunction;
         this.kernelSignature = kernelSignature;
         this.argumentTypes = parseSignature(kernelSignature);
+        kernelModule.incrementRefCount();
     }
 
     public Kernel(CUDARuntime cudaRuntime, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
@@ -82,6 +84,7 @@ public final class Kernel implements TruffleObject {
         this.kernelSignature = kernelSignature;
         this.argumentTypes = parseSignature(kernelSignature);
         this.ptxCode = ptx;
+        kernelModule.incrementRefCount();
     }
 
     public void incrementLaunchCount() {
@@ -177,7 +180,7 @@ public final class Kernel implements TruffleObject {
                     type = ArgumentType.FLOAT64;
                     break;
                 default:
-                    throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
+                    throw new GrCUDAException("invalid type identifier in kernel signature: " + s);
             }
             args.add(type);
         }
@@ -192,6 +195,12 @@ public final class Kernel implements TruffleObject {
 
     public void dispose() {
         kernelModule.decrementRefCount();
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        kernelModule.decrementRefCount();
+        super.finalize();
     }
 
     @Override

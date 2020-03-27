@@ -528,14 +528,19 @@ public final class CUDARuntime {
         if (loadedModules.containsKey(cubinName)) {
             throw new GrCUDAException("A module for " + cubinName + " was already loaded.");
         }
+        CUModule module = null;
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULELOAD.getSymbol(this);
-            Object result = INTEROP.execute(callable,
-                            modulePtr.getAddress(), cubinName);
+            Object result = INTEROP.execute(callable, modulePtr.getAddress(), cubinName);
             checkCUReturnCode(result, "cuModuleLoad");
-            CUModule module = new CUModule(cubinName, modulePtr.getValue());
+            module = new CUModule(cubinName, modulePtr.getValue());
             loadedModules.put(cubinName, module);
             return module;
+        } catch (GrCUDAException e) {
+            if (module != null) {
+                cuModuleUnload(module);
+            }
+            throw e;
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -547,14 +552,20 @@ public final class CUDARuntime {
         if (loadedModules.containsKey(moduleName)) {
             throw new GrCUDAException("A module for " + moduleName + " was already loaded.");
         }
+        CUModule module = null;
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULELOADDATA.getSymbol(this);
             Object result = INTEROP.execute(callable,
                             modulePtr.getAddress(), ptx);
             checkCUReturnCode(result, "cuModuleLoadData");
-            CUModule module = new CUModule(moduleName, modulePtr.getValue());
+            module = new CUModule(moduleName, modulePtr.getValue());
             loadedModules.put(moduleName, module);
             return module;
+        } catch (GrCUDAException e) {
+            if (module != null) {
+                cuModuleUnload(module);
+            }
+            throw e;
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -562,6 +573,7 @@ public final class CUDARuntime {
 
     @TruffleBoundary
     public void cuModuleUnload(CUModule module) {
+        loadedModules.remove(module.cubinFile);
         try {
             Object callable = CUDADriverFunction.CU_MODULEUNLOAD.getSymbol(this);
             Object result = INTEROP.execute(callable, module.module);
