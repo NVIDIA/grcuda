@@ -31,6 +31,7 @@ package com.nvidia.grcuda.functions;
 import java.util.ArrayList;
 
 import com.nvidia.grcuda.Binding;
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.parser.antlr.NIDLParser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -41,9 +42,12 @@ public class BindAllFunction extends Function {
 
     @SuppressWarnings("unused") private final CUDARuntime cudaRuntime;
 
-    public BindAllFunction(CUDARuntime cudaRuntime) {
+    // private final Namespace rootNamespace;
+
+    public BindAllFunction(GrCUDAContext context) {
         super("bindall");
-        this.cudaRuntime = cudaRuntime;
+        this.cudaRuntime = context.getCUDARuntime();
+        // this.rootNamespace = context.getRootNamespace();
     }
 
     @Override
@@ -51,12 +55,16 @@ public class BindAllFunction extends Function {
     public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
         checkArgumentLength(arguments, 3);
 
-        String namespace = expectString(arguments[0], "argument 1 of bindkernel must be namespace string");
+        String namespaceName = expectString(arguments[0], "argument 1 of bindkernel must be namespace string");
         String libraryFile = expectString(arguments[1], "argument 2 of bindall must be library file name (.so)");
         String nidlFile = expectString(arguments[2], "argument 3 of bindkall must bei NIDL file name (.nidl)");
 
         ArrayList<Binding> bindings = NIDLParser.parseNIDLFile(nidlFile);
-        bindings.forEach(binding -> System.out.println(binding));
-        return "bindall(namespace=" + namespace + ", libraryFile=" + libraryFile + ", nidlFile=" + nidlFile + ")";
+        // Namespace namespace = new Namespace(namespaceName);
+        bindings.forEach(binding -> {
+            System.out.println(binding);
+        });
+
+        return "bindall(namespace=" + namespaceName + ", libraryFile=" + libraryFile + ", nidlFile=" + nidlFile + ")";
     }
 }

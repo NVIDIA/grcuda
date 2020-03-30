@@ -75,7 +75,7 @@ public final class GrCUDAContext {
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
         namespace.addNamespace(namespace);
         namespace.addFunction(new BindFunction());
-        namespace.addFunction(new BindAllFunction(cudaRuntime));
+        namespace.addFunction(new BindAllFunction(this));
         namespace.addFunction(new DeviceArrayFunction(cudaRuntime));
         namespace.addFunction(new MapFunction());
         namespace.addFunction(new ShredFunction());

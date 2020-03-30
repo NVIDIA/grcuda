@@ -31,14 +31,18 @@ package com.nvidia.grcuda.gpu;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
+import com.nvidia.grcuda.Argument;
 import com.nvidia.grcuda.DeviceArray;
 import com.nvidia.grcuda.DeviceArray.MemberSet;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.MultiDimDeviceArray;
+import com.nvidia.grcuda.Type;
+import com.nvidia.grcuda.TypeException;
+import com.nvidia.grcuda.gpu.CUDARuntime.CUModule;
 import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,33 +62,49 @@ public final class Kernel implements TruffleObject {
 
     private final CUDARuntime cudaRuntime;
     private final String kernelName;
-    private final CUDARuntime.CUModule kernelModule;
-    private final long kernelFunction;
-    private final String kernelSignature;
+    private final long nativeKernelFunctionHandle;
+    private final CUModule module;
+    private final Argument[] kernelArguments;
     private int launchCount = 0;
-    private ArgumentType[] argumentTypes;
     private String ptxCode;
 
-    public Kernel(CUDARuntime cudaRuntime, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction, String kernelSignature) {
-        this.cudaRuntime = cudaRuntime;
-        this.kernelName = kernelName;
-        this.kernelModule = kernelModule;
-        this.kernelFunction = kernelFunction;
-        this.kernelSignature = kernelSignature;
-        this.argumentTypes = parseSignature(kernelSignature);
-        kernelModule.incrementRefCount();
+    /**
+     * Create a kernel without PTX code.
+     *
+     * @param cudaRuntime captured reference to the CUDA runtime instance
+     * @param kernelName name of the kernel symbol
+     * @param kernelFunction native pointer to the kernel function (CUfunction)
+     * @param kernelSignature signature string of the kernel (NFI or NIDL)
+     * @param module CUmodule that contains the kernel function
+     */
+    public Kernel(CUDARuntime cudaRuntime, String kernelName, long kernelFunction,
+                    String kernelSignature, CUModule module) {
+        this(cudaRuntime, kernelName, kernelFunction, kernelSignature, module, "");
     }
 
-    public Kernel(CUDARuntime cudaRuntime, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
-                    String kernelSignature, String ptx) {
+    /**
+     * Create a kernel and hold on to the PTX code.
+     *
+     * @param cudaRuntime captured reference to the CUDA runtime instance
+     * @param kernelName name of the kernel symbol
+     * @param kernelFunction native pointer to the kernel function (CUfunction)
+     * @param kernelSignature signature string of the kernel (NFI or NIDL)
+     * @param module CUmodule that contains the kernel function
+     * @param ptx PTX source code for the kernel.
+     */
+    public Kernel(CUDARuntime cudaRuntime, String kernelName, long kernelFunction,
+                    String kernelSignature, CUModule module, String ptx) {
+        try {
+            this.kernelArguments = Argument.parseSignature(kernelSignature);
+        } catch (TypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(e.getMessage());
+        }
         this.cudaRuntime = cudaRuntime;
         this.kernelName = kernelName;
-        this.kernelModule = kernelModule;
-        this.kernelFunction = kernelFunction;
-        this.kernelSignature = kernelSignature;
-        this.argumentTypes = parseSignature(kernelSignature);
+        this.nativeKernelFunctionHandle = kernelFunction;
+        this.module = module;
         this.ptxCode = ptx;
-        kernelModule.incrementRefCount();
     }
 
     public void incrementLaunchCount() {
@@ -95,38 +115,50 @@ public final class Kernel implements TruffleObject {
         return cudaRuntime;
     }
 
-    public ArgumentType[] getArgumentTypes() {
-        return argumentTypes;
+    public Argument[] getArguments() {
+        return kernelArguments;
     }
 
-    KernelArguments createKernelArguments(Object[] args, InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
+    KernelArguments createKernelArguments(Object[] args,
+                    InteropLibrary int8Access, InteropLibrary int16Access,
+                    InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
                     throws UnsupportedTypeException, ArityException {
-        if (args.length != argumentTypes.length) {
+        if (args.length != kernelArguments.length) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(argumentTypes.length, args.length);
+            throw ArityException.create(kernelArguments.length, args.length);
         }
         KernelArguments kernelArgs = new KernelArguments(args.length);
-        for (int argIdx = 0; argIdx < argumentTypes.length; argIdx++) {
-            ArgumentType type = argumentTypes[argIdx];
+        for (int argIdx = 0; argIdx < kernelArguments.length; argIdx++) {
+            Type type = kernelArguments[argIdx].getType();
             try {
                 switch (type) {
-                    case INT32:
+                    case BYTE:
+                        UnsafeHelper.Integer8Object int8 = UnsafeHelper.createInteger8Object();
+                        int8.setValue(int8Access.asByte(args[argIdx]));
+                        kernelArgs.setArgument(argIdx, int8);
+                        break;
+                    case SHORT:
+                        UnsafeHelper.Integer16Object int16 = UnsafeHelper.createInteger16Object();
+                        int16.setValue(int16Access.asShort(args[argIdx]));
+                        kernelArgs.setArgument(argIdx, int16);
+                        break;
+                    case INT:
                         UnsafeHelper.Integer32Object int32 = UnsafeHelper.createInteger32Object();
                         int32.setValue(int32Access.asInt(args[argIdx]));
                         kernelArgs.setArgument(argIdx, int32);
                         break;
-                    case INT64:
+                    case LONG:
                         UnsafeHelper.Integer64Object int64 = UnsafeHelper.createInteger64Object();
                         int64.setValue(int64Access.asLong(args[argIdx]));
                         kernelArgs.setArgument(argIdx, int64);
                         break;
-                    case FLOAT32:
+                    case FLOAT:
                         UnsafeHelper.Float32Object fp32 = UnsafeHelper.createFloat32Object();
                         // going via "double" to allow floats to be initialized with doubles
                         fp32.setValue((float) doubleAccess.asDouble(args[argIdx]));
                         kernelArgs.setArgument(argIdx, fp32);
                         break;
-                    case FLOAT64:
+                    case DOUBLE:
                         UnsafeHelper.Float64Object fp64 = UnsafeHelper.createFloat64Object();
                         fp64.setValue(doubleAccess.asDouble(args[argIdx]));
                         kernelArgs.setArgument(argIdx, fp64);
@@ -156,64 +188,17 @@ public final class Kernel implements TruffleObject {
         return kernelArgs;
     }
 
-    private static ArgumentType[] parseSignature(String kernelSignature) {
-        CompilerAsserts.neverPartOfCompilation();
-        ArrayList<ArgumentType> args = new ArrayList<>();
-        for (String s : kernelSignature.trim().split(",")) {
-            ArgumentType type;
-            switch (s.trim()) {
-                case "pointer":
-                    type = ArgumentType.POINTER;
-                    break;
-                case "uint64":
-                case "sint64":
-                    type = ArgumentType.INT64;
-                    break;
-                case "uint32":
-                case "sint32":
-                    type = ArgumentType.INT32;
-                    break;
-                case "float":
-                    type = ArgumentType.FLOAT32;
-                    break;
-                case "double":
-                    type = ArgumentType.FLOAT64;
-                    break;
-                default:
-                    throw new GrCUDAException("invalid type identifier in kernel signature: " + s);
-            }
-            args.add(type);
+    public long getKernelFunctionHandle() {
+        if (module.isClosed()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException("CUmodule containing kernel " + kernelName + " is already closed");
         }
-        ArgumentType[] argArray = new ArgumentType[args.size()];
-        args.toArray(argArray);
-        return argArray;
-    }
-
-    public long getKernelFunction() {
-        return kernelFunction;
-    }
-
-    public void dispose() {
-        kernelModule.decrementRefCount();
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        kernelModule.decrementRefCount();
-        super.finalize();
+        return nativeKernelFunctionHandle;
     }
 
     @Override
     public String toString() {
-        return "Kernel(" + kernelName + ", " + kernelSignature + ", launchCount=" + launchCount + ")";
-    }
-
-    private enum ArgumentType {
-        POINTER,
-        INT32,
-        INT64,
-        FLOAT32,
-        FLOAT64;
+        return "Kernel(" + kernelName + ", " + Arrays.toString(kernelArguments) + ", launchCount=" + launchCount + ")";
     }
 
     public String getPTX() {

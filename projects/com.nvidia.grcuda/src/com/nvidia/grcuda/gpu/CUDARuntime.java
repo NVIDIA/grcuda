@@ -490,36 +490,24 @@ public final class CUDARuntime {
     @TruffleBoundary
     public Kernel loadKernel(String cubinFile, String kernelName, String signature) {
         CUModule module = loadedModules.get(cubinFile);
-        try {
-            if (module == null) {
-                module = cuModuleLoad(cubinFile);
-            }
-            long kernelFunction = cuModuleGetFunction(module, kernelName);
-            return new Kernel(this, kernelName, module, kernelFunction, signature);
-        } catch (Exception e) {
-            if ((module != null) && (module.getRefCount() == 1)) {
-                cuModuleUnload(module);
-            }
-            throw e;
+        if (module == null) {
+            // load module as it is not yet loaded
+            module = cuModuleLoad(cubinFile);
+            loadedModules.put(cubinFile, module);
         }
+        long kernelFunction = cuModuleGetFunction(module, kernelName);
+        return new Kernel(this, kernelName, kernelFunction, signature, module);
     }
 
     @TruffleBoundary
     public Kernel buildKernel(String code, String kernelName, String signature) {
         String moduleName = "truffle" + context.getNextModuleId();
         PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14");
-        CUModule module = null;
-        try {
-            module = cuModuleLoadData(ptx.getPtxSource(), moduleName);
-            long kernelFunction = cuModuleGetFunction(module, ptx.getLoweredKernelName());
-            return new Kernel(this, ptx.getLoweredKernelName(), module, kernelFunction,
-                            signature, ptx.getPtxSource());
-        } catch (Exception e) {
-            if (module != null) {
-                cuModuleUnload(module);
-            }
-            throw e;
-        }
+        CUModule module = cuModuleLoadData(ptx.getPtxSource(), moduleName);
+        loadedModules.put(moduleName, module);
+        long kernelFunctionHandle = cuModuleGetFunction(module, ptx.getLoweredKernelName());
+        return new Kernel(this, ptx.getLoweredKernelName(), kernelFunctionHandle,
+                        signature, module, ptx.getPtxSource());
     }
 
     @TruffleBoundary
@@ -528,19 +516,11 @@ public final class CUDARuntime {
         if (loadedModules.containsKey(cubinName)) {
             throw new GrCUDAException("A module for " + cubinName + " was already loaded.");
         }
-        CUModule module = null;
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULELOAD.getSymbol(this);
             Object result = INTEROP.execute(callable, modulePtr.getAddress(), cubinName);
             checkCUReturnCode(result, "cuModuleLoad");
-            module = new CUModule(cubinName, modulePtr.getValue());
-            loadedModules.put(cubinName, module);
-            return module;
-        } catch (GrCUDAException e) {
-            if (module != null) {
-                cuModuleUnload(module);
-            }
-            throw e;
+            return new CUModule(cubinName, modulePtr.getValue());
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -552,20 +532,12 @@ public final class CUDARuntime {
         if (loadedModules.containsKey(moduleName)) {
             throw new GrCUDAException("A module for " + moduleName + " was already loaded.");
         }
-        CUModule module = null;
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULELOADDATA.getSymbol(this);
             Object result = INTEROP.execute(callable,
                             modulePtr.getAddress(), ptx);
             checkCUReturnCode(result, "cuModuleLoadData");
-            module = new CUModule(moduleName, modulePtr.getValue());
-            loadedModules.put(moduleName, module);
-            return module;
-        } catch (GrCUDAException e) {
-            if (module != null) {
-                cuModuleUnload(module);
-            }
-            throw e;
+            return new CUModule(moduleName, modulePtr.getValue());
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -573,10 +545,9 @@ public final class CUDARuntime {
 
     @TruffleBoundary
     public void cuModuleUnload(CUModule module) {
-        loadedModules.remove(module.cubinFile);
         try {
             Object callable = CUDADriverFunction.CU_MODULEUNLOAD.getSymbol(this);
-            Object result = INTEROP.execute(callable, module.module);
+            Object result = INTEROP.execute(callable, module.modulePointer);
             checkCUReturnCode(result, "cuModuleUnload");
         } catch (InteropException e) {
             throw new GrCUDAException(e);
@@ -584,11 +555,18 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
+    /**
+     * Get function handle to kernel in module.
+     *
+     * @param kernelModule CUmodule containing the kernel function
+     * @param kernelName
+     * @return native CUfunction function handle
+     */
     public long cuModuleGetFunction(CUModule kernelModule, String kernelName) {
         try (UnsafeHelper.Integer64Object functionPtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULEGETFUNCTION.getSymbol(this);
             Object result = INTEROP.execute(callable,
-                            functionPtr.getAddress(), kernelModule.module, kernelName);
+                            functionPtr.getAddress(), kernelModule.getModulePointer(), kernelName);
             checkCUReturnCode(result, "cuModuleGetFunction");
             return functionPtr.getValue();
         } catch (InteropException e) {
@@ -615,7 +593,7 @@ public final class CUDARuntime {
             Dim3 gridSize = config.getGridSize();
             Dim3 blockSize = config.getBlockSize();
             Object result = INTEROP.execute(callable,
-                            kernel.getKernelFunction(),
+                            kernel.getKernelFunctionHandle(),
                             gridSize.getX(),
                             gridSize.getY(),
                             gridSize.getZ(),
@@ -748,11 +726,12 @@ public final class CUDARuntime {
         // unload all modules
         for (CUModule module : loadedModules.values()) {
             try {
-                cuModuleUnload(module);
+                module.close();
             } catch (Exception e) {
                 /* ignore exception */
             }
         }
+        loadedModules.clear();
     }
 
     public enum CUDADriverFunction {
@@ -900,41 +879,35 @@ public final class CUDARuntime {
         }
     }
 
-    final class CUModule {
+    final class CUModule implements AutoCloseable {
         final String cubinFile;
-        final long module;
-        int refCount;
+        /** Pointer to the native CUmodule object. */
+        final long modulePointer;
+        boolean closed = false;
 
-        CUModule(String cubinFile, long module) {
+        CUModule(String cubinFile, long modulePointer) {
             this.cubinFile = cubinFile;
-            this.module = module;
-            this.refCount = 1;
+            this.modulePointer = modulePointer;
+            this.closed = false;
         }
 
         public long getModulePointer() {
-            return module;
-        }
-
-        public int getRefCount() {
-            return refCount;
-        }
-
-        public void incrementRefCount() {
-            refCount += 1;
-        }
-
-        public void decrementRefCount() {
-            refCount -= 1;
-            if (refCount == 0) {
-                cuModuleUnload(this);
+            if (closed) {
+                CompilerDirectives.transferToInterpreter();
+                throw new GrCUDAException(String.format("cannot get module pointer, module (%016x) already closed", modulePointer));
             }
+            return modulePointer;
+        }
+
+        public boolean isClosed() {
+            return closed;
         }
 
         @Override
         public boolean equals(Object other) {
             if (other instanceof CUModule) {
                 CUModule otherModule = (CUModule) other;
-                return otherModule.cubinFile.equals(cubinFile);
+                return otherModule.cubinFile.equals(cubinFile) && otherModule.closed == closed;
             } else {
                 return false;
             }
@@ -943,6 +916,14 @@ public final class CUDARuntime {
         @Override
         public int hashCode() {
             return cubinFile.hashCode();
+        }
+
+        @Override
+        public void close() {
+            if (!closed) {
+                cuModuleUnload(this);
+                closed = true;
+            }
         }
     }
 }
