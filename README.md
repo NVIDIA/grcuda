@@ -27,7 +27,7 @@ grCUDA can be used in the binaries of the GraalVM languages (`lli`, `graalpython
 or copied into `jre/languages/grcuda` of the Graal installation. Note that `--jvm`
 and `--polyglot` must be specified in both cases as well.
 
-The following example shows how create a GPU kernel and two device arrays
+The following example shows how to create a GPU kernel and two device arrays
 in JavaScript (NodeJS) and invoke the kernel:
 
 ```JavaScript
