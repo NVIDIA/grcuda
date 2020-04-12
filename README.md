@@ -242,6 +242,13 @@ mx --dynamicimports graalpython --cp-sfx `pwd`/mxbuild/dists/jdk1.8/grcuda.jar \
     gu rebuild-images polyglot
 	```
 
+	* If Graalpython is installed, create a `virtualenv` for it
+
+	```
+    graalpython -m venv ~/graalpython_venv
+    source ~/graalpython_venv/bin/activate
+	```
+
 7. Install GrCUDA with `./install.sh`
 
 8. Setup your IDE with `mx ideinit`
