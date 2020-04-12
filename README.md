@@ -193,3 +193,61 @@ mx --dynamicimports graalpython --cp-sfx `pwd`/mxbuild/dists/jdk1.8/grcuda.jar \
 >>> da[0:10]
 [1.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ```
+
+## Step-by-step development guide
+
+* This section contains all the steps required to setup GrCUDA if your goal is to contribute to its development, or simply hack with it. This guide refers to GraalVM Community Edition JDK8 for Linux with `amd64` architectures, i.e. download releases prefixed with `graalvm-ce-java8-linux-amd64` or something like that. 
+
+1. Get the source code of GrCUDA, graal, mx
+
+	```
+	git clone https://github.com/oracle/graal.git
+	git clone https://github.com/graalvm/mx.git
+	git clone https://github.com/NVIDIA/grcuda.git (this can be replaced with a fork)
+	```
+
+2. Download the right JDK
+	* [Here](https://github.com/graalvm/openjdk8-jvmci-builder/releases/tag/jvmci-20.0-b02) you can find releases for GraalVM 20.0, but other versions are available on the same repository
+
+3. Download the right build for GraalVM
+	* [Here](https://github.com/graalvm/graalvm-ce-builds/releases) you can find releases for GraalVM 20.0, and more recent versions once they will become available
+
+4. Setup your CUDA environment
+    * Install CUDA and Nvidia drivers, for exampel following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=CentOS&target_version=7&target_type=rpmnetwork)
+	* Add the following to your environment (assuming that you have installed CUDA in the default `/usr/local` location, and using the `nvcc` compiler
+
+	```
+	export CUDA_DIR=/usr/local/cuda
+	export PATH=$PATH:$CUDA_DIR/bin
+	```
+
+5. Setup your GraalVM and GrCUDA environment
+	* Add the following to your environment (assuming you have installed the releases mentioned in step 2 and 3)
+
+	```
+	export PATH=~/mx:$PATH
+	export JAVA_HOME=~/openjdk1.8.0_242-jvmci-20.0-b02
+	export GRAAL_HOME=~/graalvm-ce-java8-20.0.0
+	export GRAALVM_HOME=$GRAAL_HOME
+	export PATH=$GRAAL_HOME/bin:$PATH
+	export PATH=$JAVA_HOME/bin:$PATH
+	```
+
+6. Install languages for GraalVM (optional, but recommended)
+	```
+	gu available
+    gu install native-image
+	gu install llvm-toolchain
+	gu install python 
+    gu rebuild-images polyglot
+	```
+
+7. Install GrCUDA with `./install.sh`
+
+8. Setup your IDE with `mx ideinit`
+
+9. Run tests with `mx unittest com.nvidia`
+	
+
+
+
