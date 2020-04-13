@@ -41,6 +41,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 public class ConfiguredKernel implements TruffleObject {
 
     private final Kernel kernel;
+
     private final KernelConfig config;
 
     public ConfiguredKernel(Kernel kernel, KernelConfig config) {
@@ -56,13 +57,27 @@ public class ConfiguredKernel implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object execute(Object[] arguments,
-                    @CachedLibrary(limit = "3") InteropLibrary int32Access,
-                    @CachedLibrary(limit = "3") InteropLibrary int64Access,
-                    @CachedLibrary(limit = "3") InteropLibrary doubleAccess) throws UnsupportedTypeException, ArityException {
+                   @CachedLibrary(limit = "3") InteropLibrary int32Access,
+                   @CachedLibrary(limit = "3") InteropLibrary int64Access,
+                   @CachedLibrary(limit = "3") InteropLibrary doubleAccess) throws UnsupportedTypeException, ArityException {
         kernel.incrementLaunchCount();
         try (KernelArguments args = kernel.createKernelArguments(arguments, int32Access, int64Access, doubleAccess)) {
-            kernel.getCudaRuntime().cuLaunchKernel(kernel, config, args);
+            new KernelExecution(this, args).execute();
+//            kernel.getCudaRuntime().cuLaunchKernel(kernel, config, args);
         }
         return this;
+    }
+
+    public Kernel getKernel() {
+        return kernel;
+    }
+
+    public KernelConfig getConfig() {
+        return config;
+    }
+
+    @Override
+    public String toString() {
+        return "ConfiguredKernel(" + kernel.toString() + "; " + config.toString() + ")";
     }
 }

@@ -71,16 +71,12 @@ public final class Kernel implements TruffleObject {
         this.kernelFunction = kernelFunction;
         this.kernelSignature = kernelSignature;
         this.argumentTypes = parseSignature(kernelSignature);
+        this.cudaRuntime.getExecutionContext().registerKernel(this);
     }
 
     public Kernel(CUDARuntime cudaRuntime, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
                     String kernelSignature, String ptx) {
-        this.cudaRuntime = cudaRuntime;
-        this.kernelName = kernelName;
-        this.kernelModule = kernelModule;
-        this.kernelFunction = kernelFunction;
-        this.kernelSignature = kernelSignature;
-        this.argumentTypes = parseSignature(kernelSignature);
+        this(cudaRuntime, kernelName, kernelModule, kernelFunction, kernelSignature);
         this.ptxCode = ptx;
     }
 
@@ -102,7 +98,7 @@ public final class Kernel implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(argumentTypes.length, args.length);
         }
-        KernelArguments kernelArgs = new KernelArguments(args.length);
+        KernelArguments kernelArgs = new KernelArguments(args);
         for (int argIdx = 0; argIdx < argumentTypes.length; argIdx++) {
             ArgumentType type = argumentTypes[argIdx];
             try {
@@ -349,11 +345,13 @@ public final class Kernel implements TruffleObject {
 
 final class KernelArguments implements Closeable {
 
+    private final Object[] originalArgs;
     private final UnsafeHelper.PointerArray argumentArray;
     private final ArrayList<Closeable> argumentValues = new ArrayList<>();
 
-    KernelArguments(int numArgs) {
-        this.argumentArray = UnsafeHelper.createPointerArray(numArgs);
+    KernelArguments(Object[] args) {
+        this.originalArgs = args;
+        this.argumentArray = UnsafeHelper.createPointerArray(args.length);
     }
 
     public void setArgument(int argIdx, MemoryObject obj) {
@@ -363,6 +361,14 @@ final class KernelArguments implements Closeable {
 
     long getPointer() {
         return argumentArray.getAddress();
+    }
+
+    public Object[] getOriginalArgs() {
+        return originalArgs;
+    }
+
+    public Object getOriginalArg(int index) {
+        return originalArgs[index];
     }
 
     @Override
