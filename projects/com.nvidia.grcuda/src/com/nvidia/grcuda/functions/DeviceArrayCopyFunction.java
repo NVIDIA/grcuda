@@ -27,7 +27,7 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.DeviceArray;
+import com.nvidia.grcuda.array.DeviceArray;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;

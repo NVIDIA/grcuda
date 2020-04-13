@@ -32,10 +32,10 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import com.nvidia.grcuda.DeviceArray;
-import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.GrCUDAInternalException;
-import com.nvidia.grcuda.MultiDimDeviceArray;
+import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;

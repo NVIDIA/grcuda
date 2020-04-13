@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda;
+package com.nvidia.grcuda.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -42,7 +42,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public final class MultiDimDeviceArrayView implements TruffleObject {
+public final class MultiDimDeviceArrayView extends AbstractArray implements TruffleObject {
 
     private final MultiDimDeviceArray mdDeviceArray;
     private final int thisDimension;
@@ -50,10 +50,13 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
     private final long stride;
 
     MultiDimDeviceArrayView(MultiDimDeviceArray mdDeviceArray, int dim, long offset, long stride) {
+        super(mdDeviceArray.runtime, mdDeviceArray.elementType);
         this.mdDeviceArray = mdDeviceArray;
         this.thisDimension = dim;
         this.offset = offset;
         this.stride = stride;
+        // Register the array in the GrCUDAExecutionContext;
+        this.registerArray();
     }
 
     public int getDimension() {
@@ -85,7 +88,8 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
     }
 
     @ExportMessage
-    long getArraySize() {
+    @Override
+    public long getArraySize() {
         return mdDeviceArray.getElementsInDimension(thisDimension);
     }
 

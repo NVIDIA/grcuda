@@ -63,6 +63,7 @@ public final class CUDARuntime {
     static final String NVRTC_LIBRARY_NAME = "nvrtc";
 
     private final GrCUDAContext context;
+    private final GrCUDAExecutionContext executionContext;
     private final NVRuntimeCompiler nvrtc;
 
     /**
@@ -77,6 +78,7 @@ public final class CUDARuntime {
 
     public CUDARuntime(GrCUDAContext context, Env env) {
         this.context = context;
+        this.executionContext = new GrCUDAExecutionContext();
         try {
             TruffleObject libcudart = (TruffleObject) env.parseInternal(
                             Source.newBuilder("nfi", "load " + "lib" + CUDA_RUNTIME_LIBRARY_NAME + ".so", "cudaruntime").build()).call();
@@ -97,6 +99,10 @@ public final class CUDARuntime {
 
     // using this slow/uncached instance since all calls are non-critical
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    public GrCUDAExecutionContext getExecutionContext() {
+        return executionContext;
+    }
 
     interface CallSupport {
         String getName();

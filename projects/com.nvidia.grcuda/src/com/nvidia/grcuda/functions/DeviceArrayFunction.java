@@ -31,12 +31,12 @@ package com.nvidia.grcuda.functions;
 import java.util.ArrayList;
 import java.util.Optional;
 
-import com.nvidia.grcuda.DeviceArray;
+import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAException;
-import com.nvidia.grcuda.MultiDimDeviceArray;
+import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.TypeException;
-import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

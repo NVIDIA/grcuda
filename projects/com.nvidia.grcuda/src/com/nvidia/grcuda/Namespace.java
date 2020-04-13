@@ -31,7 +31,7 @@ package com.nvidia.grcuda;
 import java.util.Optional;
 import java.util.TreeMap;
 
-import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.functions.Function;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;

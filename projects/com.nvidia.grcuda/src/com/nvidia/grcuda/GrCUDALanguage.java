@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda;
 
+import com.nvidia.grcuda.array.DeviceArray;
 import org.graalvm.options.OptionDescriptors;
 
 import com.nvidia.grcuda.nodes.ExpressionNode;

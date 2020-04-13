@@ -26,10 +26,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda;
+package com.nvidia.grcuda.array;
 
 import java.util.Arrays;
-import com.nvidia.grcuda.DeviceArray.MemberSet;
+
+import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -44,15 +46,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public class MultiDimDeviceArray implements TruffleObject {
+public class MultiDimDeviceArray extends AbstractArray implements TruffleObject {
 
     private static final MemberSet PUBLIC_MEMBERS = new MemberSet();
     private static final MemberSet MEMBERS = new MemberSet("pointer");
-
-    private final CUDARuntime runtime;
-
-    /** Data type of the elements stored in the array. */
-    private final ElementType elementType;
 
     /** Number of elements in each dimension. */
     private final long[] elementsPerDimension;
@@ -61,7 +58,7 @@ public class MultiDimDeviceArray implements TruffleObject {
     private final long[] stridePerDimension;
 
     /** Total number of elements stored in the array. */
-    private final long totalElementCount;
+    private final long numElements;
 
     /** true if data is stored in column-major format (Fortran), false row-major (C). */
     private boolean columnMajor;
@@ -71,6 +68,7 @@ public class MultiDimDeviceArray implements TruffleObject {
 
     public MultiDimDeviceArray(CUDARuntime runtime, ElementType elementType, long[] dimensions,
                     boolean useColumnMajor) {
+        super(runtime, elementType);
         if (dimensions.length < 2) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException(
@@ -85,14 +83,14 @@ public class MultiDimDeviceArray implements TruffleObject {
             }
             prod *= n;
         }
-        this.runtime = runtime;
-        this.elementType = elementType;
         this.columnMajor = useColumnMajor;
         this.elementsPerDimension = new long[dimensions.length];
         System.arraycopy(dimensions, 0, this.elementsPerDimension, 0, dimensions.length);
         this.stridePerDimension = computeStride(dimensions, columnMajor);
-        this.totalElementCount = prod;
+        this.numElements = prod;
         this.nativeView = runtime.cudaMallocManaged(getSizeBytes());
+        // Register the array in the GrCUDAExecutionContext;
+        this.registerArray();
     }
 
     private static long[] computeStride(long[] dimensions, boolean columnMajor) {
@@ -147,20 +145,16 @@ public class MultiDimDeviceArray implements TruffleObject {
         return columnMajor;
     }
 
-    long getTotalElementCount() {
-        return totalElementCount;
+    long getNumElements() {
+        return numElements;
     }
 
     final long getSizeBytes() {
-        return totalElementCount * elementType.getSizeBytes();
+        return numElements * elementType.getSizeBytes();
     }
 
     public final long getPointer() {
         return nativeView.getStartAddress();
-    }
-
-    final ElementType getElementType() {
-        return elementType;
     }
 
     final LittleEndianNativeArrayView getNativeView() {
@@ -171,7 +165,7 @@ public class MultiDimDeviceArray implements TruffleObject {
     public String toString() {
         return "MultiDimDeviceArray(elementType=" + elementType +
                         ", dims=" + Arrays.toString(elementsPerDimension) +
-                        ", Elements=" + totalElementCount +
+                        ", Elements=" + numElements +
                         ", size=" + getSizeBytes() + " bytes" +
                         ", nativeView=" + nativeView + ')';
     }
@@ -186,25 +180,23 @@ public class MultiDimDeviceArray implements TruffleObject {
     // Implementation of InteropLibrary
     //
 
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasArrayElements() {
-        return true;
-    }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    long getArraySize() {
+    @Override
+    public long getArraySize() {
         return elementsPerDimension[0];
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
+    @Override
     boolean isArrayElementReadable(long index) {
         return index >= 0 && index < elementsPerDimension[0];
     }
 
     @ExportMessage
+    @Override
     Object readArrayElement(long index) throws InvalidArrayIndexException {
         if ((index < 0) || (index >= elementsPerDimension[0])) {
             CompilerDirectives.transferToInterpreter();
@@ -241,6 +233,7 @@ public class MultiDimDeviceArray implements TruffleObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     boolean isPointer() {
         return true;
     }

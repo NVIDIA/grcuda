@@ -42,6 +42,10 @@ Library functions (non-kernels) can also be loaded, using `BindFunction`
     * It is not clear how to handle calls to the callable object. It might be required to wrap it into a custom Truffle Node
 Other stuff? E.g. `map` and `shred`, currently not documented
  
+* We also need to keep track of `DeviceArrays` and `MultiDimDeviceArray`, and possibly of scalar values, to track dependencies
+    * How do we track scalar values? They are not handled as objects in GrCUDA 
+    * One option is to turn them into size-1 arrays, and use `DeviceArrays`, or use some other wrapper function
+ 
 ## API Design 
     
 We can have explicit handles, or infer dependencies automatically
@@ -55,7 +59,10 @@ We can have explicit handles, or infer dependencies automatically
         * Expose a function in the GrCUDA DSL? More flexibility, but changing options using the DSL is not very clean
     * Problem: how to handle CPU control flow? In GrCUDA we are not aware of `if` and `for` loops on the host side
         * The DAG cannot be build statically, we need to update it as we receive scheduling orders, and decide if we can execute or not
-
+    * Problem: how do we identify if a parameter is read-only? If two kernels use the same parameter but only read from it, they can execute in parallel
+        * This is not trivial: LLVM can understand, for example, if a scalar value is read-only, but doing that with an array is not trivial
+        * Users might have to specify which parameters are read-only, which is still better than using handles
+    
 ## Open questions
 
 1. What are `map` and `shred` functions? Are they exposed to the outside?
@@ -64,3 +71,5 @@ We can have explicit handles, or infer dependencies automatically
 4. How do we modify kernel calls to add/remove sync points?
 5. How do we execute kernels in parallel? We need to have streams
 6. How do we monitor accesses to `DeviceArrays` to preserve sync points?    
+7. How do we track scalar values?
+8. How to understand if a parameter is read-only?

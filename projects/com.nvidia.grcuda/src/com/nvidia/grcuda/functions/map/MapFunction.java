@@ -29,7 +29,7 @@ package com.nvidia.grcuda.functions.map;
 
 import java.util.Arrays;
 
-import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;

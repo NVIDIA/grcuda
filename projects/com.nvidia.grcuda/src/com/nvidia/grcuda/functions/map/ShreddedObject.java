@@ -27,7 +27,7 @@
  */
 package com.nvidia.grcuda.functions.map;
 
-import com.nvidia.grcuda.DeviceArray.MemberSet;
+import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;

@@ -26,10 +26,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda;
+package com.nvidia.grcuda.array;
 
 import java.util.Arrays;
 
+import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
@@ -51,7 +52,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public final class DeviceArray implements TruffleObject {
+public final class DeviceArray extends AbstractArray implements TruffleObject {
 
     private static final String POINTER = "pointer";
     private static final String COPY_FROM = "copyFrom";
@@ -100,11 +101,6 @@ public final class DeviceArray implements TruffleObject {
         }
     }
 
-    private final CUDARuntime runtime;
-
-    /** Data type of elements stored in the array. */
-    private final ElementType elementType;
-
     /** Total number of elements stored in the array. */
     private final long numElements;
 
@@ -117,23 +113,20 @@ public final class DeviceArray implements TruffleObject {
     private final LittleEndianNativeArrayView nativeView;
 
     public DeviceArray(CUDARuntime runtime, long numElements, ElementType elementType) {
-        this.runtime = runtime;
+        super(runtime, elementType);
         this.numElements = numElements;
-        this.elementType = elementType;
         this.sizeBytes = numElements * elementType.getSizeBytes();
-        this.nativeView = runtime.cudaMallocManaged(this.sizeBytes);
+        this.nativeView = runtime.cudaMallocManaged(sizeBytes);
+        // Register the array in the GrCUDAExecutionContext;
+        this.registerArray();
     }
 
-    long getSizeBytes() {
+    final long getSizeBytes() {
         return sizeBytes;
     }
 
     public long getPointer() {
         return nativeView.getStartAddress();
-    }
-
-    public ElementType getElementType() {
-        return elementType;
     }
 
     @Override
@@ -150,12 +143,7 @@ public final class DeviceArray implements TruffleObject {
     // Implementation of InteropLibrary
 
     @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasArrayElements() {
-        return true;
-    }
-
-    @ExportMessage
+    @Override
     public long getArraySize() {
         return numElements;
     }
