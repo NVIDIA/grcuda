@@ -26,6 +26,19 @@ public class KernelExecution {
         kernel.getCudaRuntime().cuLaunchKernel(kernel, config, args);
     }
 
+    // TODO: this should be moved somewhere else, like in a higher level interface that implements
+    //  this function with different strategies
+
+    /**
+     * Computes if the "other" KernelExecution has dependencies w.r.t. this kernel,
+     * such as requiring as input a value computed by this kernel.
+     * @param other kernel for which we want to check dependencies, w.r.t. this kernel
+     * @return true IFF at least one dependency was found
+     */
+    public boolean hasDependency(KernelExecution other) {
+        return true;
+    }
+
     @Override
     public String toString() {
         return "KernelExecution(" + configuredKernel.toString() + "; args=[" +

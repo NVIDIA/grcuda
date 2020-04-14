@@ -27,22 +27,28 @@ public class GrCUDAExecutionContext {
      */
     final private Set<KernelExecution> kernelExecSet = new HashSet<>();
 
+    final private ExecutionDAG dag = new ExecutionDAG();
+
     public GrCUDAExecutionContext() {
 
     }
 
     public void registerArray(AbstractArray array) {
         arraySet.add(array);
-        System.out.println("-- added array to context: " + System.identityHashCode(array) + "; " + array.toString());
+//        System.out.println("-- added array to context: " + System.identityHashCode(array) + "; " + array.toString());
     }
 
     public void registerKernel(Kernel kernel) {
         kernelSet.add(kernel);
-        System.out.println("-- added kernel to context: " + System.identityHashCode(kernel) + "; " + kernel.toString());
+//        System.out.println("-- added kernel to context: " + System.identityHashCode(kernel) + "; " + kernel.toString());
     }
 
     public void registerExecution(KernelExecution kernel) {
-        kernelExecSet.add(kernel);
-        System.out.println("-- executing kernel: " + System.identityHashCode(kernel) + "; " + kernel.toString());
+        dag.append(kernel);
+//        System.out.println("-- executing kernel: " + System.identityHashCode(kernel) + "; " + kernel.toString());
+        System.out.println("\n///////////////////////////////\n");
+        System.out.println(dag);
     }
+
+
 }
