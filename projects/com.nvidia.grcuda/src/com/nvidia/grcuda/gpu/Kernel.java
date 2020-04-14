@@ -28,15 +28,15 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
-import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -53,7 +53,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public final class Kernel implements TruffleObject {
+public class Kernel implements TruffleObject {
 
     private final CUDARuntime cudaRuntime;
     private final String kernelName;
@@ -61,7 +61,8 @@ public final class Kernel implements TruffleObject {
     private final long kernelFunction;
     private final String kernelSignature;
     private int launchCount = 0;
-    private ArgumentType[] argumentTypes;
+    private final ArgumentType[] argumentTypes;
+    private final List<Boolean> argsAreArrays;
     private String ptxCode;
 
     public Kernel(CUDARuntime cudaRuntime, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction, String kernelSignature) {
@@ -71,6 +72,7 @@ public final class Kernel implements TruffleObject {
         this.kernelFunction = kernelFunction;
         this.kernelSignature = kernelSignature;
         this.argumentTypes = parseSignature(kernelSignature);
+        this.argsAreArrays = computeIfArgsAreArrays(this.argumentTypes);
         this.cudaRuntime.getExecutionContext().registerKernel(this);
     }
 
@@ -92,7 +94,11 @@ public final class Kernel implements TruffleObject {
         return argumentTypes;
     }
 
-    KernelArguments createKernelArguments(Object[] args, InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
+    public List<Boolean> getArgsAreArrays() {
+        return argsAreArrays;
+    }
+
+    public KernelArguments createKernelArguments(Object[] args, InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
                     throws UnsupportedTypeException, ArityException {
         if (args.length != argumentTypes.length) {
             CompilerDirectives.transferToInterpreter();
@@ -180,6 +186,10 @@ public final class Kernel implements TruffleObject {
         ArgumentType[] argArray = new ArgumentType[args.size()];
         args.toArray(argArray);
         return argArray;
+    }
+
+    private static List<Boolean> computeIfArgsAreArrays(ArgumentType[] types) {
+        return Arrays.stream(types).map(a -> a == ArgumentType.POINTER).collect(Collectors.toList());
     }
 
     public long getKernelFunction() {
@@ -343,43 +353,4 @@ public final class Kernel implements TruffleObject {
     }
 }
 
-final class KernelArguments implements Closeable {
 
-    private final Object[] originalArgs;
-    private final UnsafeHelper.PointerArray argumentArray;
-    private final ArrayList<Closeable> argumentValues = new ArrayList<>();
-
-    KernelArguments(Object[] args) {
-        this.originalArgs = args;
-        this.argumentArray = UnsafeHelper.createPointerArray(args.length);
-    }
-
-    public void setArgument(int argIdx, MemoryObject obj) {
-        argumentArray.setValueAt(argIdx, obj.getAddress());
-        argumentValues.add(obj);
-    }
-
-    long getPointer() {
-        return argumentArray.getAddress();
-    }
-
-    public Object[] getOriginalArgs() {
-        return originalArgs;
-    }
-
-    public Object getOriginalArg(int index) {
-        return originalArgs[index];
-    }
-
-    @Override
-    public void close() {
-        this.argumentArray.close();
-        for (Closeable c : argumentValues) {
-            try {
-                c.close();
-            } catch (IOException e) {
-                /* ignored */
-            }
-        }
-    }
-}

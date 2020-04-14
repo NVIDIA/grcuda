@@ -1,13 +1,18 @@
 package com.nvidia.grcuda.gpu;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Class used to track the single execution of a {@link ConfiguredKernel}.
  * The execution will be provided to the {@link GrCUDAExecutionContext} and scheduled accordingly.
  */
-public class KernelExecution {
+public class KernelExecution extends GrCUDAComputationalElement {
 
     private final Kernel kernel;
     private final ConfiguredKernel configuredKernel;
@@ -15,6 +20,7 @@ public class KernelExecution {
     private final KernelArguments args;
 
     public KernelExecution(ConfiguredKernel configuredKernel, KernelArguments args) {
+        super(new KernelExecutionInitializer(configuredKernel.getKernel(), args));
         this.configuredKernel = configuredKernel;
         this.kernel = configuredKernel.getKernel();
         this.config = configuredKernel.getConfig();
@@ -26,17 +32,16 @@ public class KernelExecution {
         kernel.getCudaRuntime().cuLaunchKernel(kernel, config, args);
     }
 
-    // TODO: this should be moved somewhere else, like in a higher level interface that implements
-    //  this function with different strategies
+    public ConfiguredKernel getConfiguredKernel() {
+        return configuredKernel;
+    }
 
-    /**
-     * Computes if the "other" KernelExecution has dependencies w.r.t. this kernel,
-     * such as requiring as input a value computed by this kernel.
-     * @param other kernel for which we want to check dependencies, w.r.t. this kernel
-     * @return true IFF at least one dependency was found
-     */
-    public boolean hasDependency(KernelExecution other) {
-        return true;
+    public KernelConfig getConfig() {
+        return config;
+    }
+
+    public KernelArguments getArgs() {
+        return args;
     }
 
     @Override
@@ -44,5 +49,24 @@ public class KernelExecution {
         return "KernelExecution(" + configuredKernel.toString() + "; args=[" +
                 Arrays.stream(args.getOriginalArgs()).map(a -> Integer.toString(System.identityHashCode(a))).collect(Collectors.joining(", ")) +
                 "])";
+    }
+}
+
+class KernelExecutionInitializer implements InitializeArgumentSet {
+    private final Kernel kernel;
+    private final KernelArguments args;
+
+    KernelExecutionInitializer(Kernel kernel, KernelArguments args) {
+        this.kernel = kernel;
+        this.args = args;
+    }
+
+    @Override
+    public Set<Object> initialize() {
+        // TODO: what aboout scalars? We cannot treat them in the same way, as they are copied and not referenced
+        //   There should be a semantic to manually specify scalar dependencies? For now we have to skip them;
+        return IntStream.range(0, args.getOriginalArgs().length).filter(i ->
+                kernel.getArgsAreArrays().get(i)
+        ).mapToObj(args::getOriginalArg).collect(Collectors.toSet());
     }
 }

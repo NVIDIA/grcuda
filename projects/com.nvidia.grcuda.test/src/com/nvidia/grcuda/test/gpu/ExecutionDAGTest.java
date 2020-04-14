@@ -2,12 +2,18 @@ package com.nvidia.grcuda.test.gpu;
 
 import com.nvidia.grcuda.gpu.ConfiguredKernel;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
+import com.nvidia.grcuda.gpu.InitializeArgumentSet;
+import com.nvidia.grcuda.gpu.Kernel;
+import com.nvidia.grcuda.gpu.KernelArguments;
 import com.nvidia.grcuda.gpu.KernelExecution;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -15,18 +21,25 @@ import static org.junit.Assert.assertTrue;
 
 public class ExecutionDAGTest {
 
-    private static class KernelExecutionTest extends KernelExecution {
-
-        List<Integer> testArguments;
-
-        KernelExecutionTest(List<Integer> arguments) {
-            super(new ConfiguredKernel(null, null), null);
-            this.testArguments = arguments;
+    /**
+     * Mock class to test the DAG execution;
+     */
+    private static class KernelExecutionTest extends GrCUDAComputationalElement {
+        KernelExecutionTest(List<Object> args) {
+            super(new KernelExecutionTestInitializer(args));
         }
-
+    }
+    /**
+     * Mock class to test KernelExecutionTest initialization;
+     */
+    private static class KernelExecutionTestInitializer implements InitializeArgumentSet {
+        List<Object> args;
+        KernelExecutionTestInitializer(List<Object> args) {
+            this.args = args;
+        }
         @Override
-        public boolean hasDependency(KernelExecution other) {
-            return true;
+        public Set<Object> initialize() {
+            return new HashSet<>(args);
         }
     }
 

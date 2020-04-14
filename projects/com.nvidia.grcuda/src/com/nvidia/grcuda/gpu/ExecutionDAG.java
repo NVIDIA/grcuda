@@ -23,7 +23,7 @@ public class ExecutionDAG {
      * Add a new computation to the graph, and compute its dependencies.
      * @param kernel a kernel computation, containing kernel configuration and input arguments.
      */
-    public void append(KernelExecution kernel) {
+    public void append(GrCUDAComputationalElement kernel) {
         // Add it to the list of vertices;
         DAGVertex newVertex = new DAGVertex(kernel);
 
@@ -36,9 +36,11 @@ public class ExecutionDAG {
 
         // For each vertex in the frontier, compute dependencies of the vertex;
         for (DAGVertex frontierVertex : frontier) {
-            if (hasDependency(frontierVertex, newVertex)) {
+            List<Object> dependencies = computeDependencies(frontierVertex, newVertex);
+            dependencies.forEach(System.out::println);
+            if (dependencies.size() > 0) {
                 // Create a new edge between the two vertices (book-keeping is automatic);
-                DAGEdge newEdge = new DAGEdge(frontierVertex, newVertex);
+                new DAGEdge(frontierVertex, newVertex, dependencies);
             }
         }
         // Remove from the frontier vertices that no longer belong to it;
@@ -49,8 +51,8 @@ public class ExecutionDAG {
         }
     }
 
-    boolean hasDependency(DAGVertex startVertex, DAGVertex endVertex) {
-        return startVertex.getKernel().hasDependency(endVertex.getKernel());
+    private List<Object> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
+        return startVertex.getKernel().computeDependencies(endVertex.getKernel());
     }
 
     public List<DAGVertex> getVertices() {
@@ -87,33 +89,33 @@ public class ExecutionDAG {
      */
     public class DAGVertex {
 
-        final KernelExecution kernel;
-        final int id;
+        private final GrCUDAComputationalElement kernel;
+        private final int id;
 
         /**
          * False only if the vertex has parent vertices.
          */
-        boolean isStart = true;
+        private boolean isStart = true;
         /**
          * False only if the vertex has child vertices.
          */
-        boolean isFrontier = true;
+        private boolean isFrontier = true;
         /**
          * List of edges that connect this vertex to its parents (they are the start of each edge).
          */
-        final List<DAGEdge> parents = new ArrayList<>();
+        private final List<DAGEdge> parents = new ArrayList<>();
         /**
          * List of edges that connect this vertex to its children (they are the end of each edge).
          */
-        final List<DAGEdge> children = new ArrayList<>();
+        private final List<DAGEdge> children = new ArrayList<>();
 
-        DAGVertex(KernelExecution kernel) {
+        DAGVertex(GrCUDAComputationalElement kernel) {
             this.kernel = kernel;
             this.id = getNumVertices();
             vertices.add(this);
         }
 
-        KernelExecution getKernel() {
+        GrCUDAComputationalElement getKernel() {
             return kernel;
         }
 
@@ -174,9 +176,13 @@ public class ExecutionDAG {
      */
     public class DAGEdge {
 
-        final DAGVertex start;
-        final DAGVertex end;
-        final int id;
+        final private DAGVertex start;
+        final private DAGVertex end;
+        final private int id;
+        /**
+         * List of objects that represents depenencies between the two vertices;
+         */
+        private List<Object> dependencies;
 
         DAGEdge(DAGVertex start, DAGVertex end) {
             this.start = start;
@@ -190,6 +196,11 @@ public class ExecutionDAG {
             edges.add(this);
         }
 
+        DAGEdge(DAGVertex start, DAGVertex end, List<Object> dependencies) {
+            this(start, end);
+            this.dependencies = dependencies;
+        }
+
         public DAGVertex getStart() {
             return start;
         }
@@ -200,6 +211,10 @@ public class ExecutionDAG {
 
         public int getId() {
             return id;
+        }
+
+        public List<Object> getDependencies() {
+            return dependencies;
         }
 
         @Override

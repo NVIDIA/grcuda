@@ -41,3 +41,4 @@ mx.grcuda/eclipse-launches
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAListener.java
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAParser.java
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAVisitor.java
+/venv
