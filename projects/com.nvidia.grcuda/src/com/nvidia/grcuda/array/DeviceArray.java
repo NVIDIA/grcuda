@@ -37,6 +37,7 @@ import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
@@ -58,8 +59,10 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     private static final String COPY_FROM = "copyFrom";
     private static final String COPY_TO = "copyTo";
 
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO);
-    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO);
+    private static final String DAG = "dag";
+
+    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO, DAG);
+    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO, DAG);
 
     @ExportLibrary(InteropLibrary.class)
     public static final class MemberSet implements TruffleObject {
@@ -247,7 +250,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     boolean isMemberReadable(String memberName,
                     @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
         String name = memberProfile.profile(memberName);
-        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name);
+        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name) || DAG.equals(name);
     }
 
     @ExportMessage
@@ -265,6 +268,9 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
         }
         if (COPY_TO.equals(memberName)) {
             return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.TO_POINTER);
+        }
+        if (DAG.equals(memberName)) {
+            return runtime.getExecutionContext().getDag();
         }
         CompilerDirectives.transferToInterpreter();
         throw UnknownIdentifierException.create(memberName);

@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.polyglot.HostAccess;
 
 public final class CUDARuntime {
 

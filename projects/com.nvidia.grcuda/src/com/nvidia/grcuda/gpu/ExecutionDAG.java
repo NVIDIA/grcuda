@@ -1,5 +1,7 @@
 package com.nvidia.grcuda.gpu;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -9,7 +11,7 @@ import java.util.stream.Collectors;
  * computations. Each vertex is a computation, and an edge between vertices represents a dependency
  * such that the end vertex must wait for the start vertex to finish before starting.
  */
-public class ExecutionDAG {
+public class ExecutionDAG implements TruffleObject {
 
     private final List<DAGVertex> vertices = new ArrayList<>();
     private final List<DAGEdge> edges = new ArrayList<>();
@@ -37,7 +39,6 @@ public class ExecutionDAG {
         // For each vertex in the frontier, compute dependencies of the vertex;
         for (DAGVertex frontierVertex : frontier) {
             List<Object> dependencies = computeDependencies(frontierVertex, newVertex);
-            dependencies.forEach(System.out::println);
             if (dependencies.size() > 0) {
                 // Create a new edge between the two vertices (book-keeping is automatic);
                 new DAGEdge(frontierVertex, newVertex, dependencies);

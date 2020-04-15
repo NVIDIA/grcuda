@@ -16,10 +16,10 @@ The `function` package contains functions that can be invoked through the DSL, s
 
 Idea: keep a computational DAG that connects GPU computations expressed in GrCUDA and their dependencies
  * Then use the DAG to schedule parallel computations on different streams and avoid synchronization when not necessary
- * See `projects/resources/python/examples/pipeline_1.py` for an example
+ * See `projects/resources/python/examples/pipeline_1.py` for a practical example
     
-We need a class (e.g. `GpuExecutionContext`) that tracks GPU computational elements (i.e. `kernels`) declarations and invocations
- * Ideally, when a new kernel is created, or when it is called, update the context with the new information
+We need a class (e.g. `GpuExecutionContext`) that tracks GPU computational elements (e.g. `kernels`) declarations and invocations
+ * When a new kernel is created, or when it is called, update the context with the new information
  * Then the context will decide whether to execute it immediately or add a sync point (this could also be done in a different class, design is WIP)
 
 ## What is a computational element in GrCUDA?
@@ -75,5 +75,5 @@ We can have explicit handles, or infer dependencies automatically
 4. How do we modify kernel calls to add/remove sync points?
 5. How do we execute kernels in parallel? We need to have streams
 6. How do we monitor accesses to `DeviceArrays` to preserve sync points?    
-7. How do we track scalar values?
+7. How do we track scalar values? Probably need to do computations that return scalar synchronously, as we don't know know the guest language will use the scalar
 8. How to understand if a parameter is read-only?

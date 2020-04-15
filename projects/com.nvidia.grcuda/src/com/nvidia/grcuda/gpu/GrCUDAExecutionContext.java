@@ -50,5 +50,7 @@ public class GrCUDAExecutionContext {
         System.out.println(dag);
     }
 
-
+    public ExecutionDAG getDag() {
+        return dag;
+    }
 }

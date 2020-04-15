@@ -29,6 +29,7 @@
 package com.nvidia.grcuda;
 
 import com.nvidia.grcuda.array.DeviceArray;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import org.graalvm.options.OptionDescriptors;
 
 import com.nvidia.grcuda.nodes.ExpressionNode;
@@ -75,6 +76,10 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
         return TruffleLanguage.getCurrentLanguage(GrCUDALanguage.class);
     }
 
+    public static GrCUDAContext getCurrentContext() {
+        return getCurrentContext(GrCUDALanguage.class);
+    }
+
     @Override
     protected void disposeContext(GrCUDAContext cxt) {
         cxt.disposeAll();
@@ -84,4 +89,5 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     protected OptionDescriptors getOptionDescriptors() {
         return new GrCUDAOptionsOptionDescriptors();
     }
+
 }
