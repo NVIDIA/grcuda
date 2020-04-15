@@ -25,7 +25,7 @@ public class GrCUDAExecutionContext {
      * Set that contains all the CUDA kernels execution so far.
      * TODO: this should not be a set, but a DAG that can be used to handle dependencies
      */
-    final private Set<KernelExecution> kernelExecSet = new HashSet<>();
+    final private Set<GrCUDAComputationalElement> kernelExecSet = new HashSet<>();
 
     final private ExecutionDAG dag = new ExecutionDAG();
 
@@ -43,11 +43,10 @@ public class GrCUDAExecutionContext {
 //        System.out.println("-- added kernel to context: " + System.identityHashCode(kernel) + "; " + kernel.toString());
     }
 
-    public void registerExecution(KernelExecution kernel) {
+    public void registerExecution(GrCUDAComputationalElement kernel) {
         dag.append(kernel);
-//        System.out.println("-- executing kernel: " + System.identityHashCode(kernel) + "; " + kernel.toString());
-        System.out.println("\n///////////////////////////////\n");
-        System.out.println(dag);
+//        System.out.println("\n///////////////////////////////\n");
+//        System.out.println(dag);
     }
 
     public ExecutionDAG getDag() {

@@ -1,32 +1,13 @@
 package com.nvidia.grcuda.test.gpu;
 
-import com.nvidia.grcuda.GrCUDAContext;
-import com.nvidia.grcuda.GrCUDALanguage;
-import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.InitializeArgumentSet;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceListener;
-import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.Source;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -44,22 +25,9 @@ public class ExecutionDAGTest {
     /**
      * Mock class to test the DAG execution;
      */
-    private static class KernelExecutionTest extends GrCUDAComputationalElement {
-        KernelExecutionTest(List<Object> args) {
-            super(new KernelExecutionTestInitializer(args));
-        }
-    }
-    /**
-     * Mock class to test KernelExecutionTest initialization;
-     */
-    private static class KernelExecutionTestInitializer implements InitializeArgumentSet {
-        List<Object> args;
-        KernelExecutionTestInitializer(List<Object> args) {
-            this.args = args;
-        }
-        @Override
-        public Set<Object> initialize() {
-            return new HashSet<>(args);
+    public static class KernelExecutionTest extends GrCUDAComputationalElement {
+        KernelExecutionTest(GrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
+            super(grCUDAExecutionContext, args);
         }
     }
 
@@ -75,12 +43,11 @@ public class ExecutionDAGTest {
 
     @Test
     public void addVertexToDAGTest() {
-        ExecutionDAG dag = new ExecutionDAG();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContext();
         // Create two mock kernel executions;
-        KernelExecutionTest kernel1 = new KernelExecutionTest(Arrays.asList(1, 2, 3));
-        KernelExecutionTest kernel2 = new KernelExecutionTest(Arrays.asList(1, 2, 3));
+        new KernelExecutionTest(context, Arrays.asList(1, 2, 3));
 
-        dag.append(kernel1);
+        ExecutionDAG dag = context.getDag();
 
         assertEquals(1, dag.getNumVertices());
         assertEquals(0, dag.getNumEdges());
@@ -88,7 +55,7 @@ public class ExecutionDAGTest {
         assertTrue(dag.getFrontier().get(0).isFrontier());
         assertTrue(dag.getFrontier().get(0).isStart());
 
-        dag.append(kernel2);
+        new KernelExecutionTest(context, Arrays.asList(1, 2, 3));
 
         assertEquals(2, dag.getNumVertices());
         assertEquals(1, dag.getNumEdges());
@@ -107,17 +74,14 @@ public class ExecutionDAGTest {
 
     @Test
     public void dependencyPipelineSimpleMockTest() {
-        ExecutionDAG dag = new ExecutionDAG();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContext();
         // Create 4 mock kernel executions;
-        KernelExecutionTest kernel1 = new KernelExecutionTest(Collections.singletonList(1));
-        KernelExecutionTest kernel2 = new KernelExecutionTest(Collections.singletonList(2));
-        KernelExecutionTest kernel3 = new KernelExecutionTest(Arrays.asList(1, 2, 3));
-        KernelExecutionTest kernel4 = new KernelExecutionTest(Collections.singletonList(3));
+        new KernelExecutionTest(context, Collections.singletonList(1));
+        new KernelExecutionTest(context, Collections.singletonList(2));
+        new KernelExecutionTest(context, Arrays.asList(1, 2, 3));
+        new KernelExecutionTest(context, Collections.singletonList(3));
 
-        dag.append(kernel1);
-        dag.append(kernel2);
-        dag.append(kernel3);
-        dag.append(kernel4);
+        ExecutionDAG dag = context.getDag();
 
         // Check the DAG structure;
         assertEquals(4, dag.getNumVertices());
