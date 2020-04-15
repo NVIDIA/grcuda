@@ -47,7 +47,7 @@ public class ExecutionDAG implements TruffleObject {
         // Remove from the frontier vertices that no longer belong to it;
         frontier = frontier.stream().filter(DAGVertex::isFrontier).collect(Collectors.toList());
         // Add the new vertex to the frontier if it has no children;
-        if (newVertex.isFrontier) {
+        if (newVertex.isFrontier()) {
             frontier.add(newVertex);
         }
     }
@@ -98,10 +98,6 @@ public class ExecutionDAG implements TruffleObject {
          */
         private boolean isStart = true;
         /**
-         * False only if the vertex has child vertices.
-         */
-        private boolean isFrontier = true;
-        /**
          * List of edges that connect this vertex to its parents (they are the start of each edge).
          */
         private final List<DAGEdge> parents = new ArrayList<>();
@@ -128,8 +124,14 @@ public class ExecutionDAG implements TruffleObject {
             return isStart;
         }
 
+        /**
+         * A vertex is considered part of the DAG frontier if it could lead to dependencies.
+         * In general, a vertex is not part of the frontier only if it has no arguments, it has already been executed,
+         * or all its arguments have already been superseded by the arguments of computations that depends on this one;
+         * @return if this vertex is part of the DAG frontier
+         */
         public boolean isFrontier() {
-            return isFrontier;
+            return kernel.hasPossibleDependencies();
         }
 
         public List<DAGEdge> getParents() {
@@ -140,12 +142,12 @@ public class ExecutionDAG implements TruffleObject {
             return children;
         }
 
+        public List<DAGVertex> getParentVertices() { return parents.stream().map(DAGEdge::getStart).collect(Collectors.toList()); }
+
+        public List<DAGVertex> getChildVertices() { return children.stream().map(DAGEdge::getEnd).collect(Collectors.toList()); }
+
         public void setStart(boolean start) {
             isStart = start;
-        }
-
-        public void setFrontier(boolean frontier) {
-            isFrontier = frontier;
         }
 
         public void addParent(DAGEdge edge) {
@@ -155,7 +157,6 @@ public class ExecutionDAG implements TruffleObject {
 
         public void addChild(DAGEdge edge) {
             children.add(edge);
-            isFrontier = false;
         }
 
         @Override
@@ -163,7 +164,7 @@ public class ExecutionDAG implements TruffleObject {
             return "V(" +
                     ", id=" + id +
                     ", isStart=" + isStart +
-                    ", isFrontier=" + isFrontier +
+                    ", isFrontier=" + this.isFrontier() +
                     ", parents=" + parents +
                     ", children=" + children +
                     ')';

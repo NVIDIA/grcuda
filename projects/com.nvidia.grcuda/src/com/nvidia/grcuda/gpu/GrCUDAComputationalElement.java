@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Basic class that represents GrCUDA computations,
@@ -14,9 +12,15 @@ import java.util.stream.IntStream;
 public abstract class GrCUDAComputationalElement {
 
     /**
-     * This set contains the input arguments that are used to compute dependencies;
+     * This set contains the original set of input arguments that are used to compute dependencies;
      */
     protected final Set<Object> argumentSet;
+    /**
+     * This set contains the input arguments that are considered, at each step, in the dependency computation.
+     * The set initially coincides with "argumentSet", then arguments are removed from this set once a new dependency is found;
+     * TODO: should this be moved somewhere else? e.g. inside the DAG, although this means moving the dependency computation too
+     */
+    private Set<Object> activeArgumentSet;
     /**
      * Reference to the execution context where this computation is executed;
      */
@@ -29,6 +33,8 @@ public abstract class GrCUDAComputationalElement {
      */
     public GrCUDAComputationalElement(GrCUDAExecutionContext grCUDAExecutionContext, InitializeArgumentSet initializer) {
         this.argumentSet = initializer.initialize();
+        // Initialize by making a copy of the original set;
+        this.activeArgumentSet = new HashSet<>(this.argumentSet);
         this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.grCUDAExecutionContext.registerExecution(this);
     }
@@ -39,9 +45,7 @@ public abstract class GrCUDAComputationalElement {
      * @param args the list of arguments provided to the computation. Arguments are expected to be {@link org.graalvm.polyglot.Value}
      */
     public GrCUDAComputationalElement(GrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
-        this.argumentSet = new DefaultExecutionInitializer(args).initialize();
-        this.grCUDAExecutionContext = grCUDAExecutionContext;
-        this.grCUDAExecutionContext.registerExecution(this);
+        this(grCUDAExecutionContext, new DefaultExecutionInitializer(args));
     }
 
     public Set<Object> getArgumentSet() {
@@ -55,10 +59,31 @@ public abstract class GrCUDAComputationalElement {
      * @return the list of arguments that the two kernels have in common
      */
     public List<Object> computeDependencies(GrCUDAComputationalElement other) {
-        // Obtain the common dependencies through set intersection;
-        Set<Object> intersection = new HashSet<>(argumentSet);
-        intersection.retainAll(other.argumentSet);
-        return new ArrayList<>(intersection);
+        Set<Object> dependencies = new HashSet<>();
+        Set<Object> newArgumentSet = new HashSet<>();
+        for (Object arg : this.activeArgumentSet) {
+            // The other computation requires the current argument, so we have found a new dependency;
+            if (other.activeArgumentSet.contains(arg)) {
+                dependencies.add(arg);
+            } else {
+                // Otherwise, the current argument is still "active", and could enforce a dependency on a future computation;
+                newArgumentSet.add(arg);
+            }
+        }
+        // Arguments that are not leading to a new dependency could still create new dependencies later on!
+        this.activeArgumentSet = newArgumentSet;
+        // Return the list of arguments that created dependencies with the new computation;
+        return new ArrayList<>(dependencies);
+    }
+
+    /**
+     * Return if this computation could lead to dependencies with future computations.
+     * If not, this usually means that all of its arguments have already been superseded by other computations,
+     * or that the computation didn't have any arguments to begin with;
+     * @return if the computation could lead to future dependencies
+     */
+    public boolean hasPossibleDependencies() {
+        return !this.activeArgumentSet.isEmpty();
     }
 
     /**
