@@ -41,23 +41,23 @@ public class LittleEndianNativeArrayView {
     private final long sizeInBytes;
 
     public void setByte(long index, byte value) {
-        unsafe.putByte(startAddress + index * Type.BYTE.getSizeBytes(), value);
+        unsafe.putByte(startAddress + index * Type.CHAR.getSizeBytes(), value);
     }
 
     public void setChar(long index, char value) {
-        unsafe.putChar(startAddress + index * Type.CHAR.getSizeBytes(), value);
+        unsafe.putChar(startAddress + index * Type.SINT16.getSizeBytes(), value);
     }
 
     public void setShort(long index, short value) {
-        unsafe.putShort(startAddress + index * Type.SHORT.getSizeBytes(), value);
+        unsafe.putShort(startAddress + index * Type.SINT16.getSizeBytes(), value);
     }
 
     public void setInt(long index, int value) {
-        unsafe.putInt(startAddress + index * Type.INT.getSizeBytes(), value);
+        unsafe.putInt(startAddress + index * Type.SINT32.getSizeBytes(), value);
     }
 
     public void setLong(long index, long value) {
-        unsafe.putLong(startAddress + index * Type.LONG.getSizeBytes(), value);
+        unsafe.putLong(startAddress + index * Type.SINT64.getSizeBytes(), value);
     }
 
     public void setFloat(long index, float value) {
@@ -69,7 +69,7 @@ public class LittleEndianNativeArrayView {
     }
 
     public byte getByte(long index) {
-        return unsafe.getByte(startAddress + index * Type.BYTE.getSizeBytes());
+        return unsafe.getByte(startAddress + index * Type.CHAR.getSizeBytes());
     }
 
     public char getChar(long index) {
@@ -77,15 +77,15 @@ public class LittleEndianNativeArrayView {
     }
 
     public short getShort(long index) {
-        return unsafe.getShort(startAddress + index * Type.SHORT.getSizeBytes());
+        return unsafe.getShort(startAddress + index * Type.SINT32.getSizeBytes());
     }
 
     public int getInt(long index) {
-        return unsafe.getInt(startAddress + index * Type.INT.getSizeBytes());
+        return unsafe.getInt(startAddress + index * Type.SINT32.getSizeBytes());
     }
 
     public long getLong(long index) {
-        return unsafe.getLong(startAddress + index * Type.LONG.getSizeBytes());
+        return unsafe.getLong(startAddress + index * Type.SINT64.getSizeBytes());
     }
 
     public float getFloat(long index) {

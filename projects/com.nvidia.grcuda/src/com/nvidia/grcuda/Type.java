@@ -30,16 +30,28 @@ package com.nvidia.grcuda;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
-public enum Type {
-    BYTE(1, true),
-    CHAR(2, true),
-    SHORT(2, true),
-    INT(4, true),
-    LONG(8, true),
-    FLOAT(4, true),
-    DOUBLE(8, true),
-    POINTER(8, false),
-    VOID(0, false);
+public enum Type {          // C++ Type in LP64:
+    BOOLEAN(1, true),       // bool
+    CHAR(1, true),          // char
+    SINT8(1, true),         // (signed) char
+    UINT8(1, true),         // unsigned char
+    CHAR8(1, true),         // char8_t
+    CHAR16(2, true),        // char16_t
+    SINT16(2, true),        // (signed) short
+    UINT16(2, true),        // (unsigned) short
+    CHAR32(4, true),        // char32_t
+    SINT32(4, true),        // (signed) int
+    UINT32(4, true),        // unsigned int
+    WCHAR(4, true),         // wchar_t (non Windows)
+    SINT64(8, true),        // (signed) long
+    UINT64(8, true),        // (unsigned) long
+    SLL64(8, true),         // (signed) long long
+    ULL64(8, true),         // unsigned long long
+    FLOAT(4, true),         // float
+    DOUBLE(8, true),        // double
+    NFI_POINTER(8, false),  // void* (w/o type) as used in NFI
+    STRING(8, false),       // const char*
+    VOID(0, false);         // void
 
     private final int sizeBytes;
     private final boolean isElementType;
@@ -57,16 +69,48 @@ public enum Type {
         return this.isElementType;
     }
 
+    public boolean isSynonymousWith(Type type) {
+        if (this == type) {
+            return true;
+        }
+        switch (this) {
+            case BOOLEAN:
+            case CHAR8:
+            case UINT8:
+                return type == BOOLEAN || type == UINT8 || type == CHAR8;
+            case CHAR:
+            case SINT8:
+                return type == CHAR || type == SINT8;
+            case CHAR16:
+            case UINT16:
+                return type == CHAR16 || type == UINT16;
+            case CHAR32:
+            case UINT32:
+                return type == CHAR32 || type == UINT32;
+            case SINT32:
+            case WCHAR:
+                return type == SINT32 || type == WCHAR;
+            case SINT64:
+            case SLL64:
+                return type == SINT64 || type == SLL64;
+            case UINT64:
+            case ULL64:
+                return type == UINT64 || type == ULL64;
+            default:
+                return false;
+        }
+    }
+
     public static Type fromGrCUDATypeString(String type) throws TypeException {
         switch (type) {
             case "char":
-                return Type.BYTE;
+                return Type.CHAR;
             case "short":
-                return Type.SHORT;
+                return Type.SINT16;
             case "int":
-                return Type.INT;
+                return Type.SINT32;
             case "long":
-                return Type.LONG;
+                return Type.SINT64;
             case "float":
                 return Type.FLOAT;
             case "double":
@@ -79,24 +123,44 @@ public enum Type {
 
     public static Type fromNIDLTypeString(String type) throws TypeException {
         switch (type) {
-            case "pointer":
-                return Type.POINTER;
-            case "uint64":
-            case "sint64":
-                return Type.LONG;
-            case "uint32":
-            case "sint32":
-                return Type.INT;
-            case "uint16":
-            case "sint16":
-                return Type.SHORT;
-            case "uint8":
+            case "bool":
+                return Type.BOOLEAN;
+            case "char":
+                return Type.CHAR;
             case "sint8":
-                return Type.BYTE;
+                return Type.SINT8;
+            case "uint8":
+                return Type.UINT8;
+            case "char16":
+                return Type.CHAR16;
+            case "sint16":
+                return Type.SINT16;
+            case "uint16":
+                return Type.UINT16;
+            case "char32":
+                return Type.CHAR32;
+            case "sint32":
+                return Type.SINT32;
+            case "uint32":
+                return Type.UINT32;
+            case "wchar":
+                return Type.WCHAR;
+            case "sint64":
+                return Type.SINT64;
+            case "uint64":
+                return Type.UINT64;
+            case "sll64":
+                return Type.SLL64;
+            case "ull64":
+                return Type.ULL64;
             case "float":
                 return Type.FLOAT;
             case "double":
                 return Type.DOUBLE;
+            case "pointer":
+                return Type.NFI_POINTER;
+            case "string":
+                return Type.STRING;
             case "void":
                 return Type.VOID;
             default:
@@ -105,4 +169,49 @@ public enum Type {
         }
     }
 
+    String getMangled() throws TypeException {
+        switch (this) {
+            case BOOLEAN:
+                return "b";
+            case CHAR:
+                return "c";
+            case SINT8:
+                return "a";
+            case UINT8:
+                return "h";
+            case CHAR8:
+                return "Du";
+            case CHAR16:
+                return "Ds";
+            case SINT16:
+                return "s";
+            case UINT16:
+                return "t";
+            case CHAR32:
+                return "Di";
+            case SINT32:
+                return "i";
+            case UINT32:
+                return "j";
+            case WCHAR:
+                return "w";
+            case SINT64:
+                return "l";
+            case UINT64:
+                return "m";
+            case SLL64:
+                return "x";
+            case ULL64:
+                return "y";
+            case FLOAT:
+                return "f";
+            case DOUBLE:
+                return "d";
+            case VOID:
+                return "v";
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw new TypeException("no mangling character for type '" + this + "'");
+        }
+    }
 }

@@ -38,72 +38,89 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.junit.Rule;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 public class BindKernelTest {
 
     /** CUDA C source code of incrementing kernel. */
-    private static final String INCREMENT_KERNEL_SOURCE = "extern \"C\"                                  \n" +
-                    "__global__ void inc_kernel(int *out_arr, const int *in_arr, size_t num_elements) {  \n" +
-                    "  for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;         \n" +
-                    "       idx += gridDim.x * blockDim.x) {                                             \n" +
-                    "    out_arr[idx] = in_arr[idx] + 1;                                                 \n" +
-                    "  }                                                                                 \n" +
+    private static final String INCREMENT_KERNEL_SOURCE = "extern \"C\"                                \n" +
+                    "__global__ void inc_kernel(int *out_arr, const int *in_arr, int num_elements) {   \n" +
+                    "  for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;       \n" +
+                    "       idx += gridDim.x * blockDim.x) {                                           \n" +
+                    "    out_arr[idx] = in_arr[idx] + 1;                                               \n" +
+                    "  }                                                                               \n" +
                     "}\n";
 
     /** NFI signature of incrementing kernel. */
-    private static final String INCREMENT_KERNEL_SIGNATURE = "pointer, pointer, uint64";
+    private static final String INCREMENT_KERNEL_LEGACY_NFI_SIGNATURE = "pointer, pointer, sint32";
 
-    @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
+    /** NIDL signature of incrementing kernel. */
+    private static final String INCREMENT_KERNEL_NIDL_SIGNATURE = "out_arr : out pointer sint32, in_arr : in pointer sint32, num_elements : sint32";
 
-    @Test
-    public void testBindKernel() throws IOException, InterruptedException {
+    private static final int NUM_ELEMENTS = 1000;
+
+    @ClassRule public static TemporaryFolder tempFolder = new TemporaryFolder();
+    public static String ptxFileName;
+
+    @BeforeClass
+    public static void setupUpClass() throws IOException, InterruptedException {
         // Write CUDA C source file
         File sourceFile = tempFolder.newFile("inc_kernel.cu");
         PrintWriter writer = new PrintWriter(new FileWriter(sourceFile));
         writer.write(INCREMENT_KERNEL_SOURCE);
         writer.close();
-        String cubinFileName = sourceFile.getParent() + File.separator + "inc_kernel.ptx";
+        BindKernelTest.ptxFileName = sourceFile.getParent() + File.separator + "inc_kernel.ptx";
 
         // Compile source file with NVCC
         Process compiler = Runtime.getRuntime().exec("nvcc --ptx " +
-                        sourceFile.getAbsolutePath() + " -o " + cubinFileName);
+                        sourceFile.getAbsolutePath() + " -o " + BindKernelTest.ptxFileName);
         BufferedReader output = new BufferedReader(new InputStreamReader(compiler.getErrorStream()));
         int nvccReturnCode = compiler.waitFor();
         output.lines().forEach(System.out::println);
         assertEquals(0, nvccReturnCode);
+    }
 
+    void testWithSignature(String signature) {
         // Build inc_kernel symbol, launch it, and check results.
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
-            final int numElements = 1000;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value bindkernel = context.eval("grcuda", "bindkernel");
-            Value incrKernel = bindkernel.execute(cubinFileName, "inc_kernel",
-                            INCREMENT_KERNEL_SIGNATURE);
-            assertNotNull(incrKernel);
-            assertTrue(incrKernel.canExecute());
-            assertEquals(0, incrKernel.getMember("launchCount").asInt());
-            assertNotNull(incrKernel.getMember("ptx").asString());
-            Value inDevArray = deviceArrayConstructor.execute("int", numElements);
-            Value outDevArray = deviceArrayConstructor.execute("int", numElements);
-            for (int i = 0; i < numElements; ++i) {
+            Value incKernel = bindkernel.execute(BindKernelTest.ptxFileName, "inc_kernel", signature);
+            assertNotNull(incKernel);
+            assertTrue(incKernel.canExecute());
+            assertEquals(0, incKernel.getMember("launchCount").asInt());
+            assertNotNull(incKernel.getMember("ptx").asString());
+            Value inDevArray = deviceArrayConstructor.execute("int", NUM_ELEMENTS);
+            Value outDevArray = deviceArrayConstructor.execute("int", NUM_ELEMENTS);
+            for (int i = 0; i < NUM_ELEMENTS; ++i) {
                 inDevArray.setArrayElement(i, i);
                 outDevArray.setArrayElement(i, 0);
             }
-            Value configuredIncKernel = incrKernel.execute(8, 128);  // <<<8, 128>>> 8 blocks a 128
-                                                                     // threads
+            // <<<8, 128>>> 8 blocks a 128 threads
+            Value configuredIncKernel = incKernel.execute(8, 128);
             assertTrue(configuredIncKernel.canExecute());
-            configuredIncKernel.execute(outDevArray, inDevArray, numElements);
+            configuredIncKernel.execute(outDevArray, inDevArray, NUM_ELEMENTS);
             // implicit synchronization
 
             // verify result
-            for (int i = 0; i < numElements; ++i) {
+            for (int i = 0; i < NUM_ELEMENTS; ++i) {
                 assertEquals(i, inDevArray.getArrayElement(i).asInt());
                 assertEquals(i + 1, outDevArray.getArrayElement(i).asInt());
             }
-            assertEquals(1, incrKernel.getMember("launchCount").asInt());
+            assertEquals(1, incKernel.getMember("launchCount").asInt());
         }
+    }
+
+    @Test
+    public void testBindKernelWithLegacyNFISignature() {
+        testWithSignature(INCREMENT_KERNEL_LEGACY_NFI_SIGNATURE);
+    }
+
+    @Test
+    public void testBindKernelWithNIDLSignature() {
+        testWithSignature(INCREMENT_KERNEL_NIDL_SIGNATURE);
     }
 }

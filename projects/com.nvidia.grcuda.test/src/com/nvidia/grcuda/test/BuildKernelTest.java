@@ -39,7 +39,7 @@ public class BuildKernelTest {
 
     /** CUDA C++ source code of incrementing kernel. */
     private static final String INCREMENT_KERNEL_SOURCE = "template <typename T>                     \n" +
-                    "__global__ void inc_kernel(T *out_arr, const T *in_arr, size_t num_elements) {  \n" +
+                    "__global__ void inc_kernel(T *out_arr, const T *in_arr, int num_elements) {     \n" +
                     "  for (auto idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;    \n" +
                     "       idx += gridDim.x * blockDim.x) {                                         \n" +
                     "    out_arr[idx] = in_arr[idx] + (T{} + 1);                                     \n" +
@@ -47,7 +47,7 @@ public class BuildKernelTest {
                     "}\n";
 
     /** NFI Signature of incrementing kernel. */
-    private static final String INCREMENT_KERNEL_SIGNATURE = "pointer, pointer, uint64";
+    private static final String INCREMENT_KERNEL_SIGNATURE = "pointer, pointer, sint32";
 
     @Test
     public void testBuildKernel() {

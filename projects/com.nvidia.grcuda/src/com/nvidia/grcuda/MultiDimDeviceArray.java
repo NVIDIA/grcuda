@@ -159,7 +159,7 @@ public class MultiDimDeviceArray implements TruffleObject {
         return nativeView.getStartAddress();
     }
 
-    final Type getElementType() {
+    public final Type getElementType() {
         return elementType;
     }
 

@@ -34,10 +34,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.nio.charset.Charset;
 import java.util.Optional;
-import com.nvidia.grcuda.Argument;
 import com.nvidia.grcuda.Binding;
 import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.KernelBinding;
+import com.nvidia.grcuda.Parameter;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.parser.NIDLParserException;
@@ -97,69 +97,149 @@ private static class ParserErrorListener extends BaseErrorListener {
 // parser
 
 nidlSpec returns [ArrayList<Binding> result]
-  : bindings EOF         {$result = $bindings.result; }
+  : scopes EOF         {$result = $scopes.result; }
   ;
 
-bindings returns [ArrayList<Binding> result]
-  : bds=bindings binding { $result = $bds.result;
-                           $result.add($binding.result); }
+scopes returns [ArrayList<Binding> result]
+  : ss=scopes scope { $result = $ss.result;
+                      if ($scope.result != null) {
+                        // prevent NPE of a parser error occurred in the subtree
+                        $result.addAll($scope.result);
+                      }
+                    }
+  |                 { $result = new ArrayList<Binding>(); }
+  ;
+
+scope returns [ArrayList<Binding> result]
+  : 'kernels'  '{' kernels '}'           { $result = $kernels.result;  }
+  | 'ckernels' '{' ckernels '}'          { $result = $ckernels.result; }
+  | 'hostfuncs' '{' hostFunctions '}'    { $result = $hostFunctions.result; }
+  | 'chostfuncs' '{' chostFunctions '}'  { $result = $chostFunctions.result; }
+  | 'kernels' namespaceIdentifier '{' kernels '}'
+     { $result = $kernels.result;
+       for (Binding binding : $kernels.result) {
+         binding.setNamespace($namespaceIdentifier.result);
+       }
+	 }
+  | 'hostfuncs' namespaceIdentifier '{' hostFunctions '}'
+    { $result = $hostFunctions.result;
+      for (Binding binding : $hostFunctions.result) {
+        binding.setNamespace($namespaceIdentifier.result);
+      }
+    }
+  ;
+
+kernels returns [ArrayList<Binding> result]
+  : ks=kernels kernel    { $result = $ks.result;
+                           $result.add($kernel.result); }
   |                      { $result = new ArrayList<Binding>(); }
   ;
 
-binding returns [Binding result]
-  : cxxOption 'kernel' n=Identifier '(' al=argumentList ')'
-    { $result = new KernelBinding($n.getText(), $al.result, $cxxOption.result); }
-  | cxxOption 'func' n=Identifier '(' al=argumentList ')' ':' rt=Identifier
+kernel returns [Binding result]
+  : n=Identifier '(' pl=parameterList ')'
+    { $result = KernelBinding.newCxxBinding($n.getText(), $pl.result); }
+  ;
+
+ckernels returns [ArrayList<Binding> result]
+  : cks=ckernels ckernel  { $result = $cks.result;
+                            $result.add($ckernel.result); }
+  |                       { $result = new ArrayList<Binding>(); }
+  ;
+
+ckernel returns [Binding result]
+  : n=Identifier '(' pl=parameterList ')'
+    { $result = KernelBinding.newCBinding($n.getText(), $pl.result); }
+  ;
+
+hostFunctions returns [ArrayList<Binding> result]
+  : hfs=hostFunctions hostFunction { $result = $hfs.result;
+                                     if ($hostFunction.result != null) {
+                                        // prevent NPE of a parser error occurred in the subtree
+                                        $result.add($hostFunction.result);
+                                     }
+                                   }
+  |                                { $result = new ArrayList<Binding>(); }
+  ;
+
+hostFunction returns [Binding result]
+  : n=Identifier '(' pl=parameterList ')' ':' rt=Identifier
     { try {
-      $result = new FunctionBinding($n.getText(), $al.result,
-        Type.fromNIDLTypeString($rt.getText()), $cxxOption.result);
+      $result = FunctionBinding.newCxxBinding($n.getText(), $pl.result,
+    		  Type.fromNIDLTypeString($rt.getText()));
       } catch (TypeException e) {
         throw new NIDLParserException(e.getMessage(), filename, $rt.getLine(), $rt.getCharPositionInLine());
       }
     }
   ;
 
-cxxOption returns [Boolean result]
-  : 'cxx'   { $result = true; }
-  |         { $result = false; }
+chostFunctions returns [ArrayList<Binding> result]
+  : chfs=chostFunctions chostFunction { $result = $chfs.result;
+                                        $result.add($chostFunction.result); }
+  |                                   { $result = new ArrayList<Binding>(); }
   ;
 
-argumentList returns [ArrayList<Argument> result]
-  : al=argumentList ',' argExpr
-    { $result = $al.result;
-      if ($argExpr.result != null) {
-        // avoids NPE during parser error
-        $argExpr.result.setPosition($al.result.size());
-        $result.add($argExpr.result);
+chostFunction returns [Binding result]
+  : n=Identifier '(' pl=parameterList ')' ':' rt=Identifier
+    { try {
+      $result = FunctionBinding.newCBinding($n.getText(), $pl.result,
+              Type.fromNIDLTypeString($rt.getText()));
+      } catch (TypeException e) {
+        throw new NIDLParserException(e.getMessage(), filename, $rt.getLine(), $rt.getCharPositionInLine());
       }
     }
-  | argExpr
-    { $result = new ArrayList<Argument>();
-      $result.add($argExpr.result); }
-  |
-    { $result = new ArrayList<Argument>(); }
   ;
 
-argExpr returns [Argument result]
-  : n=Identifier ':' direction t=Identifier
+parameterList returns [ArrayList<Parameter> result]
+  : pl=parameterList ',' paramExpr
+    { $result = $pl.result;
+      if ($paramExpr.result != null) {
+        // avoids NPE during parser error
+        $paramExpr.result.setPosition($pl.result.size());
+        $result.add($paramExpr.result);
+      }
+    }
+  | paramExpr
+    { $result = new ArrayList<Parameter>();
+      $result.add($paramExpr.result);
+    }
+  |
+    { $result = new ArrayList<Parameter>(); }
+  ;
+
+paramExpr returns [Parameter result]
+  : n=Identifier ':' t=Identifier
     { try {
-        $result = Argument.createArgument($n.getText(), Type.fromNIDLTypeString($t.getText()), $direction.result);
+        $result = Parameter.createByValueParameter($n.getText(), Type.fromNIDLTypeString($t.getText()));
+      } catch(TypeException e) {
+        throw new NIDLParserException(e.getMessage(), filename, $t.getLine(), $t.getCharPositionInLine());
+      }
+    }
+  | n=Identifier ':' direction 'pointer' t=Identifier
+    { try {
+        $result = Parameter.createPointerParameter($n.getText(), Type.fromNIDLTypeString($t.getText()), $direction.result);
       } catch(TypeException e) {
         throw new NIDLParserException(e.getMessage(), filename, $t.getLine(), $t.getCharPositionInLine());
       }
     }
   ;
 
-direction returns [Argument.Direction result]
-  : 'in'    { $result = Argument.Direction.IN; }
-  | 'out'   { $result = Argument.Direction.OUT; }
-  | 'inout' { $result = Argument.Direction.INOUT; }
-  |         { $result = Argument.Direction.BY_VALUE; }
+direction returns [Parameter.Kind result]
+  : 'in'    { $result = Parameter.Kind.POINTER_IN; }
+  | 'out'   { $result = Parameter.Kind.POINTER_OUT; }
+  | 'inout' { $result = Parameter.Kind.POINTER_INOUT; }
   ;
 
+namespaceIdentifier returns [ArrayList<String> result]
+  : ons=namespaceIdentifier '::' id=Identifier
+    {$result = $ons.result;
+     $result.add($id.getText());
+    }
+  | id=Identifier
+    {$result = new ArrayList<String>();
+     $result.add($id.getText()); }
+  ;
 
 // lexer
-
 Identifier: Letter (Letter | Digit)*;
 
 fragment Digit: [0-9];

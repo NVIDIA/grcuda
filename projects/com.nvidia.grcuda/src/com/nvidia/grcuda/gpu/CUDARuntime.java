@@ -281,16 +281,25 @@ public final class CUDARuntime {
      *
      * @param libraryPath path to library (.so file)
      * @param symbolName name of the function (symbol) too look up
-     * @param signature NFI signature of the function
+     * @param nfiSignature NFI signature of the function
      * @return a callable as a TruffleObject
      */
     @TruffleBoundary
-    public Object getSymbol(String libraryPath, String symbolName, String signature) throws UnknownIdentifierException {
-        return getSymbol(libraryPath, symbolName, signature, "");
+    public Object getSymbol(String libraryPath, String symbolName, String nfiSignature) throws UnknownIdentifierException {
+        return getSymbol(libraryPath, symbolName, nfiSignature, "");
     }
 
+    /**
+     * Get function as callable from native library.
+     *
+     * @param libraryPath path to library (.so file)
+     * @param symbolName name of the function (symbol) too look up
+     * @param nfiSignature NFI signature of the function
+     * @param hint additional string shown to user when symbol cannot be loaded
+     * @return a callable as a TruffleObject
+     */
     @TruffleBoundary
-    public Object getSymbol(String libraryPath, String symbolName, String signature, String hint) throws UnknownIdentifierException {
+    public Object getSymbol(String libraryPath, String symbolName, String nfiSignature, String hint) throws UnknownIdentifierException {
 
         Pair<String, String> functionKey = Pair.create(libraryPath, symbolName);
         Object callable = boundFunctions.get(functionKey);
@@ -310,7 +319,7 @@ public final class CUDARuntime {
             }
             try {
                 Object symbol = INTEROP.readMember(library, symbolName);
-                callable = INTEROP.invokeMember(symbol, "bind", signature);
+                callable = INTEROP.invokeMember(symbol, "bind", nfiSignature);
             } catch (UnsatisfiedLinkError | UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
                 throw new GrCUDAException("unexpected behavior: " + e.getMessage());
             }

@@ -34,21 +34,120 @@ import java.util.stream.Collectors;
 public abstract class Binding {
     protected final boolean hasCxxMangledName;
     protected final String name;
-    protected final ArrayList<Argument> argumentList;
+    protected final ArrayList<Parameter> parameterList;
+    protected String[] namespaceList;
+    protected String mangledName;
 
-    public Binding(String name, ArrayList<Argument> argumentList, boolean hasCxxMangledName) {
-        this.name = name;
-        this.argumentList = argumentList;
+    /**
+     * Create a new binding.
+     *
+     * @param name a C style name or as fully qualified C++ name (e.g.,
+     *            `namespace1::namespace2::name`).
+     * @param parameterList list of arguments names, types, and directions
+     * @param hasCxxMangledName true if `name` is a C++ name and the symbol name is therefore
+     *            mangled.
+     */
+    public Binding(String name, ArrayList<Parameter> parameterList, boolean hasCxxMangledName) {
+        String[] identifierList = name.trim().split("::");
+        this.name = identifierList[identifierList.length - 1];
+        this.namespaceList = new String[identifierList.length - 1];
+        if (identifierList.length > 1) {
+            System.arraycopy(identifierList, 0, namespaceList, 0, identifierList.length - 1);
+        }
+        this.parameterList = parameterList;
         this.hasCxxMangledName = hasCxxMangledName;
+    }
+
+    /**
+     * Computes the mangled symbol using according to the g++/clang++ mangling rules including
+     * substitutions. (see https://github.com/gchatelet/gcc_cpp_mangling_documentation)
+     *
+     * @return mangled symbol name.
+     */
+    public String getSymbolName() {
+        if (!hasCxxMangledName) {
+            // C symbol: no name mangling applied
+            return name;
+        }
+        if (mangledName != null) {
+            // return memoized name
+            return mangledName;
+        }
+
+        // Mangle name with namespace and parameters
+        String mangled = "_Z";
+        // namespaces
+        if (namespaceList.length > 0) {
+            mangled += 'N';
+            for (String namespaceName : namespaceList) {
+                mangled += namespaceName.length() + namespaceName;
+            }
+            mangled += name.length() + name + 'E';
+        } else {
+            // symbol name
+            mangled += name.length() + name;
+        }
+        // add arguments
+        if (parameterList.size() == 0) {
+            mangled += 'v';     // f() -> f(void) -> void
+        } else {
+            ArrayList<Parameter> processedSymbolParameters = new ArrayList<>(parameterList.size());
+            ArrayList<Integer> referencePositions = new ArrayList<>(parameterList.size());
+            int lastReference = 0;
+            for (Parameter currentParam : parameterList) {
+                if (currentParam.getKind() == Parameter.Kind.BY_VALUE) {
+                    // parameter of primitive type passed by-value: is not a symbol parameter
+                    mangled += currentParam.getMangledType();
+                } else {
+                    // pointer parameter -> is a symbol parameter and subject to substitution rule
+                    // -> check whether we've emitted a pointer of this (kind, type) already seen
+
+                    boolean paramProcessed = false;
+                    for (int i = 0; i < processedSymbolParameters.size(); i++) {
+                        Parameter p = processedSymbolParameters.get(i);
+                        if (p.getKind() == currentParam.getKind() && p.getType() == currentParam.getType()) {
+                            // found repetition -> apply substitution rule
+                            int occurrencePos = referencePositions.get(i);
+                            // encoding of substitution 0->S_, 1->S0_, 2->S1_, 3->S2_, etc.
+                            mangled += (occurrencePos == 0) ? "S_" : ("S" + (occurrencePos - 1) + "_");
+                            paramProcessed = true;
+                            break;
+                        }
+                    }
+                    if (!paramProcessed) {
+                        // no repetition found -> no compression
+                        mangled += currentParam.getMangledType();
+
+                        // count "T*" as 1 symbol and "const T*" as 2 symbols
+                        lastReference += currentParam.getKind() == Parameter.Kind.POINTER_IN ? 2 : 1;
+                        processedSymbolParameters.add(currentParam);
+                        referencePositions.add(lastReference - 1);
+                    }
+                }
+            }
+        }
+        return mangled;
+    }
+
+    public void setNamespace(ArrayList<String> namespaceList) {
+        this.namespaceList = new String[namespaceList.size()];
+        this.namespaceList = namespaceList.toArray(this.namespaceList);
+    }
+
+    public String getNIDLParameterSignature() {
+        return parameterList.stream().map(Parameter::toSignature).collect(Collectors.joining(", "));
+    }
+
+    public String toNIDLString() {
+        return name + "(" + getNIDLParameterSignature() + ")";
     }
 
     @Override
     public String toString() {
-        String argString = argumentList.stream().map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
-        return "Binding(name=" + name + ", argumentList=" + argString + ", hasCxxMangledName=" + hasCxxMangledName + ")";
+        String argString = parameterList.stream().map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
+        return "Binding(name=" + name + ", argumentList=" + argString +
+                        ", cxxnamespace=" + String.join("::", namespaceList) +
+                        ", hasCxxMangledName=" + hasCxxMangledName + ", symbol=" + getSymbolName() + ")";
     }
 
-    public String getArgumentSignature() {
-        return argumentList.stream().map(Argument::toSignature).collect(Collectors.joining(", "));
-    }
 }

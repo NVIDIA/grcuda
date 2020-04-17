@@ -30,16 +30,17 @@ package com.nvidia.grcuda;
 
 import java.util.ArrayList;
 
-public class KernelBinding extends Binding {
+public final class KernelBinding extends Binding {
 
-    public KernelBinding(String name, ArrayList<Argument> argumentList, boolean hasCxxMangledName) {
-        super(name, argumentList, hasCxxMangledName);
+    private KernelBinding(String name, ArrayList<Parameter> parameterList, boolean hasCxxMangledName) {
+        super(name, parameterList, hasCxxMangledName);
     }
 
-    @Override
-    public String toString() {
-        String mangling = hasCxxMangledName ? "cxx " : "";
-        return mangling + "func " + name + "(" +
-                        getArgumentSignature() + ")";
+    public static Binding newCxxBinding(String name, ArrayList<Parameter> parameterList) {
+        return new KernelBinding(name, parameterList, true);
+    }
+
+    public static Binding newCBinding(String name, ArrayList<Parameter> parameterList) {
+        return new KernelBinding(name, parameterList, false);
     }
 }

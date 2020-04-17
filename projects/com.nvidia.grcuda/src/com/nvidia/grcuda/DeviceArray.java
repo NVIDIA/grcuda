@@ -186,14 +186,13 @@ public final class DeviceArray implements TruffleObject {
 
         }
         switch (elementTypeProfile.profile(elementType)) {
-            case BYTE:
             case CHAR:
                 return nativeView.getByte(index);
-            case SHORT:
+            case SINT16:
                 return nativeView.getShort(index);
-            case INT:
+            case SINT32:
                 return nativeView.getInt(index);
-            case LONG:
+            case SINT64:
                 return nativeView.getLong(index);
             case FLOAT:
                 return nativeView.getFloat(index);
@@ -215,17 +214,16 @@ public final class DeviceArray implements TruffleObject {
         try {
             switch (elementTypeProfile.profile(elementType)) {
 
-                case BYTE:
                 case CHAR:
                     nativeView.setByte(index, valueLibrary.asByte(value));
                     break;
-                case SHORT:
+                case SINT16:
                     nativeView.setShort(index, valueLibrary.asShort(value));
                     break;
-                case INT:
+                case SINT32:
                     nativeView.setInt(index, valueLibrary.asInt(value));
                     break;
-                case LONG:
+                case SINT64:
                     nativeView.setLong(index, valueLibrary.asLong(value));
                     break;
                 case FLOAT:

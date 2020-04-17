@@ -56,16 +56,22 @@ public class ConfiguredKernel implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object execute(Object[] arguments,
+                    @CachedLibrary(limit = "3") InteropLibrary boolAccess,
                     @CachedLibrary(limit = "3") InteropLibrary int8Access,
                     @CachedLibrary(limit = "3") InteropLibrary int16Access,
                     @CachedLibrary(limit = "3") InteropLibrary int32Access,
                     @CachedLibrary(limit = "3") InteropLibrary int64Access,
                     @CachedLibrary(limit = "3") InteropLibrary doubleAccess) throws UnsupportedTypeException, ArityException {
         kernel.incrementLaunchCount();
-        try (KernelArguments args = kernel.createKernelArguments(arguments, int8Access, int16Access,
+        try (KernelArguments args = kernel.createKernelArguments(arguments, boolAccess, int8Access, int16Access,
                         int32Access, int64Access, doubleAccess)) {
             kernel.getCudaRuntime().cuLaunchKernel(kernel, config, args);
         }
         return this;
+    }
+
+    @Override
+    public String toString() {
+        return "ConfiguredKernel(config=" + config + ", kernel=" + kernel + ')';
     }
 }

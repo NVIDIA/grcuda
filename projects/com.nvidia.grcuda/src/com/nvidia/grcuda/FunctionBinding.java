@@ -30,20 +30,31 @@ package com.nvidia.grcuda;
 
 import java.util.ArrayList;
 
-public class FunctionBinding extends Binding {
+public final class FunctionBinding extends Binding {
 
     private final Type returnType;
 
-    public FunctionBinding(String name, ArrayList<Argument> argumentList,
+    private FunctionBinding(String name, ArrayList<Parameter> parameterList,
                     Type returnType, boolean hasCxxMangledName) {
-        super(name, argumentList, hasCxxMangledName);
+        super(name, parameterList, hasCxxMangledName);
         this.returnType = returnType;
+    }
+
+    public static Binding newCxxBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
+        return new FunctionBinding(name, parameterList, returnType, true);
+    }
+
+    public static Binding newCBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
+        return new FunctionBinding(name, parameterList, returnType, false);
     }
 
     @Override
     public String toString() {
-        String mangling = hasCxxMangledName ? "cxx " : "";
-        return mangling + "func " + name + "(" +
-                        getArgumentSignature() + ") : " + returnType.toString().toLowerCase();
+        return super.toString() + " : " + returnType.toString().toLowerCase();
+    }
+
+    @Override
+    public String toNIDLString() {
+        return name + "(" + getNIDLParameterSignature() + "): " + returnType.toString().toLowerCase();
     }
 }
