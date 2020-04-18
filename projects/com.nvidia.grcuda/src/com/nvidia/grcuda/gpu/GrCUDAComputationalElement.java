@@ -36,7 +36,6 @@ public abstract class GrCUDAComputationalElement {
         // Initialize by making a copy of the original set;
         this.activeArgumentSet = new HashSet<>(this.argumentSet);
         this.grCUDAExecutionContext = grCUDAExecutionContext;
-        this.grCUDAExecutionContext.registerExecution(this);
     }
 
     /**
@@ -85,6 +84,23 @@ public abstract class GrCUDAComputationalElement {
     public boolean hasPossibleDependencies() {
         return !this.activeArgumentSet.isEmpty();
     }
+
+    /**
+     * Schedule this computation for future execution by the {@link GrCUDAExecutionContext}.
+     * The scheduling request is separate from the {@link GrCUDAComputationalElement} instantiation
+     * as we need to ensure that the the computational element subclass has been completely instantiated;
+     */
+    public void schedule() {
+        this.grCUDAExecutionContext.registerExecution(this);
+    }
+
+    /**
+     * Generic interface to perform the execution of this {@link GrCUDAComputationalElement}.
+     * The actual execution implementation must be added by concrete computational elements.
+     * The execution request will be done by the {@link GrCUDAExecutionContext}, after this computation has been scheduled
+     * using {@link GrCUDAComputationalElement.schedule()}
+     */
+    public abstract void execute();
 
     /**
      * The default initializer will simply store all the arguments,

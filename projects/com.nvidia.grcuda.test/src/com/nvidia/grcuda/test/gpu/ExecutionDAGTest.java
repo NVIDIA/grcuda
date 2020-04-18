@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -30,6 +29,9 @@ public class ExecutionDAGTest {
         KernelExecutionTest(GrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
             super(grCUDAExecutionContext, args);
         }
+
+        @Override
+        public void execute() {}
     }
 
     /**
@@ -55,7 +57,7 @@ public class ExecutionDAGTest {
     public void addVertexToDAGTest() {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
         // Create two mock kernel executions;
-        new KernelExecutionTest(context, Arrays.asList(1, 2, 3));
+        new KernelExecutionTest(context, Arrays.asList(1, 2, 3)).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -65,7 +67,7 @@ public class ExecutionDAGTest {
         assertTrue(dag.getFrontier().get(0).isFrontier());
         assertTrue(dag.getFrontier().get(0).isStart());
 
-        new KernelExecutionTest(context, Arrays.asList(1, 2, 3));
+        new KernelExecutionTest(context, Arrays.asList(1, 2, 3)).schedule();
 
         assertEquals(2, dag.getNumVertices());
         assertEquals(1, dag.getNumEdges());
@@ -88,10 +90,10 @@ public class ExecutionDAGTest {
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
-        new KernelExecutionTest(context, Collections.singletonList(1));
-        new KernelExecutionTest(context, Collections.singletonList(2));
-        new KernelExecutionTest(context, Arrays.asList(1, 2, 3));
-        new KernelExecutionTest(context, Collections.singletonList(3));
+        new KernelExecutionTest(context, Collections.singletonList(1)).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(2)).schedule();
+        new KernelExecutionTest(context, Arrays.asList(1, 2, 3)).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(3)).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -130,12 +132,12 @@ public class ExecutionDAGTest {
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
         //    \----> C(2)
         // The final frontier is composed by C(2), D(3), E(1), F(4);
-        new KernelExecutionTest(context, Arrays.asList(1, 2));
-        new KernelExecutionTest(context, Collections.singletonList(1));
-        new KernelExecutionTest(context, Collections.singletonList(2));
-        new KernelExecutionTest(context, Arrays.asList(1, 3));
-        new KernelExecutionTest(context, Arrays.asList(1, 4));
-        new KernelExecutionTest(context, Collections.singletonList(4));
+        new KernelExecutionTest(context, Arrays.asList(1, 2)).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(1)).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(2)).schedule();
+        new KernelExecutionTest(context, Arrays.asList(1, 3)).schedule();
+        new KernelExecutionTest(context, Arrays.asList(1, 4)).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(4)).schedule();
 
         ExecutionDAG dag = context.getDag();
 

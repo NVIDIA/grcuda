@@ -52,8 +52,14 @@ public class GrCUDAExecutionContext {
         kernelSet.add(kernel);
     }
 
+    /**
+     * Register this computation for future execution by the {@link GrCUDAExecutionContext},
+     * and add it to the current computational DAG.
+     * The actual execution might be deferred depending on the inferred data dependencies;
+     */
     public void registerExecution(GrCUDAComputationalElement kernel) {
         dag.append(kernel);
+        kernel.execute();
     }
 
     public ExecutionDAG getDag() {
