@@ -55,7 +55,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
-import org.graalvm.polyglot.HostAccess;
 
 public final class CUDARuntime {
 
@@ -64,7 +63,6 @@ public final class CUDARuntime {
     static final String NVRTC_LIBRARY_NAME = "nvrtc";
 
     private final GrCUDAContext context;
-    private final GrCUDAExecutionContext executionContext;
     private final NVRuntimeCompiler nvrtc;
 
     /**
@@ -79,7 +77,6 @@ public final class CUDARuntime {
 
     public CUDARuntime(GrCUDAContext context, Env env) {
         this.context = context;
-        this.executionContext = new GrCUDAExecutionContext();
         try {
             TruffleObject libcudart = (TruffleObject) env.parseInternal(
                             Source.newBuilder("nfi", "load " + "lib" + CUDA_RUNTIME_LIBRARY_NAME + ".so", "cudaruntime").build()).call();
@@ -100,10 +97,6 @@ public final class CUDARuntime {
 
     // using this slow/uncached instance since all calls are non-critical
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
-
-    public GrCUDAExecutionContext getExecutionContext() {
-        return executionContext;
-    }
 
     interface CallSupport {
         String getName();
@@ -495,14 +488,14 @@ public final class CUDARuntime {
     private HashMap<String, CUModule> loadedModules = new HashMap<>();
 
     @TruffleBoundary
-    public Kernel loadKernel(String cubinFile, String kernelName, String signature) {
+    public Kernel loadKernel(GrCUDAExecutionContext grCUDAExecutionContext, String cubinFile, String kernelName, String signature) {
         CUModule module = loadedModules.get(cubinFile);
         try {
             if (module == null) {
                 module = cuModuleLoad(cubinFile);
             }
             long kernelFunction = cuModuleGetFunction(module, kernelName);
-            return new Kernel(this, kernelName, module, kernelFunction, signature);
+            return new Kernel(grCUDAExecutionContext, kernelName, module, kernelFunction, signature);
         } catch (Exception e) {
             if ((module != null) && (module.getRefCount() == 1)) {
                 cuModuleUnload(module);
@@ -512,14 +505,14 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
-    public Kernel buildKernel(String code, String kernelName, String signature) {
+    public Kernel buildKernel(GrCUDAExecutionContext grCUDAExecutionContext, String code, String kernelName, String signature) {
         String moduleName = "truffle" + context.getNextModuleId();
         PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14");
         CUModule module = null;
         try {
             module = cuModuleLoadData(ptx.getPtxSource(), moduleName);
             long kernelFunction = cuModuleGetFunction(module, ptx.getLoweredKernelName());
-            return new Kernel(this, ptx.getLoweredKernelName(), module, kernelFunction,
+            return new Kernel(grCUDAExecutionContext, ptx.getLoweredKernelName(), module, kernelFunction,
                             signature, ptx.getPtxSource());
         } catch (Exception e) {
             if (module != null) {

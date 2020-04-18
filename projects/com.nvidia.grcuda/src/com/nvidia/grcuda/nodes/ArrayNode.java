@@ -38,6 +38,7 @@ import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,7 +59,7 @@ public abstract class ArrayNode extends ExpressionNode {
     @Specialization
     AbstractArray doDefault(VirtualFrame frame,
                             @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
-        final CUDARuntime runtime = context.getCUDARuntime();
+        final GrCUDAExecutionContext grCUDAExecutionContext = context.getGrCUDAExecutionContext();
         long[] elementsPerDim = new long[sizeNodes.length];
         int dim = 0;
         for (ExpressionNode sizeNode : sizeNodes) {
@@ -71,10 +72,10 @@ public abstract class ArrayNode extends ExpressionNode {
             dim += 1;
         }
         if (sizeNodes.length == 1) {
-            return new DeviceArray(runtime, elementsPerDim[0], elementType);
+            return new DeviceArray(grCUDAExecutionContext, elementsPerDim[0], elementType);
         } else {
             final boolean columnMajorOrder = false;
-            return new MultiDimDeviceArray(runtime, elementType, elementsPerDim, columnMajorOrder);
+            return new MultiDimDeviceArray(grCUDAExecutionContext, elementType, elementsPerDim, columnMajorOrder);
         }
     }
 }

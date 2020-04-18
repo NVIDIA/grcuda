@@ -2,6 +2,7 @@ package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -19,7 +20,7 @@ public abstract class AbstractArray implements TruffleObject {
     /**
      * Reference to the underlying CUDA runtime that manages the array memory.
      */
-    protected final CUDARuntime runtime;
+    protected final GrCUDAExecutionContext grCUDAExecutionContext;
 
     /**
      * Data type of elements stored in the array.
@@ -36,8 +37,8 @@ public abstract class AbstractArray implements TruffleObject {
         return elementType;
     }
 
-    protected AbstractArray(CUDARuntime runtime, ElementType elementType) {
-        this.runtime = runtime;
+    protected AbstractArray(GrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType) {
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.elementType = elementType;
     }
 
@@ -48,7 +49,7 @@ public abstract class AbstractArray implements TruffleObject {
      */
     protected void registerArray() {
         if (!this.registeredInContext) {
-            this.runtime.getExecutionContext().registerArray(this);
+            this.grCUDAExecutionContext.registerArray(this);
             this.registeredInContext = true;
         }
     }

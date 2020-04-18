@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import org.graalvm.options.OptionKey;
 
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
@@ -58,7 +59,7 @@ public final class GrCUDAContext {
     private static final String ROOT_NAMESPACE = "CU";
 
     private final Env env;
-    private final CUDARuntime cudaRuntime;
+    private final GrCUDAExecutionContext grCUDAExecutionContext;
     private final Namespace rootNamespace;
     private final ArrayList<Runnable> disposables = new ArrayList<>();
     private AtomicInteger moduleId = new AtomicInteger(0);
@@ -69,19 +70,19 @@ public final class GrCUDAContext {
 
     public GrCUDAContext(Env env) {
         this.env = env;
-        this.cudaRuntime = new CUDARuntime(this, env);
+        this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
         namespace.addNamespace(namespace);
         namespace.addFunction(new BindFunction());
-        namespace.addFunction(new DeviceArrayFunction(cudaRuntime));
+        namespace.addFunction(new DeviceArrayFunction(this.grCUDAExecutionContext));
         namespace.addFunction(new MapFunction());
         namespace.addFunction(new ShredFunction());
-        namespace.addFunction(new BindKernelFunction(cudaRuntime));
-        namespace.addFunction(new BuildKernelFunction(cudaRuntime));
-        namespace.addFunction(new GetDevicesFunction(cudaRuntime));
-        namespace.addFunction(new GetDeviceFunction(cudaRuntime));
-        cudaRuntime.registerCUDAFunctions(namespace);
+        namespace.addFunction(new BindKernelFunction(this.grCUDAExecutionContext));
+        namespace.addFunction(new BuildKernelFunction(this.grCUDAExecutionContext));
+        namespace.addFunction(new GetDevicesFunction(this.grCUDAExecutionContext.getCudaRuntime()));
+        namespace.addFunction(new GetDeviceFunction(this.grCUDAExecutionContext.getCudaRuntime()));
+        this.grCUDAExecutionContext.getCudaRuntime().registerCUDAFunctions(namespace);
         if (this.getOption(GrCUDAOptions.CuMLEnabled)) {
             Namespace ml = new Namespace(CUMLRegistry.NAMESPACE);
             namespace.addNamespace(ml);
@@ -99,8 +100,12 @@ public final class GrCUDAContext {
         return env;
     }
 
+    public GrCUDAExecutionContext getGrCUDAExecutionContext() {
+        return grCUDAExecutionContext;
+    }
+
     public CUDARuntime getCUDARuntime() {
-        return cudaRuntime;
+        return this.grCUDAExecutionContext.getCudaRuntime();
     }
 
     public Namespace getRootNamespace() {

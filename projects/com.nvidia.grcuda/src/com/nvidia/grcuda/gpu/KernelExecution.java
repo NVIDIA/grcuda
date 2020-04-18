@@ -18,7 +18,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
 
     public KernelExecution(ConfiguredKernel configuredKernel, KernelArguments args) {
         super(
-                configuredKernel.getKernel().getCudaRuntime().getExecutionContext(),
+                configuredKernel.getKernel().getGrCUDAExecutionContext(),
                 new KernelExecutionInitializer(configuredKernel.getKernel(), args)
         );
         this.configuredKernel = configuredKernel;
@@ -28,7 +28,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
     }
 
     public void execute() {
-        kernel.getCudaRuntime().cuLaunchKernel(kernel, config, args);
+        kernel.getGrCUDAExecutionContext().getCudaRuntime().cuLaunchKernel(kernel, config, args);
     }
 
     public ConfiguredKernel getConfiguredKernel() {

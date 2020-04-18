@@ -39,6 +39,7 @@ import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -75,7 +76,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 @GenerateUncached
 abstract class MapArrayNode extends Node {
 
-    abstract Object execute(Object source, ElementType elementType, CUDARuntime runtime);
+    abstract Object execute(Object source, ElementType elementType, GrCUDAExecutionContext grCUDAExecutionContext);
 
     private static final FrameDescriptor DESCRIPTOR = new FrameDescriptor();
     private static final FrameSlot SIZE_SLOT = DESCRIPTOR.addFrameSlot("size", FrameSlotKind.Long);
@@ -170,7 +171,7 @@ abstract class MapArrayNode extends Node {
     }
 
     @Specialization(limit = "3")
-    Object doMap(Object source, ElementType elementType, CUDARuntime runtime,
+    Object doMap(Object source, ElementType elementType, GrCUDAExecutionContext grCUDAExecutionContext,
                     @CachedLibrary("source") InteropLibrary interop,
                     @CachedContext(GrCUDALanguage.class) @SuppressWarnings("unused") GrCUDAContext context,
                     @Cached(value = "createLoop(source)", uncached = "createUncachedLoop(source, context)") CallTarget loop) {
@@ -191,7 +192,7 @@ abstract class MapArrayNode extends Node {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException("cannot read array size");
         }
-        DeviceArray result = new DeviceArray(runtime, size, elementType);
+        DeviceArray result = new DeviceArray(grCUDAExecutionContext, size, elementType);
         loop.call(size, source, result);
         return result;
     }
@@ -205,11 +206,11 @@ abstract class MapArrayNode extends Node {
 @ExportLibrary(InteropLibrary.class)
 public final class MapDeviceArrayFunction extends Function {
 
-    private final CUDARuntime runtime;
+    private final GrCUDAExecutionContext grCUDAExecutionContext;
 
-    public MapDeviceArrayFunction(CUDARuntime runtime) {
+    public MapDeviceArrayFunction(GrCUDAExecutionContext grCUDAExecutionContext) {
         super("MapDeviceArray");
-        this.runtime = runtime;
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
     }
 
     @ExportMessage
@@ -236,13 +237,13 @@ public final class MapDeviceArrayFunction extends Function {
             throw new GrCUDAInternalException(e.getMessage());
         }
         if (arguments.length == 1) {
-            return new TypedMapDeviceArrayFunction(runtime, elementType);
+            return new TypedMapDeviceArrayFunction(grCUDAExecutionContext, elementType);
         } else {
             if (arguments.length != 2) {
                 CompilerDirectives.transferToInterpreter();
                 throw ArityException.create(2, arguments.length);
             }
-            return mapNode.execute(arguments[1], elementType, runtime);
+            return mapNode.execute(arguments[1], elementType, grCUDAExecutionContext);
         }
     }
 }

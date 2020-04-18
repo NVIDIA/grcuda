@@ -33,6 +33,7 @@ import java.util.Arrays;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -59,10 +60,8 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     private static final String COPY_FROM = "copyFrom";
     private static final String COPY_TO = "copyTo";
 
-    private static final String DAG = "dag";
-
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO, DAG);
-    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO, DAG);
+    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO);
+    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO);
 
     @ExportLibrary(InteropLibrary.class)
     public static final class MemberSet implements TruffleObject {
@@ -115,11 +114,11 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public DeviceArray(CUDARuntime runtime, long numElements, ElementType elementType) {
-        super(runtime, elementType);
+    public DeviceArray(GrCUDAExecutionContext grCUDAExecutionContext, long numElements, ElementType elementType) {
+        super(grCUDAExecutionContext, elementType);
         this.numElements = numElements;
         this.sizeBytes = numElements * elementType.getSizeBytes();
-        this.nativeView = runtime.cudaMallocManaged(sizeBytes);
+        this.nativeView = grCUDAExecutionContext.getCudaRuntime().cudaMallocManaged(sizeBytes);
         // Register the array in the GrCUDAExecutionContext;
         this.registerArray();
     }
@@ -139,7 +138,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
 
     @Override
     protected void finalize() throws Throwable {
-        runtime.cudaFree(nativeView);
+        grCUDAExecutionContext.getCudaRuntime().cudaFree(nativeView);
         super.finalize();
     }
 
@@ -250,7 +249,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     boolean isMemberReadable(String memberName,
                     @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
         String name = memberProfile.profile(memberName);
-        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name) || DAG.equals(name);
+        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name);
     }
 
     @ExportMessage
@@ -268,9 +267,6 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
         }
         if (COPY_TO.equals(memberName)) {
             return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.TO_POINTER);
-        }
-        if (DAG.equals(memberName)) {
-            return runtime.getExecutionContext().getDag();
         }
         CompilerDirectives.transferToInterpreter();
         throw UnknownIdentifierException.create(memberName);
@@ -308,7 +304,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw new IndexOutOfBoundsException();
         }
-        runtime.cudaMemcpy(getPointer(), fromPointer, numBytesToCopy);
+        grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(getPointer(), fromPointer, numBytesToCopy);
     }
 
     public void copyTo(long toPointer, long numCopyElements) throws IndexOutOfBoundsException {
@@ -317,6 +313,6 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw new IndexOutOfBoundsException();
         }
-        runtime.cudaMemcpy(toPointer, getPointer(), numBytesToCopy);
+        grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(toPointer, getPointer(), numBytesToCopy);
     }
 }

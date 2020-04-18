@@ -1,9 +1,11 @@
 package com.nvidia.grcuda.test.gpu;
 
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.InitializeArgumentSet;
+import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -30,6 +32,15 @@ public class ExecutionDAGTest {
         }
     }
 
+    /**
+     * Mock class to test the GrCUDAExecutionContextTest, it has a null CUDARuntime;
+     */
+    public static class GrCUDAExecutionContextTest extends GrCUDAExecutionContext {
+        GrCUDAExecutionContextTest() {
+            super(null);
+        }
+    }
+
     @Test
     public void executionDAGConstructorTest() {
         ExecutionDAG dag = new ExecutionDAG();
@@ -42,7 +53,7 @@ public class ExecutionDAGTest {
 
     @Test
     public void addVertexToDAGTest() {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContext();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
         // Create two mock kernel executions;
         new KernelExecutionTest(context, Arrays.asList(1, 2, 3));
 
@@ -73,7 +84,7 @@ public class ExecutionDAGTest {
 
     @Test
     public void dependencyPipelineSimpleMockTest() {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContext();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
@@ -114,7 +125,7 @@ public class ExecutionDAGTest {
 
     @Test
     public void complexFrontierMockTest() {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContext();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
 
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
         //    \----> C(2)

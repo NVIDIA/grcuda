@@ -1,6 +1,8 @@
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.array.AbstractArray;
+import com.oracle.truffle.api.TruffleLanguage;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -10,6 +12,11 @@ import java.util.Set;
  * kernels and other executable functions, and dependencies between elements.
  */
 public class GrCUDAExecutionContext {
+
+    /**
+     * Reference to the inner {@link CUDARuntime} used to execute kernels and other {@link GrCUDAComputationalElement}
+     */
+    private final CUDARuntime cudaRuntime;
 
     /**
      * Set that contains all the arrays allocated so far.
@@ -29,27 +36,41 @@ public class GrCUDAExecutionContext {
 
     final private ExecutionDAG dag = new ExecutionDAG();
 
-    public GrCUDAExecutionContext() {
+    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
+        this.cudaRuntime = new CUDARuntime(context, env);
+    }
 
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime) {
+        this.cudaRuntime = cudaRuntime;
     }
 
     public void registerArray(AbstractArray array) {
         arraySet.add(array);
-//        System.out.println("-- added array to context: " + System.identityHashCode(array) + "; " + array.toString());
     }
 
     public void registerKernel(Kernel kernel) {
         kernelSet.add(kernel);
-//        System.out.println("-- added kernel to context: " + System.identityHashCode(kernel) + "; " + kernel.toString());
     }
 
     public void registerExecution(GrCUDAComputationalElement kernel) {
         dag.append(kernel);
-//        System.out.println("\n///////////////////////////////\n");
-//        System.out.println(dag);
     }
 
     public ExecutionDAG getDag() {
         return dag;
+    }
+
+    public CUDARuntime getCudaRuntime() {
+        return cudaRuntime;
+    }
+
+    // Functions used to interface directly with the CUDA runtime;
+
+    public Kernel loadKernel(String cubinFile, String kernelName, String signature) {
+        return cudaRuntime.loadKernel(this, cubinFile, kernelName, signature);
+    }
+
+    public Kernel buildKernel(String code, String kernelName, String signature) {
+        return cudaRuntime.buildKernel(this, code, kernelName, signature);
     }
 }

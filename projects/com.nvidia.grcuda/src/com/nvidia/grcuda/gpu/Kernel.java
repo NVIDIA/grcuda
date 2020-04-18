@@ -55,7 +55,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public class Kernel implements TruffleObject {
 
-    private final CUDARuntime cudaRuntime;
+    private final GrCUDAExecutionContext grCUDAExecutionContext;
     private final String kernelName;
     private final CUDARuntime.CUModule kernelModule;
     private final long kernelFunction;
@@ -65,20 +65,20 @@ public class Kernel implements TruffleObject {
     private final List<Boolean> argsAreArrays;
     private String ptxCode;
 
-    public Kernel(CUDARuntime cudaRuntime, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction, String kernelSignature) {
-        this.cudaRuntime = cudaRuntime;
+    public Kernel(GrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction, String kernelSignature) {
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.kernelName = kernelName;
         this.kernelModule = kernelModule;
         this.kernelFunction = kernelFunction;
         this.kernelSignature = kernelSignature;
         this.argumentTypes = parseSignature(kernelSignature);
         this.argsAreArrays = computeIfArgsAreArrays(this.argumentTypes);
-        this.cudaRuntime.getExecutionContext().registerKernel(this);
+        this.grCUDAExecutionContext.registerKernel(this);
     }
 
-    public Kernel(CUDARuntime cudaRuntime, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
+    public Kernel(GrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
                     String kernelSignature, String ptx) {
-        this(cudaRuntime, kernelName, kernelModule, kernelFunction, kernelSignature);
+        this(grCUDAExecutionContext, kernelName, kernelModule, kernelFunction, kernelSignature);
         this.ptxCode = ptx;
     }
 
@@ -86,8 +86,8 @@ public class Kernel implements TruffleObject {
         launchCount++;
     }
 
-    public CUDARuntime getCudaRuntime() {
-        return cudaRuntime;
+    public GrCUDAExecutionContext getGrCUDAExecutionContext() {
+        return grCUDAExecutionContext;
     }
 
     public ArgumentType[] getArgumentTypes() {
