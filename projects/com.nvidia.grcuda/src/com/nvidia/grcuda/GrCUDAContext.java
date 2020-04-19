@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.nvidia.grcuda.functions.CreateStreamFunction;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import org.graalvm.options.OptionKey;
 
@@ -89,7 +88,6 @@ public final class GrCUDAContext {
         namespace.addFunction(new BuildKernelFunction(this.grCUDAExecutionContext));
         namespace.addFunction(new GetDevicesFunction(this.grCUDAExecutionContext.getCudaRuntime()));
         namespace.addFunction(new GetDeviceFunction(this.grCUDAExecutionContext.getCudaRuntime()));
-        namespace.addFunction(new CreateStreamFunction(this.grCUDAExecutionContext.getCudaRuntime()));
         this.grCUDAExecutionContext.getCudaRuntime().registerCUDAFunctions(namespace);
         if (this.getOption(GrCUDAOptions.CuMLEnabled)) {
             Namespace ml = new Namespace(CUMLRegistry.NAMESPACE);

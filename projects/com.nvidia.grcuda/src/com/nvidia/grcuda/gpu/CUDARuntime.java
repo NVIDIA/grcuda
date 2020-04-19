@@ -299,6 +299,28 @@ public final class CUDARuntime {
         }
     }
 
+    @TruffleBoundary
+    public void cudaStreamSynchronize(CUDAStream stream) {
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_STREAMSYNCHRONIZE.getSymbol(this);
+            Object result = INTEROP.execute(callable, stream.getRawPointer());
+            checkCUDAReturnCode(result, "cudaStreamSynchronize");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    @TruffleBoundary
+    public void cudaStreamDestroy(CUDAStream stream) {
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_STREAMDESTROY.getSymbol(this);
+            Object result = INTEROP.execute(callable, stream.getRawPointer());
+            checkCUDAReturnCode(result, "cudaStreamDestroy");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
     /**
      * Get function as callable from native library.
      *
@@ -502,6 +524,38 @@ public final class CUDARuntime {
                     cudaRuntime.incrementNumStreams();
                     return stream;
                 }
+            }
+        },
+        CUDA_STREAMSYNCHRONIZE("cudaStreamSynchronize", "(pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                Object pointerObj = args[0];
+                long addr;
+                if (pointerObj instanceof CUDAStream) {
+                    addr = ((CUDAStream) pointerObj).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAStream object");
+                }
+                callSymbol(cudaRuntime, addr);
+                return NoneValue.get();
+            }
+        },
+        CUDA_STREAMDESTROY("cudaStreamDestroy", "(pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                Object pointerObj = args[0];
+                long addr;
+                if (pointerObj instanceof CUDAStream) {
+                    addr = ((CUDAStream) pointerObj).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAStream object");
+                }
+                callSymbol(cudaRuntime, addr);
+                return NoneValue.get();
             }
         };
 
