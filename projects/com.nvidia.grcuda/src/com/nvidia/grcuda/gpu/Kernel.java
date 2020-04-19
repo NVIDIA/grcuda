@@ -37,6 +37,8 @@ import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.nvidia.grcuda.gpu.stream.DefaultStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -320,6 +322,15 @@ public class Kernel implements TruffleObject {
         }
         return new Dim3(extractNumber(valueObj, argumentName, access));
     }
+    
+    private static CUDAStream extractStream(Object streamObj) throws UnsupportedTypeException {
+        if (streamObj instanceof CUDAStream) {
+            return (CUDAStream) streamObj;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{streamObj}, "expected CUDAStream type, received " + streamObj.getClass());
+        }
+    }
 
     @ExportMessage
     @SuppressWarnings("static-method")
@@ -334,20 +345,27 @@ public class Kernel implements TruffleObject {
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeAccess,
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeElementAccess,
                     @CachedLibrary(limit = "3") InteropLibrary sharedMemoryAccess) throws UnsupportedTypeException, ArityException {
-        int dynamicSharedMemoryBytes;
-        if (arguments.length == 2) {
-            dynamicSharedMemoryBytes = 0;
-        } else if (arguments.length == 3) {
-            // dynamic shared memory specified
-            dynamicSharedMemoryBytes = extractNumber(arguments[2], "dynamicSharedMemory", sharedMemoryAccess);
-        } else {
+        int dynamicSharedMemoryBytes = 0;
+        CUDAStream stream = new DefaultStream();
+        // FIXME: ArityException allows to specify only 1 arity, and cannot be sublassed! We might want to use a custom exception here;
+        if (arguments.length == 3) {
+            if (sharedMemoryAccess.isNumber(arguments[2])) {
+                // dynamic shared memory specified
+                dynamicSharedMemoryBytes = extractNumber(arguments[2], "dynamicSharedMemory", sharedMemoryAccess);
+            } else {
+                stream = extractStream(arguments[2]);
+            }
+        } else if (arguments.length == 4) {
+            stream = extractStream(arguments[3]);
+        }
+        else if (arguments.length < 2 || arguments.length > 4) {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(2, arguments.length);
         }
 
         Dim3 gridSize = extractDim3(arguments[0], "gridSize", gridSizeAccess, gridSizeElementAccess);
         Dim3 blockSize = extractDim3(arguments[1], "blockSize", blockSizeAccess, blockSizeElementAccess);
-        KernelConfig config = new KernelConfig(gridSize, blockSize, dynamicSharedMemoryBytes);
+        KernelConfig config = new KernelConfig(gridSize, blockSize, dynamicSharedMemoryBytes, stream);
 
         return new ConfiguredKernel(this, config);
     }

@@ -33,8 +33,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+import java.util.Objects;
+
 @ExportLibrary(InteropLibrary.class)
-public final class GPUPointer implements TruffleObject {
+public class GPUPointer implements TruffleObject {
 
     private final long rawPointer;
 
@@ -53,12 +55,25 @@ public final class GPUPointer implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isPointer() {
+    public boolean isPointer() {
         return true;
     }
 
     @ExportMessage
-    long asPointer() {
+    public long asPointer() {
         return rawPointer;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        GPUPointer that = (GPUPointer) o;
+        return rawPointer == that.rawPointer;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(rawPointer);
     }
 }

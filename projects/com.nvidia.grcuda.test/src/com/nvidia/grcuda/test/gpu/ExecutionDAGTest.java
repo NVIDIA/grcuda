@@ -1,11 +1,8 @@
 package com.nvidia.grcuda.test.gpu;
 
-import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
-import com.nvidia.grcuda.gpu.InitializeArgumentSet;
-import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -39,7 +36,7 @@ public class ExecutionDAGTest {
      */
     public static class GrCUDAExecutionContextTest extends GrCUDAExecutionContext {
         GrCUDAExecutionContextTest() {
-            super(null);
+            super(null, null);
         }
     }
 
@@ -244,6 +241,9 @@ public class ExecutionDAGTest {
             configuredDiffKernel.execute(x, y, z, numElements);
             configuredReduceKernel.execute(z, res, numElements);
 
+            // FIXME: temporary sync point until we add array accesses as DAG nodes!
+            Value sync = context.eval("grcuda", "cudaDeviceSynchronize");
+            sync.execute();
             // Verify the output;
             float resScalar = res.getArrayElement(0).asFloat();
             assertEquals(-4.93, resScalar, 0.01);

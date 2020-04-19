@@ -34,6 +34,8 @@ import static com.nvidia.grcuda.functions.Function.expectLong;
 import static com.nvidia.grcuda.functions.Function.expectPositiveLong;
 
 import java.util.HashMap;
+
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import org.graalvm.collections.Pair;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
@@ -64,6 +66,15 @@ public final class CUDARuntime {
 
     private final GrCUDAContext context;
     private final NVRuntimeCompiler nvrtc;
+
+    // FIXME: move in a separate stream manager!
+    private int numStreams = 0;
+    public void incrementNumStreams() {
+        numStreams++;
+    }
+    public int getNumStreams() {
+        return numStreams;
+    }
 
     /**
      * Map from library-path to NFI library.
@@ -276,6 +287,18 @@ public final class CUDARuntime {
         }
     }
 
+    @TruffleBoundary
+    public CUDAStream cudaStreamCreate() {
+        try (UnsafeHelper.PointerObject streamPointer = UnsafeHelper.createPointerObject()) {
+            Object callable = CUDARuntimeFunction.CUDA_STREAMCREATE.getSymbol(this);
+            Object result = INTEROP.execute(callable, streamPointer.getAddress());
+            checkCUDAReturnCode(result, "cudaStreamCreate");
+            return new CUDAStream(streamPointer.getValueOfPointer(), numStreams++);
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
     /**
      * Get function as callable from native library.
      *
@@ -466,6 +489,20 @@ public final class CUDARuntime {
                 callSymbol(cudaRuntime, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
                 return NoneValue.get();
             }
+        },
+        CUDA_STREAMCREATE("cudaStreamCreate", "(pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 0);
+                try (UnsafeHelper.PointerObject streamPointer = UnsafeHelper.createPointerObject()) {
+                    callSymbol(cudaRuntime, streamPointer.getAddress());
+                    long streamAllocatedPointer = streamPointer.getValueOfPointer();
+                    CUDAStream stream = new CUDAStream(streamPointer.getValueOfPointer(), cudaRuntime.getNumStreams());
+                    cudaRuntime.incrementNumStreams();
+                    return stream;
+                }
+            }
         };
 
         private final String name;
@@ -611,12 +648,12 @@ public final class CUDARuntime {
                             blockSize.getY(),
                             blockSize.getZ(),
                             config.getDynamicSharedMemoryBytes(),
-                            config.getStream(),
+                            config.getStream().getRawPointer(),
                             args.getPointer(),              // pointer to kernel arguments array
                             0                               // extra args
             );
             checkCUReturnCode(result, "cuLaunchKernel");
-            cudaDeviceSynchronize();
+//            cudaDeviceSynchronize();
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }

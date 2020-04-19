@@ -29,6 +29,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
 
     @Override
     public void execute() {
+        System.out.println("EXECUTING: " + this);
         kernel.getGrCUDAExecutionContext().getCudaRuntime().cuLaunchKernel(kernel, config, args);
     }
 

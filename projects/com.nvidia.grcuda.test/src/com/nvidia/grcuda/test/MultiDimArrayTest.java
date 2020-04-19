@@ -291,6 +291,7 @@ public class MultiDimArrayTest {
                     matrix.getArrayElement(i).setArrayElement(j, i * numDim2 + j);
                 }
             }
+
             final Value buildKernel = context.eval("grcuda", "buildkernel");
             final Value kernel = buildKernel.execute(INC2D_KERNEL_SOURCE, "inc2d<int>", INC2D_KERNEL_SIGNATURE);
             final int blocks = 80;

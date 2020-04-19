@@ -43,7 +43,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 /**
  * grCUDA Truffle language that exposes the GPU device and CUDA runtime to polyglot Graal languages.
  */
-@TruffleLanguage.Registration(id = GrCUDALanguage.ID, name = "grcuda", version = "0.1", internal = false)
+@TruffleLanguage.Registration(id = GrCUDALanguage.ID, name = "grcuda", version = "0.1", internal = false, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
 public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     public static final String ID = "grcuda";
@@ -88,6 +88,16 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new GrCUDAOptionsOptionDescriptors();
+    }
+
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    @Override
+    protected void finalizeContext(GrCUDAContext context) {
+        context.cleanup();
     }
 
 }

@@ -112,5 +112,8 @@ if __name__ == "__main__":
     print(f"overheads, time: {end - start_tot - time_cumulative:.4f} sec")
     print(f"total time: {end - start_tot:.4f} sec")
 
+    sync = polyglot.eval(language="grcuda", string="cudaDeviceSynchronize")
+    sync()
+
     result = res[0]
     print(f"result={result:.4f}")

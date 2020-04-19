@@ -1,11 +1,13 @@
 package com.nvidia.grcuda.gpu;
 
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAThreadManager;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.oracle.truffle.api.TruffleLanguage;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 /**
  * Class used to monitor the state of GrCUDA execution, keep track of memory allocated,
@@ -17,6 +19,8 @@ public class GrCUDAExecutionContext {
      * Reference to the inner {@link CUDARuntime} used to execute kernels and other {@link GrCUDAComputationalElement}
      */
     private final CUDARuntime cudaRuntime;
+
+    private GrCUDAThreadManager threadManager;
 
     /**
      * Set that contains all the arrays allocated so far.
@@ -36,12 +40,14 @@ public class GrCUDAExecutionContext {
 
     final private ExecutionDAG dag = new ExecutionDAG();
 
-    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
+    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, GrCUDAThreadManager threadManager) {
         this.cudaRuntime = new CUDARuntime(context, env);
+        this.threadManager = threadManager;
     }
 
-    public GrCUDAExecutionContext(CUDARuntime cudaRuntime) {
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager) {
         this.cudaRuntime = cudaRuntime;
+        this.threadManager = threadManager;
     }
 
     public void registerArray(AbstractArray array) {
@@ -59,7 +65,20 @@ public class GrCUDAExecutionContext {
      */
     public void registerExecution(GrCUDAComputationalElement kernel) {
         dag.append(kernel);
-        kernel.execute();
+
+        if (threadManager != null) {
+            cudaRuntime.cudaDeviceSynchronize();
+            kernel.execute();
+            cudaRuntime.cudaDeviceSynchronize();
+        }
+//        // TODO: here should go the scheduling logic, and decide if/when the thread is spawned and under which conditions;
+//        if (threadManager != null) {
+//            threadManager.submitRunnable(() -> {
+//                cudaRuntime.cudaDeviceSynchronize();
+//                kernel.execute();
+////                cudaRuntime.cudaDeviceSynchronize();
+//            });
+//        }
     }
 
     public ExecutionDAG getDag() {

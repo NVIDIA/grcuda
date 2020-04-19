@@ -31,29 +31,33 @@ package com.nvidia.grcuda.gpu;
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.nvidia.grcuda.gpu.stream.DefaultStream;
 import com.oracle.truffle.api.CompilerAsserts;
 
 public final class KernelConfig {
     private final Dim3 gridSize;
     private final Dim3 blockSize;
     private final int dynamicSharedMemoryBytes;
+    private final CUDAStream stream;
 
     public KernelConfig(int numBlocks, int numThreadsPerBlock) {
-        gridSize = new Dim3(numBlocks);
-        blockSize = new Dim3(numThreadsPerBlock);
-        dynamicSharedMemoryBytes = 0;
+        this(new Dim3(numBlocks), new Dim3(numThreadsPerBlock));
     }
 
     public KernelConfig(Dim3 gridSize, Dim3 blockSize) {
-        this.gridSize = gridSize;
-        this.blockSize = blockSize;
-        this.dynamicSharedMemoryBytes = 0;
+        this(gridSize, blockSize, 0);
     }
 
     public KernelConfig(Dim3 gridSize, Dim3 blockSize, int sharedMemoryBytes) {
+        this(gridSize, blockSize, sharedMemoryBytes, new DefaultStream());
+    }
+
+    public KernelConfig(Dim3 gridSize, Dim3 blockSize, int sharedMemoryBytes, CUDAStream stream) {
         this.gridSize = gridSize;
         this.blockSize = blockSize;
         this.dynamicSharedMemoryBytes = sharedMemoryBytes;
+        this.stream = stream;
     }
 
     @Override
@@ -75,8 +79,8 @@ public final class KernelConfig {
     }
 
     @SuppressWarnings("static-method")
-    public int getStream() {
-        return 0; // default stream
+    public CUDAStream getStream() {
+        return stream;
     }
 
     @Override
@@ -89,7 +93,7 @@ public final class KernelConfig {
         }
         KernelConfig that = (KernelConfig) o;
         return dynamicSharedMemoryBytes == that.dynamicSharedMemoryBytes &&
-                        getStream() == that.getStream() &&
+                        getStream().equals(that.getStream()) &&
                         gridSize.equals(that.gridSize) &&
                         blockSize.equals(that.blockSize);
     }

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.nvidia.grcuda.functions.CreateStreamFunction;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import org.graalvm.options.OptionKey;
 
@@ -65,12 +66,18 @@ public final class GrCUDAContext {
     private AtomicInteger moduleId = new AtomicInteger(0);
     private volatile boolean cudaInitialized = false;
 
+    /**
+     * Store a reference to the thread manager used to schedule GPU computations;
+     */
+    private final GrCUDAThreadManager threadManager;
+
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
 
     public GrCUDAContext(Env env) {
         this.env = env;
-        this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
+        this.threadManager = new GrCUDAThreadManager(this);
+        this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, this.threadManager);
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
         namespace.addNamespace(namespace);
@@ -82,6 +89,7 @@ public final class GrCUDAContext {
         namespace.addFunction(new BuildKernelFunction(this.grCUDAExecutionContext));
         namespace.addFunction(new GetDevicesFunction(this.grCUDAExecutionContext.getCudaRuntime()));
         namespace.addFunction(new GetDeviceFunction(this.grCUDAExecutionContext.getCudaRuntime()));
+        namespace.addFunction(new CreateStreamFunction(this.grCUDAExecutionContext.getCudaRuntime()));
         this.grCUDAExecutionContext.getCudaRuntime().registerCUDAFunctions(namespace);
         if (this.getOption(GrCUDAOptions.CuMLEnabled)) {
             Namespace ml = new Namespace(CUMLRegistry.NAMESPACE);
@@ -94,6 +102,7 @@ public final class GrCUDAContext {
             new CUBLASRegistry(this).registerCUBLASFunctions(blas);
         }
         this.rootNamespace = namespace;
+
     }
 
     public Env getEnv() {
@@ -138,8 +147,24 @@ public final class GrCUDAContext {
         return uncachedMapCallTargets;
     }
 
+    /**
+     * Compute the maximum number of concurrent threads that can be spawned by GrCUDA.
+     * This value is usually smaller or equal than the number of logical CPU threads available on the machine.
+     * @return the maximum number of concurrent threads that can be spawned by GrCUDA
+     */
+    public int getNumberOfThreads() {
+        return Runtime.getRuntime().availableProcessors();
+    }
+
     @TruffleBoundary
     public <T> T getOption(OptionKey<T> key) {
         return env.getOptions().get(key);
+    }
+
+    /**
+     * Cleanup the GrCUDA context at the end of the execution;
+     */
+    public void cleanup() {
+        this.threadManager.finalizeManager();
     }
 }
