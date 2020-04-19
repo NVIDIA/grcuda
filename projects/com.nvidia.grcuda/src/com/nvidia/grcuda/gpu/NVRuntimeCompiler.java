@@ -61,7 +61,7 @@ public class NVRuntimeCompiler {
             NVRTCResult compileResult = nvrtcCompileProgram(program, compileOpts);
             if (compileResult != NVRTCResult.NVRTC_SUCCESS) {
                 String compileLog = getProgramLog(program);
-                PrintStream err = new PrintStream(GrCUDALanguage.getCurrentLanguage().getContextReference().get().getEnv().err());
+                PrintStream err = new PrintStream(GrCUDALanguage.getCurrentContext().getEnv().err());
                 err.println("compile result: " + compileResult);
                 err.println("program log: " + compileLog);
                 throw new NVRTCException(compileResult.errorCode, compileLog);

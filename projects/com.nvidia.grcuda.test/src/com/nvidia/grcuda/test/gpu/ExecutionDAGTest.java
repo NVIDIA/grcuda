@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.test.gpu;
 
+import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
@@ -36,7 +37,7 @@ public class ExecutionDAGTest {
      */
     public static class GrCUDAExecutionContextTest extends GrCUDAExecutionContext {
         GrCUDAExecutionContextTest() {
-            super(null, null);
+            super((CUDARuntime) null, null);
         }
     }
 

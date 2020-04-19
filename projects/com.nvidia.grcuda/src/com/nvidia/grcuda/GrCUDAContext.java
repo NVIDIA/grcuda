@@ -65,18 +65,12 @@ public final class GrCUDAContext {
     private AtomicInteger moduleId = new AtomicInteger(0);
     private volatile boolean cudaInitialized = false;
 
-    /**
-     * Store a reference to the thread manager used to schedule GPU computations;
-     */
-    private final GrCUDAThreadManager threadManager;
-
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
 
     public GrCUDAContext(Env env) {
         this.env = env;
-        this.threadManager = new GrCUDAThreadManager(this);
-        this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, this.threadManager);
+        this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
         namespace.addNamespace(namespace);
@@ -163,6 +157,6 @@ public final class GrCUDAContext {
      * Cleanup the GrCUDA context at the end of the execution;
      */
     public void cleanup() {
-        this.threadManager.finalizeManager();
+        this.grCUDAExecutionContext.cleanup();
     }
 }

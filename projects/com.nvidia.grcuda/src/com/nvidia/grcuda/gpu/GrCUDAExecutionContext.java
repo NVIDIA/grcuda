@@ -3,6 +3,7 @@ package com.nvidia.grcuda.gpu;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAThreadManager;
 import com.nvidia.grcuda.array.AbstractArray;
+import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.TruffleLanguage;
 
 import java.util.HashSet;
@@ -19,8 +20,15 @@ public class GrCUDAExecutionContext {
      * Reference to the inner {@link CUDARuntime} used to execute kernels and other {@link GrCUDAComputationalElement}
      */
     private final CUDARuntime cudaRuntime;
-
-    private GrCUDAThreadManager threadManager;
+    /**
+     * Reference to the {@link com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager} that takes care of
+     * scheduling computations on different streams;
+     */
+    private final GrCUDAStreamManager streamManager;
+    /**
+     * Store a reference to the thread manager used to schedule GPU computations;
+     */
+    private final GrCUDAThreadManager threadManager;
 
     /**
      * Set that contains all the arrays allocated so far.
@@ -40,14 +48,14 @@ public class GrCUDAExecutionContext {
 
     final private ExecutionDAG dag = new ExecutionDAG();
 
-    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, GrCUDAThreadManager threadManager) {
-        this.cudaRuntime = new CUDARuntime(context, env);
-        this.threadManager = threadManager;
+    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
+        this(new CUDARuntime(context, env), new GrCUDAThreadManager(context));
     }
 
     public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager) {
         this.cudaRuntime = cudaRuntime;
         this.threadManager = threadManager;
+        this.streamManager = new GrCUDAStreamManager(this.cudaRuntime);
     }
 
     public void registerArray(AbstractArray array) {
@@ -97,5 +105,13 @@ public class GrCUDAExecutionContext {
 
     public Kernel buildKernel(String code, String kernelName, String signature) {
         return cudaRuntime.buildKernel(this, code, kernelName, signature);
+    }
+
+    /**
+     * Delete internal structures that require manual cleanup operations;
+     */
+    public void cleanup() {
+        threadManager.finalizeManager();
+        streamManager.cleanup();
     }
 }

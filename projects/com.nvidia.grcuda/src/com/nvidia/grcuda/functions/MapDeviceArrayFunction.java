@@ -151,7 +151,7 @@ abstract class MapArrayNode extends Node {
             frame.setLong(INDEX_SLOT, 0);
             frame.setObject(SOURCE_SLOT, frame.getArguments()[1]);
             frame.setObject(RESULT_SLOT, frame.getArguments()[2]);
-            loop.executeLoop(frame);
+            loop.execute(frame);
             return NoneValue.get();
         }
     }

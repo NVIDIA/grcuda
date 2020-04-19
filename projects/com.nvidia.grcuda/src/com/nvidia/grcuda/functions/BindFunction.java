@@ -51,7 +51,7 @@ public final class BindFunction extends Function {
         String symbolName = expectString(arguments[1], "argument 2 of bind must be string (symbol name)");
         String signature = expectString(arguments[2], "argument 3 of bind must be string (signature)");
         try {
-            return GrCUDALanguage.getCurrentLanguage().getContextReference().get().getCUDARuntime().getSymbol(libraryFile, symbolName, signature);
+            return GrCUDALanguage.getCurrentContext().getCUDARuntime().getSymbol(libraryFile, symbolName, signature);
         } catch (UnknownIdentifierException e) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException(symbolName + " not found in " + libraryFile);
