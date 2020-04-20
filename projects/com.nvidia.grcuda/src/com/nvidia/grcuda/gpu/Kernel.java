@@ -345,29 +345,29 @@ public class Kernel implements TruffleObject {
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeAccess,
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeElementAccess,
                     @CachedLibrary(limit = "3") InteropLibrary sharedMemoryAccess) throws UnsupportedTypeException, ArityException {
-        int dynamicSharedMemoryBytes = 0;
-        CUDAStream stream = new DefaultStream();
         // FIXME: ArityException allows to specify only 1 arity, and cannot be sublassed! We might want to use a custom exception here;
-        if (arguments.length == 3) {
-            if (sharedMemoryAccess.isNumber(arguments[2])) {
-                // dynamic shared memory specified
-                dynamicSharedMemoryBytes = extractNumber(arguments[2], "dynamicSharedMemory", sharedMemoryAccess);
-            } else {
-                stream = extractStream(arguments[2]);
-            }
-        } else if (arguments.length == 4) {
-            stream = extractStream(arguments[3]);
-        }
-        else if (arguments.length < 2 || arguments.length > 4) {
+        if (arguments.length < 2 || arguments.length > 4) {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(2, arguments.length);
         }
 
         Dim3 gridSize = extractDim3(arguments[0], "gridSize", gridSizeAccess, gridSizeElementAccess);
         Dim3 blockSize = extractDim3(arguments[1], "blockSize", blockSizeAccess, blockSizeElementAccess);
-        KernelConfig config = new KernelConfig(gridSize, blockSize, dynamicSharedMemoryBytes, stream);
+        KernelConfigBuilder configBuilder = new KernelConfigBuilder(gridSize, blockSize);
+        if (arguments.length == 3) {
+            if (sharedMemoryAccess.isNumber(arguments[2])) {
+                // Dynamic shared memory specified;
+                configBuilder.dynamicSharedMemoryBytes(extractNumber(arguments[2], "dynamicSharedMemory", sharedMemoryAccess));
+            } else {
+                // Stream specified;
+                configBuilder.stream(extractStream(arguments[2]));
+            }
+        } else if (arguments.length == 4) {
+            // Stream specified;
+            configBuilder.stream(extractStream(arguments[3]));
+        }
 
-        return new ConfiguredKernel(this, config);
+        return new ConfiguredKernel(this, configBuilder.build());
     }
 }
 

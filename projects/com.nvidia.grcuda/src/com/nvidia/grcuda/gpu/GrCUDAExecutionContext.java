@@ -8,7 +8,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
 /**
  * Class used to monitor the state of GrCUDA execution, keep track of memory allocated,
@@ -53,9 +52,13 @@ public class GrCUDAExecutionContext {
     }
 
     public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager) {
+        this(cudaRuntime, threadManager, new GrCUDAStreamManager(cudaRuntime));
+    }
+
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager) {
         this.cudaRuntime = cudaRuntime;
         this.threadManager = threadManager;
-        this.streamManager = new GrCUDAStreamManager(this.cudaRuntime);
+        this.streamManager = streamManager;
     }
 
     public void registerArray(AbstractArray array) {
@@ -71,12 +74,16 @@ public class GrCUDAExecutionContext {
      * and add it to the current computational DAG.
      * The actual execution might be deferred depending on the inferred data dependencies;
      */
-    public void registerExecution(GrCUDAComputationalElement kernel) {
-        dag.append(kernel);
+    public void registerExecution(GrCUDAComputationalElement computation) {
+        // Add the new computation to the DAG
+        ExecutionDAG.DAGVertex vertex = dag.append(computation);
 
+        // Compute the stream where the computation will be done;
+        streamManager.assignStream(vertex);
+        
         if (threadManager != null) {
             cudaRuntime.cudaDeviceSynchronize();
-            kernel.execute();
+            computation.execute();
             cudaRuntime.cudaDeviceSynchronize();
         }
 //        // TODO: here should go the scheduling logic, and decide if/when the thread is spawned and under which conditions;

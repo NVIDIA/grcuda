@@ -1,6 +1,10 @@
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.oracle.truffle.api.Option;
+
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -44,6 +48,29 @@ public class KernelExecution extends GrCUDAComputationalElement {
     public KernelArguments getArgs() {
         return args;
     }
+
+    /**
+     * Setting the stream must be done inside the {@link KernelConfig};
+     * @param stream the stream where this computation will be executed
+     */
+    @Override
+    public void setStream(CUDAStream stream) {
+        // Make sure that the internal reference is consistent;
+        super.setStream(stream);
+        config.setStream(stream);
+    }
+
+    /**
+     * The stream is stored in the internal {@link KernelConfig};
+     * @return the stream where this computation will be executed
+     */
+    @Override
+    public CUDAStream getStream() {
+        return config.getStream();
+    }
+
+    @Override
+    public boolean useManuallySpecifiedStream() { return config.useCustomStream(); }
 
     @Override
     public String toString() {

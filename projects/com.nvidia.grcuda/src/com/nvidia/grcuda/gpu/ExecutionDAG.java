@@ -23,18 +23,16 @@ public class ExecutionDAG implements TruffleObject {
 
     /**
      * Add a new computation to the graph, and compute its dependencies.
-     * @param kernel a kernel computation, containing kernel configuration and input arguments.
+     * @param kernel a kernel computation, containing kernel configuration and input arguments
+     * @return the new vertex that has been appended to the DAG
      */
-    public void append(GrCUDAComputationalElement kernel) {
+    public DAGVertex append(GrCUDAComputationalElement kernel) {
         // Add it to the list of vertices;
         DAGVertex newVertex = new DAGVertex(kernel);
 
         //////////////////////////////
         // Compute dependencies with other vertices in the DAG frontier, and create edges;
         //////////////////////////////
-
-        // TODO: the frontier is not just composed of vertices without children!!
-        //  I need to consider for each kernel the arguments that haven't been "covered" by a new vertex
 
         // For each vertex in the frontier, compute dependencies of the vertex;
         for (DAGVertex frontierVertex : frontier) {
@@ -50,10 +48,11 @@ public class ExecutionDAG implements TruffleObject {
         if (newVertex.isFrontier()) {
             frontier.add(newVertex);
         }
+        return newVertex;
     }
 
     private List<Object> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
-        return startVertex.getKernel().computeDependencies(endVertex.getKernel());
+        return startVertex.getComputation().computeDependencies(endVertex.getComputation());
     }
 
     public List<DAGVertex> getVertices() {
@@ -86,11 +85,11 @@ public class ExecutionDAG implements TruffleObject {
     }
 
     /**
-     * Simple vertex class used to encapsulate {@link KernelExecution}.
+     * Simple vertex class used to encapsulate {@link GrCUDAComputationalElement}.
      */
     public class DAGVertex {
 
-        private final GrCUDAComputationalElement kernel;
+        private final GrCUDAComputationalElement computation;
         private final int id;
 
         /**
@@ -106,14 +105,14 @@ public class ExecutionDAG implements TruffleObject {
          */
         private final List<DAGEdge> children = new ArrayList<>();
 
-        DAGVertex(GrCUDAComputationalElement kernel) {
-            this.kernel = kernel;
+        DAGVertex(GrCUDAComputationalElement computation) {
+            this.computation = computation;
             this.id = getNumVertices();
             vertices.add(this);
         }
 
-        GrCUDAComputationalElement getKernel() {
-            return kernel;
+        public GrCUDAComputationalElement getComputation() {
+            return computation;
         }
 
         int getId() {
@@ -131,7 +130,7 @@ public class ExecutionDAG implements TruffleObject {
          * @return if this vertex is part of the DAG frontier
          */
         public boolean isFrontier() {
-            return kernel.hasPossibleDependencies();
+            return computation.hasPossibleDependencies() && !computation.isComputationFinished();
         }
 
         public List<DAGEdge> getParents() {
@@ -145,6 +144,14 @@ public class ExecutionDAG implements TruffleObject {
         public List<DAGVertex> getParentVertices() { return parents.stream().map(DAGEdge::getStart).collect(Collectors.toList()); }
 
         public List<DAGVertex> getChildVertices() { return children.stream().map(DAGEdge::getEnd).collect(Collectors.toList()); }
+
+        public List<GrCUDAComputationalElement> getParentComputations() {
+            return parents.stream().map(e -> e.getStart().getComputation()).collect(Collectors.toList());
+        }
+
+        public List<GrCUDAComputationalElement> getChildComputations() {
+            return children.stream().map(e -> e.getEnd().getComputation()).collect(Collectors.toList());
+        }
 
         public void setStart(boolean start) {
             isStart = start;
@@ -162,7 +169,7 @@ public class ExecutionDAG implements TruffleObject {
         @Override
         public String toString() {
             return "V(" +
-                    ", id=" + id +
+                    "id=" + id +
                     ", isStart=" + isStart +
                     ", isFrontier=" + this.isFrontier() +
                     ", parents=" + parents +

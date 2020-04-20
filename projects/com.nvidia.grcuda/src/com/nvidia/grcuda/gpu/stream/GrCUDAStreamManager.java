@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.gpu.stream;
 
-import com.nvidia.grcuda.GrCUDAThreadManager;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.ExecutionDAG;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +19,22 @@ public class GrCUDAStreamManager {
 
     public GrCUDAStreamManager(CUDARuntime runtime) {
         this.runtime = runtime;
+    }
+
+    public void assignStream(ExecutionDAG.DAGVertex vertex) {
+        // If it has a manually specified stream, use it;
+        if (!vertex.getComputation().useManuallySpecifiedStream()) {
+            if (vertex.isStart()) {
+                // Else, if the computation doesn't have parents, provide a new stream to it;
+                // TODO: can we do better? E.g. re-use a stream that is not being used
+                vertex.getComputation().setStream(this.createStream());
+            } else {
+                // Else, compute the streams used by the parent computations.
+                // If more than one stream is available, keep the first;
+                CUDAStream stream = vertex.getParentComputations().get(0).getStream();
+                vertex.getComputation().setStream(stream);
+            }
+        }
     }
 
     /**

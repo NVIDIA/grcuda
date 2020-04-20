@@ -1,9 +1,12 @@
 package com.nvidia.grcuda.test.gpu;
 
+import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -37,7 +40,17 @@ public class ExecutionDAGTest {
      */
     public static class GrCUDAExecutionContextTest extends GrCUDAExecutionContext {
         GrCUDAExecutionContextTest() {
-            super((CUDARuntime) null, null);
+            super((CUDARuntime) null, null, new GrCUDAStreamManagerTest(null));
+        }
+    }
+
+    public static class GrCUDAStreamManagerTest extends GrCUDAStreamManager {
+        int streamNumber = 0;
+        GrCUDAStreamManagerTest(CUDARuntime runtime) { super(runtime); }
+
+        @Override
+        public CUDAStream createStream() {
+            return new CUDAStream(0, streamNumber++);
         }
     }
 

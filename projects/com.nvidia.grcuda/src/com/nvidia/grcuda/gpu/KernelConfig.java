@@ -39,25 +39,15 @@ public final class KernelConfig {
     private final Dim3 gridSize;
     private final Dim3 blockSize;
     private final int dynamicSharedMemoryBytes;
-    private final CUDAStream stream;
+    private CUDAStream stream;
+    private final boolean useCustomStream;
 
-    public KernelConfig(int numBlocks, int numThreadsPerBlock) {
-        this(new Dim3(numBlocks), new Dim3(numThreadsPerBlock));
-    }
-
-    public KernelConfig(Dim3 gridSize, Dim3 blockSize) {
-        this(gridSize, blockSize, 0);
-    }
-
-    public KernelConfig(Dim3 gridSize, Dim3 blockSize, int sharedMemoryBytes) {
-        this(gridSize, blockSize, sharedMemoryBytes, new DefaultStream());
-    }
-
-    public KernelConfig(Dim3 gridSize, Dim3 blockSize, int sharedMemoryBytes, CUDAStream stream) {
+    public KernelConfig(Dim3 gridSize, Dim3 blockSize, int sharedMemoryBytes, CUDAStream stream, boolean useCustomStream) {
         this.gridSize = gridSize;
         this.blockSize = blockSize;
         this.dynamicSharedMemoryBytes = sharedMemoryBytes;
         this.stream = stream;
+        this.useCustomStream = useCustomStream;
     }
 
     @Override
@@ -83,6 +73,14 @@ public final class KernelConfig {
         return stream;
     }
 
+    public void setStream(CUDAStream stream) {
+        this.stream = stream;
+    }
+
+    public boolean useCustomStream() {
+        return useCustomStream;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -95,7 +93,7 @@ public final class KernelConfig {
         return dynamicSharedMemoryBytes == that.dynamicSharedMemoryBytes &&
                         getStream().equals(that.getStream()) &&
                         gridSize.equals(that.gridSize) &&
-                        blockSize.equals(that.blockSize);
+                        blockSize.equals(that.blockSize) && stream.equals(that.stream);
     }
 
     @Override

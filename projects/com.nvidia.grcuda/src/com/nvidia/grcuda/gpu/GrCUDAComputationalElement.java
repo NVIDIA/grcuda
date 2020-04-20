@@ -1,5 +1,8 @@
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.nvidia.grcuda.gpu.stream.DefaultStream;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -25,6 +28,18 @@ public abstract class GrCUDAComputationalElement {
      * Reference to the execution context where this computation is executed;
      */
     protected final GrCUDAExecutionContext grCUDAExecutionContext;
+    /**
+     * Reference to the stream where this computation will be executed,
+     * if possible (i.e. if the computation can be executed on a custom stream).
+     * Subclasses can keep an internal reference to the stream, e.g. if it can be manually modified by the user,
+     * but it is required to keep that value consistent to this one if it is modified;
+     */
+    private CUDAStream stream = new DefaultStream();
+    /**
+     * Keep track of whether this computation has already been executed, and represents a "dead" vertex in the DAG.
+     * Computations that are already executed will not be considered when computing dependencies;
+     */
+    private boolean computationFinished = false;
 
     /**
      * Constructor that takes an argument set initializer to build the set of arguments used in the dependency computation
@@ -98,9 +113,32 @@ public abstract class GrCUDAComputationalElement {
      * Generic interface to perform the execution of this {@link GrCUDAComputationalElement}.
      * The actual execution implementation must be added by concrete computational elements.
      * The execution request will be done by the {@link GrCUDAExecutionContext}, after this computation has been scheduled
-     * using {@link GrCUDAComputationalElement.schedule()}
+     * using {@link GrCUDAComputationalElement#schedule()}
      */
     public abstract void execute();
+
+    public CUDAStream getStream() {
+        return stream;
+    }
+
+    public void setStream(CUDAStream stream) {
+        this.stream = stream;
+    }
+
+    public boolean isComputationFinished() {
+        return computationFinished;
+    }
+
+    public void setComputationFinished(boolean computationFinished) {
+        this.computationFinished = computationFinished;
+    }
+
+    /**
+     * Find whether this computation should be done on a user-specified {@link com.nvidia.grcuda.gpu.stream.CUDAStream};
+     * If not, the stream will be provided internally using the specified execution policy. By default return false;
+     * @return if the computation is done on a custom CUDA stream;
+     */
+    public boolean useManuallySpecifiedStream() { return false; }
 
     /**
      * The default initializer will simply store all the arguments,
