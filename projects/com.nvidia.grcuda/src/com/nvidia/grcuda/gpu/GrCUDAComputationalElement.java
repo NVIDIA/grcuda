@@ -40,6 +40,10 @@ public abstract class GrCUDAComputationalElement {
      * Computations that are already executed will not be considered when computing dependencies;
      */
     private boolean computationFinished = false;
+    /**
+     * Keep track of whether this computation has already been started, to avoid performing the same computation multiple times;
+     */
+    private boolean computationStarted = false;
 
     /**
      * Constructor that takes an argument set initializer to build the set of arguments used in the dependency computation
@@ -115,7 +119,16 @@ public abstract class GrCUDAComputationalElement {
      * The execution request will be done by the {@link GrCUDAExecutionContext}, after this computation has been scheduled
      * using {@link GrCUDAComputationalElement#schedule()}
      */
-    public abstract void execute();
+    protected abstract void executeInner();
+
+    /**
+     * Perform execution taking care of setting appropriate flags that keep track of the execution status;
+     */
+    public void execute() {
+        setComputationStarted();
+        executeInner();
+        setComputationFinished();
+    }
 
     public CUDAStream getStream() {
         return stream;
@@ -129,8 +142,16 @@ public abstract class GrCUDAComputationalElement {
         return computationFinished;
     }
 
-    public void setComputationFinished(boolean computationFinished) {
-        this.computationFinished = computationFinished;
+    public boolean isComputationStarted() {
+        return computationStarted;
+    }
+
+    public void setComputationFinished() {
+        this.computationFinished = true;
+    }
+
+    public void setComputationStarted() {
+        this.computationStarted = true;
     }
 
     /**

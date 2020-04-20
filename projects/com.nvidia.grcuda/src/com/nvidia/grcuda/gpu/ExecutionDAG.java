@@ -133,6 +133,22 @@ public class ExecutionDAG implements TruffleObject {
             return computation.hasPossibleDependencies() && !computation.isComputationFinished();
         }
 
+        /**
+         * Check if this vertex corresponds to a computation that can be immediately executed.
+         * This usually happens if the computations has no parents, or all the parents have already completed their execution;
+         * @return if the computation can be started immediately
+         */
+        public boolean isExecutable() {
+            return !computation.isComputationStarted() && (parents.isEmpty() || allParentsHaveFinishedComputation());
+        }
+
+        private boolean allParentsHaveFinishedComputation() {
+            for (DAGEdge e : parents) {
+                if (!e.getStart().getComputation().isComputationFinished()) return false;
+            }
+            return true;
+        }
+
         public List<DAGEdge> getParents() {
             return parents;
         }

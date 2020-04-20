@@ -169,11 +169,11 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     @ExportMessage
     Object readArrayElement(long index,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
-
+        System.out.println("READ ELEM " + index);
+        grCUDAExecutionContext.getCudaRuntime().cudaDeviceSynchronize();
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
-
         }
         switch (elementTypeProfile.profile(elementType)) {
             case BYTE:
@@ -197,7 +197,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     public void writeArrayElement(long index, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException, InvalidArrayIndexException {
-
+        grCUDAExecutionContext.getCudaRuntime().cudaDeviceSynchronize();
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);

@@ -80,19 +80,16 @@ public class GrCUDAExecutionContext {
 
         // Compute the stream where the computation will be done;
         streamManager.assignStream(vertex);
-        
-        if (threadManager != null) {
-            cudaRuntime.cudaDeviceSynchronize();
-            computation.execute();
-            cudaRuntime.cudaDeviceSynchronize();
+
+        // If the computation can be executed immediately, start it;
+        if (vertex.isExecutable() && threadManager != null) {
+            threadManager.submitRunnable(new ComputationThread(vertex));
         }
-//        // TODO: here should go the scheduling logic, and decide if/when the thread is spawned and under which conditions;
+
 //        if (threadManager != null) {
-//            threadManager.submitRunnable(() -> {
-//                cudaRuntime.cudaDeviceSynchronize();
-//                kernel.execute();
-////                cudaRuntime.cudaDeviceSynchronize();
-//            });
+//            cudaRuntime.cudaDeviceSynchronize();
+//            computation.execute();
+//            cudaRuntime.cudaDeviceSynchronize();
 //        }
     }
 
@@ -102,6 +99,10 @@ public class GrCUDAExecutionContext {
 
     public CUDARuntime getCudaRuntime() {
         return cudaRuntime;
+    }
+
+    public GrCUDAStreamManager getStreamManager() {
+        return streamManager;
     }
 
     // Functions used to interface directly with the CUDA runtime;
@@ -120,5 +121,30 @@ public class GrCUDAExecutionContext {
     public void cleanup() {
         threadManager.finalizeManager();
         streamManager.cleanup();
+    }
+
+    public class ComputationThread implements Runnable {
+
+        private final ExecutionDAG.DAGVertex vertex;
+
+        public ComputationThread(ExecutionDAG.DAGVertex vertex) {
+            this.vertex = vertex;
+        }
+
+        public void run(){
+            // Perform the computation;
+            System.out.println("Starting execution of " + vertex.getComputation());
+            vertex.getComputation().execute();
+            // Synchronize on the stream associated to this computation;
+            System.out.println("\tsync thread on stream " + vertex.getComputation().getStream());
+            cudaRuntime.cudaStreamSynchronize(vertex.getComputation().getStream());
+            System.out.println("\tfinish sync thread on stream " + vertex.getComputation().getStream());
+            // Update the status of this computation and of its children, ;
+            vertex.getChildVertices().forEach(v -> {
+                if (v.isExecutable() && threadManager != null) {
+                    threadManager.submitRunnable(new ComputationThread(v));
+                }
+            });
+        }
     }
 }

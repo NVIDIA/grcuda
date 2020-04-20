@@ -54,7 +54,7 @@ public class GrCUDAThreadManager {
     public void finalizeManager() {
         if (threadPool == null)
             return;
-
+        System.out.println("closing GrCUDA thread manager...");
         threadPool.shutdown();
         try {
             if (!threadPool.awaitTermination(60, TimeUnit.SECONDS)) {
@@ -70,5 +70,6 @@ public class GrCUDAThreadManager {
             threadPool.shutdownNow();
             Thread.currentThread().interrupt();
         }
+        System.out.println("closed GrCUDA thread manager");
     }
 }

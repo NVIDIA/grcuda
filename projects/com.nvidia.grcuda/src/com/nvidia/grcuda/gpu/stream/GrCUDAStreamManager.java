@@ -11,11 +11,11 @@ public class GrCUDAStreamManager {
     /**
      * List of {@link CUDAStream} that have been currently allocated;
      */
-    List<CUDAStream> streams = new ArrayList<>();
+    protected List<CUDAStream> streams = new ArrayList<>();
     /**
      * Reference to the CUDA runtime that manages the streams;
      */
-    CUDARuntime runtime;
+    protected CUDARuntime runtime;
 
     public GrCUDAStreamManager(CUDARuntime runtime) {
         this.runtime = runtime;
@@ -27,10 +27,12 @@ public class GrCUDAStreamManager {
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
                 // TODO: can we do better? E.g. re-use a stream that is not being used
-                vertex.getComputation().setStream(this.createStream());
+                vertex.getComputation().setStream(createStream());
             } else {
                 // Else, compute the streams used by the parent computations.
                 // If more than one stream is available, keep the first;
+                // TODO: this should be more complex!
+                //  If 2 child computations have disjoint set of dependencies, they can use 2 streams and run in parallel!
                 CUDAStream stream = vertex.getParentComputations().get(0).getStream();
                 vertex.getComputation().setStream(stream);
             }
