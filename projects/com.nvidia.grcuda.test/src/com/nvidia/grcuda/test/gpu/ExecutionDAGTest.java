@@ -57,7 +57,7 @@ public class ExecutionDAGTest {
 
         @Override
         public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
-            
+
         }
     }
 
