@@ -28,17 +28,13 @@
  */
 package com.nvidia.grcuda.array;
 
-import java.util.Arrays;
-
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
-import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
@@ -52,6 +48,8 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
+
+import java.util.Arrays;
 
 @ExportLibrary(InteropLibrary.class)
 public final class DeviceArray extends AbstractArray implements TruffleObject {
@@ -169,7 +167,6 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     @ExportMessage
     Object readArrayElement(long index,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
-//        System.out.println("READ ELEM " + index);
         grCUDAExecutionContext.getCudaRuntime().cudaDeviceSynchronize();
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();

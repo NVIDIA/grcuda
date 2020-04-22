@@ -67,13 +67,16 @@ public final class CUDARuntime {
     private final GrCUDAContext context;
     private final NVRuntimeCompiler nvrtc;
 
-    // FIXME: move in a separate stream manager!
-    private int numStreams = 0;
+    /**
+     * Users can manually create streams that are not managed directly by a {@link com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager}.
+     * We keep track of how many of these streams have been created;
+     */
+    private int numUserAllocatedStreams = 0;
     public void incrementNumStreams() {
-        numStreams++;
+        numUserAllocatedStreams++;
     }
     public int getNumStreams() {
-        return numStreams;
+        return numUserAllocatedStreams;
     }
 
     /**
@@ -288,12 +291,12 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
-    public CUDAStream cudaStreamCreate() {
+    public CUDAStream cudaStreamCreate(int streamId) {
         try (UnsafeHelper.PointerObject streamPointer = UnsafeHelper.createPointerObject()) {
             Object callable = CUDARuntimeFunction.CUDA_STREAMCREATE.getSymbol(this);
             Object result = INTEROP.execute(callable, streamPointer.getAddress());
             checkCUDAReturnCode(result, "cudaStreamCreate");
-            return new CUDAStream(streamPointer.getValueOfPointer(), numStreams++);
+            return new CUDAStream(streamPointer.getValueOfPointer(), streamId);
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -519,7 +522,6 @@ public final class CUDARuntime {
                 checkArgumentLength(args, 0);
                 try (UnsafeHelper.PointerObject streamPointer = UnsafeHelper.createPointerObject()) {
                     callSymbol(cudaRuntime, streamPointer.getAddress());
-                    long streamAllocatedPointer = streamPointer.getValueOfPointer();
                     CUDAStream stream = new CUDAStream(streamPointer.getValueOfPointer(), cudaRuntime.getNumStreams());
                     cudaRuntime.incrementNumStreams();
                     return stream;

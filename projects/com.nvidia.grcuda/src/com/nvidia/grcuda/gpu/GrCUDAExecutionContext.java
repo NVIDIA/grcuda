@@ -39,12 +39,6 @@ public class GrCUDAExecutionContext {
      */
     final private Set<Kernel> kernelSet = new HashSet<>();
 
-    /**
-     * Set that contains all the CUDA kernels execution so far.
-     * TODO: this should not be a set, but a DAG that can be used to handle dependencies
-     */
-    final private Set<GrCUDAComputationalElement> kernelExecSet = new HashSet<>();
-
     final private ExecutionDAG dag = new ExecutionDAG();
 
     public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
@@ -83,7 +77,7 @@ public class GrCUDAExecutionContext {
 
         // Start the computation;
         executeComputationSync(vertex);
-//
+
 //        // If the computation can be executed immediately, start it;
 //        if (vertex.isExecutable() && threadManager != null) {
 //            threadManager.submitRunnable(new ComputationThread(vertex));

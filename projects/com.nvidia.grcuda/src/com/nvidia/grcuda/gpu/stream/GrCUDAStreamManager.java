@@ -65,7 +65,7 @@ public class GrCUDAStreamManager {
      * Create a new {@link CUDAStream} and add it to this manager, then return it;
      */
     public CUDAStream createStream() {
-        CUDAStream newStream = runtime.cudaStreamCreate();
+        CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
         return newStream;
     }
