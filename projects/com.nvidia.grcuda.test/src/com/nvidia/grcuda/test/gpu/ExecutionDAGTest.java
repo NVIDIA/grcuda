@@ -1,11 +1,13 @@
 package com.nvidia.grcuda.test.gpu;
 
+import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
-import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
+import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -31,7 +33,8 @@ public class ExecutionDAGTest {
         }
 
         @Override
-        protected void execute() {}
+        public Object execute() { return NoneValue.get();
+        }
     }
 
     /**
@@ -72,7 +75,7 @@ public class ExecutionDAGTest {
     }
 
     @Test
-    public void addVertexToDAGTest() {
+    public void addVertexToDAGTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
         // Create two mock kernel executions;
         new KernelExecutionTest(context, Arrays.asList(1, 2, 3)).schedule();
@@ -103,7 +106,7 @@ public class ExecutionDAGTest {
     }
 
     @Test
-    public void dependencyPipelineSimpleMockTest() {
+    public void dependencyPipelineSimpleMockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
@@ -144,7 +147,7 @@ public class ExecutionDAGTest {
     }
 
     @Test
-    public void complexFrontierMockTest() {
+    public void complexFrontierMockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
 
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
@@ -234,33 +237,21 @@ public class ExecutionDAGTest {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);
             Value y = deviceArrayConstructor.execute("float", numElements);
-//            Value z = deviceArrayConstructor.execute("float", numElements);
-//            Value res = deviceArrayConstructor.execute("float", 1);
-
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "pointer, sint32");
-//            Value diffKernel = buildkernel.execute(DIFF_KERNEL, "diff", "pointer, pointer, pointer, sint32");
-//            Value reduceKernel = buildkernel.execute(REDUCE_KERNEL, "reduce", "pointer, pointer, sint32");
+
             assertNotNull(squareKernel);
-//            assertNotNull(diffKernel);
-//            assertNotNull(reduceKernel);
 
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 2.0); // 1.0 / (i + 1));
                 y.setArrayElement(i, 4.0); // 2.0 / (i + 1));
-//                z.setArrayElement(i, 0.0);
             }
-//            res.setArrayElement(0, 0);
 
             Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
-//            Value configuredDiffKernel = diffKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
-//            Value configuredReduceKernel = reduceKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
 
             // Perform the computation;
             configuredSquareKernel.execute(x, numElements);
             configuredSquareKernel.execute(y, numElements);
-//            configuredDiffKernel.execute(x, y, z, numElements);
-//            configuredReduceKernel.execute(z, res, numElements);
 
             // FIXME: temporary sync point until we add array accesses as DAG nodes!
 //            Value sync = context.eval("grcuda", "cudaDeviceSynchronize");
@@ -268,8 +259,51 @@ public class ExecutionDAGTest {
             // Verify the output;
             assertEquals(4.0, x.getArrayElement(0).asFloat(), 0.1);
             assertEquals(16.0, y.getArrayElement(0).asFloat(), 0.1);
-//            float resScalar = res.getArrayElement(0).asFloat();
-//            assertEquals(-4.93, resScalar, 0.01);
+        }
+    }
+
+    @Test
+    public void dependencyPipelineSimple2Test() {
+
+        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+
+            // TODO: is there a way to access the inner GrCUDA data structures?
+
+            final int numElements = 100;
+            final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
+            Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
+            Value x = deviceArrayConstructor.execute("float", numElements);
+            Value y = deviceArrayConstructor.execute("float", numElements);
+            Value z = deviceArrayConstructor.execute("float", numElements);
+            Value res = deviceArrayConstructor.execute("float", 1);
+
+            for (int i = 0; i < numElements; ++i) {
+                x.setArrayElement(i, 1.0 / (i + 1));
+                y.setArrayElement(i, 2.0 / (i + 1));
+            }
+            res.setArrayElement(0, 0.0);
+
+            Value buildkernel = context.eval("grcuda", "buildkernel");
+            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "pointer, sint32");
+            Value diffKernel = buildkernel.execute(DIFF_KERNEL, "diff", "pointer, pointer, pointer, sint32");
+            Value reduceKernel = buildkernel.execute(REDUCE_KERNEL, "reduce", "pointer, pointer, sint32");
+            assertNotNull(squareKernel);
+            assertNotNull(diffKernel);
+            assertNotNull(reduceKernel);
+
+            Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+            Value configuredDiffKernel = diffKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+            Value configuredReduceKernel = reduceKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+
+            // Perform the computation;
+            configuredSquareKernel.execute(x, numElements);
+            configuredSquareKernel.execute(y, numElements);
+            configuredDiffKernel.execute(x, y, z, numElements);
+            configuredReduceKernel.execute(z, res, numElements);
+
+            // Verify the output;
+            float resScalar = res.getArrayElement(0).asFloat();
+            assertEquals(-4.93, resScalar, 0.01);
         }
     }
 }

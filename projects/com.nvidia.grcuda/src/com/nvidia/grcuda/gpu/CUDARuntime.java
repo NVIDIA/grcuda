@@ -691,6 +691,11 @@ public final class CUDARuntime {
 
     @TruffleBoundary
     public void cuLaunchKernel(Kernel kernel, KernelConfig config, KernelArguments args) {
+        this.cuLaunchKernel(kernel, config, args, config.getStream());
+    }
+
+    @TruffleBoundary
+    public void cuLaunchKernel(Kernel kernel, KernelConfig config, KernelArguments args, CUDAStream stream) {
         try {
             Object callable = CUDADriverFunction.CU_LAUNCHKERNEL.getSymbol(this);
             Dim3 gridSize = config.getGridSize();
@@ -704,12 +709,11 @@ public final class CUDARuntime {
                             blockSize.getY(),
                             blockSize.getZ(),
                             config.getDynamicSharedMemoryBytes(),
-                            config.getStream().getRawPointer(),
+                            stream.getRawPointer(),
                             args.getPointer(),              // pointer to kernel arguments array
                             0                               // extra args
             );
             checkCUReturnCode(result, "cuLaunchKernel");
-//            cudaDeviceSynchronize();
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }

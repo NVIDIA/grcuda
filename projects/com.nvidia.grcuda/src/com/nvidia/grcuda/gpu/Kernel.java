@@ -28,17 +28,11 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.array.DeviceArray.MemberSet;
-import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
-import com.nvidia.grcuda.gpu.stream.DefaultStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -53,6 +47,11 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @ExportLibrary(InteropLibrary.class)
 public class Kernel implements TruffleObject {

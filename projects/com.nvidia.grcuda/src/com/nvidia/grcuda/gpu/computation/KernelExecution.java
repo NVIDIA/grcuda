@@ -1,10 +1,14 @@
-package com.nvidia.grcuda.gpu;
+package com.nvidia.grcuda.gpu.computation;
 
+import com.nvidia.grcuda.NoneValue;
+import com.nvidia.grcuda.gpu.ConfiguredKernel;
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.Kernel;
+import com.nvidia.grcuda.gpu.KernelArguments;
+import com.nvidia.grcuda.gpu.KernelConfig;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
-import com.oracle.truffle.api.Option;
 
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -32,8 +36,9 @@ public class KernelExecution extends GrCUDAComputationalElement {
     }
 
     @Override
-    public void execute() {
-        kernel.getGrCUDAExecutionContext().getCudaRuntime().cuLaunchKernel(kernel, config, args);
+    public Object execute() {
+       grCUDAExecutionContext.getCudaRuntime().cuLaunchKernel(kernel, config, args, this.getStream());
+       return NoneValue.get();
     }
 
     public ConfiguredKernel getConfiguredKernel() {
@@ -56,26 +61,29 @@ public class KernelExecution extends GrCUDAComputationalElement {
     public void setStream(CUDAStream stream) {
         // Make sure that the internal reference is consistent;
         super.setStream(stream);
-        config.setStream(stream);
     }
 
     /**
-     * The stream is stored in the internal {@link KernelConfig};
+     * Retrieve the stream stored in the {@link KernelConfig} if it has been manually specified by the user,
+     * otherwise return the one automatically chosen by the {@link com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager};
      * @return the stream where this computation will be executed
      */
     @Override
     public CUDAStream getStream() {
-        return config.getStream();
+        return config.useCustomStream() ? config.getStream() : super.getStream();
     }
 
     @Override
     public boolean useManuallySpecifiedStream() { return config.useCustomStream(); }
 
     @Override
+    public boolean canUseStream() { return true; }
+
+    @Override
     public String toString() {
         return "KernelExecution(" + configuredKernel.toString() + "; args=[" +
                 Arrays.stream(args.getOriginalArgs()).map(a -> Integer.toString(System.identityHashCode(a))).collect(Collectors.joining(", ")) +
-                "])";
+                "]" + "; stream=" + this.getStream() + ")";
     }
 }
 

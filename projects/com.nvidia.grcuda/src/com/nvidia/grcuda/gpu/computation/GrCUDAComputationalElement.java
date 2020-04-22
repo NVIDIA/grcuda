@@ -1,7 +1,10 @@
-package com.nvidia.grcuda.gpu;
+package com.nvidia.grcuda.gpu.computation;
 
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,6 +53,7 @@ public abstract class GrCUDAComputationalElement {
      * @param grCUDAExecutionContext execution context in which this computational element will be scheduled
      * @param initializer the initializer used to build the internal set of arguments considered in the dependency computation
      */
+    @CompilerDirectives.TruffleBoundary
     public GrCUDAComputationalElement(GrCUDAExecutionContext grCUDAExecutionContext, InitializeArgumentSet initializer) {
         this.argumentSet = initializer.initialize();
         // Initialize by making a copy of the original set;
@@ -76,6 +80,7 @@ public abstract class GrCUDAComputationalElement {
      * @param other kernel for which we want to check dependencies, w.r.t. this kernel
      * @return the list of arguments that the two kernels have in common
      */
+    @CompilerDirectives.TruffleBoundary
     public List<Object> computeDependencies(GrCUDAComputationalElement other) {
         Set<Object> dependencies = new HashSet<>();
         Set<Object> newArgumentSet = new HashSet<>();
@@ -109,8 +114,8 @@ public abstract class GrCUDAComputationalElement {
      * The scheduling request is separate from the {@link GrCUDAComputationalElement} instantiation
      * as we need to ensure that the the computational element subclass has been completely instantiated;
      */
-    public void schedule() {
-        this.grCUDAExecutionContext.registerExecution(this);
+    public Object schedule() throws UnsupportedTypeException {
+        return this.grCUDAExecutionContext.registerExecution(this);
     }
 
     /**
@@ -119,7 +124,7 @@ public abstract class GrCUDAComputationalElement {
      * The execution request will be done by the {@link GrCUDAExecutionContext}, after this computation has been scheduled
      * using {@link GrCUDAComputationalElement#schedule()}
      */
-    protected abstract void execute();
+    public abstract Object execute() throws UnsupportedTypeException;
 
     public CUDAStream getStream() {
         return stream;
@@ -151,6 +156,14 @@ public abstract class GrCUDAComputationalElement {
      * @return if the computation is done on a custom CUDA stream;
      */
     public boolean useManuallySpecifiedStream() { return false; }
+
+    /**
+     * Some computational elements, like kernels, can be executed on different {@link CUDAStream} to provide
+     * parallel asynchronous execution. Other computations, such as array reads, do not require streams, or cannot be
+     * executed on streams different from the {@link DefaultStream};
+     * @return if this computation can be executed on a customized stream
+     */
+    public boolean canUseStream() { return false; }
 
     /**
      * The default initializer will simply store all the arguments,

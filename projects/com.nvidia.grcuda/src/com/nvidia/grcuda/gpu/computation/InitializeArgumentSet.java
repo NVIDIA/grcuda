@@ -1,4 +1,4 @@
-package com.nvidia.grcuda.gpu;
+package com.nvidia.grcuda.gpu.computation;
 
 import java.util.Set;
 

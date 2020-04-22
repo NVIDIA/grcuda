@@ -53,7 +53,7 @@ REDUCE_KERNEL = """
 #            ├─> C: z=x-y ──> D: sum(z)
 #   B: x^2 ──┘
 if __name__ == "__main__":
-    N = 1000
+    N = 1000000
     NUM_BLOCKS = (N + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 
     start_tot = time.time()

@@ -3,6 +3,7 @@ package com.nvidia.grcuda.test.gpu.stream;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.test.gpu.ExecutionDAGTest;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -12,7 +13,7 @@ import static org.junit.Assert.assertEquals;
 
 public class GrCUDAStreamManagerTest {
     @Test
-    public void streamSelectionSimpleMockTest() {
+    public void streamSelectionSimpleMockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new ExecutionDAGTest.GrCUDAExecutionContextTest();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
@@ -33,7 +34,7 @@ public class GrCUDAStreamManagerTest {
     }
 
     @Test
-    public void streamSelectionMockTest() {
+    public void streamSelectionMockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new ExecutionDAGTest.GrCUDAExecutionContextTest();
 
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
@@ -59,7 +60,7 @@ public class GrCUDAStreamManagerTest {
     }
 
     @Test
-    public void streamSelection2MockTest() {
+    public void streamSelection2MockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new ExecutionDAGTest.GrCUDAExecutionContextTest();
 
         // A(1,2) -> B(1) -> D(1,3)

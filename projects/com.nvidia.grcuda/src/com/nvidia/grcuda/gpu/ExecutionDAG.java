@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 import java.util.ArrayList;

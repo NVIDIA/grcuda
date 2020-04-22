@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.gpu.computation.KernelExecution;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;

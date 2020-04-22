@@ -3,8 +3,10 @@ package com.nvidia.grcuda.gpu;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAThreadManager;
 import com.nvidia.grcuda.array.AbstractArray;
+import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -68,7 +70,7 @@ public class GrCUDAExecutionContext {
      * and add it to the current computational DAG.
      * The actual execution might be deferred depending on the inferred data dependencies;
      */
-    public void registerExecution(GrCUDAComputationalElement computation) {
+    public Object registerExecution(GrCUDAComputationalElement computation) throws UnsupportedTypeException {
         // Add the new computation to the DAG
         ExecutionDAG.DAGVertex vertex = dag.append(computation);
 
@@ -76,7 +78,7 @@ public class GrCUDAExecutionContext {
         streamManager.assignStream(vertex);
 
         // Start the computation;
-        executeComputationSync(vertex);
+        return executeComputationSync(vertex);
 
 //        // If the computation can be executed immediately, start it;
 //        if (vertex.isExecutable() && threadManager != null) {
@@ -114,14 +116,14 @@ public class GrCUDAExecutionContext {
         streamManager.cleanup();
     }
 
-    private void executeComputationSync(ExecutionDAG.DAGVertex vertex) {
+    private Object executeComputationSync(ExecutionDAG.DAGVertex vertex) throws UnsupportedTypeException {
         // Before starting this computation, ensure that all its parents have finished their computation;
         streamManager.syncParentStreams(vertex);
 
         // Perform the computation;
         System.out.println("Starting execution of " + vertex.getComputation());
         vertex.getComputation().setComputationStarted();
-        vertex.getComputation().execute();
+        return vertex.getComputation().execute();
     }
 
     private class ComputationThread implements Runnable {
@@ -136,7 +138,11 @@ public class GrCUDAExecutionContext {
             // Perform the computation;
             System.out.println("Starting execution of " + vertex.getComputation());
             vertex.getComputation().setComputationStarted();
-            vertex.getComputation().execute();
+            try {
+                vertex.getComputation().execute();
+            } catch (UnsupportedTypeException e) {
+                e.printStackTrace();
+            }
             // Synchronize on the stream associated to this computation;
             System.out.println("\tsync thread on stream " + vertex.getComputation().getStream());
             cudaRuntime.cudaStreamSynchronize(vertex.getComputation().getStream());

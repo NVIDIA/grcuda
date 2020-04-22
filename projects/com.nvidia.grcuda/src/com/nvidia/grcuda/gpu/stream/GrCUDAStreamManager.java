@@ -27,8 +27,8 @@ public class GrCUDAStreamManager {
      * @param vertex an input computation for which we want to assign a stream
      */
     public void assignStream(ExecutionDAG.DAGVertex vertex) {
-        // If it has a manually specified stream, use it;
-        if (!vertex.getComputation().useManuallySpecifiedStream()) {
+        // If it has a manually specified stream, use it. If the computation cannot use customized streams, return immediately;
+        if (!vertex.getComputation().useManuallySpecifiedStream() && vertex.getComputation().canUseStream()) {
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
                 // TODO: can we do better? E.g. re-use a stream that is not being used
@@ -44,6 +44,7 @@ public class GrCUDAStreamManager {
         }
     }
 
+
     /**
      * Given a computation, synchronize all its parent streams. The caller thread will be blocked until all the
      * computations on the parents streams are finished;
@@ -51,11 +52,12 @@ public class GrCUDAStreamManager {
      */
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
         vertex.getParentComputations().forEach(c -> {
-            if (!c.isComputationFinished()) {
-                System.out.println("\tsync thread on stream " + c.getStream());
+            // Synchronize computations that are not yet finished and can use streams;
+            if (!c.isComputationFinished() && c.canUseStream()) {
+                System.out.println("\tsync thread on stream " + c.getStream() + " by " + vertex.getComputation());
                 runtime.cudaStreamSynchronize(c.getStream());
                 System.out.println("\tfinish sync thread on stream " + c.getStream());
-                // Set the parent computations to be finished;
+                // Set the parent computations as finished;
                 c.setComputationFinished();
             }
         });

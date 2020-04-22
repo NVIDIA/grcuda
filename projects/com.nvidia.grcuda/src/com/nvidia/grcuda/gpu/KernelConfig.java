@@ -28,12 +28,11 @@
  */
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.oracle.truffle.api.CompilerAsserts;
+
 import java.util.Arrays;
 import java.util.Objects;
-
-import com.nvidia.grcuda.gpu.stream.CUDAStream;
-import com.nvidia.grcuda.gpu.stream.DefaultStream;
-import com.oracle.truffle.api.CompilerAsserts;
 
 public final class KernelConfig {
     private final Dim3 gridSize;
@@ -53,7 +52,7 @@ public final class KernelConfig {
     @Override
     public String toString() {
         return "KernelConfig(gridSize=" + gridSize + ", blockSize=" + blockSize +
-                        ", sharedMemoryBytes=" + dynamicSharedMemoryBytes + ", stream=" + getStream() + ')';
+                        ", sharedMemoryBytes=" + dynamicSharedMemoryBytes + (useCustomStream ? ", stream=" + getStream() : "") + ')' ;
     }
 
     public Dim3 getGridSize() {

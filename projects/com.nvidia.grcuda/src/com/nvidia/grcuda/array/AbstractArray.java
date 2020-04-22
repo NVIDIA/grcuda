@@ -1,7 +1,6 @@
 package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
-import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -52,6 +51,10 @@ public abstract class AbstractArray implements TruffleObject {
             this.grCUDAExecutionContext.registerArray(this);
             this.registeredInContext = true;
         }
+    }
+
+    public GrCUDAExecutionContext getGrCUDAExecutionContext() {
+        return grCUDAExecutionContext;
     }
 
     // Implementation of InteropLibrary

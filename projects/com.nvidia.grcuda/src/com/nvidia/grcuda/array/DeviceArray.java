@@ -32,6 +32,8 @@ import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
+import com.nvidia.grcuda.gpu.computation.DeviceArrayReadExecution;
+import com.nvidia.grcuda.gpu.computation.DeviceArrayWriteExecution;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -167,11 +169,19 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     @ExportMessage
     Object readArrayElement(long index,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
-        grCUDAExecutionContext.getCudaRuntime().cudaDeviceSynchronize();
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
+        try {
+            return new DeviceArrayReadExecution(this, index, elementTypeProfile).schedule();
+        } catch (UnsupportedTypeException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public Object readArrayElementImpl(long index, ValueProfile elementTypeProfile) {
         switch (elementTypeProfile.profile(elementType)) {
             case BYTE:
             case CHAR:
@@ -194,14 +204,18 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     public void writeArrayElement(long index, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException, InvalidArrayIndexException {
-        grCUDAExecutionContext.getCudaRuntime().cudaDeviceSynchronize();
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
+        new DeviceArrayWriteExecution(this, index, value, valueLibrary, elementTypeProfile).schedule();
+    }
+
+    public void writeArrayElementImpl(long index, Object value,
+                                      InteropLibrary valueLibrary,
+                                      ValueProfile elementTypeProfile) throws UnsupportedTypeException {
         try {
             switch (elementTypeProfile.profile(elementType)) {
-
                 case BYTE:
                 case CHAR:
                     nativeView.setByte(index, valueLibrary.asByte(value));
