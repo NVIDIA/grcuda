@@ -21,6 +21,11 @@ public class GrCUDAStreamManager {
         this.runtime = runtime;
     }
 
+    /**
+     * Assign a {@link CUDAStream} to the input computation, based on its dependencies and on the available streams.
+     * This function has no effect if the stream was manually specified by the user;
+     * @param vertex an input computation for which we want to assign a stream
+     */
     public void assignStream(ExecutionDAG.DAGVertex vertex) {
         // If it has a manually specified stream, use it;
         if (!vertex.getComputation().useManuallySpecifiedStream()) {
@@ -37,6 +42,23 @@ public class GrCUDAStreamManager {
                 vertex.getComputation().setStream(stream);
             }
         }
+    }
+
+    /**
+     * Given a computation, synchronize all its parent streams. The caller thread will be blocked until all the
+     * computations on the parents streams are finished;
+     * @param vertex a computation whose parents should be synchronized
+     */
+    public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
+        vertex.getParentComputations().forEach(c -> {
+            if (!c.isComputationFinished()) {
+                System.out.println("\tsync thread on stream " + c.getStream());
+                runtime.cudaStreamSynchronize(c.getStream());
+                System.out.println("\tfinish sync thread on stream " + c.getStream());
+                // Set the parent computations to be finished;
+                c.setComputationFinished();
+            }
+        });
     }
 
     /**

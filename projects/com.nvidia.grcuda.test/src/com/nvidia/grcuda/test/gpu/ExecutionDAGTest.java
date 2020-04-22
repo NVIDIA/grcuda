@@ -1,6 +1,5 @@
 package com.nvidia.grcuda.test.gpu;
 
-import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.GrCUDAComputationalElement;
@@ -32,7 +31,7 @@ public class ExecutionDAGTest {
         }
 
         @Override
-        protected void executeInner() {}
+        protected void execute() {}
     }
 
     /**
@@ -54,6 +53,11 @@ public class ExecutionDAGTest {
             CUDAStream newStream = new CUDAStream(0, numStreams++);
             streams.add(newStream);
             return newStream;
+        }
+
+        @Override
+        public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
+            
         }
     }
 

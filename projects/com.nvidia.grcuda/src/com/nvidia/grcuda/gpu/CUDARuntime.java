@@ -28,15 +28,6 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import static com.nvidia.grcuda.functions.Function.checkArgumentLength;
-import static com.nvidia.grcuda.functions.Function.expectInt;
-import static com.nvidia.grcuda.functions.Function.expectLong;
-import static com.nvidia.grcuda.functions.Function.expectPositiveLong;
-
-import java.util.HashMap;
-
-import com.nvidia.grcuda.gpu.stream.CUDAStream;
-import org.graalvm.collections.Pair;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -45,6 +36,7 @@ import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -57,6 +49,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.collections.Pair;
+
+import java.util.HashMap;
+
+import static com.nvidia.grcuda.functions.Function.checkArgumentLength;
+import static com.nvidia.grcuda.functions.Function.expectInt;
+import static com.nvidia.grcuda.functions.Function.expectLong;
+import static com.nvidia.grcuda.functions.Function.expectPositiveLong;
 
 public final class CUDARuntime {
 

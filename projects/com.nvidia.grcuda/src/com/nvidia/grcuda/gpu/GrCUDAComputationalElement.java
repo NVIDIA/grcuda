@@ -119,16 +119,7 @@ public abstract class GrCUDAComputationalElement {
      * The execution request will be done by the {@link GrCUDAExecutionContext}, after this computation has been scheduled
      * using {@link GrCUDAComputationalElement#schedule()}
      */
-    protected abstract void executeInner();
-
-    /**
-     * Perform execution taking care of setting appropriate flags that keep track of the execution status;
-     */
-    public void execute() {
-        setComputationStarted();
-        executeInner();
-        setComputationFinished();
-    }
+    protected abstract void execute();
 
     public CUDAStream getStream() {
         return stream;

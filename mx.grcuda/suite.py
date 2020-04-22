@@ -125,7 +125,7 @@ suite = {
             "dependencies": [
                 "com.nvidia.grcuda",
                 "mx:JUNIT",
-                "truffle:TRUFFLE_TEST"
+                "truffle:TRUFFLE_TEST",
             ],
             "checkstyle": "com.nvidia.grcuda",
             "javaCompliance": "1.8",

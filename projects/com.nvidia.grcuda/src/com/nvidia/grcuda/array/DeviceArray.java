@@ -169,7 +169,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     @ExportMessage
     Object readArrayElement(long index,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
-        System.out.println("READ ELEM " + index);
+//        System.out.println("READ ELEM " + index);
         grCUDAExecutionContext.getCudaRuntime().cudaDeviceSynchronize();
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
