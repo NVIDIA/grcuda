@@ -23,12 +23,21 @@ DIFF_KERNEL = """
     }
     """
 
+ADDTWO_KERNEL = """
+    extern "C" __global__ void addtwo(float* a, float* b, int n) {
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (idx < n) {
+            b[idx] = a[idx] + 2.0;
+        }
+    }
+    """
+
 REDUCE_KERNEL = """
-    extern "C" __global__ void reduce(float *x, float *res, int n) {
+    extern "C" __global__ void reduce(float *x, float *y, float *res, int n) {
         __shared__ float cache[%d];
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i < n) {
-            cache[threadIdx.x] = x[i];
+            cache[threadIdx.x] = x[i] + y[i];
         }
         __syncthreads();
     
@@ -47,11 +56,14 @@ REDUCE_KERNEL = """
     }
     """ % (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK)
 
-# Compute the sum of difference of squares of 2 vectors, using multiple GrCUDA kernels.
+# Compute a complex graph of interconnected computations using GrCUDA.
 # Structure of the computation:
 #   A: x^2 ──┐
-#            ├─> C: z=x-y ──> D: sum(z)
-#   B: x^2 ──┘
+#            ├─> C: z=x-y ───┐
+#   B: x^2 ──┘               │
+#                            ├-> F: sum(z+b)
+#                            │
+#   D: a^2 ────> E: b=a+2  ──┘
 if __name__ == "__main__":
     N = 1000000
     NUM_BLOCKS = (N + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
@@ -63,9 +75,11 @@ if __name__ == "__main__":
     start = time.time()
     x = polyglot.eval(language="grcuda", string=f"float[{N}]")
     y = polyglot.eval(language="grcuda", string=f"float[{N}]")
+    a = polyglot.eval(language="grcuda", string=f"float[{N}]")
 
-    # Allocate a support vector;
+    # Allocate support vectors;
     z = polyglot.eval(language="grcuda", string=f"float[{N}]")
+    b = polyglot.eval(language="grcuda", string=f"float[{N}]")
     res = polyglot.eval(language="grcuda", string=f"float[1]")
     end = time.time()
     time_cumulative += end - start
@@ -76,20 +90,22 @@ if __name__ == "__main__":
     for i in range(N):
         x[i] = 1 / (i + 1)
         y[i] = 2 / (i + 1)
+        a[i] = 4 / (i + 1)
     res[0] = 0
     end = time.time()
     time_cumulative += end - start
     print(f"time to fill arrays: {end - start:.4f} sec")
 
-    # A. B. Compute the squares of each vector;
-
     # First, build the kernels;
     build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
     square_kernel = build_kernel(SQUARE_KERNEL, "square", "pointer, sint32")
     diff_kernel = build_kernel(DIFF_KERNEL, "diff", "pointer, pointer, pointer, sint32")
-    reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "pointer, pointer, sint32")
+    addtwo_kernel = build_kernel(ADDTWO_KERNEL, "addtwo", "pointer, pointer, sint32")
+    reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "pointer, pointer, pointer, sint32")
 
-    # Call the kernel. The 2 computations are independent, and can be done in parallel;
+    # A. B. Compute the squares of each vector;
+
+    # Call the kernels. The 2 computations are independent, and can be done in parallel;
     start = time.time()
     square_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(x, N)
     square_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(y, N)
@@ -104,9 +120,23 @@ if __name__ == "__main__":
     time_cumulative += end - start
     print(f"diff, time: {end - start:.4f} sec")
 
-    # D. Compute the sum of the result;
+    # D. Compute the other branch of the computation;
     start = time.time()
-    reduce_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(z, res, N)
+    square_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(a, N)
+    end = time.time()
+    time_cumulative += end - start
+    print(f"square - other branch, time: {end - start:.4f} sec")
+
+    # E. Continue computing the other branch;
+    start = time.time()
+    addtwo_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(a, b, N)
+    end = time.time()
+    time_cumulative += end - start
+    print(f"add two - other branch, time: {end - start:.4f} sec")
+
+    # F. Join the two branches and compute the sum of the result;
+    start = time.time()
+    reduce_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(z, b, res, N)
     end = time.time()
     time_cumulative += end - start
     print(f"reduce, time: {end - start:.4f} sec")
@@ -122,10 +152,13 @@ if __name__ == "__main__":
     import numpy as np
     x_g = 1 / np.linspace(1, N, N)
     y_g = 2 / np.linspace(1, N, N)
+    a_g = 4 / np.linspace(1, N, N)
 
     x_g = x_g**2
     y_g = y_g**2
+    a_g = a_g**2
     x_g -= y_g
-    res_g = np.sum(x_g)
+    a_g += 2
+    res_g = np.sum(x_g + a_g)
 
     print(f"result in python={res_g:.4f}, difference={np.abs(res_g - result)}")

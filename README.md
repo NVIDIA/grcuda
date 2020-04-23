@@ -250,6 +250,14 @@ graalpython -m venv ~/graalpython_venv
 source ~/graalpython_venv/bin/activate
 ```
 
+* Recommended: install 'numpy` in Graalpython
+
+```
+graalpython -m ginstall install setuptools;
+graalpython -m ginstall install Cython;
+graalpython -m ginstall install numpy;
+```
+
 7. Install GrCUDA with `./install.sh`
 
 8. Setup your IDE with `mx ideinit`
