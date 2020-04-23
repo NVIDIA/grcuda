@@ -29,18 +29,26 @@ public class GrCUDAStreamManager {
     public void assignStream(ExecutionDAG.DAGVertex vertex) {
         // If it has a manually specified stream, use it. If the computation cannot use customized streams, return immediately;
         if (!vertex.getComputation().useManuallySpecifiedStream() && vertex.getComputation().canUseStream()) {
+            CUDAStream stream;
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
                 // TODO: can we do better? E.g. re-use a stream that is not being used
-                vertex.getComputation().setStream(createStream());
+                stream = createStream();
             } else {
                 // Else, compute the streams used by the parent computations.
                 // If more than one stream is available, keep the first;
                 // TODO: this should be more complex!
                 //  If 2 child computations have disjoint set of dependencies, they can use 2 streams and run in parallel!
-                CUDAStream stream = vertex.getParentComputations().get(0).getStream();
-                vertex.getComputation().setStream(stream);
+                stream = vertex.getParentComputations().get(0).getStream();
             }
+            // Set the stream;
+            vertex.getComputation().setStream(stream);
+            // Associate all the arrays in the computation to the selected stream,
+            //   to enable CPU accesses on managed memory arrays currently not being used by the GPU.
+            // This is required as on pre-Pascal GPUs all unified memory pages are locked by the GPU while code is running on the GPU,
+            //   even if the GPU is not using some of the pages. Enabling memory-stream association allows the CPU to
+            //   access memory not being currently used by a kernel;
+            vertex.getComputation().associateArraysToStream();
         }
     }
 

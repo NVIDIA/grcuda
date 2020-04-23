@@ -166,6 +166,14 @@ public abstract class GrCUDAComputationalElement {
     public boolean canUseStream() { return false; }
 
     /**
+     * Provide a way to associate input arrays allocated using managed memory to the stream
+     * on which this kernel is executed. This is required by pre-Pascal GPUs to allow the CPU to access
+     * managed memory belonging to arrays not used by kernels running on the GPU.
+     * By default, the implementation is empty, as {@link GrCUDAComputationalElement#canUseStream} is false;
+     */
+    public void associateArraysToStream() {}
+
+    /**
      * The default initializer will simply store all the arguments,
      * and consider each of them in the dependency computations;
      */
