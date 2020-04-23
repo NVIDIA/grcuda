@@ -362,6 +362,7 @@ public class Kernel implements TruffleObject {
                 configBuilder.stream(extractStream(arguments[2]));
             }
         } else if (arguments.length == 4) {
+            configBuilder.dynamicSharedMemoryBytes(extractNumber(arguments[2], "dynamicSharedMemory", sharedMemoryAccess));
             // Stream specified;
             configBuilder.stream(extractStream(arguments[3]));
         }

@@ -33,8 +33,10 @@ public class ExecutionDAGTest {
         }
 
         @Override
-        public Object execute() { return NoneValue.get();
-        }
+        public Object execute() { return NoneValue.get(); }
+
+        @Override
+        public boolean canUseStream() { return true; }
     }
 
     /**
@@ -232,7 +234,7 @@ public class ExecutionDAGTest {
 
             // FIXME: the computation gives a wrong numerical value for small N (< 100000), but only in Java (not in Graalpython),
             //   and without any change to the runtime.
-            final int numElements = 100000;
+            final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);
@@ -254,8 +256,7 @@ public class ExecutionDAGTest {
             configuredSquareKernel.execute(y, numElements);
 
             // FIXME: temporary sync point until we add array accesses as DAG nodes!
-//            Value sync = context.eval("grcuda", "cudaDeviceSynchronize");
-//            sync.execute();
+
             // Verify the output;
             assertEquals(4.0, x.getArrayElement(0).asFloat(), 0.1);
             assertEquals(16.0, y.getArrayElement(0).asFloat(), 0.1);
@@ -269,7 +270,7 @@ public class ExecutionDAGTest {
 
             // TODO: is there a way to access the inner GrCUDA data structures?
 
-            final int numElements = 100;
+            final int numElements = 1000;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);

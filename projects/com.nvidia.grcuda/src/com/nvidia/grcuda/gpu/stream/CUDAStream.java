@@ -21,6 +21,8 @@ public class CUDAStream extends GPUPointer {
         return streamNumber;
     }
 
+    public boolean isDefaultStream() { return false; }
+
     @Override
     public String toString() {
         return "CUDAStream(streamNumber=" + this.streamNumber + "; address=0x" + Long.toHexString(this.getRawPointer()) + ")";

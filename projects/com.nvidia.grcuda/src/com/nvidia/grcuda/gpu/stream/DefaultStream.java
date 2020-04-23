@@ -9,6 +9,9 @@ public class DefaultStream extends CUDAStream {
     }
 
     @Override
+    public boolean isDefaultStream() { return true; }
+
+    @Override
     public String toString() {
         return "DefaultCUDAStream(streamNumber=" + DEFAULT_STREAM_NUMBER + "; address=0x" + Long.toHexString(this.getRawPointer()) + ")";
     }

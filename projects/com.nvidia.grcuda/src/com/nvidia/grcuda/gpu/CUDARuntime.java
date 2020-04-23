@@ -33,6 +33,7 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.NoneValue;
+import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
@@ -324,6 +325,31 @@ public final class CUDARuntime {
         }
     }
 
+    @TruffleBoundary
+    public void cudaStreamAttachMemAsync(CUDAStream stream, DeviceArray array) {
+        final int MEM_ATTACH_SINGLE = 0x04;
+        final int MEM_ATTACH_GLOBAL = 0x01;
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_STREAMATTACHMEMASYNC.getSymbol(this);
+            int flag = stream.isDefaultStream() ? MEM_ATTACH_GLOBAL : MEM_ATTACH_SINGLE;
+            Object result = INTEROP.execute(callable, stream.getRawPointer(), array.getPointer(), 0, flag);
+            checkCUDAReturnCode(result, "cudaStreamAttachMemAsync");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    /**
+     * Synchronous version of "cudaStreamAttachMemAsync". This function doesn't exist in the CUDA API, but it is useful to have;
+     * @param stream the stream to which we attach the array
+     * @param array an array that should be assigned exclusively to a stream
+     */
+    @TruffleBoundary
+    public void cudaStreamAttachMem(CUDAStream stream, DeviceArray array) {
+        cudaStreamAttachMemAsync(stream, array);
+        cudaStreamSynchronize(stream);
+    }
+
     /**
      * Get function as callable from native library.
      *
@@ -559,6 +585,48 @@ public final class CUDARuntime {
                 callSymbol(cudaRuntime, addr);
                 return NoneValue.get();
             }
+        },
+        CUDA_STREAMATTACHMEMASYNC("cudaStreamAttachMemAsync", "(pointer, pointer, uint64, uint32): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+
+                long streamAddr;
+                long arrayAddr;
+
+                final int MEM_ATTACH_SINGLE = 0x04;
+                final int MEM_ATTACH_GLOBAL = 0x01;
+                int flag = MEM_ATTACH_SINGLE;
+
+                if (args.length == 1) {
+                    arrayAddr = extractArrayPointer(args[0]);
+                    streamAddr = 0; // Use default stream;
+                    flag = MEM_ATTACH_GLOBAL;
+                } else if (args.length == 2) {
+                    streamAddr = extractStreamPointer(args[0]);
+                    arrayAddr = extractArrayPointer(args[1]);
+                } else if (args.length == 3) {
+                    streamAddr = extractStreamPointer(args[0]);
+                    arrayAddr = extractArrayPointer(args[1]);
+                    if (args[2] instanceof Integer) {
+                        flag = ((Integer) args[2]);
+                    } else {
+                        throw new GrCUDAException("expected Integer object");
+                    }
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw ArityException.create(3, args.length);
+                }
+
+                // If using the default stream (0 address) use the "cudaMemAttachGlobal" flag;
+                if (streamAddr == 0) {
+                    flag = MEM_ATTACH_GLOBAL;
+                }
+
+                // Always set "size" to 0 to cover the entire array;
+                callSymbol(cudaRuntime, streamAddr, arrayAddr, 0, flag);
+                return NoneValue.get();
+            }
         };
 
         private final String name;
@@ -575,6 +643,26 @@ public final class CUDARuntime {
 
         public Object getSymbol(CUDARuntime runtime) throws UnknownIdentifierException {
             return runtime.getSymbol(CUDA_RUNTIME_LIBRARY_NAME, name, nfiSignature);
+        }
+
+        long extractArrayPointer(Object array) {
+            if (array instanceof GPUPointer) {
+                return ((GPUPointer) array).getRawPointer();
+            } else if (array instanceof LittleEndianNativeArrayView) {
+                return ((LittleEndianNativeArrayView) array).getStartAddress();
+            } else if (array instanceof DeviceArray) {
+                return ((DeviceArray) array).getPointer();
+            } else {
+                throw new GrCUDAException("expected GPUPointer or LittleEndianNativeArrayView or DeviceArray");
+            }
+        }
+
+        long extractStreamPointer(Object stream) {
+            if (stream instanceof CUDAStream) {
+                return ((CUDAStream) stream).getRawPointer();
+            } else {
+                throw new GrCUDAException("expected CUDAStream object");
+            }
         }
     }
 
