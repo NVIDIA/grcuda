@@ -90,6 +90,11 @@ public final class CUDARuntime {
      */
     private final HashMap<Pair<String, String>, Object> boundFunctions = new HashMap<>();
 
+    /**
+     * True IFF the GPU compute capabilities is < 6.0 (Pascal architecture);
+     */
+    private final boolean prePascalArchitecture;
+
     public CUDARuntime(GrCUDAContext context, Env env) {
         this.context = context;
         try {
@@ -102,6 +107,11 @@ public final class CUDARuntime {
             loadedLibraries.put(CUDA_RUNTIME_LIBRARY_NAME, libcudart);
             loadedLibraries.put(CUDA_LIBRARY_NAME, libcuda);
             loadedLibraries.put(NVRTC_LIBRARY_NAME, libnvrtc);
+
+            // Check if the GPU available in the system has Compute Capability >= 6.0 (Pascal architecture)
+            int computeCapabilityMajor = cudaDeviceGetAttribute(CUDADeviceAttribute.COMPUTE_CAPABILITY_MAJOR, 0);
+            prePascalArchitecture = computeCapabilityMajor < 6;
+
         } catch (UnsatisfiedLinkError e) {
             throw new GrCUDAException(e.getMessage());
         }
@@ -409,6 +419,10 @@ public final class CUDARuntime {
         for (CUDARuntimeFunction function : CUDARuntimeFunction.values()) {
             rootNamespace.addFunction(new CUDAFunction(function, this));
         }
+    }
+
+    public boolean isPrePascalArchitecture() {
+        return prePascalArchitecture;
     }
 
     public enum CUDARuntimeFunction implements CUDAFunction.Spec, CallSupport {

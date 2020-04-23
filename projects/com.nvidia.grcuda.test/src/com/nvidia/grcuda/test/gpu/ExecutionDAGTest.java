@@ -37,6 +37,9 @@ public class ExecutionDAGTest {
 
         @Override
         public boolean canUseStream() { return true; }
+
+        @Override
+        public void associateArraysToStream() { }
     }
 
     /**

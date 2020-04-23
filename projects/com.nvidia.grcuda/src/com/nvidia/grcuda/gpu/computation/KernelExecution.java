@@ -81,7 +81,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
     public boolean canUseStream() { return true; }
 
     @Override
-    public void associateArraysToStream() {
+    public void associateArraysToStreamImpl() {
         for (Object o : this.args.getOriginalArgs()) {
             // FIXME: this should also be done for other array types;
             if (o instanceof DeviceArray) {
@@ -97,23 +97,25 @@ public class KernelExecution extends GrCUDAComputationalElement {
                 Arrays.stream(args.getOriginalArgs()).map(a -> Integer.toString(System.identityHashCode(a))).collect(Collectors.joining(", ")) +
                 "]" + "; stream=" + this.getStream() + ")";
     }
+
+    static class KernelExecutionInitializer implements InitializeArgumentSet {
+        private final Kernel kernel;
+        private final KernelArguments args;
+
+        KernelExecutionInitializer(Kernel kernel, KernelArguments args) {
+            this.kernel = kernel;
+            this.args = args;
+        }
+
+        @Override
+        public Set<Object> initialize() {
+            // TODO: what aboout scalars? We cannot treat them in the same way, as they are copied and not referenced
+            //   There should be a semantic to manually specify scalar dependencies? For now we have to skip them;
+            return IntStream.range(0, args.getOriginalArgs().length).filter(i ->
+                    kernel.getArgsAreArrays().get(i)
+            ).mapToObj(args::getOriginalArg).collect(Collectors.toSet());
+        }
+    }
 }
 
-class KernelExecutionInitializer implements InitializeArgumentSet {
-    private final Kernel kernel;
-    private final KernelArguments args;
 
-    KernelExecutionInitializer(Kernel kernel, KernelArguments args) {
-        this.kernel = kernel;
-        this.args = args;
-    }
-
-    @Override
-    public Set<Object> initialize() {
-        // TODO: what aboout scalars? We cannot treat them in the same way, as they are copied and not referenced
-        //   There should be a semantic to manually specify scalar dependencies? For now we have to skip them;
-        return IntStream.range(0, args.getOriginalArgs().length).filter(i ->
-                kernel.getArgsAreArrays().get(i)
-        ).mapToObj(args::getOriginalArg).collect(Collectors.toSet());
-    }
-}

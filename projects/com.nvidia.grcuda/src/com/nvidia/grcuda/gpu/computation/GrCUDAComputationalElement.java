@@ -171,7 +171,17 @@ public abstract class GrCUDAComputationalElement {
      * managed memory belonging to arrays not used by kernels running on the GPU.
      * By default, the implementation is empty, as {@link GrCUDAComputationalElement#canUseStream} is false;
      */
-    public void associateArraysToStream() {}
+    public void associateArraysToStream() {
+        if (grCUDAExecutionContext.getCudaRuntime().isPrePascalArchitecture()) {
+            this.associateArraysToStreamImpl();
+        }
+    }
+
+    /**
+     * Actual implementation of {@link GrCUDAComputationalElement#associateArraysToStream()},
+     * to be modified by concrete computational elements;
+     */
+    protected void associateArraysToStreamImpl() {}
 
     /**
      * The default initializer will simply store all the arguments,

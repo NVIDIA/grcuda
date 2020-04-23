@@ -28,13 +28,6 @@
  */
 package com.nvidia.grcuda;
 
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
-import org.graalvm.options.OptionKey;
-
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
 import com.nvidia.grcuda.functions.BindFunction;
@@ -46,9 +39,15 @@ import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import org.graalvm.options.OptionKey;
+
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Context for the grCUDA language holds reference to CUDA runtime, a function registry and device
