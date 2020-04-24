@@ -3,8 +3,10 @@ package com.nvidia.grcuda.test.gpu;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -39,7 +41,7 @@ public class ExecutionDAGTest {
         public boolean canUseStream() { return true; }
 
         @Override
-        public void associateArraysToStream() { }
+        public void associateArraysToStreamImpl() { }
     }
 
     /**
@@ -48,6 +50,10 @@ public class ExecutionDAGTest {
     public static class GrCUDAExecutionContextTest extends GrCUDAExecutionContext {
         public GrCUDAExecutionContextTest() {
             super(null, null, new GrCUDAStreamManagerTest(null));
+        }
+
+        public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {
+            return new PrePascalArrayStreamAssociation();
         }
     }
 

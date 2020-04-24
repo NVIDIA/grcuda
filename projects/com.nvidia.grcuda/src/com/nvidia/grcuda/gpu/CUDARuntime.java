@@ -37,6 +37,9 @@ import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
+import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
+import com.nvidia.grcuda.gpu.computation.PostPascalArrayStreamAssociation;
+import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -91,9 +94,10 @@ public final class CUDARuntime {
     private final HashMap<Pair<String, String>, Object> boundFunctions = new HashMap<>();
 
     /**
-     * True IFF the GPU compute capabilities is < 6.0 (Pascal architecture);
+     * Depending on the available GPU, use a different policy to associate managed memory arrays to streams,
+     * as specified in {@link ArrayStreamArchitecturePolicy}
      */
-    private final boolean prePascalArchitecture;
+    private final ArrayStreamArchitecturePolicy arrayStreamArchitecturePolicy;
 
     public CUDARuntime(GrCUDAContext context, Env env) {
         this.context = context;
@@ -107,17 +111,16 @@ public final class CUDARuntime {
             loadedLibraries.put(CUDA_RUNTIME_LIBRARY_NAME, libcudart);
             loadedLibraries.put(CUDA_LIBRARY_NAME, libcuda);
             loadedLibraries.put(NVRTC_LIBRARY_NAME, libnvrtc);
-
-            // Check if the GPU available in the system has Compute Capability >= 6.0 (Pascal architecture)
-            int computeCapabilityMajor = cudaDeviceGetAttribute(CUDADeviceAttribute.COMPUTE_CAPABILITY_MAJOR, 0);
-            prePascalArchitecture = computeCapabilityMajor < 6;
-
         } catch (UnsatisfiedLinkError e) {
             throw new GrCUDAException(e.getMessage());
         }
 
         nvrtc = new NVRuntimeCompiler(this);
         context.addDisposable(this::shutdown);
+
+        // Check if the GPU available in the system has Compute Capability >= 6.0 (Pascal architecture)
+        int computeCapabilityMajor = cudaDeviceGetAttribute(CUDADeviceAttribute.COMPUTE_CAPABILITY_MAJOR, 0);
+        this.arrayStreamArchitecturePolicy = computeCapabilityMajor < 6 ? new PrePascalArrayStreamAssociation() : new PostPascalArrayStreamAssociation();
     }
 
     // using this slow/uncached instance since all calls are non-critical
@@ -421,8 +424,8 @@ public final class CUDARuntime {
         }
     }
 
-    public boolean isPrePascalArchitecture() {
-        return prePascalArchitecture;
+    ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {
+        return arrayStreamArchitecturePolicy;
     }
 
     public enum CUDARuntimeFunction implements CUDAFunction.Spec, CallSupport {

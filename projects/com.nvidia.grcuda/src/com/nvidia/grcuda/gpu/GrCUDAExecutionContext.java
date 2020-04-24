@@ -3,6 +3,7 @@ package com.nvidia.grcuda.gpu;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAThreadManager;
 import com.nvidia.grcuda.array.AbstractArray;
+import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -34,14 +35,14 @@ public class GrCUDAExecutionContext {
     /**
      * Set that contains all the arrays allocated so far.
      */
-    final private Set<AbstractArray> arraySet = new HashSet<>();
+    private final Set<AbstractArray> arraySet = new HashSet<>();
 
     /**
      * Set that contains all the CUDA kernels declared so far.
      */
-    final private Set<Kernel> kernelSet = new HashSet<>();
+    private final Set<Kernel> kernelSet = new HashSet<>();
 
-    final private ExecutionDAG dag = new ExecutionDAG();
+    private final ExecutionDAG dag = new ExecutionDAG();
 
     public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
         this(new CUDARuntime(context, env), new GrCUDAThreadManager(context));
@@ -106,6 +107,10 @@ public class GrCUDAExecutionContext {
 
     public Kernel buildKernel(String code, String kernelName, String signature) {
         return cudaRuntime.buildKernel(this, code, kernelName, signature);
+    }
+
+    public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {
+        return cudaRuntime.getArrayStreamArchitecturePolicy();
     }
 
     /**
