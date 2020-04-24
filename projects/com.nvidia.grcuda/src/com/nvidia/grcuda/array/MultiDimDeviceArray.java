@@ -28,11 +28,8 @@
  */
 package com.nvidia.grcuda.array;
 
-import java.util.Arrays;
-
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.array.DeviceArray.MemberSet;
-import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -45,6 +42,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
+
+import java.util.Arrays;
 
 @ExportLibrary(InteropLibrary.class)
 public class MultiDimDeviceArray extends AbstractArray implements TruffleObject {
@@ -154,6 +153,7 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         return numElements * elementType.getSizeBytes();
     }
 
+    @Override
     public final long getPointer() {
         return nativeView.getStartAddress();
     }

@@ -3,7 +3,7 @@ package com.nvidia.grcuda.gpu.computation;
 import com.nvidia.grcuda.array.DeviceArray;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-public class DeviceArrayReadExecution extends GrCUDAComputationalElement {
+public class DeviceArrayReadExecution extends ArrayAccessExecution {
 
     private final DeviceArray array;
     private final long index;
@@ -23,6 +23,11 @@ public class DeviceArrayReadExecution extends GrCUDAComputationalElement {
         Object result = array.readArrayElementImpl(index, elementTypeProfile);
         this.setComputationFinished();
         return result;
+    }
+
+    @Override
+    public void updateIsComputationArrayAccess() {
+        this.array.setLastComputationArrayAccess(true);
     }
 
     @Override

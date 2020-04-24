@@ -33,6 +33,7 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.NoneValue;
+import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
@@ -339,7 +340,7 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
-    public void cudaStreamAttachMemAsync(CUDAStream stream, DeviceArray array) {
+    public void cudaStreamAttachMemAsync(CUDAStream stream, AbstractArray array) {
         final int MEM_ATTACH_SINGLE = 0x04;
         final int MEM_ATTACH_GLOBAL = 0x01;
         try {
@@ -358,7 +359,7 @@ public final class CUDARuntime {
      * @param array an array that should be assigned exclusively to a stream
      */
     @TruffleBoundary
-    public void cudaStreamAttachMem(CUDAStream stream, DeviceArray array) {
+    public void cudaStreamAttachMem(CUDAStream stream, AbstractArray array) {
         cudaStreamAttachMemAsync(stream, array);
         cudaStreamSynchronize(stream);
     }

@@ -74,6 +74,11 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
     }
 
     @Override
+    public final long getPointer() {
+        return mdDeviceArray.getPointer();
+    }
+
+    @Override
     public String toString() {
         return String.format("MultiDimDeviceArrayView(dim=%d, offset=%d, stride=%d)\n",
                         thisDimension, offset, stride);
@@ -120,7 +125,12 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             throw InvalidArrayIndexException.create(index);
         }
         try {
-            return new MultiDimDeviceArrayViewReadExecution(this, index, elementTypeProfile).schedule();
+            if (this.isLastComputationArrayAccess()) {
+                // Fast path, skip the DAG scheduling;
+                return readArrayElementImpl(index, elementTypeProfile);
+            } else {
+                return new MultiDimDeviceArrayViewReadExecution(this, index, elementTypeProfile).schedule();
+            }
         } catch (UnsupportedTypeException e) {
             e.printStackTrace();
             return null;
@@ -161,7 +171,12 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        new MultiDimDeviceArrayViewWriteExecution(this, index, value, valueLibrary, elementTypeProfile).schedule();
+        if (this.isLastComputationArrayAccess()) {
+            // Fast path, skip the DAG scheduling;
+            writeArrayElementImpl(index, value, valueLibrary, elementTypeProfile);
+        } else {
+            new MultiDimDeviceArrayViewWriteExecution(this, index, value, valueLibrary, elementTypeProfile).schedule();
+        }
     }
 
     public void writeArrayElementImpl(long index, Object value,

@@ -6,7 +6,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-public class DeviceArrayWriteExecution extends GrCUDAComputationalElement {
+public class DeviceArrayWriteExecution extends ArrayAccessExecution {
 
     private final DeviceArray array;
     private final long index;
@@ -32,6 +32,11 @@ public class DeviceArrayWriteExecution extends GrCUDAComputationalElement {
         array.writeArrayElementImpl(index, value, valueLibrary, elementTypeProfile);
         this.setComputationFinished();
         return NoneValue.get();
+    }
+
+    @Override
+    public void updateIsComputationArrayAccess() {
+        this.array.setLastComputationArrayAccess(true);
     }
 
     @Override

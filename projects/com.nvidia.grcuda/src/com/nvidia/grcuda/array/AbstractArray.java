@@ -32,6 +32,14 @@ public abstract class AbstractArray implements TruffleObject {
      */
     private boolean registeredInContext = false;
 
+    /**
+     * Tracks whether the last operation done on the native memory underlying this array is a read/write operation
+     * handled by the CPU. If so, we can avoid creating {@link com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement}
+     * for array accesses that are immediately following the last one, as they are performed synchronously and there is no
+     * reason to explicitly model them in the {@link com.nvidia.grcuda.gpu.ExecutionDAG};
+     */
+    private boolean isLastComputationArrayAccess = false;
+
     public ElementType getElementType() {
         return elementType;
     }
@@ -83,6 +91,14 @@ public abstract class AbstractArray implements TruffleObject {
      */
     @ExportMessage
     public abstract long getArraySize();
+
+    public boolean isLastComputationArrayAccess() { return isLastComputationArrayAccess; }
+
+    public void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
+        isLastComputationArrayAccess = lastComputationArrayAccess;
+    }
+
+    public abstract long getPointer();
 
     // TODO: equals must be smarter than checking memory address, as a MultiDimView should be considered as part of its parent
     //   The hash instead should be different. We might also not touch equals, and have another method "isPartOf"

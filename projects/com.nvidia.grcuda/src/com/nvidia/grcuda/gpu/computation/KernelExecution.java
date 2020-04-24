@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.gpu.computation;
 
 import com.nvidia.grcuda.NoneValue;
-import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.ConfiguredKernel;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.Kernel;
@@ -83,10 +83,9 @@ public class KernelExecution extends GrCUDAComputationalElement {
     @Override
     public void associateArraysToStreamImpl() {
         for (Object o : this.args.getOriginalArgs()) {
-            // FIXME: this should also be done for other array types;
-            if (o instanceof DeviceArray) {
+            if (o instanceof AbstractArray) {
                 // Attach the array to the stream, synchronously;
-                grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), (DeviceArray) o);
+                grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), (AbstractArray) o);
             }
         }
     }

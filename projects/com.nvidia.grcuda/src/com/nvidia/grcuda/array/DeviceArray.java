@@ -127,6 +127,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
         return sizeBytes;
     }
 
+    @Override
     public long getPointer() {
         return nativeView.getStartAddress();
     }
@@ -174,7 +175,12 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
             throw InvalidArrayIndexException.create(index);
         }
         try {
-            return new DeviceArrayReadExecution(this, index, elementTypeProfile).schedule();
+            if (this.isLastComputationArrayAccess()) {
+                // Fast path, skip the DAG scheduling;
+                return readArrayElementImpl(index, elementTypeProfile);
+            } else {
+                return new DeviceArrayReadExecution(this, index, elementTypeProfile).schedule();
+            }
         } catch (UnsupportedTypeException e) {
             e.printStackTrace();
             return null;
@@ -208,7 +214,12 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        new DeviceArrayWriteExecution(this, index, value, valueLibrary, elementTypeProfile).schedule();
+        if (this.isLastComputationArrayAccess()) {
+            // Fast path, skip the DAG scheduling;
+            writeArrayElementImpl(index, value, valueLibrary, elementTypeProfile);
+        } else {
+            new DeviceArrayWriteExecution(this, index, value, valueLibrary, elementTypeProfile).schedule();
+        }
     }
 
     public void writeArrayElementImpl(long index, Object value,

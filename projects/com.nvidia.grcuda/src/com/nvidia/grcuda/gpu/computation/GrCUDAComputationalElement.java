@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.gpu.computation;
 
+import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
@@ -180,6 +181,24 @@ public abstract class GrCUDAComputationalElement {
      * to be modified by concrete computational elements;
      */
     protected void associateArraysToStreamImpl() {}
+
+    /**
+     * Specify if this computational element represents an array access (read or write) on an {@link com.nvidia.grcuda.array.AbstractArray}
+     * performed synchronously by the CPU. By default it returns false;
+     * @return if this computation is a CPU array access on managed memory
+     */
+    public boolean isComputationArrayAccess() { return false; }
+
+    /**
+     * Set for all the {@link com.nvidia.grcuda.array.AbstractArray} in the computation if this computation is an array access;
+     */
+    public void updateIsComputationArrayAccess() {
+        for (Object o : this.argumentSet) {
+            if (o instanceof AbstractArray) {
+                ((AbstractArray) o).setLastComputationArrayAccess(isComputationArrayAccess());
+            }
+        }
+    }
 
     /**
      * The default initializer will simply store all the arguments,
