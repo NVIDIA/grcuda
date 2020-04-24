@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda.array;
 
+import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewReadExecution;
+import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewWriteExecution;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -117,6 +119,15 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
+        try {
+            return new MultiDimDeviceArrayViewReadExecution(this, index, elementTypeProfile).schedule();
+        } catch (UnsupportedTypeException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public Object readArrayElementImpl(long index, ValueProfile elementTypeProfile) {
         if ((thisDimension + 1) == mdDeviceArray.getNumberDimensions()) {
             long flatIndex = offset + index * stride;
             switch (elementTypeProfile.profile(mdDeviceArray.getElementType())) {
@@ -150,6 +161,12 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
+        new MultiDimDeviceArrayViewWriteExecution(this, index, value, valueLibrary, elementTypeProfile).schedule();
+    }
+
+    public void writeArrayElementImpl(long index, Object value,
+                                      InteropLibrary valueLibrary,
+                                      ValueProfile elementTypeProfile) throws UnsupportedTypeException {
         if ((thisDimension + 1) == mdDeviceArray.getNumberDimensions()) {
             long flatIndex = offset + index * stride;
             try {
@@ -183,5 +200,9 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("tried to write non-last dimension in MultiDimDeviceArrayView");
         }
+    }
+
+    public MultiDimDeviceArray getMdDeviceArray() {
+        return mdDeviceArray;
     }
 }

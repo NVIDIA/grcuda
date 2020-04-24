@@ -1,18 +1,18 @@
 package com.nvidia.grcuda.gpu.computation;
 
-import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.array.MultiDimDeviceArrayView;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-public class DeviceArrayReadExecution extends GrCUDAComputationalElement {
+public class MultiDimDeviceArrayViewReadExecution extends GrCUDAComputationalElement {
 
-    private final DeviceArray array;
+    private final MultiDimDeviceArrayView array;
     private final long index;
     private final ValueProfile elementTypeProfile;
 
-    public DeviceArrayReadExecution(DeviceArray array,
-                                     long index,
-                                     ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer(array));
+    public MultiDimDeviceArrayViewReadExecution(MultiDimDeviceArrayView array,
+                                                long index,
+                                                ValueProfile elementTypeProfile) {
+        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer(array.getMdDeviceArray()));
         this.array = array;
         this.index = index;
         this.elementTypeProfile = elementTypeProfile;
@@ -27,7 +27,7 @@ public class DeviceArrayReadExecution extends GrCUDAComputationalElement {
 
     @Override
     public String toString() {
-        return "DeviceArrayReadExecution(" +
+        return "MultiDimDeviceArrayViewReadExecution(" +
                 "array=" + array +
                 ", index=" + index + ")";
     }

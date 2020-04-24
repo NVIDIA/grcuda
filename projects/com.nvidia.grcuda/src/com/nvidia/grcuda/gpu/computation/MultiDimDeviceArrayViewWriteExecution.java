@@ -1,25 +1,25 @@
 package com.nvidia.grcuda.gpu.computation;
 
 import com.nvidia.grcuda.NoneValue;
-import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.array.MultiDimDeviceArrayView;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-public class DeviceArrayWriteExecution extends GrCUDAComputationalElement {
+public class MultiDimDeviceArrayViewWriteExecution extends GrCUDAComputationalElement {
 
-    private final DeviceArray array;
+    private final MultiDimDeviceArrayView array;
     private final long index;
     private final Object value;
     private final InteropLibrary valueLibrary;
     private final ValueProfile elementTypeProfile;
 
-    public DeviceArrayWriteExecution(DeviceArray array,
-                                     long index,
-                                     Object value,
-                                     InteropLibrary valueLibrary,
-                                     ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer(array));
+    public MultiDimDeviceArrayViewWriteExecution(MultiDimDeviceArrayView array,
+                                                 long index,
+                                                 Object value,
+                                                 InteropLibrary valueLibrary,
+                                                 ValueProfile elementTypeProfile) {
+        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer(array.getMdDeviceArray()));
         this.array = array;
         this.index = index;
         this.value = value;
@@ -36,7 +36,7 @@ public class DeviceArrayWriteExecution extends GrCUDAComputationalElement {
 
     @Override
     public String toString() {
-        return "DeviceArrayWriteExecution(" +
+        return "MultiDimDeviceArrayViewReadExecution(" +
                 "array=" + array +
                 ", index=" + index +
                 ", value=" + value +
