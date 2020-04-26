@@ -11,19 +11,22 @@ class BenchmarkResult:
     DEFAULT_CPU_VALIDATION = True
     DEFAULT_REALLOC = False
     DEFAULT_REINIT = True
+    DEFAULT_RANDOM_INIT = True
 
     def __init__(self,
                  num_iterations: int = DEFAULT_NUM_ITER,
                  cpu_validation: bool = DEFAULT_CPU_VALIDATION,
                  debug: bool = DEFAULT_DEBUG,
+                 random_init: bool = DEFAULT_RANDOM_INIT,
                  output_path: str = ""
                  ):
         self.debug = debug
-
+        self.random_init = random_init
         self.num_iterations = num_iterations
         self._cpu_validation = cpu_validation
         self._results = {"num_iterations": num_iterations,
                          "cpu_validation": cpu_validation,
+                         "random_init": random_init,
                          "benchmarks": {}}
         # Used to store the results of the benchmark currently being executed;
         self._dict_current = {}

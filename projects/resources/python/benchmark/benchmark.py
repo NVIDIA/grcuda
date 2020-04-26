@@ -12,6 +12,7 @@ class Benchmark(ABC):
         self.name = name
         self.benchmark = benchmark
         self.current_iter = 0
+        self.random_seed = 42  # Default random seed, it will be overwritten with a random one;
 
     @abstractmethod
     def alloc(self, size: int) -> None:

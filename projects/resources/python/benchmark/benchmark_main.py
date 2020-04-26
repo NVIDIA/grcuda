@@ -1,6 +1,8 @@
 import argparse
 
 from bench.bench_1 import Benchmark1
+from bench.bench_2 import Benchmark2
+from bench.bench_3 import Benchmark3
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -8,15 +10,21 @@ from benchmark_result import BenchmarkResult
 
 # Benchmark settings;
 benchmarks = {
-   "b1": Benchmark1
+    "b1": Benchmark1,
+    "b2": Benchmark2,
+    "b3": Benchmark3,
 }
 
 num_elem = {
-   "b1": [100]
+    "b1": [100],
+    "b2": [100],
+    "b3": [100],
 }
 
 policies = {
-    "b1": ["default"]
+    "b1": ["default"],
+    "b2": ["default"],
+    "b3": ["default"],
 }
 
 ##############################
@@ -26,7 +34,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="measure GrCUDA execution time")
 
-    parser.add_argument("-d", "--debug", action='store_true',
+    parser.add_argument("-d", "--debug", action="store_true",
                         help="If present, print debug messages")
     parser.add_argument("-t", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
                         help="Number of times each benchmark is executed")
@@ -36,7 +44,7 @@ if __name__ == "__main__":
                         help="If True, allocate new memory and rebuild the GPU code at each iteration")
     parser.add_argument("--reinit", metavar="[True|False]", type=bool, nargs="*",
                         help="If True, re-initialize the values used in each benchmark at each iteration")
-    parser.add_argument("-c", "--cpu_validation", action='store_true',
+    parser.add_argument("-c", "--cpu_validation", action="store_true",
                         help="If present, validate the result of each benchmark using the CPU")
     parser.add_argument("-b", "--benchmark",
                         help="If present, run the benchmark only for the specified kernel")
@@ -44,6 +52,8 @@ if __name__ == "__main__":
                         help="If present, run the benchmark only with the selected policy")
     parser.add_argument("-n", "--size", metavar="N", type=int,
                         help="Override the input data size used for the benchmarks")
+    parser.add_argument("-r", "--random", action="store_true",
+                        help="Initialize benchmarks randomly whenever possible")
 
     # Parse the input arguments;
     args = parser.parse_args()
@@ -54,9 +64,11 @@ if __name__ == "__main__":
     cpu_validation = args.cpu_validation if args.cpu_validation else BenchmarkResult.DEFAULT_CPU_VALIDATION
     realloc = args.realloc if args.realloc else [BenchmarkResult.DEFAULT_REALLOC]
     reinit = args.reinit if args.reinit else [BenchmarkResult.DEFAULT_REINIT]
+    random_init = args.random if args.random else BenchmarkResult.DEFAULT_RANDOM_INIT
 
     # Create a new benchmark result instance;
-    benchmark_res = BenchmarkResult(debug=debug, num_iterations=num_iter, output_path=output_path, cpu_validation=cpu_validation)
+    benchmark_res = BenchmarkResult(debug=debug, num_iterations=num_iter, output_path=output_path,
+                                    cpu_validation=cpu_validation, random_init=random_init)
 
     if args.benchmark and benchmark_res.debug:
         BenchmarkResult.log_message(f"using only benchmark: {args.benchmark}")
