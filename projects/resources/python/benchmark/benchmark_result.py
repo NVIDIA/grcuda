@@ -1,0 +1,137 @@
+import os
+from datetime import datetime
+import json
+
+
+class BenchmarkResult:
+
+    DEFAULT_RES_FOLDER = "../../../../data/results"
+    DEFAULT_NUM_ITER = 30
+    DEFAULT_DEBUG = False
+    DEFAULT_CPU_VALIDATION = True
+    DEFAULT_REALLOC = False
+    DEFAULT_REINIT = True
+
+    def __init__(self,
+                 num_iterations: int = DEFAULT_NUM_ITER,
+                 cpu_validation: bool = DEFAULT_CPU_VALIDATION,
+                 debug: bool = DEFAULT_DEBUG,
+                 output_path: str = ""
+                 ):
+        self.debug = debug
+
+        self.num_iterations = num_iterations
+        self._cpu_validation = cpu_validation
+        self._results = {"num_iterations": num_iterations,
+                         "cpu_validation": cpu_validation,
+                         "benchmarks": {}}
+        # Used to store the results of the benchmark currently being executed;
+        self._dict_current = {}
+
+        # If true, use the provided output path as it is, without adding extensions or creating folders;
+        self._output_path = output_path if output_path else self.default_output_file_name()
+        output_folder = os.path.dirname(output_path) if output_path else self.DEFAULT_RES_FOLDER
+        if not os.path.exists(output_folder):
+            if self.debug:
+                BenchmarkResult.log_message(f"creating result folder: {output_folder}")
+                os.makedirs(output_folder)
+        if self.debug:
+            BenchmarkResult.log_message(f"storing results in {self._output_path}")
+
+    def default_output_file_name(self) -> str:
+        output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        file_name = f"{output_date}_{self.num_iterations}.json"
+        return os.path.join(self.DEFAULT_RES_FOLDER, file_name)
+
+    def start_new_benchmark(self, name: str, policy: str, size: int,
+                            realloc: bool, reinit: bool, iteration: int) -> None:
+        """
+        Benchmark results are stored in a nested dictionary with the following structure.
+        self.results["benchmarks"]->{benchmark_name}->{policy}->{size}->{realloc}->{reinit}->{actual result}
+
+        :param name: name of the benchmark
+        :param policy: current policy used in the benchmark
+        :param size: size of the input data
+        :param realloc: if reallocation is performed
+        :param reinit: if re-initialization is performed
+        :param iteration: current iteration
+        """
+
+        # 1. Benchmark name;
+        if name in self._results["benchmarks"]:
+            dict_policy = self._results["benchmarks"][name]
+        else:
+            dict_policy = {}
+            self._results["benchmarks"][name] = dict_policy
+        # 2. Policy name;
+        if policy in dict_policy:
+            dict_size = dict_policy[policy]
+        else:
+            dict_size = {}
+            dict_policy[policy] = dict_size
+        # 3. Input size;
+        if size in dict_size:
+            dict_realloc = dict_size[size]
+        else:
+            dict_realloc = {}
+            dict_size[size] = dict_realloc
+        # 4. Realloc options;
+        if realloc in dict_realloc:
+            dict_reinit = dict_realloc[realloc]
+        else:
+            dict_reinit = {}
+            dict_realloc[realloc] = dict_reinit
+        # 5. Reinit options;
+        self._dict_current = {"phases": [], "iteration": iteration}
+        if reinit in dict_reinit:
+            dict_reinit[reinit] += [self._dict_current]
+        else:
+            dict_reinit[reinit] = [self._dict_current]
+
+        if self.debug:
+            BenchmarkResult.log_message(
+                f"starting benchmark={name}, iter={iteration + 1}/{self.num_iterations}, "
+                f"policy={policy}, size={size}, realloc={realloc}, reinit={reinit}")
+
+    def add_to_benchmark(self, key: str, message: object) -> None:
+        """
+        Add an key-value pair in the current benchmark entry, e.g. ("allocation_time_ms", 10);
+        :param key: the key used to identify the message, e.g. "allocation_time_ms"
+        :param message: the value of the message, possibly a string, a number,
+        or any object that can be represented as JSON
+        """
+        self._dict_current[key] = message
+
+    def add_total_time(self, total_time: float) -> None:
+        """
+        Add to the current benchmark entry the execution time of a benchmark iteration,
+         and compute the amount of overhead w.r.t. the single phases
+        :param total_time: execution time of the benchmark iteration
+        """
+        self._dict_current["total_time_sec"] = total_time
+        tot_time_phases = sum([x["time_sec"] if "time_sec" in x else 0 for x in self._dict_current["phases"]])
+        self._dict_current["overhead_sec"] = total_time - tot_time_phases
+        if self.debug:
+            BenchmarkResult.log_message(f"\ttotal execution time: {total_time:.4f} sec," +
+                                        f" overhead: {total_time - tot_time_phases:.4f} sec")
+
+    def add_phase(self, phase: dict) -> None:
+        """
+        Add a dictionary that represents a phase of a benchmark, to provide fine-grained profiling;
+        :param phase: a dictionary that contains information about a phase of the algorithm,
+        with information such as name, duration, description, etc...
+        """
+        self._dict_current["phases"] += [phase]
+        if self.debug and "name" in phase and "time_sec" in phase:
+            BenchmarkResult.log_message(f"\t\t{phase['name']}: {phase['time_sec']:.4f} sec")
+
+    def save_to_file(self) -> None:
+        with open(self._output_path, "w+") as f:
+            json_result = json.dumps(self._results, ensure_ascii=False, indent=4)
+            f.write(json_result)
+
+    @staticmethod
+    def log_message(message: str) -> None:
+        date = datetime.now()
+        date_str = date.strftime("%Y-%m-%d-%H-%M-%S-%f")
+        print(f"[{date_str} grcuda-python] {message}")
