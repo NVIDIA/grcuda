@@ -41,10 +41,11 @@ public class DeviceArrayWriteExecution extends ArrayAccessExecution {
 
     @Override
     public String toString() {
-        return "DeviceArrayWriteExecution(" +
-                "array=" + array +
-                ", index=" + index +
-                ", value=" + value +
-                ")";
+//        return "DeviceArrayWriteExecution(" +
+//                "array=" + array +
+//                ", index=" + index +
+//                ", value=" + value +
+//                ")";
+        return "array write on " + System.identityHashCode(array) + "; index=" + index + "; value=" + value;
     }
 }

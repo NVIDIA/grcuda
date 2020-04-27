@@ -32,8 +32,9 @@ public class DeviceArrayReadExecution extends ArrayAccessExecution {
 
     @Override
     public String toString() {
-        return "DeviceArrayReadExecution(" +
-                "array=" + array +
-                ", index=" + index + ")";
+//        return "DeviceArrayReadExecution(" +
+//                "array=" + array +
+//                ", index=" + index + ")";
+        return "array read on " + System.identityHashCode(array) + "; index=" + index;
     }
 }

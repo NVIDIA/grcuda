@@ -125,6 +125,8 @@ public class GrCUDAExecutionContext {
         // Before starting this computation, ensure that all its parents have finished their computation;
         streamManager.syncParentStreams(vertex);
 
+        System.out.println("-- running " + vertex.getComputation());
+
         // Perform the computation;
         vertex.getComputation().setComputationStarted();
         vertex.getComputation().updateIsComputationArrayAccess();

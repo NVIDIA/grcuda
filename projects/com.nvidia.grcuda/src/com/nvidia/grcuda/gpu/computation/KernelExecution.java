@@ -92,9 +92,12 @@ public class KernelExecution extends GrCUDAComputationalElement {
 
     @Override
     public String toString() {
-        return "KernelExecution(" + configuredKernel.toString() + "; args=[" +
+//        return "KernelExecution(" + configuredKernel.toString() + "; args=[" +
+//                Arrays.stream(args.getOriginalArgs()).map(a -> Integer.toString(System.identityHashCode(a))).collect(Collectors.joining(", ")) +
+//                "]" + "; stream=" + this.getStream() + ")";
+        return "kernel=" + kernel.getKernelName() + "; args=[" +
                 Arrays.stream(args.getOriginalArgs()).map(a -> Integer.toString(System.identityHashCode(a))).collect(Collectors.joining(", ")) +
-                "]" + "; stream=" + this.getStream() + ")";
+                "]" + "; stream=" + this.getStream().getStreamNumber();
     }
 
     static class KernelExecutionInitializer implements InitializeArgumentSet {
