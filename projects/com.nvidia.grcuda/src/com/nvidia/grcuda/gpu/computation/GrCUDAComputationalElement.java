@@ -48,6 +48,11 @@ public abstract class GrCUDAComputationalElement {
      * Keep track of whether this computation has already been started, to avoid performing the same computation multiple times;
      */
     private boolean computationStarted = false;
+    /**
+     * Specify if this computational element represents an array access (read or write) on an {@link com.nvidia.grcuda.array.AbstractArray}
+     * performed synchronously by the CPU. By default it returns false;
+     */
+    protected boolean isComputationArrayAccess = false;
 
     /**
      * Constructor that takes an argument set initializer to build the set of arguments used in the dependency computation
@@ -183,19 +188,12 @@ public abstract class GrCUDAComputationalElement {
     protected void associateArraysToStreamImpl() {}
 
     /**
-     * Specify if this computational element represents an array access (read or write) on an {@link com.nvidia.grcuda.array.AbstractArray}
-     * performed synchronously by the CPU. By default it returns false;
-     * @return if this computation is a CPU array access on managed memory
-     */
-    public boolean isComputationArrayAccess() { return false; }
-
-    /**
      * Set for all the {@link com.nvidia.grcuda.array.AbstractArray} in the computation if this computation is an array access;
      */
     public void updateIsComputationArrayAccess() {
         for (Object o : this.argumentSet) {
             if (o instanceof AbstractArray) {
-                ((AbstractArray) o).setLastComputationArrayAccess(isComputationArrayAccess());
+                ((AbstractArray) o).setLastComputationArrayAccess(isComputationArrayAccess);
             }
         }
     }

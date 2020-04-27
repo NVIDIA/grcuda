@@ -52,7 +52,7 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
     private final long stride;
 
     MultiDimDeviceArrayView(MultiDimDeviceArray mdDeviceArray, int dim, long offset, long stride) {
-        super(mdDeviceArray.grCUDAExecutionContext, mdDeviceArray.elementType);
+        super(mdDeviceArray.grCUDAExecutionContext, mdDeviceArray.elementType, mdDeviceArray.isLastComputationArrayAccess());
         this.mdDeviceArray = mdDeviceArray;
         this.thisDimension = dim;
         this.offset = offset;
@@ -76,6 +76,16 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
     @Override
     public final long getPointer() {
         return mdDeviceArray.getPointer();
+    }
+
+    /**
+     * Propagate the flag to the parent array, so other temporary views are aware of this computation;
+     * @param lastComputationArrayAccess if the last computation on this array is a host read/write
+     */
+    @Override
+    public void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
+        super.setLastComputationArrayAccess(lastComputationArrayAccess);
+        this.mdDeviceArray.setLastComputationArrayAccess(lastComputationArrayAccess);
     }
 
     @Override

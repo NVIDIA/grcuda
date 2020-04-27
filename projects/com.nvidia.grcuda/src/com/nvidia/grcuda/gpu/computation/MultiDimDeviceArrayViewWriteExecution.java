@@ -6,9 +6,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-public class MultiDimDeviceArrayViewWriteExecution extends ArrayAccessExecution {
+public class MultiDimDeviceArrayViewWriteExecution extends ArrayAccessExecution<MultiDimDeviceArrayView> {
 
-    private final MultiDimDeviceArrayView array;
     private final long index;
     private final Object value;
     private final InteropLibrary valueLibrary;
@@ -19,8 +18,7 @@ public class MultiDimDeviceArrayViewWriteExecution extends ArrayAccessExecution 
                                                  Object value,
                                                  InteropLibrary valueLibrary,
                                                  ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer(array.getMdDeviceArray()));
-        this.array = array;
+        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array.getMdDeviceArray()), array);
         this.index = index;
         this.value = value;
         this.valueLibrary = valueLibrary;
@@ -32,11 +30,6 @@ public class MultiDimDeviceArrayViewWriteExecution extends ArrayAccessExecution 
         array.writeArrayElementImpl(index, value, valueLibrary, elementTypeProfile);
         this.setComputationFinished();
         return NoneValue.get();
-    }
-
-    @Override
-    public void updateIsComputationArrayAccess() {
-        this.array.setLastComputationArrayAccess(true);
     }
 
     @Override

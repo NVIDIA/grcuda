@@ -13,11 +13,11 @@ import java.util.Set;
  * while in {@link com.nvidia.grcuda.array.MultiDimDeviceArray} there is currently no need to explicitly represent computations,
  * as they cannot directly the underlying memory;
  */
-class ArrayExecutionInitializer implements InitializeArgumentSet {
+class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeArgumentSet {
 
-    private final AbstractArray array;
+    private final T array;
 
-    ArrayExecutionInitializer(AbstractArray array) {
+    ArrayExecutionInitializer(T array) {
         this.array = array;
     }
 

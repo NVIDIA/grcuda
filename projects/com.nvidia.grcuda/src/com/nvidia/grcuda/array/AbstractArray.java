@@ -49,6 +49,12 @@ public abstract class AbstractArray implements TruffleObject {
         this.elementType = elementType;
     }
 
+    protected AbstractArray(GrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType, boolean isLastComputationArrayAccess) {
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
+        this.elementType = elementType;
+        this.isLastComputationArrayAccess = isLastComputationArrayAccess;
+    }
+
     /**
      * Register the array in {@link com.nvidia.grcuda.gpu.GrCUDAExecutionContext} so that operations on this array
      * can be monitored by the runtime. Registration must be done with a separate function at the end of concrete Array classes.

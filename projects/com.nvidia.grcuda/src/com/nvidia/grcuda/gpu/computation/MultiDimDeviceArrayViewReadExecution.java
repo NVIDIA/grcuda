@@ -3,17 +3,15 @@ package com.nvidia.grcuda.gpu.computation;
 import com.nvidia.grcuda.array.MultiDimDeviceArrayView;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-public class MultiDimDeviceArrayViewReadExecution extends ArrayAccessExecution {
+public class MultiDimDeviceArrayViewReadExecution extends ArrayAccessExecution<MultiDimDeviceArrayView> {
 
-    private final MultiDimDeviceArrayView array;
     private final long index;
     private final ValueProfile elementTypeProfile;
 
     public MultiDimDeviceArrayViewReadExecution(MultiDimDeviceArrayView array,
                                                 long index,
                                                 ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer(array.getMdDeviceArray()));
-        this.array = array;
+        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array.getMdDeviceArray()), array);
         this.index = index;
         this.elementTypeProfile = elementTypeProfile;
     }
@@ -23,11 +21,6 @@ public class MultiDimDeviceArrayViewReadExecution extends ArrayAccessExecution {
         Object result = array.readArrayElementImpl(index, elementTypeProfile);
         this.setComputationFinished();
         return result;
-    }
-
-    @Override
-    public void updateIsComputationArrayAccess() {
-        this.array.setLastComputationArrayAccess(true);
     }
 
     @Override
