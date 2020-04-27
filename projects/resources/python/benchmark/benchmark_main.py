@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-d", "--debug", action="store_true",
                         help="If present, print debug messages")
-    parser.add_argument("-t", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
+    parser.add_argument("-i", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
                         help="Number of times each benchmark is executed")
     parser.add_argument("-o", "--output_path", metavar="path/to/output.json",
                         help="Path to the file where results will be stored")

@@ -250,7 +250,7 @@ graalpython -m venv ~/graalpython_venv
 source ~/graalpython_venv/bin/activate
 ```
 
-* Recommended: install 'numpy` in Graalpython
+* Recommended: install 'numpy` in Graalpython (required for performance benchmarking)
 
 ```
 graalpython -m ginstall install setuptools;
@@ -264,7 +264,29 @@ graalpython -m ginstall install numpy;
 * Also update the project SDK and the default JUnit configurations to use the GraalVM SDK in `$GRAAL_HOME`, and update the `PATH` variable so that it can find `nvcc`
 
 9. Run tests with `mx unittest com.nvidia`
-	
+* Run a specific test using, for example, `mx unittest com.nvidia.grcuda.test.gpu.ExecutionDAGTest#executionDAGConstructorTest`
+
+10. Execute performance tests using Graalpython
+
+```
+cd projects/resources/python/benchmark
+graalpython --jvm --polyglot --WithThread benchmark_main.py -d -i 5 -n 1000
+```
+
+* Benchmarks are defined in the `projects/resources/python/benchmark/bench` folder, 
+and you can create more benchmarks by inheriting from the `Benchmark` class
+* The output of benchmarks is stored in a JSON (by default, located in `data/results`)
+* The benchmarking suite supports the following options
+    1. `-d`, `--debug`: print to the console the results and details of each benchmark. False by default
+    2. `-t`, `--num_iter`: number of times that each benchmark is executed, for each combination of options. 30 by default
+    3. `-o`, `--output_path`: full path to the file where results are stored. By default results are stored in `data/results`,
+    and the file name is generated automatically
+    4. `--realloc`: if true, allocate new memory and rebuild the GPU code at each iteration. False by default
+    5. `-reinit`: if true, re-initialize the values used in each benchmark at each iteration. True by default
+    6. `-c`, `--cpu_validation`: if present, validate the result of each benchmark using the CPU
+    7. `-b`, `--benchmark`: run the benchmark only for the specified kernel. Otherwise run all benchmarks specified in `benchmark_main.py`
+    8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
+    9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default
 
 
 
