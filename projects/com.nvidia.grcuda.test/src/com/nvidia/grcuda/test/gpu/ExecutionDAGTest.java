@@ -239,10 +239,6 @@ public class ExecutionDAGTest {
 
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
 
-            // TODO: is there a way to access the inner GrCUDA data structures?
-
-            // FIXME: the computation gives a wrong numerical value for small N (< 100000), but only in Java (not in Graalpython),
-            //   and without any change to the runtime.
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -254,8 +250,8 @@ public class ExecutionDAGTest {
             assertNotNull(squareKernel);
 
             for (int i = 0; i < numElements; ++i) {
-                x.setArrayElement(i, 2.0); // 1.0 / (i + 1));
-                y.setArrayElement(i, 4.0); // 2.0 / (i + 1));
+                x.setArrayElement(i, 2.0);
+                y.setArrayElement(i, 4.0);
             }
 
             Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
@@ -263,8 +259,6 @@ public class ExecutionDAGTest {
             // Perform the computation;
             configuredSquareKernel.execute(x, numElements);
             configuredSquareKernel.execute(y, numElements);
-
-            // FIXME: temporary sync point until we add array accesses as DAG nodes!
 
             // Verify the output;
             assertEquals(4.0, x.getArrayElement(0).asFloat(), 0.1);
@@ -277,9 +271,9 @@ public class ExecutionDAGTest {
 
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
 
-            // TODO: is there a way to access the inner GrCUDA data structures?
-
-            final int numElements = 1000;
+            // FIXME: this test fails randomly with small values (< 100000, more or less),
+            //  but the same computation doesn't fail in Graalpython.
+            final int numElements = 100000;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);

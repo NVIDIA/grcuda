@@ -158,11 +158,10 @@ public class BuildKernelTest {
             assertNotNull(matmultKernel.getMember("ptx").asString());
 
             // generate matrices
-            // FIXME: performance regression  in array.reads, currently using smaller data size;
-            final int numARows = 32; // 256;
-            final int numACols = 32; // 192;
+            final int numARows = 128;
+            final int numACols = 128;
             final int numBRows = numACols;
-            final int numBCols = 32; //128;
+            final int numBCols = 128;
             final int blockSize = 32;
             Value matrixA = context.eval("grcuda", "float[" + (numARows * numACols) + "]");
             Value matrixB = context.eval("grcuda", "float[" + (numBRows * numBCols) + "]");

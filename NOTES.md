@@ -4,12 +4,12 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
  * The DAG allows scheduling parallel computations on different streams and avoid synchronization when not necessary
  * See `projects/resources/python/examples` for simple examples of how this technique can be useful
  
-Differences w.r.t. existing techniques (e.g. TensorFlow or [CUDA Graphs](https://devblogs.nvidia.com/cuda-graphs/)):
+**Differences w.r.t. existing techniques** (e.g. TensorFlow or [CUDA Graphs](https://devblogs.nvidia.com/cuda-graphs/)):
  1. The DAG creation is automatic, instead of being built by the user
  2. The DAG is built at runtime, not at compile time or eagerly. This means that we don't have to worry about the control flow of the host program, but only about data dependencies, 
  as we dynamically add and schedule new vertices/computations as the user provides them. We can also collect profiling information and adjust the DAG creation based on that (e.g. how many CUDA streams we need)
 
-How it works, in a few words    
+**How it works, in a few words**    
  * The class `GpuExecutionContext` tracks GPU computational elements (e.g. `kernels`) declarations and invocations
  * When a new computation is created, or when it is called, it notifies `GpuExecutionContext` so that it updates the `DAG` by computing the data dependencies of the new computation
  * `GpuExecutionContext` uses the DAG to understand if the new computation can start immediately, or it must wait for other computations to finish
@@ -18,15 +18,39 @@ How it works, in a few words
  
 ## What's already there
 
-**TODO!**
-
-* Stream exposed, with assignment
+* The DAG supports kernel invocation, and array accesses (both `DeviceArray` and `MultiDimDeviceArray`)
+    * Kernels are executed in parallel, on different streams, whenever possible
+* **Main classes used by the scheduler**
+    1. `GpuExecutionContext`: takes care of scheduling and executing computations, it is the director of the orchestration and manages the DAG
+    2. `GrCUDAComputationalElement`: abstract class that wraps GrCUDA computations, e.g. kernel executions and array accesses. 
+    It provides `GpuExecutionContext` with functions used to compute dependencies or decide if the computation must be done synchronously (e.g. array accesses)
+    3. `ExecutionDAG`: the DAG representing the dependencies between computations, it is composed of vertices that wrap each `GrCUDAComputationalElement`
+    4. `GrCUDAStremManager`: class that handles the creation and the assignment of streams to kernels
+* **Basic execution flow**
+    1. The host language (i.e. the user) calls an `InteropLibrary` object that can be associated to a `GrCUDAComputationalElement`, e.g. a kernel execution or an array access
+    2. A new `GrCUDAComputationalElement` is created and registered to the `GpuExecutionContext`, to represent the computation
+    3. `GpuExecutionContext` adds the computation to the DAG and computes its dependencies
+    4. Based on the dependencies, the `GpuExecutionContext` associates a stream to the computation through `GrCUDAStremManager`
+    5. `GpuExecutionContext` executes the computation on the chosen stream, performing synchronization if necessary
+    6. In case of subsequent array accesses, we skip the scheduling part as accesses are synchronous, and minimize overheads
+* The CUDA stream interface has been added to GrCUDA, and is accessible by the users (not recommended, but possible)
+    * Users can create/destroy streams, and assign streams to kernels
+    * The `cudaStreamAttachMemAsync` is also exposed, to exclusively associate a managed memory array to a given stream. 
+    This is used, on Pre-Pascal GPUs, to access arrays on CPU while a kernel is using other arrays on GPU
+* Most of the new code is unit-tested and integration-tested, and there is a Python benchmarking suite to measure execution time with different settings
 
 * **Current limitations**
-    1. Dependency computation, K1(X, Y), K2(X), K3(Y)
-    2. Synchronization is done by the host on the main thread, this limits parallel execution in the example before. 
-    Instead, we should assign computations to different threads, and block the thread execution.
+    1. **Dependency computation does not consider disjoint parameter subsets.**
+     Consider 3 kernels, `K1(X, Y)`, `K2(X)`, `K3(Y)`: `K2` and `K3` are both depending on `K1`, but are using different inputs, and can run in parallel.
+     Currently, I'm just computing that they both depend on `K1`, but I'm not considering that they have disjoint dependencies.
+    2. **Synchronization happens the main execution thread**, this limits parallel execution:
+     in the example before, calling `K2` requires to sync on the stream used by `K1`, and `K3` starts only after 'K2' has started.
+      If `Y` was read-only in `K1`, this wait would have been unnecessary.
+    Instead, we can assign computations to different threads, block the thread execution, and start child computations with callbacks.
     This was the first approach, but it gave sync errors (probably due to other problems that are now solved)    
+    3. **Streams are not reused if they are free:** I'm creating new streams for computations without dependencies, but I could re-use existing streams that are currently free.
+    This avoids memory leaks, but requires a bit of extra book-keeping.
+    4. Scalar values are not considered for dependencies. They are read-only when used as input, but there could be output-input depenencies ([API Design, point 4](#api-design)) 
 
 ## Open questions
 
