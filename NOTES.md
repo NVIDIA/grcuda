@@ -50,7 +50,7 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
     This was the first approach, but it gave sync errors (probably due to other problems that are now solved)    
     3. **Streams are not reused if they are free:** I'm creating new streams for computations without dependencies, but I could re-use existing streams that are currently free.
     This avoids memory leaks, but requires a bit of extra book-keeping.
-    4. Scalar values are not considered for dependencies. They are read-only when used as input, but there could be output-input depenencies ([API Design, point 4](#api-design)) 
+    4. **Scalar values are not considered for dependencies**: they are read-only when used as input, but there could be output-input depenencies ([API Design, point 4](#api-design)) 
 
 ## Open questions
 
