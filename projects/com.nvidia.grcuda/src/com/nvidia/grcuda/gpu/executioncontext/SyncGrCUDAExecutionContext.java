@@ -26,6 +26,11 @@ public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
      */
     @Override
     public Object registerExecution(GrCUDAComputationalElement computation) throws UnsupportedTypeException {
+
+        // Book-keeping;
+        computation.setComputationStarted();
+        computation.updateIsComputationArrayAccess();
+
         // Start the computation immediately;
         Object result = computation.execute();
 
