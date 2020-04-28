@@ -3,7 +3,7 @@ package com.nvidia.grcuda.gpu.computation;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.ConfiguredKernel;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.Kernel;
 import com.nvidia.grcuda.gpu.KernelArguments;
 import com.nvidia.grcuda.gpu.KernelConfig;

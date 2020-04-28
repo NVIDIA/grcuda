@@ -25,12 +25,12 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
     2. `GrCUDAComputationalElement`: abstract class that wraps GrCUDA computations, e.g. kernel executions and array accesses. 
     It provides `GpuExecutionContext` with functions used to compute dependencies or decide if the computation must be done synchronously (e.g. array accesses)
     3. `ExecutionDAG`: the DAG representing the dependencies between computations, it is composed of vertices that wrap each `GrCUDAComputationalElement`
-    4. `GrCUDAStremManager`: class that handles the creation and the assignment of streams to kernels
+    4. `GrCUDAStreamManager`: class that handles the creation and the assignment of streams to kernels
 * **Basic execution flow**
     1. The host language (i.e. the user) calls an `InteropLibrary` object that can be associated to a `GrCUDAComputationalElement`, e.g. a kernel execution or an array access
     2. A new `GrCUDAComputationalElement` is created and registered to the `GpuExecutionContext`, to represent the computation
     3. `GpuExecutionContext` adds the computation to the DAG and computes its dependencies
-    4. Based on the dependencies, the `GpuExecutionContext` associates a stream to the computation through `GrCUDAStremManager`
+    4. Based on the dependencies, the `GpuExecutionContext` associates a stream to the computation through `GrCUDAStreamManager`
     5. `GpuExecutionContext` executes the computation on the chosen stream, performing synchronization if necessary
     6. In case of subsequent array accesses, we skip the scheduling part as accesses are synchronous, and minimize overheads
 * The CUDA stream interface has been added to GrCUDA, and is accessible by the users (not recommended, but possible)
@@ -44,7 +44,7 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
      Consider 3 kernels, `K1(X, Y)`, `K2(X)`, `K3(Y)`: `K2` and `K3` are both depending on `K1`, but are using different inputs, and can run in parallel.
      Currently, I'm just computing that they both depend on `K1`, but I'm not considering that they have disjoint dependencies.
     2. **Synchronization happens the main execution thread**, this limits parallel execution:
-     in the example before, calling `K2` requires to sync on the stream used by `K1`, and `K3` starts only after 'K2' has started.
+     in the example before, calling `K2` requires to sync on the stream used by `K1`, and `K3` starts only after `K2` has started.
       If `Y` was read-only in `K1`, this wait would have been unnecessary.
     Instead, we can assign computations to different threads, block the thread execution, and start child computations with callbacks.
     This was the first approach, but it gave sync errors (probably due to other problems that are now solved)    

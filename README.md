@@ -213,8 +213,8 @@ git clone https://github.com/NVIDIA/grcuda.git (this can be replaced with a fork
 * [Here](https://github.com/graalvm/graalvm-ce-builds/releases) you can find releases for GraalVM 20.0, and more recent versions once they will become available
 
 4. **Setup your CUDA environment**
-* Install CUDA and Nvidia drivers, for exampel following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=CentOS&target_version=7&target_type=rpmnetwork)
-* Add the following to your environment (assuming that you have installed CUDA in the default `/usr/local` location, and using the `nvcc` compiler
+* Install CUDA and Nvidia drivers, for example following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=CentOS&target_version=7&target_type=rpmnetwork)
+* Add the following to your environment (assuming you have installed CUDA in the default `/usr/local` location, and using the `nvcc` compiler
 
 ```
 export CUDA_DIR=/usr/local/cuda

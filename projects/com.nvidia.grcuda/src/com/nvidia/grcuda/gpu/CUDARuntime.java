@@ -41,6 +41,7 @@ import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
 import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
 import com.nvidia.grcuda.gpu.computation.PostPascalArrayStreamAssociation;
 import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -425,7 +426,7 @@ public final class CUDARuntime {
         }
     }
 
-    ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {
+    public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {
         return arrayStreamArchitecturePolicy;
     }
 
@@ -687,7 +688,7 @@ public final class CUDARuntime {
     private HashMap<String, CUModule> loadedModules = new HashMap<>();
 
     @TruffleBoundary
-    public Kernel loadKernel(GrCUDAExecutionContext grCUDAExecutionContext, String cubinFile, String kernelName, String signature) {
+    public Kernel loadKernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String cubinFile, String kernelName, String signature) {
         CUModule module = loadedModules.get(cubinFile);
         try {
             if (module == null) {
@@ -704,7 +705,7 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
-    public Kernel buildKernel(GrCUDAExecutionContext grCUDAExecutionContext, String code, String kernelName, String signature) {
+    public Kernel buildKernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String code, String kernelName, String signature) {
         String moduleName = "truffle" + context.getNextModuleId();
         PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14");
         CUModule module = null;

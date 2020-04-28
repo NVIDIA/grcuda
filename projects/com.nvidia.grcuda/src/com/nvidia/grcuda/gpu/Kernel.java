@@ -32,6 +32,7 @@ import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -56,7 +57,7 @@ import java.util.stream.Collectors;
 @ExportLibrary(InteropLibrary.class)
 public class Kernel implements TruffleObject {
 
-    private final GrCUDAExecutionContext grCUDAExecutionContext;
+    private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
     private final String kernelName;
     private final CUDARuntime.CUModule kernelModule;
     private final long kernelFunction;
@@ -66,7 +67,7 @@ public class Kernel implements TruffleObject {
     private final List<Boolean> argsAreArrays;
     private String ptxCode;
 
-    public Kernel(GrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction, String kernelSignature) {
+    public Kernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction, String kernelSignature) {
         this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.kernelName = kernelName;
         this.kernelModule = kernelModule;
@@ -77,7 +78,7 @@ public class Kernel implements TruffleObject {
         this.grCUDAExecutionContext.registerKernel(this);
     }
 
-    public Kernel(GrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
+    public Kernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
                     String kernelSignature, String ptx) {
         this(grCUDAExecutionContext, kernelName, kernelModule, kernelFunction, kernelSignature);
         this.ptxCode = ptx;
@@ -87,7 +88,7 @@ public class Kernel implements TruffleObject {
         launchCount++;
     }
 
-    public GrCUDAExecutionContext getGrCUDAExecutionContext() {
+    public AbstractGrCUDAExecutionContext getGrCUDAExecutionContext() {
         return grCUDAExecutionContext;
     }
 

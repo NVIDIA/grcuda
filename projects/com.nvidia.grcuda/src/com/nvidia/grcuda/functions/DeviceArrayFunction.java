@@ -28,17 +28,13 @@
  */
 package com.nvidia.grcuda.functions;
 
-import java.util.ArrayList;
-import java.util.Optional;
-
-import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAException;
-import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.TypeException;
+import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.array.DeviceArray.MemberSet;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.array.MultiDimDeviceArray;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -53,6 +49,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
+import java.util.ArrayList;
+import java.util.Optional;
+
 @ExportLibrary(InteropLibrary.class)
 public final class DeviceArrayFunction extends Function {
 
@@ -60,9 +59,9 @@ public final class DeviceArrayFunction extends Function {
 
     private static final MemberSet MEMBERS = new MemberSet(MAP);
 
-    private final GrCUDAExecutionContext grCUDAExecutionContext;
+    private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
 
-    public DeviceArrayFunction(GrCUDAExecutionContext grCUDAExecutionContext) {
+    public DeviceArrayFunction(AbstractGrCUDAExecutionContext grCUDAExecutionContext) {
         super("DeviceArray");
         this.grCUDAExecutionContext = grCUDAExecutionContext;
     }
@@ -87,7 +86,7 @@ public final class DeviceArrayFunction extends Function {
         }
     }
 
-    static Object createArray(Object[] arguments, int start, ElementType elementType, GrCUDAExecutionContext grCUDAExecutionContext) throws UnsupportedTypeException {
+    static Object createArray(Object[] arguments, int start, ElementType elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext) throws UnsupportedTypeException {
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
         for (int i = start; i < arguments.length; ++i) {

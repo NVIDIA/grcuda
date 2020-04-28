@@ -1,27 +1,20 @@
-package com.nvidia.grcuda.gpu;
+package com.nvidia.grcuda.gpu.executioncontext;
 
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAThreadManager;
-import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
+import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * Class used to monitor the state of GrCUDA execution, keep track of memory allocated,
  * kernels and other executable functions, and dependencies between elements.
  */
-public class GrCUDAExecutionContext {
+public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
-    /**
-     * Reference to the inner {@link CUDARuntime} used to execute kernels and other {@link GrCUDAComputationalElement}
-     */
-    private final CUDARuntime cudaRuntime;
     /**
      * Reference to the {@link com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager} that takes care of
      * scheduling computations on different streams;
@@ -32,18 +25,6 @@ public class GrCUDAExecutionContext {
      */
     private final GrCUDAThreadManager threadManager;
 
-    /**
-     * Set that contains all the arrays allocated so far.
-     */
-    private final Set<AbstractArray> arraySet = new HashSet<>();
-
-    /**
-     * Set that contains all the CUDA kernels declared so far.
-     */
-    private final Set<Kernel> kernelSet = new HashSet<>();
-
-    private final ExecutionDAG dag = new ExecutionDAG();
-
     public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
         this(new CUDARuntime(context, env), new GrCUDAThreadManager(context));
     }
@@ -53,17 +34,9 @@ public class GrCUDAExecutionContext {
     }
 
     public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager) {
-        this.cudaRuntime = cudaRuntime;
+        super(cudaRuntime);
         this.threadManager = threadManager;
         this.streamManager = streamManager;
-    }
-
-    public void registerArray(AbstractArray array) {
-        arraySet.add(array);
-    }
-
-    public void registerKernel(Kernel kernel) {
-        kernelSet.add(kernel);
     }
 
     /**
@@ -71,6 +44,7 @@ public class GrCUDAExecutionContext {
      * and add it to the current computational DAG.
      * The actual execution might be deferred depending on the inferred data dependencies;
      */
+    @Override
     public Object registerExecution(GrCUDAComputationalElement computation) throws UnsupportedTypeException {
         // Add the new computation to the DAG
         ExecutionDAG.DAGVertex vertex = dag.append(computation);
@@ -87,35 +61,14 @@ public class GrCUDAExecutionContext {
 //        }
     }
 
-    public ExecutionDAG getDag() {
-        return dag;
-    }
-
-    public CUDARuntime getCudaRuntime() {
-        return cudaRuntime;
-    }
-
     public GrCUDAStreamManager getStreamManager() {
         return streamManager;
-    }
-
-    // Functions used to interface directly with the CUDA runtime;
-
-    public Kernel loadKernel(String cubinFile, String kernelName, String signature) {
-        return cudaRuntime.loadKernel(this, cubinFile, kernelName, signature);
-    }
-
-    public Kernel buildKernel(String code, String kernelName, String signature) {
-        return cudaRuntime.buildKernel(this, code, kernelName, signature);
-    }
-
-    public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {
-        return cudaRuntime.getArrayStreamArchitecturePolicy();
     }
 
     /**
      * Delete internal structures that require manual cleanup operations;
      */
+    @Override
     public void cleanup() {
         threadManager.finalizeManager();
         streamManager.cleanup();

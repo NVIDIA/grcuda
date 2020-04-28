@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.test.gpu.stream;
 
 import com.nvidia.grcuda.gpu.ExecutionDAG;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.test.gpu.ExecutionDAGTest;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.junit.Test;

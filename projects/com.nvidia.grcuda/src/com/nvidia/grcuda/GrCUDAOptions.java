@@ -54,4 +54,7 @@ public final class GrCUDAOptions {
     @Option(category = OptionCategory.USER, help = "Set the location of the cuml library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> CuMLLibrary = new OptionKey<>(CUMLRegistry.DEFAULT_LIBRARY);
 
+    @Option(category = OptionCategory.USER, help = "Chose the scheduling policy of GrCUDA computations", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> ExecutionPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_EXECUTION_POLICY.getName());
+
 }

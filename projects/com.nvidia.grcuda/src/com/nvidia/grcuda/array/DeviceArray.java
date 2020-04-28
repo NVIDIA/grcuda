@@ -30,7 +30,7 @@ package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.nvidia.grcuda.gpu.computation.DeviceArrayReadExecution;
 import com.nvidia.grcuda.gpu.computation.DeviceArrayWriteExecution;
@@ -114,7 +114,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public DeviceArray(GrCUDAExecutionContext grCUDAExecutionContext, long numElements, ElementType elementType) {
+    public DeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, long numElements, ElementType elementType) {
         super(grCUDAExecutionContext, elementType);
         this.numElements = numElements;
         this.sizeBytes = numElements * elementType.getSizeBytes();

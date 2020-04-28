@@ -28,21 +28,20 @@
  */
 package com.nvidia.grcuda.nodes;
 
-import java.util.ArrayList;
-
-import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
+import com.nvidia.grcuda.array.AbstractArray;
+import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+
+import java.util.ArrayList;
 
 public abstract class ArrayNode extends ExpressionNode {
 
@@ -59,7 +58,7 @@ public abstract class ArrayNode extends ExpressionNode {
     @Specialization
     AbstractArray doDefault(VirtualFrame frame,
                             @CachedContext(GrCUDALanguage.class) GrCUDAContext context) {
-        final GrCUDAExecutionContext grCUDAExecutionContext = context.getGrCUDAExecutionContext();
+        final AbstractGrCUDAExecutionContext grCUDAExecutionContext = context.getGrCUDAExecutionContext();
         long[] elementsPerDim = new long[sizeNodes.length];
         int dim = 0;
         for (ExpressionNode sizeNode : sizeNodes) {

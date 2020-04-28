@@ -28,9 +28,6 @@
  */
 package com.nvidia.grcuda.functions;
 
-import java.util.concurrent.ConcurrentHashMap;
-
-import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -38,8 +35,8 @@ import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.TypeException;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -68,6 +65,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * This node is conceptually a simple memcpy operation, but it can take arbitrary Truffle objects as
  * input and uses {@link InteropLibrary} to access them. The target is a {@link DeviceArray}. The
@@ -76,7 +75,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 @GenerateUncached
 abstract class MapArrayNode extends Node {
 
-    abstract Object execute(Object source, ElementType elementType, GrCUDAExecutionContext grCUDAExecutionContext);
+    abstract Object execute(Object source, ElementType elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext);
 
     private static final FrameDescriptor DESCRIPTOR = new FrameDescriptor();
     private static final FrameSlot SIZE_SLOT = DESCRIPTOR.addFrameSlot("size", FrameSlotKind.Long);
@@ -171,7 +170,7 @@ abstract class MapArrayNode extends Node {
     }
 
     @Specialization(limit = "3")
-    Object doMap(Object source, ElementType elementType, GrCUDAExecutionContext grCUDAExecutionContext,
+    Object doMap(Object source, ElementType elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext,
                     @CachedLibrary("source") InteropLibrary interop,
                     @CachedContext(GrCUDALanguage.class) @SuppressWarnings("unused") GrCUDAContext context,
                     @Cached(value = "createLoop(source)", uncached = "createUncachedLoop(source, context)") CallTarget loop) {
@@ -206,9 +205,9 @@ abstract class MapArrayNode extends Node {
 @ExportLibrary(InteropLibrary.class)
 public final class MapDeviceArrayFunction extends Function {
 
-    private final GrCUDAExecutionContext grCUDAExecutionContext;
+    private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
 
-    public MapDeviceArrayFunction(GrCUDAExecutionContext grCUDAExecutionContext) {
+    public MapDeviceArrayFunction(AbstractGrCUDAExecutionContext grCUDAExecutionContext) {
         super("MapDeviceArray");
         this.grCUDAExecutionContext = grCUDAExecutionContext;
     }

@@ -38,8 +38,11 @@ import com.nvidia.grcuda.functions.GetDeviceFunction;
 import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
+import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.SyncGrCUDAExecutionContext;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -55,13 +58,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class GrCUDAContext {
 
+    public static final ExecutionPolicyEnum DEFAULT_EXECUTION_POLICY = ExecutionPolicyEnum.DEFAULT;
+
     private static final String ROOT_NAMESPACE = "CU";
 
     private final Env env;
-    private final GrCUDAExecutionContext grCUDAExecutionContext;
+    private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
     private final Namespace rootNamespace;
     private final ArrayList<Runnable> disposables = new ArrayList<>();
-    private AtomicInteger moduleId = new AtomicInteger(0);
+    private final AtomicInteger moduleId = new AtomicInteger(0);
     private volatile boolean cudaInitialized = false;
 
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
@@ -69,7 +74,21 @@ public final class GrCUDAContext {
 
     public GrCUDAContext(Env env) {
         this.env = env;
-        this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
+
+        // Retrieve the execution policy;
+        ExecutionPolicyEnum executionPolicy = parseExecutionPolicy(env.getOptions().get(GrCUDAOptions.ExecutionPolicy));
+        // Initialize the execution policy;
+        System.out.println("-- using " + executionPolicy.getName() + " execution policy");
+        switch (executionPolicy) {
+            case SYNC:
+                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env);
+                break;
+            case DEFAULT:
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
+                break;
+            default:
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
+        }
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
         namespace.addNamespace(namespace);
@@ -100,7 +119,7 @@ public final class GrCUDAContext {
         return env;
     }
 
-    public GrCUDAExecutionContext getGrCUDAExecutionContext() {
+    public AbstractGrCUDAExecutionContext getGrCUDAExecutionContext() {
         return grCUDAExecutionContext;
     }
 
@@ -150,6 +169,18 @@ public final class GrCUDAContext {
     @TruffleBoundary
     public <T> T getOption(OptionKey<T> key) {
         return env.getOptions().get(key);
+    }
+
+    @TruffleBoundary
+    private static ExecutionPolicyEnum parseExecutionPolicy(String policyString) {
+        switch(policyString) {
+            case "sync":
+                return ExecutionPolicyEnum.SYNC;
+            case "default":
+                return ExecutionPolicyEnum.DEFAULT;
+            default:
+                return GrCUDAContext.DEFAULT_EXECUTION_POLICY;
+        }
     }
 
     /**

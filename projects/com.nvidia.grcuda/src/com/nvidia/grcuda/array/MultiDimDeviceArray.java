@@ -30,7 +30,7 @@ package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.array.DeviceArray.MemberSet;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -66,7 +66,7 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public MultiDimDeviceArray(GrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType, long[] dimensions,
+    public MultiDimDeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType, long[] dimensions,
                                boolean useColumnMajor) {
         super(grCUDAExecutionContext, elementType);
         if (dimensions.length < 2) {

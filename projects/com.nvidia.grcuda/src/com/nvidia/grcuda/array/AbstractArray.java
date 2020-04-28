@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -19,7 +19,7 @@ public abstract class AbstractArray implements TruffleObject {
     /**
      * Reference to the underlying CUDA runtime that manages the array memory.
      */
-    protected final GrCUDAExecutionContext grCUDAExecutionContext;
+    protected final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
 
     /**
      * Data type of elements stored in the array.
@@ -27,7 +27,7 @@ public abstract class AbstractArray implements TruffleObject {
     protected final ElementType elementType;
 
     /**
-     * True IFF the array has been registered in {@link com.nvidia.grcuda.gpu.GrCUDAExecutionContext}.
+     * True IFF the array has been registered in {@link AbstractGrCUDAExecutionContext}.
      * Used to avoid multiple registration;
      */
     private boolean registeredInContext = false;
@@ -44,19 +44,19 @@ public abstract class AbstractArray implements TruffleObject {
         return elementType;
     }
 
-    protected AbstractArray(GrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType) {
+    protected AbstractArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType) {
         this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.elementType = elementType;
     }
 
-    protected AbstractArray(GrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType, boolean isLastComputationArrayAccess) {
+    protected AbstractArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType, boolean isLastComputationArrayAccess) {
         this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.elementType = elementType;
         this.isLastComputationArrayAccess = isLastComputationArrayAccess;
     }
 
     /**
-     * Register the array in {@link com.nvidia.grcuda.gpu.GrCUDAExecutionContext} so that operations on this array
+     * Register the array in {@link AbstractGrCUDAExecutionContext} so that operations on this array
      * can be monitored by the runtime. Registration must be done with a separate function at the end of concrete Array classes.
      * This is done to avoid leaving the context in an inconsistent state if the concrete constructor throws an exception and fails.
      */
@@ -67,7 +67,7 @@ public abstract class AbstractArray implements TruffleObject {
         }
     }
 
-    public GrCUDAExecutionContext getGrCUDAExecutionContext() {
+    public AbstractGrCUDAExecutionContext getGrCUDAExecutionContext() {
         return grCUDAExecutionContext;
     }
 

@@ -1,7 +1,8 @@
 package com.nvidia.grcuda.gpu.computation;
 
 import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.gpu.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -31,7 +32,7 @@ public abstract class GrCUDAComputationalElement {
     /**
      * Reference to the execution context where this computation is executed;
      */
-    protected final GrCUDAExecutionContext grCUDAExecutionContext;
+    protected final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
     /**
      * Reference to the stream where this computation will be executed,
      * if possible (i.e. if the computation can be executed on a custom stream).
@@ -60,7 +61,7 @@ public abstract class GrCUDAComputationalElement {
      * @param initializer the initializer used to build the internal set of arguments considered in the dependency computation
      */
     @CompilerDirectives.TruffleBoundary
-    public GrCUDAComputationalElement(GrCUDAExecutionContext grCUDAExecutionContext, InitializeArgumentSet initializer) {
+    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, InitializeArgumentSet initializer) {
         this.argumentSet = initializer.initialize();
         // Initialize by making a copy of the original set;
         this.activeArgumentSet = new HashSet<>(this.argumentSet);
@@ -72,7 +73,7 @@ public abstract class GrCUDAComputationalElement {
      * @param grCUDAExecutionContext execution context in which this computational element will be scheduled
      * @param args the list of arguments provided to the computation. Arguments are expected to be {@link org.graalvm.polyglot.Value}
      */
-    public GrCUDAComputationalElement(GrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
+    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
         this(grCUDAExecutionContext, new DefaultExecutionInitializer(args));
     }
 
