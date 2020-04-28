@@ -44,8 +44,10 @@ if __name__ == "__main__":
                         help="If True, allocate new memory and rebuild the GPU code at each iteration")
     parser.add_argument("--reinit", metavar="[True|False]", type=bool, nargs="*",
                         help="If True, re-initialize the values used in each benchmark at each iteration")
-    parser.add_argument("-c", "--cpu_validation", action="store_true",
-                        help="If present, validate the result of each benchmark using the CPU")
+    parser.add_argument("-c", "--cpu_validation", action="store_true", dest="cpu_validation",
+                        help="Validate the result of each benchmark using the CPU")
+    parser.add_argument("--no_cpu_validation", action="store_false", dest="cpu_validation",
+                        help="Validate the result of each benchmark using the CPU")
     parser.add_argument("-b", "--benchmark",
                         help="If present, run the benchmark only for the specified kernel")
     parser.add_argument("--policy",
@@ -54,6 +56,7 @@ if __name__ == "__main__":
                         help="Override the input data size used for the benchmarks")
     parser.add_argument("-r", "--random", action="store_true",
                         help="Initialize benchmarks randomly whenever possible")
+    parser.set_defaults(cpu_validation=BenchmarkResult.DEFAULT_CPU_VALIDATION)
 
     # Parse the input arguments;
     args = parser.parse_args()
@@ -61,14 +64,16 @@ if __name__ == "__main__":
     debug = args.debug if args.debug else BenchmarkResult.DEFAULT_DEBUG
     num_iter = args.num_iter if args.num_iter else BenchmarkResult.DEFAULT_NUM_ITER
     output_path = args.output_path if args.output_path else ""
-    cpu_validation = args.cpu_validation if args.cpu_validation else BenchmarkResult.DEFAULT_CPU_VALIDATION
     realloc = args.realloc if args.realloc else [BenchmarkResult.DEFAULT_REALLOC]
     reinit = args.reinit if args.reinit else [BenchmarkResult.DEFAULT_REINIT]
     random_init = args.random if args.random else BenchmarkResult.DEFAULT_RANDOM_INIT
+    cpu_validation = args.cpu_validation
 
     # Create a new benchmark result instance;
     benchmark_res = BenchmarkResult(debug=debug, num_iterations=num_iter, output_path=output_path,
                                     cpu_validation=cpu_validation, random_init=random_init)
+
+    BenchmarkResult.log_message(f"using CPU validation: {cpu_validation}")
 
     if args.benchmark and benchmark_res.debug:
         BenchmarkResult.log_message(f"using only benchmark: {args.benchmark}")
