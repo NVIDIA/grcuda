@@ -1,8 +1,10 @@
 import argparse
+from distutils.util import strtobool
 
 from bench.bench_1 import Benchmark1
 from bench.bench_2 import Benchmark2
 from bench.bench_3 import Benchmark3
+from bench.bench_4 import Benchmark4
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -13,18 +15,21 @@ benchmarks = {
     "b1": Benchmark1,
     "b2": Benchmark2,
     "b3": Benchmark3,
+    "b4": Benchmark4,
 }
 
 num_elem = {
     "b1": [100],
     "b2": [100],
     "b3": [100],
+    "b4": [100],
 }
 
 policies = {
     "b1": ["default"],
     "b2": ["default"],
     "b3": ["default"],
+    "b4": ["default"],
 }
 
 ##############################
@@ -40,9 +45,9 @@ if __name__ == "__main__":
                         help="Number of times each benchmark is executed")
     parser.add_argument("-o", "--output_path", metavar="path/to/output.json",
                         help="Path to the file where results will be stored")
-    parser.add_argument("--realloc", metavar="[True|False]", type=bool, nargs="*",
+    parser.add_argument("--realloc", metavar="[True|False]", type=lambda x: bool(strtobool(x)), nargs="*",
                         help="If True, allocate new memory and rebuild the GPU code at each iteration")
-    parser.add_argument("--reinit", metavar="[True|False]", type=bool, nargs="*",
+    parser.add_argument("--reinit", metavar="[True|False]", type=lambda x: bool(strtobool(x)), nargs="*",
                         help="If True, re-initialize the values used in each benchmark at each iteration")
     parser.add_argument("-c", "--cpu_validation", action="store_true", dest="cpu_validation",
                         help="Validate the result of each benchmark using the CPU")
@@ -96,3 +101,7 @@ if __name__ == "__main__":
                     for ri in reinit:
                         for i in range(num_iter):
                             benchmark.run(policy=p, size=n, realloc=re, reinit=ri)
+                        # Print the summary of this block;
+                        if benchmark_res.debug:
+                            benchmark_res.print_current_summary(name=b_name, policy=p, size=n,
+                                                                realloc=re, reinit=ri, skip=3)

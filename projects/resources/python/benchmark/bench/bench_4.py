@@ -12,30 +12,21 @@ from benchmark_result import BenchmarkResult
 
 NUM_THREADS_PER_BLOCK = 128
 
-SQUARE_KERNEL = """
-    extern "C" __global__ void square(float* x, int n) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            x[idx] = x[idx] * x[idx];
-        }
-    }
-    """
-
-DIFF_KERNEL = """
-    extern "C" __global__ void diff(float* x, float* y, float* z, int n) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            z[idx] = x[idx] - y[idx];
+COMPUTE_KERNEL = """
+    extern "C" __global__ void compute(const float* x, float *y, int n) {
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i < n) {
+            y[i] = logf(1.0 + cosf(x[i]) * cosf(x[i]) + sinf(x[i]) * sinf(x[i]));
         }
     }
     """
 
 REDUCE_KERNEL = """
-    extern "C" __global__ void reduce(float *x, float *res, int n) {
+    extern "C" __global__ void reduce(const float *x, const float *y, float *res, int n) {
         __shared__ float cache[%d];
         int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i < n) {
-            cache[threadIdx.x] = x[i];
+            cache[threadIdx.x] = x[i] + y[i];
         }
         __syncthreads();
     
@@ -58,25 +49,24 @@ REDUCE_KERNEL = """
 ##############################
 
 
-class Benchmark1(Benchmark):
+class Benchmark4(Benchmark):
     """
-    Compute the sum of difference of squares of 2 vectors, using multiple GrCUDA kernels.
-    Structure of the computation:
-       A: x^2 ──┐
-                ├─> C: z=x-y ──> D: sum(z)
-       B: x^2 ──┘
+    Compute the sum of 2 vectors after having applied some computationally intensive arithmetic to it:
+       A: log(1 + sin(x)^2 + cos(x)^2) ──┐
+                                         ├─> C: sum(x + y)
+       B: log(1 + sin(y)^2 + cos(y)^2) ──┘
     """
 
     def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b1", benchmark)
+        super().__init__("b4", benchmark)
         self.size = 0
         self.x = None
         self.y = None
-        self.z = None
+        self.a = None
+        self.b = None
         self.res = None
         self.num_blocks = 0
-        self.square_kernel = None
-        self.diff_kernel = None
+        self.compute_kernel = None
         self.reduce_kernel = None
         self.cpu_result = 0
 
@@ -85,19 +75,19 @@ class Benchmark1(Benchmark):
         self.size = size
         self.num_blocks = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 
-        # Allocate 2 vectors;
+        # Allocate 4 vectors;
         self.x = polyglot.eval(language="grcuda", string=f"float[{size}]")
         self.y = polyglot.eval(language="grcuda", string=f"float[{size}]")
+        self.a = polyglot.eval(language="grcuda", string=f"float[{size}]")
+        self.b = polyglot.eval(language="grcuda", string=f"float[{size}]")
 
         # Allocate a support vector;
-        self.z = polyglot.eval(language="grcuda", string=f"float[{size}]")
         self.res = polyglot.eval(language="grcuda", string=f"float[1]")
 
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
-        self.square_kernel = build_kernel(SQUARE_KERNEL, "square", "pointer, sint32")
-        self.diff_kernel = build_kernel(DIFF_KERNEL, "diff", "pointer, pointer, pointer, sint32")
-        self.reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "pointer, pointer, sint32")
+        self.compute_kernel = build_kernel(COMPUTE_KERNEL, "compute", "pointer, pointer, sint32")
+        self.reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "pointer, pointer, pointer, sint32")
 
     @time_phase("initialization")
     def init(self):
@@ -106,35 +96,33 @@ class Benchmark1(Benchmark):
         for i in range(self.size):
             if self.benchmark.random_init:
                 self.x[i] = random()
-                self.y[i] = 2 * random()
+                self.a[i] = random()
             else:
                 self.x[i] = 1 / (i + 1)
-                self.y[i] = 2 / (i + 1)
+                self.a[i] = 1 / (i + 1)
 
     def execute(self) -> object:
         # This must be reset at every execution;
         self.res[0] = 0
 
-        # Call the kernel. The 2 computations are independent, and can be done in parallel;
+        # A. B. Call the kernels. The 2 computations are independent, and can be done in parallel;
         start = time.time()
-        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.size)
-        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.size)
+        self.compute_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.y, self.size)
+        self.compute_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.a, self.b, self.size)
         end = time.time()
-        self.benchmark.add_phase({"name": "square", "time_sec": end - start})
+        self.benchmark.add_phase({"name": "compute", "time_sec": end - start})
 
-        # C. Compute the difference of the 2 vectors. This must be done after the 2 previous computations;
+        # C. Compute the sum of the result;
         start = time.time()
-        self.diff_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.y, self.z, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "diff", "time_sec": end - start})
-
-        # D. Compute the sum of the result;
-        start = time.time()
-        self.reduce_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.z, self.res, self.size)
+        self.reduce_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.b, self.res, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "reduce", "time_sec": end - start})
 
+        start = time.time()
         result = self.res[0]
+        end = time.time()
+        self.benchmark.add_phase({"name": "read_result", "time_sec": end - start})
+
         self.benchmark.add_to_benchmark("gpu_result", result)
         if self.benchmark.debug:
             BenchmarkResult.log_message(f"\tgpu result: {result:.4f}")
@@ -152,15 +140,14 @@ class Benchmark1(Benchmark):
                 y_g = np.zeros(self.size)
                 for i in range(self.size):
                     x_g[i] = random()
-                    y_g[i] = 2 * random()
+                    y_g[i] = random()
             else:
                 x_g = 1 / np.linspace(1, self.size, self.size)
-                y_g = 2 / np.linspace(1, self.size, self.size)
+                y_g = 1 / np.linspace(1, self.size, self.size)
 
-            x_g = x_g ** 2
-            y_g = y_g ** 2
-            x_g -= y_g
-            self.cpu_result = np.sum(x_g)
+            x_g = np.log(1 + np.sin(x_g)**2 + np.cos(x_g)**2)
+            y_g = np.log(1 + np.sin(y_g)**2 + np.cos(y_g)**2)
+            self.cpu_result = np.sum(x_g + y_g)
         cpu_time = time.time() - start
         difference = np.abs(self.cpu_result - gpu_result)
         self.benchmark.add_to_benchmark("cpu_time_sec", cpu_time)

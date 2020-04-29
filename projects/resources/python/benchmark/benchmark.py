@@ -1,6 +1,24 @@
 from benchmark_result import BenchmarkResult
 from abc import ABC, abstractmethod
 import time
+from typing import Callable
+
+
+def time_phase(phase_name: str) -> Callable:
+    """
+    Decorator that simplifies timing a function call and storing the result in the benchmark log;
+    :param phase_name: name of the benchmark phase
+    :return: the output of the wrapped function
+    """
+    def inner_func(func) -> Callable:
+        def func_call(self, *args, **kwargs) -> object:
+            start = time.time()
+            result = func(self, *args, **kwargs)
+            end = time.time()
+            self.benchmark.add_phase({"name": phase_name, "time_sec": end - start})
+            return result
+        return func_call
+    return inner_func
 
 
 class Benchmark(ABC):
@@ -75,7 +93,8 @@ class Benchmark(ABC):
         self.benchmark.add_total_time(end - start)
 
         # Perform validation on CPU;
-        self.cpu_validation(gpu_result, reinit)
+        if self.benchmark.cpu_validation:
+            self.cpu_validation(gpu_result, reinit)
 
         # Write to file the current result;
         self.benchmark.save_to_file()

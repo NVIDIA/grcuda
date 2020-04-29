@@ -62,7 +62,7 @@ public class GrCUDAStreamManager {
         vertex.getParentComputations().forEach(c -> {
             // Synchronize computations that are not yet finished and can use streams;
             if (!c.isComputationFinished() && c.canUseStream()) {
-                System.out.println("--\tsync stream " + c.getStream().getStreamNumber() + " by " + vertex.getComputation());
+//                System.out.println("--\tsync stream " + c.getStream().getStreamNumber() + " by " + vertex.getComputation());
                 runtime.cudaStreamSynchronize(c.getStream());
                 // Set the parent computations as finished;
                 c.setComputationFinished();

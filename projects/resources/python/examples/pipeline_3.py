@@ -97,6 +97,11 @@ if __name__ == "__main__":
         time_cumulative += end - start
         print(f"iter {i}) time: {end - start:.4f} sec")
 
+        square_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(y, N)
+        a = y[0]
+        b=a+1
+        square_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(y, b)
+
     # C. Compute the sum of the result;
     start = time.time()
     reduce_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(x, y, res, N)

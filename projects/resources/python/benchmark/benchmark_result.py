@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 import json
-
+import numpy as np
 
 class BenchmarkResult:
 
@@ -23,7 +23,7 @@ class BenchmarkResult:
         self.debug = debug
         self.random_init = random_init
         self.num_iterations = num_iterations
-        self._cpu_validation = cpu_validation
+        self.cpu_validation = cpu_validation
         self._results = {"num_iterations": num_iterations,
                          "cpu_validation": cpu_validation,
                          "random_init": random_init,
@@ -127,6 +127,31 @@ class BenchmarkResult:
         self._dict_current["phases"] += [phase]
         if self.debug and "name" in phase and "time_sec" in phase:
             BenchmarkResult.log_message(f"\t\t{phase['name']}: {phase['time_sec']:.4f} sec")
+
+    def print_current_summary(self, name: str, policy: str, size: int, realloc: bool, reinit, skip: int = 0) -> None:
+        """
+        Print a summary of the benchmark with the provided settings;
+
+        :param name: name of the benchmark
+        :param policy: current policy used in the benchmark
+        :param size: size of the input data
+        :param realloc: if reallocation is performed
+        :param reinit: if re-initialization is performed
+        :param skip: skip the first N iterations when computing the summary statistics
+        """
+        try:
+            results_filtered = self._results["benchmarks"][name][policy][size][realloc][reinit]
+        except KeyError as e:
+            results_filtered = []
+            BenchmarkResult.log_message(f"WARNING: benchmark with signature"
+                                        f" [{name}][{policy}][{size}][{realloc}][{reinit}] not found, exception {e}")
+        # Retrieve execution times;
+        exec_times = [x["total_time_sec"] for x in results_filtered][skip:]
+        mean_time = np.mean(exec_times) if exec_times else np.nan
+        std_time = np.std(exec_times) if exec_times else np.nan
+        BenchmarkResult.log_message(f"summary of benchmark={name}, policy={policy}, size={size}," +
+                                    f" realloc={realloc}, reinit={reinit};" +
+                                    f" mean execution time={mean_time:.4f}±{std_time:.4f} sec")
 
     def save_to_file(self) -> None:
         with open(self._output_path, "w+") as f:

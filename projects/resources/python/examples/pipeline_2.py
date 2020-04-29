@@ -60,7 +60,7 @@ REDUCE_KERNEL = """
 # Structure of the computation:
 #   A: x^2 ──┐
 #            ├─> C: z=x-y ───┐
-#   B: x^2 ──┘               │
+#   B: y^2 ──┘               │
 #                            ├-> F: sum(z+b)
 #                            │
 #   D: a^2 ────> E: b=a+2  ──┘
@@ -113,19 +113,19 @@ if __name__ == "__main__":
     time_cumulative += end - start
     print(f"square, time: {end - start:.4f} sec")
 
-    # C. Compute the difference of the 2 vectors. This must be done after the 2 previous computations;
-    start = time.time()
-    diff_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(x, y, z, N)
-    end = time.time()
-    time_cumulative += end - start
-    print(f"diff, time: {end - start:.4f} sec")
-
     # D. Compute the other branch of the computation;
     start = time.time()
     square_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(a, N)
     end = time.time()
     time_cumulative += end - start
     print(f"square - other branch, time: {end - start:.4f} sec")
+
+    # C. Compute the difference of the 2 vectors. This must be done after the 2 previous computations;
+    start = time.time()
+    diff_kernel(NUM_BLOCKS, NUM_THREADS_PER_BLOCK)(x, y, z, N)
+    end = time.time()
+    time_cumulative += end - start
+    print(f"diff, time: {end - start:.4f} sec")
 
     # E. Continue computing the other branch;
     start = time.time()
