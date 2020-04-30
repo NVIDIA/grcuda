@@ -1,12 +1,14 @@
 package com.nvidia.grcuda.test.gpu;
 
 import com.nvidia.grcuda.NoneValue;
+import com.nvidia.grcuda.gpu.ArgumentType;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
+import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
-import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
+import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -30,7 +32,13 @@ public class ExecutionDAGTest {
      * Mock class to test the DAG execution;
      */
     public static class KernelExecutionTest extends GrCUDAComputationalElement {
-        public KernelExecutionTest(GrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
+//        public KernelExecutionTest(GrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
+//            super(grCUDAExecutionContext, args.stream()
+//                    .map(a -> new ComputationArgumentWithValue(ArgumentType.POINTER, true, false, a))
+//                    .collect(Collectors.toList()));
+//        }
+
+        public KernelExecutionTest(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
             super(grCUDAExecutionContext, args);
         }
 
@@ -42,6 +50,20 @@ public class ExecutionDAGTest {
 
         @Override
         public void associateArraysToStreamImpl() { }
+    }
+
+    public static class MockArgument extends ComputationArgumentWithValue {
+        public MockArgument(Object value) {
+            super(ArgumentType.POINTER, true, false, value);
+        }
+
+        public MockArgument(Object value, boolean isConst) {
+            super(ArgumentType.POINTER, true, isConst, value);
+        }
+
+        public MockArgument(Object value, boolean isConst, boolean isArray) {
+            super(ArgumentType.POINTER, isArray, isConst, value);
+        }
     }
 
     /**
@@ -89,7 +111,8 @@ public class ExecutionDAGTest {
     public void addVertexToDAGTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
         // Create two mock kernel executions;
-        new KernelExecutionTest(context, Arrays.asList(1, 2, 3)).schedule();
+        new KernelExecutionTest(context,
+                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -99,7 +122,8 @@ public class ExecutionDAGTest {
         assertTrue(dag.getFrontier().get(0).isFrontier());
         assertTrue(dag.getFrontier().get(0).isStart());
 
-        new KernelExecutionTest(context, Arrays.asList(1, 2, 3)).schedule();
+        new KernelExecutionTest(context,
+                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
 
         assertEquals(2, dag.getNumVertices());
         assertEquals(1, dag.getNumEdges());
@@ -122,10 +146,11 @@ public class ExecutionDAGTest {
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
-        new KernelExecutionTest(context, Collections.singletonList(1)).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(2)).schedule();
-        new KernelExecutionTest(context, Arrays.asList(1, 2, 3)).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(3)).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
+        new KernelExecutionTest(context,
+                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(3))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -164,12 +189,12 @@ public class ExecutionDAGTest {
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
         //    \----> C(2)
         // The final frontier is composed by C(2), D(3), E(1), F(4);
-        new KernelExecutionTest(context, Arrays.asList(1, 2)).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(1)).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(2)).schedule();
-        new KernelExecutionTest(context, Arrays.asList(1, 3)).schedule();
-        new KernelExecutionTest(context, Arrays.asList(1, 4)).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(4)).schedule();
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(2))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(3))).schedule();
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(4))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(4))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -289,8 +314,8 @@ public class ExecutionDAGTest {
 
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "pointer, sint32");
-            Value diffKernel = buildkernel.execute(DIFF_KERNEL, "diff", "pointer, pointer, pointer, sint32");
-            Value reduceKernel = buildkernel.execute(REDUCE_KERNEL, "reduce", "pointer, pointer, sint32");
+            Value diffKernel = buildkernel.execute(DIFF_KERNEL, "diff", "const pointer, const pointer, pointer, sint32");
+            Value reduceKernel = buildkernel.execute(REDUCE_KERNEL, "reduce", "const pointer, pointer, sint32");
             assertNotNull(squareKernel);
             assertNotNull(diffKernel);
             assertNotNull(reduceKernel);

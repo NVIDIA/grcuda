@@ -1,6 +1,7 @@
 package com.nvidia.grcuda.gpu.computation;
 
 import com.nvidia.grcuda.array.AbstractArray;
+import com.nvidia.grcuda.gpu.ArgumentType;
 import com.oracle.truffle.api.CompilerDirectives;
 
 import java.util.Collections;
@@ -16,14 +17,21 @@ import java.util.Set;
 class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeArgumentSet {
 
     private final T array;
+    private final boolean readOnly;
 
     ArrayExecutionInitializer(T array) {
+        this(array, false);
+    }
+
+    ArrayExecutionInitializer(T array, boolean readOnly) {
         this.array = array;
+        this.readOnly = readOnly;
     }
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public Set<Object> initialize() {
-        return new HashSet<>(Collections.singleton(this.array));
+    public Set<ComputationArgumentWithValue> initialize() {
+        return new HashSet<>(Collections.singleton(
+                new ComputationArgumentWithValue(ArgumentType.POINTER, true, readOnly, this.array)));
     }
 }

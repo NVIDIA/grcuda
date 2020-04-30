@@ -8,5 +8,5 @@ public interface InitializeArgumentSet {
      * considered in the dependency evaluation.
      * @return a set of arguments used in the evaluation
      */
-    Set<Object> initialize();
+    Set<ComputationArgumentWithValue> initialize();
 }

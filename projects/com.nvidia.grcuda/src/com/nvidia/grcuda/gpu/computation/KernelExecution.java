@@ -3,16 +3,15 @@ package com.nvidia.grcuda.gpu.computation;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.ConfiguredKernel;
-import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.Kernel;
 import com.nvidia.grcuda.gpu.KernelArguments;
 import com.nvidia.grcuda.gpu.KernelConfig;
+import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Class used to track the single execution of a {@link ConfiguredKernel}.
@@ -110,12 +109,11 @@ public class KernelExecution extends GrCUDAComputationalElement {
         }
 
         @Override
-        public Set<Object> initialize() {
+        public Set<ComputationArgumentWithValue> initialize() {
             // TODO: what aboout scalars? We cannot treat them in the same way, as they are copied and not referenced
             //   There should be a semantic to manually specify scalar dependencies? For now we have to skip them;
-            return IntStream.range(0, args.getOriginalArgs().length).filter(i ->
-                    kernel.getArgsAreArrays().get(i)
-            ).mapToObj(args::getOriginalArg).collect(Collectors.toSet());
+            return this.args.getKernelArgumentWithValues().stream()
+                    .filter(ComputationArgument::isArray).collect(Collectors.toSet());
         }
     }
 }

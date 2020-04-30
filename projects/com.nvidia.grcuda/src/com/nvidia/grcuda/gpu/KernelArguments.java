@@ -1,18 +1,31 @@
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.gpu.computation.ComputationArgument;
+import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public final class KernelArguments implements Closeable {
 
     private final Object[] originalArgs;
+    /**
+     * Associate each input object to the characteristics of its argument, such as its type and if it's constant;
+     */
+    private final List<ComputationArgumentWithValue> kernelArgumentWithValues = new ArrayList<>();
     private final UnsafeHelper.PointerArray argumentArray;
     private final ArrayList<Closeable> argumentValues = new ArrayList<>();
 
-    public KernelArguments(Object[] args) {
+    public KernelArguments(Object[] args, List<ComputationArgument> kernelArgumentList) {
         this.originalArgs = args;
         this.argumentArray = UnsafeHelper.createPointerArray(args.length);
+        assert(args.length == kernelArgumentList.size());
+        // Initialize the list of arguments and object references;
+        for (int i = 0; i < args.length; i++) {
+            kernelArgumentWithValues.add(new ComputationArgumentWithValue(kernelArgumentList.get(i), args[i]));
+        }
     }
 
     public void setArgument(int argIdx, UnsafeHelper.MemoryObject obj) {
@@ -31,6 +44,11 @@ public final class KernelArguments implements Closeable {
     public Object getOriginalArg(int index) {
         return originalArgs[index];
     }
+
+    public List<ComputationArgumentWithValue> getKernelArgumentWithValues() {
+        return kernelArgumentWithValues;
+    }
+
 
     @Override
     public void close() {

@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.oracle.truffle.api.interop.TruffleObject;
 
@@ -37,7 +38,7 @@ public class ExecutionDAG implements TruffleObject {
 
         // For each vertex in the frontier, compute dependencies of the vertex;
         for (DAGVertex frontierVertex : frontier) {
-            List<Object> dependencies = computeDependencies(frontierVertex, newVertex);
+            List<ComputationArgumentWithValue> dependencies = computeDependencies(frontierVertex, newVertex);
             if (dependencies.size() > 0) {
                 // Create a new edge between the two vertices (book-keeping is automatic);
                 new DAGEdge(frontierVertex, newVertex, dependencies);
@@ -52,7 +53,7 @@ public class ExecutionDAG implements TruffleObject {
         return newVertex;
     }
 
-    private List<Object> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
+    private List<ComputationArgumentWithValue> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
         return startVertex.getComputation().computeDependencies(endVertex.getComputation());
     }
 
@@ -208,7 +209,7 @@ public class ExecutionDAG implements TruffleObject {
         /**
          * List of objects that represents depenencies between the two vertices;
          */
-        private List<Object> dependencies;
+        private List<ComputationArgumentWithValue> dependencies;
 
         DAGEdge(DAGVertex start, DAGVertex end) {
             this.start = start;
@@ -222,7 +223,7 @@ public class ExecutionDAG implements TruffleObject {
             edges.add(this);
         }
 
-        DAGEdge(DAGVertex start, DAGVertex end, List<Object> dependencies) {
+        DAGEdge(DAGVertex start, DAGVertex end, List<ComputationArgumentWithValue> dependencies) {
             this(start, end);
             this.dependencies = dependencies;
         }
@@ -239,7 +240,7 @@ public class ExecutionDAG implements TruffleObject {
             return id;
         }
 
-        public List<Object> getDependencies() {
+        public List<ComputationArgumentWithValue> getDependencies() {
             return dependencies;
         }
 

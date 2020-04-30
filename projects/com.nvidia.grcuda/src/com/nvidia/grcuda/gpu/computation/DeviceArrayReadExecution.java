@@ -11,7 +11,7 @@ public class DeviceArrayReadExecution extends ArrayAccessExecution<DeviceArray> 
     public DeviceArrayReadExecution(DeviceArray array,
                                      long index,
                                      ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array), array);
+        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array, true), array);
         this.index = index;
         this.elementTypeProfile = elementTypeProfile;
     }

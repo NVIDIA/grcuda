@@ -18,7 +18,7 @@ public class MultiDimDeviceArrayViewWriteExecution extends ArrayAccessExecution<
                                                  Object value,
                                                  InteropLibrary valueLibrary,
                                                  ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array.getMdDeviceArray()), array);
+        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array.getMdDeviceArray(), false), array);
         this.index = index;
         this.value = value;
         this.valueLibrary = valueLibrary;

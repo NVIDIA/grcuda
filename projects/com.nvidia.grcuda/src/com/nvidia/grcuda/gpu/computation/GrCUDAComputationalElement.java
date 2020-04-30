@@ -22,13 +22,13 @@ public abstract class GrCUDAComputationalElement {
     /**
      * This set contains the original set of input arguments that are used to compute dependencies;
      */
-    protected final Set<Object> argumentSet;
+    protected final Set<ComputationArgumentWithValue> argumentSet;
     /**
      * This set contains the input arguments that are considered, at each step, in the dependency computation.
      * The set initially coincides with "argumentSet", then arguments are removed from this set once a new dependency is found;
      * TODO: should this be moved somewhere else? e.g. inside the DAG, although this means moving the dependency computation too
      */
-    private Set<Object> activeArgumentSet;
+    private Set<ComputationArgumentWithValue> activeArgumentSet;
     /**
      * Reference to the execution context where this computation is executed;
      */
@@ -73,11 +73,11 @@ public abstract class GrCUDAComputationalElement {
      * @param grCUDAExecutionContext execution context in which this computational element will be scheduled
      * @param args the list of arguments provided to the computation. Arguments are expected to be {@link org.graalvm.polyglot.Value}
      */
-    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<Object> args) {
+    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
         this(grCUDAExecutionContext, new DefaultExecutionInitializer(args));
     }
 
-    public Set<Object> getArgumentSet() {
+    public Set<ComputationArgumentWithValue> getArgumentSet() {
         return argumentSet;
     }
 
@@ -88,10 +88,10 @@ public abstract class GrCUDAComputationalElement {
      * @return the list of arguments that the two kernels have in common
      */
     @CompilerDirectives.TruffleBoundary
-    public List<Object> computeDependencies(GrCUDAComputationalElement other) {
-        Set<Object> dependencies = new HashSet<>();
-        Set<Object> newArgumentSet = new HashSet<>();
-        for (Object arg : this.activeArgumentSet) {
+    public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
+        Set<ComputationArgumentWithValue> dependencies = new HashSet<>();
+        Set<ComputationArgumentWithValue> newArgumentSet = new HashSet<>();
+        for (ComputationArgumentWithValue arg : this.activeArgumentSet) {
             // The other computation requires the current argument, so we have found a new dependency;
             if (other.activeArgumentSet.contains(arg)) {
                 dependencies.add(arg);
@@ -192,9 +192,9 @@ public abstract class GrCUDAComputationalElement {
      * Set for all the {@link com.nvidia.grcuda.array.AbstractArray} in the computation if this computation is an array access;
      */
     public void updateIsComputationArrayAccess() {
-        for (Object o : this.argumentSet) {
-            if (o instanceof AbstractArray) {
-                ((AbstractArray) o).setLastComputationArrayAccess(isComputationArrayAccess);
+        for (ComputationArgumentWithValue o : this.argumentSet) {
+            if (o.getArgumentValue() instanceof AbstractArray) {
+                ((AbstractArray) o.getArgumentValue()).setLastComputationArrayAccess(isComputationArrayAccess);
             }
         }
     }
@@ -204,14 +204,14 @@ public abstract class GrCUDAComputationalElement {
      * and consider each of them in the dependency computations;
      */
     private static class DefaultExecutionInitializer implements InitializeArgumentSet {
-        private final List<Object> args;
+        private final List<ComputationArgumentWithValue> args;
 
-        DefaultExecutionInitializer(List<Object> args) {
+        DefaultExecutionInitializer(List<ComputationArgumentWithValue> args) {
             this.args = args;
         }
 
         @Override
-        public Set<Object> initialize() {
+        public Set<ComputationArgumentWithValue> initialize() {
             return new HashSet<>(args);
         }
     }
