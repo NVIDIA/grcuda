@@ -2,11 +2,9 @@ package com.nvidia.grcuda.gpu.computation;
 
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.ArgumentType;
-import com.oracle.truffle.api.CompilerDirectives;
 
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 /**
  * The only argument in {@link com.nvidia.grcuda.array.AbstractArray} computations is the array itself.
@@ -14,7 +12,7 @@ import java.util.Set;
  * while in {@link com.nvidia.grcuda.array.MultiDimDeviceArray} there is currently no need to explicitly represent computations,
  * as they cannot directly the underlying memory;
  */
-class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeArgumentSet {
+class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeArgumentList {
 
     private final T array;
     private final boolean readOnly;
@@ -29,9 +27,8 @@ class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeAr
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
-    public Set<ComputationArgumentWithValue> initialize() {
-        return new HashSet<>(Collections.singleton(
-                new ComputationArgumentWithValue(ArgumentType.POINTER, true, readOnly, this.array)));
+    public List<ComputationArgumentWithValue> initialize() {
+        return Collections.singletonList(
+                new ComputationArgumentWithValue(ArgumentType.POINTER, true, readOnly, this.array));
     }
 }

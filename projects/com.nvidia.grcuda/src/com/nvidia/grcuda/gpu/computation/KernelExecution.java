@@ -10,7 +10,7 @@ import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 
 import java.util.Arrays;
-import java.util.Set;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -99,7 +99,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
                 "]" + "; stream=" + this.getStream().getStreamNumber();
     }
 
-    static class KernelExecutionInitializer implements InitializeArgumentSet {
+    static class KernelExecutionInitializer implements InitializeArgumentList {
         private final Kernel kernel;
         private final KernelArguments args;
 
@@ -109,11 +109,11 @@ public class KernelExecution extends GrCUDAComputationalElement {
         }
 
         @Override
-        public Set<ComputationArgumentWithValue> initialize() {
+        public List<ComputationArgumentWithValue> initialize() {
             // TODO: what aboout scalars? We cannot treat them in the same way, as they are copied and not referenced
             //   There should be a semantic to manually specify scalar dependencies? For now we have to skip them;
             return this.args.getKernelArgumentWithValues().stream()
-                    .filter(ComputationArgument::isArray).collect(Collectors.toSet());
+                    .filter(ComputationArgument::isArray).collect(Collectors.toList());
         }
     }
 }

@@ -9,6 +9,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,15 +21,9 @@ import java.util.Set;
 public abstract class GrCUDAComputationalElement {
 
     /**
-     * This set contains the original set of input arguments that are used to compute dependencies;
+     * This list contains the original set of input arguments that are used to compute dependencies;
      */
-    protected final Set<ComputationArgumentWithValue> argumentSet;
-    /**
-     * This set contains the input arguments that are considered, at each step, in the dependency computation.
-     * The set initially coincides with "argumentSet", then arguments are removed from this set once a new dependency is found;
-     * TODO: should this be moved somewhere else? e.g. inside the DAG, although this means moving the dependency computation too
-     */
-    private Set<ComputationArgumentWithValue> activeArgumentSet;
+    protected final List<ComputationArgumentWithValue> argumentList;
     /**
      * Reference to the execution context where this computation is executed;
      */
@@ -55,17 +50,19 @@ public abstract class GrCUDAComputationalElement {
      */
     protected boolean isComputationArrayAccess = false;
 
+    private final DependencyComputation dependencyComputation;
+
     /**
      * Constructor that takes an argument set initializer to build the set of arguments used in the dependency computation
      * @param grCUDAExecutionContext execution context in which this computational element will be scheduled
      * @param initializer the initializer used to build the internal set of arguments considered in the dependency computation
      */
     @CompilerDirectives.TruffleBoundary
-    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, InitializeArgumentSet initializer) {
-        this.argumentSet = initializer.initialize();
+    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, InitializeArgumentList initializer) {
+        this.argumentList = initializer.initialize();
         // Initialize by making a copy of the original set;
-        this.activeArgumentSet = new HashSet<>(this.argumentSet);
         this.grCUDAExecutionContext = grCUDAExecutionContext;
+        this.dependencyComputation = new DefaultDependencyComputation(this.argumentList);
     }
 
     /**
@@ -77,33 +74,8 @@ public abstract class GrCUDAComputationalElement {
         this(grCUDAExecutionContext, new DefaultExecutionInitializer(args));
     }
 
-    public Set<ComputationArgumentWithValue> getArgumentSet() {
-        return argumentSet;
-    }
-
-    /**
-     * Computes if the "other" GrCUDAComputationalElement has dependencies w.r.t. this kernel,
-     * such as requiring as input a value computed by this kernel;
-     * @param other kernel for which we want to check dependencies, w.r.t. this kernel
-     * @return the list of arguments that the two kernels have in common
-     */
-    @CompilerDirectives.TruffleBoundary
-    public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
-        Set<ComputationArgumentWithValue> dependencies = new HashSet<>();
-        Set<ComputationArgumentWithValue> newArgumentSet = new HashSet<>();
-        for (ComputationArgumentWithValue arg : this.activeArgumentSet) {
-            // The other computation requires the current argument, so we have found a new dependency;
-            if (other.activeArgumentSet.contains(arg)) {
-                dependencies.add(arg);
-            } else {
-                // Otherwise, the current argument is still "active", and could enforce a dependency on a future computation;
-                newArgumentSet.add(arg);
-            }
-        }
-        // Arguments that are not leading to a new dependency could still create new dependencies later on!
-        this.activeArgumentSet = newArgumentSet;
-        // Return the list of arguments that created dependencies with the new computation;
-        return new ArrayList<>(dependencies);
+    public List<ComputationArgumentWithValue> getArgumentList() {
+        return argumentList;
     }
 
     /**
@@ -113,7 +85,7 @@ public abstract class GrCUDAComputationalElement {
      * @return if the computation could lead to future dependencies
      */
     public boolean hasPossibleDependencies() {
-        return !this.activeArgumentSet.isEmpty();
+        return !this.dependencyComputation.getActiveArgumentSet().isEmpty();
     }
 
     /**
@@ -192,7 +164,7 @@ public abstract class GrCUDAComputationalElement {
      * Set for all the {@link com.nvidia.grcuda.array.AbstractArray} in the computation if this computation is an array access;
      */
     public void updateIsComputationArrayAccess() {
-        for (ComputationArgumentWithValue o : this.argumentSet) {
+        for (ComputationArgumentWithValue o : this.argumentList) {
             if (o.getArgumentValue() instanceof AbstractArray) {
                 ((AbstractArray) o.getArgumentValue()).setLastComputationArrayAccess(isComputationArrayAccess);
             }
@@ -200,10 +172,20 @@ public abstract class GrCUDAComputationalElement {
     }
 
     /**
+     * Computes if the "other" GrCUDAComputationalElement has dependencies w.r.t. this kernel,
+     * such as requiring as input a value computed by this kernel;
+     * @param other kernel for which we want to check dependencies, w.r.t. this kernel
+     * @return the list of arguments that the two kernels have in common
+     */
+    public Collection<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
+        return this.dependencyComputation.computeDependencies(other);
+    }
+
+    /**
      * The default initializer will simply store all the arguments,
      * and consider each of them in the dependency computations;
      */
-    private static class DefaultExecutionInitializer implements InitializeArgumentSet {
+    private static class DefaultExecutionInitializer implements InitializeArgumentList {
         private final List<ComputationArgumentWithValue> args;
 
         DefaultExecutionInitializer(List<ComputationArgumentWithValue> args) {
@@ -211,8 +193,79 @@ public abstract class GrCUDAComputationalElement {
         }
 
         @Override
-        public Set<ComputationArgumentWithValue> initialize() {
-            return new HashSet<>(args);
+        public List<ComputationArgumentWithValue> initialize() {
+            return args;
+        }
+    }
+
+    /**
+     * By default, consider all dependencies in the active argument set,
+     * initially specified by the {@link InitializeArgumentList} interface.
+     * Also update the active argument set, by adding all arguments that were not included in a dependency relation;
+     */
+    private static class DefaultDependencyComputation extends DependencyComputation {
+
+        @CompilerDirectives.TruffleBoundary
+        DefaultDependencyComputation(List<ComputationArgumentWithValue> argumentList) {
+            activeArgumentSet = new HashSet<>(argumentList);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Override
+        public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
+            Set<ComputationArgumentWithValue> dependencies = new HashSet<>();
+            Set<ComputationArgumentWithValue> newArgumentSet = new HashSet<>();
+            for (ComputationArgumentWithValue arg : activeArgumentSet) {
+                // The other computation requires the current argument, so we have found a new dependency;
+                if (other.dependencyComputation.getActiveArgumentSet().contains(arg)) {
+                    dependencies.add(arg);
+                } else {
+                    // Otherwise, the current argument is still "active", and could enforce a dependency on a future computation;
+                    newArgumentSet.add(arg);
+                }
+            }
+            // Arguments that are not leading to a new dependency could still create new dependencies later on!
+            activeArgumentSet = newArgumentSet;
+            // Return the list of arguments that created dependencies with the new computation;
+            return new ArrayList<>(dependencies);
+        }
+    }
+
+    /**
+     * If two computations have the same argument, but it is read-only in both cases (i.e. const),
+     * there is no reason to create a dependency between the two ;
+     */
+    private class WithConstDependencyComputation extends DependencyComputation {
+
+        WithConstDependencyComputation(List<ComputationArgumentWithValue> argumentList) {
+            activeArgumentSet = new ArrayList<>(argumentList);
+        }
+
+        @Override
+        public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
+            List<ComputationArgumentWithValue> dependencies = new ArrayList<>();
+            // FIXME: the active argument set could be something else, e.g. a collection?
+            //  it might make sense to have different types depending on how dependencies are computed;
+            List<ComputationArgumentWithValue> newArgumentSet = new ArrayList<>();
+            for (ComputationArgumentWithValue arg : activeArgumentSet) {
+                boolean dependencyFound = false;
+                for (ComputationArgumentWithValue otherArg : other.dependencyComputation.getActiveArgumentSet()) {
+                    // If both arguments are const, we skip the dependency;
+                    if (arg.equals(otherArg) && !(arg.isConst() && otherArg.isConst())) {
+                        dependencies.add(arg);
+                        dependencyFound = true;
+                        break;
+                    }
+                }
+                if (!dependencyFound) {
+                    // Otherwise, the current argument is still "active", and could enforce a dependency on a future computation;
+                    newArgumentSet.add(arg);
+                }
+            }
+            // Arguments that are not leading to a new dependency could still create new dependencies later on!
+            activeArgumentSet = newArgumentSet;
+            // Return the list of arguments that created dependencies with the new computation;
+            return dependencies;
         }
     }
 }

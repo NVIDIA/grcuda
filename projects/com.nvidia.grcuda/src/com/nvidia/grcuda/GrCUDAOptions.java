@@ -57,4 +57,7 @@ public final class GrCUDAOptions {
     @Option(category = OptionCategory.USER, help = "Chose the scheduling policy of GrCUDA computations", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> ExecutionPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_EXECUTION_POLICY.getName());
 
+    @Option(category = OptionCategory.USER, help = "Chose how data dependencies between GrCUDA computations are computed", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> DependencyPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_DEPENDENCY_POLICY.getName());
+
 }

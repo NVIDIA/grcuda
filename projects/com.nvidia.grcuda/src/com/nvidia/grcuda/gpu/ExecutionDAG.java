@@ -5,6 +5,7 @@ import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,7 +39,7 @@ public class ExecutionDAG implements TruffleObject {
 
         // For each vertex in the frontier, compute dependencies of the vertex;
         for (DAGVertex frontierVertex : frontier) {
-            List<ComputationArgumentWithValue> dependencies = computeDependencies(frontierVertex, newVertex);
+            Collection<ComputationArgumentWithValue> dependencies = computeDependencies(frontierVertex, newVertex);
             if (dependencies.size() > 0) {
                 // Create a new edge between the two vertices (book-keeping is automatic);
                 new DAGEdge(frontierVertex, newVertex, dependencies);
@@ -53,7 +54,7 @@ public class ExecutionDAG implements TruffleObject {
         return newVertex;
     }
 
-    private List<ComputationArgumentWithValue> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
+    private Collection<ComputationArgumentWithValue> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
         return startVertex.getComputation().computeDependencies(endVertex.getComputation());
     }
 
@@ -207,9 +208,9 @@ public class ExecutionDAG implements TruffleObject {
         final private DAGVertex end;
         final private int id;
         /**
-         * List of objects that represents depenencies between the two vertices;
+         * Set of objects that represents depenencies between the two vertices;
          */
-        private List<ComputationArgumentWithValue> dependencies;
+        private Collection<ComputationArgumentWithValue> dependencies;
 
         DAGEdge(DAGVertex start, DAGVertex end) {
             this.start = start;
@@ -223,7 +224,7 @@ public class ExecutionDAG implements TruffleObject {
             edges.add(this);
         }
 
-        DAGEdge(DAGVertex start, DAGVertex end, List<ComputationArgumentWithValue> dependencies) {
+        DAGEdge(DAGVertex start, DAGVertex end, Collection<ComputationArgumentWithValue> dependencies) {
             this(start, end);
             this.dependencies = dependencies;
         }
@@ -240,7 +241,7 @@ public class ExecutionDAG implements TruffleObject {
             return id;
         }
 
-        public List<ComputationArgumentWithValue> getDependencies() {
+        public Collection<ComputationArgumentWithValue> getDependencies() {
             return dependencies;
         }
 

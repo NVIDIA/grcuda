@@ -38,8 +38,9 @@ import com.nvidia.grcuda.functions.GetDeviceFunction;
 import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
-import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.computation.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.SyncGrCUDAExecutionContext;
@@ -59,6 +60,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class GrCUDAContext {
 
     public static final ExecutionPolicyEnum DEFAULT_EXECUTION_POLICY = ExecutionPolicyEnum.DEFAULT;
+    public static final DependencyPolicyEnum DEFAULT_DEPENDENCY_POLICY = DependencyPolicyEnum.DEFAULT;
 
     private static final String ROOT_NAMESPACE = "CU";
 
@@ -75,6 +77,8 @@ public final class GrCUDAContext {
     public GrCUDAContext(Env env) {
         this.env = env;
 
+        // Retrieve the dependency computation policy;
+        DependencyPolicyEnum dependencyPolicy = parseDependencyPolicy(env.getOptions().get(GrCUDAOptions.DependencyPolicy));
         // Retrieve the execution policy;
         ExecutionPolicyEnum executionPolicy = parseExecutionPolicy(env.getOptions().get(GrCUDAOptions.ExecutionPolicy));
         // Initialize the execution policy;
@@ -180,6 +184,18 @@ public final class GrCUDAContext {
                 return ExecutionPolicyEnum.DEFAULT;
             default:
                 return GrCUDAContext.DEFAULT_EXECUTION_POLICY;
+        }
+    }
+
+    @TruffleBoundary
+    private static DependencyPolicyEnum parseDependencyPolicy(String policyString) {
+        switch(policyString) {
+            case "with_const":
+                return DependencyPolicyEnum.WITH_CONST;
+            case "default":
+                return DependencyPolicyEnum.DEFAULT;
+            default:
+                return GrCUDAContext.DEFAULT_DEPENDENCY_POLICY;
         }
     }
 
