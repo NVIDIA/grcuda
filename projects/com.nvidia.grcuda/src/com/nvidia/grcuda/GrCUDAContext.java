@@ -39,7 +39,10 @@ import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.computation.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.computation.dependency.DefaultDependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.computation.dependency.WithConstDependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
@@ -79,19 +82,32 @@ public final class GrCUDAContext {
 
         // Retrieve the dependency computation policy;
         DependencyPolicyEnum dependencyPolicy = parseDependencyPolicy(env.getOptions().get(GrCUDAOptions.DependencyPolicy));
+        System.out.println("-- using " + dependencyPolicy.getName() + " dependency policy");
+        DependencyComputationBuilder dependencyBuilder;
+        switch (dependencyPolicy) {
+            case WITH_CONST:
+                dependencyBuilder = new WithConstDependencyComputationBuilder();
+                break;
+            case DEFAULT:
+                dependencyBuilder = new DefaultDependencyComputationBuilder();
+                break;
+            default:
+                dependencyBuilder = new DefaultDependencyComputationBuilder();
+        }
+
         // Retrieve the execution policy;
         ExecutionPolicyEnum executionPolicy = parseExecutionPolicy(env.getOptions().get(GrCUDAOptions.ExecutionPolicy));
         // Initialize the execution policy;
         System.out.println("-- using " + executionPolicy.getName() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
-                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env);
+                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyBuilder);
                 break;
             case DEFAULT:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyBuilder);
                 break;
             default:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyBuilder);
         }
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);

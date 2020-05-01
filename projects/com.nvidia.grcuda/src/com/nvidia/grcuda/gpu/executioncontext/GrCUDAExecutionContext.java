@@ -5,6 +5,7 @@ import com.nvidia.grcuda.GrCUDAThreadManager;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -25,16 +26,16 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
      */
     private final GrCUDAThreadManager threadManager;
 
-    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
-        this(new CUDARuntime(context, env), new GrCUDAThreadManager(context));
+    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyComputationBuilder dependencyBuilder) {
+        this(new CUDARuntime(context, env), new GrCUDAThreadManager(context), dependencyBuilder);
     }
 
-    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager) {
-        this(cudaRuntime, threadManager, new GrCUDAStreamManager(cudaRuntime));
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, DependencyComputationBuilder dependencyBuilder) {
+        this(cudaRuntime, threadManager, new GrCUDAStreamManager(cudaRuntime), dependencyBuilder);
     }
 
-    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager) {
-        super(cudaRuntime);
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyComputationBuilder dependencyBuilder) {
+        super(cudaRuntime, dependencyBuilder);
         this.threadManager = threadManager;
         this.streamManager = streamManager;
     }

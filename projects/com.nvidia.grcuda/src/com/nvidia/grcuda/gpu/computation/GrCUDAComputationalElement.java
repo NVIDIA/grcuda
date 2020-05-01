@@ -1,18 +1,15 @@
 package com.nvidia.grcuda.gpu.computation;
 
 import com.nvidia.grcuda.array.AbstractArray;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputation;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Basic class that represents GrCUDA computations,
@@ -57,12 +54,11 @@ public abstract class GrCUDAComputationalElement {
      * @param grCUDAExecutionContext execution context in which this computational element will be scheduled
      * @param initializer the initializer used to build the internal set of arguments considered in the dependency computation
      */
-    @CompilerDirectives.TruffleBoundary
     public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, InitializeArgumentList initializer) {
         this.argumentList = initializer.initialize();
         // Initialize by making a copy of the original set;
         this.grCUDAExecutionContext = grCUDAExecutionContext;
-        this.dependencyComputation = new DefaultDependencyComputation(this.argumentList);
+        this.dependencyComputation = grCUDAExecutionContext.getDependencyBuilder().initialize(this.argumentList);
     }
 
     /**
@@ -161,6 +157,11 @@ public abstract class GrCUDAComputationalElement {
     protected void associateArraysToStreamImpl() {}
 
     /**
+     * Retrieve how the dependency computations are computed;
+     */
+    public DependencyComputation getDependencyComputation() { return dependencyComputation; }
+
+    /**
      * Set for all the {@link com.nvidia.grcuda.array.AbstractArray} in the computation if this computation is an array access;
      */
     public void updateIsComputationArrayAccess() {
@@ -195,77 +196,6 @@ public abstract class GrCUDAComputationalElement {
         @Override
         public List<ComputationArgumentWithValue> initialize() {
             return args;
-        }
-    }
-
-    /**
-     * By default, consider all dependencies in the active argument set,
-     * initially specified by the {@link InitializeArgumentList} interface.
-     * Also update the active argument set, by adding all arguments that were not included in a dependency relation;
-     */
-    private static class DefaultDependencyComputation extends DependencyComputation {
-
-        @CompilerDirectives.TruffleBoundary
-        DefaultDependencyComputation(List<ComputationArgumentWithValue> argumentList) {
-            activeArgumentSet = new HashSet<>(argumentList);
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        @Override
-        public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
-            Set<ComputationArgumentWithValue> dependencies = new HashSet<>();
-            Set<ComputationArgumentWithValue> newArgumentSet = new HashSet<>();
-            for (ComputationArgumentWithValue arg : activeArgumentSet) {
-                // The other computation requires the current argument, so we have found a new dependency;
-                if (other.dependencyComputation.getActiveArgumentSet().contains(arg)) {
-                    dependencies.add(arg);
-                } else {
-                    // Otherwise, the current argument is still "active", and could enforce a dependency on a future computation;
-                    newArgumentSet.add(arg);
-                }
-            }
-            // Arguments that are not leading to a new dependency could still create new dependencies later on!
-            activeArgumentSet = newArgumentSet;
-            // Return the list of arguments that created dependencies with the new computation;
-            return new ArrayList<>(dependencies);
-        }
-    }
-
-    /**
-     * If two computations have the same argument, but it is read-only in both cases (i.e. const),
-     * there is no reason to create a dependency between the two ;
-     */
-    private class WithConstDependencyComputation extends DependencyComputation {
-
-        WithConstDependencyComputation(List<ComputationArgumentWithValue> argumentList) {
-            activeArgumentSet = new ArrayList<>(argumentList);
-        }
-
-        @Override
-        public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
-            List<ComputationArgumentWithValue> dependencies = new ArrayList<>();
-            // FIXME: the active argument set could be something else, e.g. a collection?
-            //  it might make sense to have different types depending on how dependencies are computed;
-            List<ComputationArgumentWithValue> newArgumentSet = new ArrayList<>();
-            for (ComputationArgumentWithValue arg : activeArgumentSet) {
-                boolean dependencyFound = false;
-                for (ComputationArgumentWithValue otherArg : other.dependencyComputation.getActiveArgumentSet()) {
-                    // If both arguments are const, we skip the dependency;
-                    if (arg.equals(otherArg) && !(arg.isConst() && otherArg.isConst())) {
-                        dependencies.add(arg);
-                        dependencyFound = true;
-                        break;
-                    }
-                }
-                if (!dependencyFound) {
-                    // Otherwise, the current argument is still "active", and could enforce a dependency on a future computation;
-                    newArgumentSet.add(arg);
-                }
-            }
-            // Arguments that are not leading to a new dependency could still create new dependencies later on!
-            activeArgumentSet = newArgumentSet;
-            // Return the list of arguments that created dependencies with the new computation;
-            return dependencies;
         }
     }
 }

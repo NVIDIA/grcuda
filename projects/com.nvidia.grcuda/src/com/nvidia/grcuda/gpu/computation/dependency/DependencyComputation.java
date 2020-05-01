@@ -1,4 +1,7 @@
-package com.nvidia.grcuda.gpu.computation;
+package com.nvidia.grcuda.gpu.computation.dependency;
+
+import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
+import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
 import java.util.Collection;
 

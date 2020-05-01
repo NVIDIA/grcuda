@@ -7,6 +7,7 @@ import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.Kernel;
 import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -40,12 +41,19 @@ public abstract class AbstractGrCUDAExecutionContext {
      */
     protected final ExecutionDAG dag = new ExecutionDAG();
 
-    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
+    /**
+     * Reference to how dependencies between computational elements are computed within this execution context;
+     */
+    private final DependencyComputationBuilder dependencyBuilder;
+
+    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyComputationBuilder dependencyBuilder) {
         this.cudaRuntime = new CUDARuntime(context, env);
+        this.dependencyBuilder = dependencyBuilder;
     }
 
-    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime) {
+    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyComputationBuilder dependencyBuilder) {
         this.cudaRuntime = cudaRuntime;
+        this.dependencyBuilder = dependencyBuilder;
     }
 
     /**
@@ -69,6 +77,10 @@ public abstract class AbstractGrCUDAExecutionContext {
 
     public CUDARuntime getCudaRuntime() {
         return cudaRuntime;
+    }
+
+    public DependencyComputationBuilder getDependencyBuilder() {
+        return dependencyBuilder;
     }
 
     // Functions used to interface directly with the CUDA runtime;

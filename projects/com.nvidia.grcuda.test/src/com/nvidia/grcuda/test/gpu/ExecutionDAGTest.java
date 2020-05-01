@@ -8,6 +8,7 @@ import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
 import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
+import com.nvidia.grcuda.gpu.computation.dependency.DefaultDependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
@@ -71,7 +72,8 @@ public class ExecutionDAGTest {
      */
     public static class GrCUDAExecutionContextTest extends GrCUDAExecutionContext {
         public GrCUDAExecutionContextTest() {
-            super(null, null, new GrCUDAStreamManagerTest(null));
+            super(null, null,
+                    new GrCUDAStreamManagerTest(null), new DefaultDependencyComputationBuilder());
         }
 
         public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {
