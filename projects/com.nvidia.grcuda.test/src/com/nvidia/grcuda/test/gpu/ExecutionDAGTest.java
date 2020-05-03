@@ -144,6 +144,45 @@ public class ExecutionDAGTest {
         assertFalse(dag.getVertices().get(5).isStart());
     }
 
+    @Test
+    public void complexFrontierWithSyncMockTest() throws UnsupportedTypeException {
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest(true);
+
+        // This time, simulate the synchronization process between kernels;
+        // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
+        //    C(2)
+        // The final frontier is composed by C(2) F(4);
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(2))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(3))).schedule();
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(4))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(4))).schedule();
+
+        ExecutionDAG dag = context.getDag();
+
+        // Check the DAG structure;
+        assertEquals(6, dag.getNumVertices());
+        assertEquals(4, dag.getNumEdges());
+        assertEquals(2, dag.getFrontier().size());
+        // Check updates to frontier and start status;
+        assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(2), dag.getVertices().get(5))),
+                new HashSet<>(dag.getFrontier()));
+
+        assertFalse(dag.getVertices().get(0).isFrontier());
+        assertTrue(dag.getVertices().get(0).isStart());
+        assertFalse(dag.getVertices().get(1).isFrontier());
+        assertFalse(dag.getVertices().get(1).isStart());
+        assertTrue(dag.getVertices().get(2).isFrontier());
+        assertTrue(dag.getVertices().get(2).isStart());
+        assertFalse(dag.getVertices().get(3).isFrontier());
+        assertFalse(dag.getVertices().get(3).isStart());
+        assertFalse(dag.getVertices().get(4).isFrontier());
+        assertFalse(dag.getVertices().get(4).isStart());
+        assertTrue(dag.getVertices().get(5).isFrontier());
+        assertFalse(dag.getVertices().get(5).isStart());
+    }
+
     private static final int NUM_THREADS_PER_BLOCK = 128;
 
     private static final String SQUARE_KERNEL =
@@ -257,6 +296,44 @@ public class ExecutionDAGTest {
             // Verify the output;
             float resScalar = res.getArrayElement(0).asFloat();
             assertEquals(-4.93, resScalar, 0.01);
+        }
+    }
+
+    /**
+     * In this test, 2 kernels that operates on "x" executes concurrently.
+     * The read on "y" has to sync on the stream where the second kernel is running, although that kernel doesn't use "y".
+     * This is due to the pre-Pascal limitations on managed memory accesses,
+     * and the inability to access an array while it is being used by a running kernel;
+     */
+    @Test
+    public void dependencyPipelineSimple3Test() {
+
+        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+
+            final int numElements = 100000;
+            final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
+            Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
+            Value x = deviceArrayConstructor.execute("float", numElements);
+            Value y = deviceArrayConstructor.execute("float", numElements);
+            Value z = deviceArrayConstructor.execute("float", numElements);
+
+            for (int i = 0; i < numElements; ++i) {
+                x.setArrayElement(i, 1.0 / (i + 1));
+            }
+
+            Value buildkernel = context.eval("grcuda", "buildkernel");
+            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "const pointer, pointer, sint32");
+            assertNotNull(squareKernel);
+
+            Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+
+            // Perform the computation;
+            configuredSquareKernel.execute(x, y, numElements);
+            configuredSquareKernel.execute(x, z, numElements);
+
+            // Verify the output;
+            assertEquals(4.0, y.getArrayElement(0).asFloat(), 0.1);
+            assertEquals(4.0, z.getArrayElement(0).asFloat(), 0.1);
         }
     }
 }

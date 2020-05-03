@@ -61,7 +61,6 @@ public class GrCUDAStreamManager {
         }
     }
 
-
     /**
      * Given a computation, synchronize all its parent streams. The caller thread will be blocked until all the
      * computations on the parents streams are finished;
@@ -96,6 +95,10 @@ public class GrCUDAStreamManager {
      */
     public int getNumberOfStreams() {
         return streams.size();
+    }
+
+    public int getNumActiveComputationsOnStream(CUDAStream stream) {
+        return this.activeComputationsPerStream.get(stream);
     }
 
     protected void incrementComputationCount(CUDAStream stream) {
