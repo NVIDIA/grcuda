@@ -79,6 +79,11 @@ public class CreateStreamTest {
             // Set the custom stream;
             Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK, stream);
             configuredSquareKernel.execute(x, numElements);
+
+            // Wait for the computations to end;
+            Value syncStream = context.eval("grcuda", "cudaDeviceSynchronize");
+            syncStream.execute();
+
             for (int i = 0; i < numElements; i++) {
                 assertEquals(4.0, x.getArrayElement(i).asFloat(), 0.01);
             }

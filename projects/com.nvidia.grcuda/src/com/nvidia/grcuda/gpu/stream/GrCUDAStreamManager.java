@@ -4,7 +4,9 @@ import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GrCUDAStreamManager {
 
@@ -15,10 +17,15 @@ public class GrCUDAStreamManager {
     /**
      * Reference to the CUDA runtime that manages the streams;
      */
-    protected CUDARuntime runtime;
+    protected final CUDARuntime runtime;
+    /**
+     * Track how many active computations each stream has, excluding the default stream;
+     */
+    protected final Map<CUDAStream, Integer> activeComputationsPerStream;
 
     public GrCUDAStreamManager(CUDARuntime runtime) {
         this.runtime = runtime;
+        this.activeComputationsPerStream = new HashMap<>();
     }
 
     /**
@@ -27,8 +34,8 @@ public class GrCUDAStreamManager {
      * @param vertex an input computation for which we want to assign a stream
      */
     public void assignStream(ExecutionDAG.DAGVertex vertex) {
-        // If it has a manually specified stream, use it. If the computation cannot use customized streams, return immediately;
-        if (!vertex.getComputation().useManuallySpecifiedStream() && vertex.getComputation().canUseStream()) {
+        // If the computation cannot use customized streams, return immediately;
+        if (vertex.getComputation().canUseStream()) {
             CUDAStream stream;
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
@@ -43,6 +50,8 @@ public class GrCUDAStreamManager {
             }
             // Set the stream;
             vertex.getComputation().setStream(stream);
+            // Update the computation counter;
+            incrementComputationCount(stream);
             // Associate all the arrays in the computation to the selected stream,
             //   to enable CPU accesses on managed memory arrays currently not being used by the GPU.
             // This is required as on pre-Pascal GPUs all unified memory pages are locked by the GPU while code is running on the GPU,
@@ -62,10 +71,12 @@ public class GrCUDAStreamManager {
         vertex.getParentComputations().forEach(c -> {
             // Synchronize computations that are not yet finished and can use streams;
             if (!c.isComputationFinished() && c.canUseStream()) {
-                System.out.println("--\tsync stream " + c.getStream().getStreamNumber() + " by " + vertex.getComputation());
+                System.out.println("--\tsync stream " + c.getStream() + " by " + vertex.getComputation());
                 runtime.cudaStreamSynchronize(c.getStream());
                 // Set the parent computations as finished;
                 c.setComputationFinished();
+                // Decrement the active computation count;
+                decrementComputationCount(c.getStream());
             }
         });
     }
@@ -76,6 +87,7 @@ public class GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
+        this.activeComputationsPerStream.put(newStream, 0);
         return newStream;
     }
 
@@ -86,10 +98,25 @@ public class GrCUDAStreamManager {
         return streams.size();
     }
 
+    protected void incrementComputationCount(CUDAStream stream) {
+        this.activeComputationsPerStream.put(stream, this.activeComputationsPerStream.get(stream) + 1);
+    }
+
+    protected void decrementComputationCount(CUDAStream stream) {
+        int count = this.activeComputationsPerStream.get(stream) - 1;
+        if (count < 0) {
+            throw new RuntimeException("stream " + stream + "has negative current computation count: " + count);
+        }
+        // TODO: keep set of "free" streams;
+        this.activeComputationsPerStream.put(stream,  count);
+    }
+
     /**
      * Cleanup and deallocate the streams managed by this manager;
      */
     public void cleanup() {
         streams.forEach(runtime::cudaStreamDestroy);
+        activeComputationsPerStream.clear();
+        streams.clear();
     }
 }

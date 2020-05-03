@@ -1,6 +1,7 @@
-package com.nvidia.grcuda.test.gpu;
+package com.nvidia.grcuda.test.gpu.executioncontext;
 
 import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.computation.dependency.WithConstDependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextTest;
 import com.nvidia.grcuda.test.mock.KernelExecutionTest;
@@ -19,24 +20,14 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-public class ExecutionDAGTest {
-
-    @Test
-    public void executionDAGConstructorTest() {
-        ExecutionDAG dag = new ExecutionDAG();
-        assertTrue(dag.getVertices().isEmpty());
-        assertTrue(dag.getEdges().isEmpty());
-        assertTrue(dag.getFrontier().isEmpty());
-        assertEquals(0, dag.getNumVertices());
-        assertEquals(0, dag.getNumEdges());
-    }
+public class WithConstDependencyComputationTest {
 
     @Test
     public void addVertexToDAGTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest(new WithConstDependencyComputationBuilder());
         // Create two mock kernel executions;
         new KernelExecutionTest(context,
-                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
+                Arrays.asList(new MockArgument(1, true), new MockArgument(2))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -47,34 +38,35 @@ public class ExecutionDAGTest {
         assertTrue(dag.getFrontier().get(0).isStart());
 
         new KernelExecutionTest(context,
-                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
+                Arrays.asList(new MockArgument(1, true), new MockArgument(3))).schedule();
 
         assertEquals(2, dag.getNumVertices());
-        assertEquals(1, dag.getNumEdges());
-        assertEquals(1, dag.getFrontier().size());
+        assertEquals(0, dag.getNumEdges());
+        assertEquals(2, dag.getFrontier().size());
         // Check updates to frontier and start status;
-        assertEquals(dag.getVertices().get(1), dag.getFrontier().get(0));
-        assertFalse(dag.getVertices().get(0).isFrontier());
+        assertEquals(dag.getVertices().get(0), dag.getFrontier().get(0));
+        assertEquals(dag.getVertices().get(1), dag.getFrontier().get(1));
+        assertTrue(dag.getVertices().get(0).isFrontier());
         assertTrue(dag.getVertices().get(1).isFrontier());
         assertTrue(dag.getVertices().get(0).isStart());
-        assertFalse(dag.getVertices().get(1).isStart());
-        // Check if the first vertex is a parent of the second;
-        assertEquals(dag.getVertices().get(0), dag.getVertices().get(1).getParentVertices().get(0));
-        // Check if the second vertex is a child of the first;
-        assertEquals(dag.getVertices().get(1), dag.getVertices().get(0).getChildVertices().get(0));
+        assertTrue(dag.getVertices().get(1).isStart());
+        // Check that no children or parents are present;
+        assertEquals(0, dag.getVertices().get(0).getChildVertices().size());
+        assertEquals(0, dag.getVertices().get(1).getParentVertices().size());
     }
+
 
     @Test
     public void dependencyPipelineSimpleMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest(new WithConstDependencyComputationBuilder());
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1, true))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1, true))).schedule();
         new KernelExecutionTest(context,
-                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(3))).schedule();
+                Arrays.asList(new MockArgument(1), new MockArgument(2))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -107,17 +99,55 @@ public class ExecutionDAGTest {
     }
 
     @Test
-    public void complexFrontierMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
+    public void forkedComputationTest() throws UnsupportedTypeException {
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest(new WithConstDependencyComputationBuilder());
 
-        // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
-        //    \----> C(2)
-        // The final frontier is composed by C(2), D(3), E(1), F(4);
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(2))).schedule();
+        // A(1) --> B(1R)
+        //      \-> C(1R)
         new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(3))).schedule();
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(4))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1, true))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1, true))).schedule();
+
+        ExecutionDAG dag = context.getDag();
+
+        // Check the DAG structure;
+        assertEquals(3, dag.getNumVertices());
+        assertEquals(2, dag.getNumEdges());
+//        assertEquals(2, dag.getFrontier().size());
+
+//        assertFalse(dag.getVertices().get(0).isFrontier());
+//        assertTrue(dag.getVertices().get(0).isStart());
+//        assertTrue(dag.getVertices().get(1).isFrontier());
+//        assertFalse(dag.getVertices().get(1).isStart());
+//        assertTrue(dag.getVertices().get(2).isFrontier());
+//        assertTrue(dag.getVertices().get(2).isStart());
+//
+//        assertEquals(dag.getVertices().get(0), dag.getVertices().get(1).getParentVertices().get(0));
+//        assertEquals(0, dag.getVertices().get(2).getParentVertices().size());
+//        assertFalse(dag.getVertices().get(2).getParentVertices().contains(dag.getVertices().get(1)));
+//        assertFalse(dag.getVertices().get(1).getChildVertices().contains(dag.getVertices().get(2)));
+
+        // Add a fourth computation that depends on both B and C, and depends on both;
+        // A(1) -> B(1R) -> D(1)
+        //         C(1R) /
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
+        assertEquals(4, dag.getNumVertices());
+        assertEquals(3, dag.getNumEdges());
+        assertEquals(1, dag.getFrontier().size());
+    }
+
+    @Test
+    public void complexFrontierMockTest() throws UnsupportedTypeException {
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest(new WithConstDependencyComputationBuilder());
+
+        // A(1R,2) -> B(1) -> D(1R,3)
+        //    \----> C(2R) \----> E(1R,4) -> F(4)
+        // The final frontier is composed by C(2), D(1, 3), E(1), F(4);
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1, true), new MockArgument(2))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
+        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2, true))).schedule();
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1, true), new MockArgument(3))).schedule();
+        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1, true), new MockArgument(4))).schedule();
         new KernelExecutionTest(context, Collections.singletonList(new MockArgument(4))).schedule();
 
         ExecutionDAG dag = context.getDag();
@@ -142,20 +172,24 @@ public class ExecutionDAGTest {
         assertFalse(dag.getVertices().get(4).isStart());
         assertTrue(dag.getVertices().get(5).isFrontier());
         assertFalse(dag.getVertices().get(5).isStart());
+        // Check that D is a child of B and C and D are not connected;
+        assertEquals(dag.getVertices().get(1), dag.getVertices().get(3).getParentVertices().get(0));
+        assertFalse(dag.getVertices().get(3).getParentVertices().contains(dag.getVertices().get(2)));
+        assertFalse(dag.getVertices().get(2).getChildVertices().contains(dag.getVertices().get(3)));
     }
 
     private static final int NUM_THREADS_PER_BLOCK = 128;
 
     private static final String SQUARE_KERNEL =
-    "extern \"C\" __global__ void square(float* x, int n) {\n" +
+    "extern \"C\" __global__ void square(const float* x, float *y, int n) {\n" +
     "    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n" +
     "    if (idx < n) {\n" +
-    "       x[idx] = x[idx] * x[idx];\n" +
+    "       y[idx] = x[idx] * x[idx];\n" +
     "    }" +
     "}\n";
 
     private static final String DIFF_KERNEL =
-    "extern \"C\" __global__ void diff(float* x, float* y, float* z, int n) {\n" +
+    "extern \"C\" __global__ void diff(const float* x, const float* y, float* z, int n) {\n" +
     "   int idx = blockIdx.x * blockDim.x + threadIdx.x;\n" +
     "   if (idx < n) {\n" +
     "      z[idx] = x[idx] - y[idx];\n" +
@@ -163,7 +197,7 @@ public class ExecutionDAGTest {
     "}";
 
     private static final String REDUCE_KERNEL =
-    "extern \"C\" __global__ void reduce(float *x, float *res, int n) {\n" +
+    "extern \"C\" __global__ void reduce(const float *x, float *res, int n) {\n" +
     "    __shared__ float cache[" + NUM_THREADS_PER_BLOCK + "];\n" +
     "    int i = blockIdx.x * blockDim.x + threadIdx.x;\n" +
     "    if (i < n) {\n" +
@@ -193,25 +227,25 @@ public class ExecutionDAGTest {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);
             Value y = deviceArrayConstructor.execute("float", numElements);
+            Value z = deviceArrayConstructor.execute("float", numElements);
             Value buildkernel = context.eval("grcuda", "buildkernel");
-            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "pointer, sint32");
+            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "const pointer, pointer, sint32");
 
             assertNotNull(squareKernel);
 
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 2.0);
-                y.setArrayElement(i, 4.0);
             }
 
             Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
 
             // Perform the computation;
-            configuredSquareKernel.execute(x, numElements);
-            configuredSquareKernel.execute(y, numElements);
+            configuredSquareKernel.execute(x, y, numElements);
+            configuredSquareKernel.execute(x, z, numElements);
 
             // Verify the output;
-            assertEquals(4.0, x.getArrayElement(0).asFloat(), 0.1);
-            assertEquals(16.0, y.getArrayElement(0).asFloat(), 0.1);
+            assertEquals(4.0, y.getArrayElement(0).asFloat(), 0.1);
+            assertEquals(4.0, z.getArrayElement(0).asFloat(), 0.1);
         }
     }
 
@@ -228,16 +262,16 @@ public class ExecutionDAGTest {
             Value x = deviceArrayConstructor.execute("float", numElements);
             Value y = deviceArrayConstructor.execute("float", numElements);
             Value z = deviceArrayConstructor.execute("float", numElements);
+            Value w = deviceArrayConstructor.execute("float", numElements);
             Value res = deviceArrayConstructor.execute("float", 1);
 
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 1.0 / (i + 1));
-                y.setArrayElement(i, 2.0 / (i + 1));
             }
             res.setArrayElement(0, 0.0);
 
             Value buildkernel = context.eval("grcuda", "buildkernel");
-            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "pointer, sint32");
+            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "const pointer, pointer, sint32");
             Value diffKernel = buildkernel.execute(DIFF_KERNEL, "diff", "const pointer, const pointer, pointer, sint32");
             Value reduceKernel = buildkernel.execute(REDUCE_KERNEL, "reduce", "const pointer, pointer, sint32");
             assertNotNull(squareKernel);
@@ -249,10 +283,10 @@ public class ExecutionDAGTest {
             Value configuredReduceKernel = reduceKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
 
             // Perform the computation;
-            configuredSquareKernel.execute(x, numElements);
-            configuredSquareKernel.execute(y, numElements);
-            configuredDiffKernel.execute(x, y, z, numElements);
-            configuredReduceKernel.execute(z, res, numElements);
+            configuredSquareKernel.execute(x, y, numElements);
+            configuredSquareKernel.execute(x, z, numElements);
+            configuredDiffKernel.execute(y, z, w, numElements);
+            configuredReduceKernel.execute(w, res, numElements);
 
             // Verify the output;
             float resScalar = res.getArrayElement(0).asFloat();

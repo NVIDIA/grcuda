@@ -19,8 +19,6 @@ public class WithConstDependencyComputation extends DependencyComputation {
     @Override
     public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
         List<ComputationArgumentWithValue> dependencies = new ArrayList<>();
-        // FIXME: the active argument set could be something else, e.g. a collection?
-        //  it might make sense to have different types depending on how dependencies are computed;
         List<ComputationArgumentWithValue> newArgumentSet = new ArrayList<>();
         for (ComputationArgumentWithValue arg : activeArgumentSet) {
             boolean dependencyFound = false;
@@ -29,6 +27,11 @@ public class WithConstDependencyComputation extends DependencyComputation {
                 if (arg.equals(otherArg) && !(arg.isConst() && otherArg.isConst())) {
                     dependencies.add(arg);
                     dependencyFound = true;
+                    // If the other argument is const, the current argument must be added to newArgumentSet
+                    //   as it could cause other dependencies in the future;
+                    if (otherArg.isConst()) {
+                        newArgumentSet.add(arg);
+                    }
                     break;
                 }
             }

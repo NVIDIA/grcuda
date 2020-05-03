@@ -63,7 +63,12 @@ public class ConfiguredKernel implements TruffleObject {
                    @CachedLibrary(limit = "3") InteropLibrary doubleAccess) throws UnsupportedTypeException, ArityException {
         kernel.incrementLaunchCount();
         try (KernelArguments args = kernel.createKernelArguments(arguments, int32Access, int64Access, doubleAccess)) {
-            new KernelExecution(this, args).schedule();
+            // If using a manually specified stream, do not schedule it automatically, but execute it immediately;
+            if (!config.useCustomStream()) {
+                new KernelExecution(this, args).schedule();
+            } else {
+                kernel.getGrCUDAExecutionContext().getCudaRuntime().cuLaunchKernel(kernel, config, args, config.getStream());
+            }
         }
         return this;
     }

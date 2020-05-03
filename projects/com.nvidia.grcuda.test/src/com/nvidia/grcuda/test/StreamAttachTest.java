@@ -169,6 +169,8 @@ public class StreamAttachTest {
             // Execute the kernel on the custom stream;
             Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK, stream);
             configuredSquareKernel.execute(x, numElements);
+            streamSync.execute(stream);
+
             for (int i = 0; i < numElements; i++) {
                 assertEquals(4.0, x.getArrayElement(i).asFloat(), 0.01);
             }
@@ -217,7 +219,15 @@ public class StreamAttachTest {
             Value configuredSquareKernel2 = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK, stream2);
             configuredSquareKernel2.execute(y, numElements);
 
-            for (int i = 0; i < numElements; i++) {
+            // Sync just one stream before accessing the dataM
+            Value syncStream = context.eval("grcuda", "cudaStreamSynchronize");
+            syncStream.execute(stream1);
+            assertEquals(4.0, x.getArrayElement(0).asFloat(), 0.01);
+            syncStream.execute(stream2);
+            assertEquals(16.0, y.getArrayElement(0).asFloat(), 0.01);
+
+            // Check the other values;
+            for (int i = 1; i < numElements; i++) {
                 assertEquals(4.0, x.getArrayElement(i).asFloat(), 0.01);
                 assertEquals(16.0, y.getArrayElement(i).asFloat(), 0.01);
             }
@@ -292,12 +302,14 @@ public class StreamAttachTest {
             // Build the kernel;
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "pointer, sint32");
+
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 2.0);
             }
             // Execute the kernel on the custom stream;
             Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK, stream);
             configuredSquareKernel.execute(x, numElements);
+            streamSync.execute(stream);
 
             for (int i = 0; i < numElements; i++) {
                 assertEquals(4.0, x.getArrayElement(i).asFloat(), 0.01);
@@ -307,6 +319,8 @@ public class StreamAttachTest {
             streamAttach.execute(stream, x, 0x01);
             configuredSquareKernel.execute(x, numElements);
 
+            streamSync.execute(stream);
+
             for (int i = 0; i < numElements; i++) {
                 assertEquals(16.0, x.getArrayElement(i).asFloat(), 0.01);
             }
@@ -315,6 +329,9 @@ public class StreamAttachTest {
             streamAttach.execute(x);
             Value configuredSquareKernel2 = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
             configuredSquareKernel2.execute(x, numElements);
+
+            Value deviceSync = context.eval("grcuda", "cudaDeviceSynchronize");
+            deviceSync.execute();
 
             for (int i = 0; i < numElements; i++) {
                 assertEquals(256, x.getArrayElement(i).asFloat(), 0.01);

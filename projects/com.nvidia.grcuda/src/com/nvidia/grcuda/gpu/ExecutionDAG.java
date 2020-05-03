@@ -38,7 +38,7 @@ public class ExecutionDAG implements TruffleObject {
         //////////////////////////////
 
         // For each vertex in the frontier, compute dependencies of the vertex;
-        for (DAGVertex frontierVertex : frontier) {
+        for (DAGVertex frontierVertex : cleanedFrontier()) {
             Collection<ComputationArgumentWithValue> dependencies = computeDependencies(frontierVertex, newVertex);
             if (dependencies.size() > 0) {
                 // Create a new edge between the two vertices (book-keeping is automatic);
@@ -46,7 +46,7 @@ public class ExecutionDAG implements TruffleObject {
             }
         }
         // Remove from the frontier vertices that no longer belong to it;
-        frontier = frontier.stream().filter(DAGVertex::isFrontier).collect(Collectors.toList());
+        frontier = cleanedFrontier();
         // Add the new vertex to the frontier if it has no children;
         if (newVertex.isFrontier()) {
             frontier.add(newVertex);
@@ -75,7 +75,17 @@ public class ExecutionDAG implements TruffleObject {
     }
 
     public List<DAGVertex> getFrontier() {
-        return frontier;
+        return cleanedFrontier();
+    }
+
+    /**
+     * Ensure that the internal representation of the frontier is up-to-date.
+     * Whether a vertex is part of the frontier can change dynamically (e.g. if a vertex computation is over),
+     * and we have to ensure that the "cached" internal frontier is up-to-date every time it is accessed;
+     * @return the updated DAG frontier
+     */
+    private List<DAGVertex> cleanedFrontier() {
+        return frontier.stream().filter(DAGVertex::isFrontier).collect(Collectors.toList());
     }
 
     @Override
