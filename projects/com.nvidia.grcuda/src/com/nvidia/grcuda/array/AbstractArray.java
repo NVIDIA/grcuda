@@ -2,6 +2,8 @@ package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.nvidia.grcuda.gpu.stream.DefaultStream;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -31,6 +33,11 @@ public abstract class AbstractArray implements TruffleObject {
      * Used to avoid multiple registration;
      */
     private boolean registeredInContext = false;
+    /**
+     * Keep track of whether this array is attached to a specific stream that limits its visibility.
+     * By default, every array is attached to the {@link DefaultStream};
+     */
+    private CUDAStream streamMapping = new DefaultStream();
 
     /**
      * Tracks whether the last operation done on the native memory underlying this array is a read/write operation
@@ -69,6 +76,14 @@ public abstract class AbstractArray implements TruffleObject {
 
     public AbstractGrCUDAExecutionContext getGrCUDAExecutionContext() {
         return grCUDAExecutionContext;
+    }
+
+    public CUDAStream getStreamMapping() {
+        return streamMapping;
+    }
+
+    public void setStreamMapping(CUDAStream streamMapping) {
+        this.streamMapping = streamMapping;
     }
 
     // Implementation of InteropLibrary

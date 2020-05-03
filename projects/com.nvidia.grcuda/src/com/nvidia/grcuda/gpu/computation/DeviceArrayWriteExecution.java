@@ -39,6 +39,6 @@ public class DeviceArrayWriteExecution extends ArrayAccessExecution<DeviceArray>
 //                ", index=" + index +
 //                ", value=" + value +
 //                ")";
-        return "array write on " + System.identityHashCode(array) + "; index=" + index + "; value=" + value;
+        return "array write on " + System.identityHashCode(array) + "; index=" + index + "; value=" + value + "; stream=" + getStream().getStreamNumber();
     }
 }

@@ -2,11 +2,14 @@ package com.nvidia.grcuda.gpu.stream;
 
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class GrCUDAStreamManager {
 
@@ -19,9 +22,9 @@ public class GrCUDAStreamManager {
      */
     protected final CUDARuntime runtime;
     /**
-     * Track how many active computations each stream has, excluding the default stream;
+     * Track the active computations each stream has, excluding the default stream;
      */
-    protected final Map<CUDAStream, Integer> activeComputationsPerStream;
+    protected final Map<CUDAStream, Set<GrCUDAComputationalElement>> activeComputationsPerStream;
 
     public GrCUDAStreamManager(CUDARuntime runtime) {
         this.runtime = runtime;
@@ -51,7 +54,7 @@ public class GrCUDAStreamManager {
             // Set the stream;
             vertex.getComputation().setStream(stream);
             // Update the computation counter;
-            incrementComputationCount(stream);
+            addActiveComputation(vertex.getComputation());
             // Associate all the arrays in the computation to the selected stream,
             //   to enable CPU accesses on managed memory arrays currently not being used by the GPU.
             // This is required as on pre-Pascal GPUs all unified memory pages are locked by the GPU while code is running on the GPU,
@@ -67,15 +70,22 @@ public class GrCUDAStreamManager {
      * @param vertex a computation whose parents should be synchronized
      */
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
+
+        // TODO: activeCompSet deve tenere set di comp. Devo assicurarmi di rimuovere gli elementi dal set!!!
+        //   Devo poi costruire una list di comp da syncare. Innanziuttuto i parent.
+        //   Poi posso avere che la comp ritorna uno stream aggiuntivo
+        //   Aggiugno tutte le comp associate allo stream alla lista di cose da syncare
+        //   Se lo stream è default, invece, faccio una device sync e tolgo tutte le values dalla mappa
+
         vertex.getParentComputations().forEach(c -> {
             // Synchronize computations that are not yet finished and can use streams;
-            if (!c.isComputationFinished() && c.canUseStream()) {
+            if (c.canUseStream() && !c.isComputationFinished()) {
                 System.out.println("--\tsync stream " + c.getStream() + " by " + vertex.getComputation());
                 runtime.cudaStreamSynchronize(c.getStream());
                 // Set the parent computations as finished;
                 c.setComputationFinished();
                 // Decrement the active computation count;
-                decrementComputationCount(c.getStream());
+                removeActiveComputation(c);
             }
         });
     }
@@ -86,7 +96,7 @@ public class GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
-        this.activeComputationsPerStream.put(newStream, 0);
+        this.activeComputationsPerStream.put(newStream, new HashSet<>());
         return newStream;
     }
 
@@ -98,20 +108,16 @@ public class GrCUDAStreamManager {
     }
 
     public int getNumActiveComputationsOnStream(CUDAStream stream) {
-        return this.activeComputationsPerStream.get(stream);
+        return this.activeComputationsPerStream.get(stream).size();
     }
 
-    protected void incrementComputationCount(CUDAStream stream) {
-        this.activeComputationsPerStream.put(stream, this.activeComputationsPerStream.get(stream) + 1);
+    protected void addActiveComputation(GrCUDAComputationalElement computation) {
+        this.activeComputationsPerStream.get(computation.getStream()).add(computation);
     }
 
-    protected void decrementComputationCount(CUDAStream stream) {
-        int count = this.activeComputationsPerStream.get(stream) - 1;
-        if (count < 0) {
-            throw new RuntimeException("stream " + stream + "has negative current computation count: " + count);
-        }
+    protected void removeActiveComputation(GrCUDAComputationalElement computation) {
         // TODO: keep set of "free" streams;
-        this.activeComputationsPerStream.put(stream,  count);
+        this.activeComputationsPerStream.get(computation.getStream()).remove(computation);
     }
 
     /**

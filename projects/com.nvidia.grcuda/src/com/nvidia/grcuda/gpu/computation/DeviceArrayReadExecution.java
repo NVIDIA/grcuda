@@ -28,6 +28,6 @@ public class DeviceArrayReadExecution extends ArrayAccessExecution<DeviceArray> 
 //        return "DeviceArrayReadExecution(" +
 //                "array=" + array +
 //                ", index=" + index + ")";
-        return "array read on " + System.identityHashCode(array) + "; index=" + index;
+        return "array read on " + System.identityHashCode(array) + "; index=" + index + "; stream=" + getStream().getStreamNumber();
     }
 }

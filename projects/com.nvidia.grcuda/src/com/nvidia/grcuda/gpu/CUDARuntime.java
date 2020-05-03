@@ -347,6 +347,10 @@ public final class CUDARuntime {
         try {
             Object callable = CUDARuntimeFunction.CUDA_STREAMATTACHMEMASYNC.getSymbol(this);
             int flag = stream.isDefaultStream() ? MEM_ATTACH_GLOBAL : MEM_ATTACH_SINGLE;
+
+            // Book-keeping of the stream attachment within the array;
+            array.setStreamMapping(stream);
+
             Object result = INTEROP.execute(callable, stream.getRawPointer(), array.getPointer(), 0, flag);
             checkCUDAReturnCode(result, "cudaStreamAttachMemAsync");
         } catch (InteropException e) {
@@ -609,6 +613,8 @@ public final class CUDARuntime {
             @Override
             @TruffleBoundary
             public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+
+                // TODO: update CUDAStream attachment if arguments are device array and cuda stream (or global stream)
 
                 long streamAddr;
                 long arrayAddr;

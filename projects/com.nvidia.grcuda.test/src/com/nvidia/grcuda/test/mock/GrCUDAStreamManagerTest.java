@@ -5,6 +5,8 @@ import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 
+import java.util.HashSet;
+
 public class GrCUDAStreamManagerTest extends GrCUDAStreamManager {
     GrCUDAStreamManagerTest(CUDARuntime runtime, boolean syncParents) {
         super(runtime);
@@ -23,7 +25,7 @@ public class GrCUDAStreamManagerTest extends GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = new CUDAStream(0, numStreams++);
         streams.add(newStream);
-        this.activeComputationsPerStream.put(newStream, 0);
+        this.activeComputationsPerStream.put(newStream, new HashSet<>());
         return newStream;
     }
 
@@ -36,7 +38,7 @@ public class GrCUDAStreamManagerTest extends GrCUDAStreamManager {
                     // Set the parent computations as finished;
                     c.setComputationFinished();
                     // Decrement the active computation count;
-                    decrementComputationCount(c.getStream());
+                    removeActiveComputation(c);
                 }
             });
         }

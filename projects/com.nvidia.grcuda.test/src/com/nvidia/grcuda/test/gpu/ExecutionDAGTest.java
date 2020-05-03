@@ -193,6 +193,14 @@ public class ExecutionDAGTest {
     "    }" +
     "}\n";
 
+    private static final String SQUARE_2_KERNEL =
+    "extern \"C\" __global__ void square(const float* x, float *y, int n) {\n" +
+    "    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n" +
+    "    if (idx < n) {\n" +
+    "       y[idx] = x[idx] * x[idx];\n" +
+    "    }" +
+    "}\n";
+
     private static final String DIFF_KERNEL =
     "extern \"C\" __global__ void diff(float* x, float* y, float* z, int n) {\n" +
     "   int idx = blockIdx.x * blockDim.x + threadIdx.x;\n" +
@@ -300,8 +308,7 @@ public class ExecutionDAGTest {
     }
 
     /**
-     * In this test, 2 kernels that operates on "x" executes concurrently.
-     * The read on "y" has to sync on the stream where the second kernel is running, although that kernel doesn't use "y".
+     * The read on "y" has to sync on the stream where the kernel is running, although that kernel doesn't use "y".
      * This is due to the pre-Pascal limitations on managed memory accesses,
      * and the inability to access an array while it is being used by a running kernel;
      */
@@ -318,21 +325,21 @@ public class ExecutionDAGTest {
             Value z = deviceArrayConstructor.execute("float", numElements);
 
             for (int i = 0; i < numElements; ++i) {
-                x.setArrayElement(i, 1.0 / (i + 1));
+                x.setArrayElement(i, 2.0);
             }
+            y.setArrayElement(0, 0);
 
             Value buildkernel = context.eval("grcuda", "buildkernel");
-            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "const pointer, pointer, sint32");
+            Value squareKernel = buildkernel.execute(SQUARE_2_KERNEL, "square", "const pointer, pointer, sint32");
             assertNotNull(squareKernel);
 
             Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
 
             // Perform the computation;
-            configuredSquareKernel.execute(x, y, numElements);
             configuredSquareKernel.execute(x, z, numElements);
 
             // Verify the output;
-            assertEquals(4.0, y.getArrayElement(0).asFloat(), 0.1);
+            assertEquals(0.0, y.getArrayElement(0).asFloat(), 0.1);
             assertEquals(4.0, z.getArrayElement(0).asFloat(), 0.1);
         }
     }
