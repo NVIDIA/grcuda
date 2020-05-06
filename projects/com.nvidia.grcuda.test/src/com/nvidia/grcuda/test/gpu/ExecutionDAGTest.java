@@ -327,7 +327,7 @@ public class ExecutionDAGTest {
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 2.0);
             }
-            y.setArrayElement(0, 0);
+//            y.setArrayElement(0, 0);
 
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value squareKernel = buildkernel.execute(SQUARE_2_KERNEL, "square", "const pointer, pointer, sint32");

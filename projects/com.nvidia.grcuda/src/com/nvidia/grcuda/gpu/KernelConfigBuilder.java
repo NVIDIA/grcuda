@@ -8,7 +8,7 @@ public class KernelConfigBuilder {
     private final Dim3 gridSize;
     private final Dim3 blockSize;
     private int dynamicSharedMemoryBytes = 0;
-    private CUDAStream stream = new DefaultStream();
+    private CUDAStream stream = DefaultStream.get();
     private boolean useCustomStream = false;
 
     KernelConfigBuilder(Dim3 gridSize, Dim3 blockSize) {

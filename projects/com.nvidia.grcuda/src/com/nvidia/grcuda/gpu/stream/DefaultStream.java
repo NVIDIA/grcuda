@@ -3,10 +3,14 @@ package com.nvidia.grcuda.gpu.stream;
 public class DefaultStream extends CUDAStream {
     
     static final int DEFAULT_STREAM_NUMBER = 0;
+
+    private static final DefaultStream defaultStream = new DefaultStream();
     
-    public DefaultStream() {
+    private DefaultStream() {
         super(0, DEFAULT_STREAM_NUMBER);
     }
+
+    public static DefaultStream get() { return defaultStream; }
 
     @Override
     public boolean isDefaultStream() { return true; }

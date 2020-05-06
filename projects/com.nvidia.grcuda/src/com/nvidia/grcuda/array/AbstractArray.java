@@ -37,7 +37,7 @@ public abstract class AbstractArray implements TruffleObject {
      * Keep track of whether this array is attached to a specific stream that limits its visibility.
      * By default, every array is attached to the {@link DefaultStream};
      */
-    private CUDAStream streamMapping = new DefaultStream();
+    protected CUDAStream streamMapping = DefaultStream.get();
 
     /**
      * Tracks whether the last operation done on the native memory underlying this array is a read/write operation
@@ -121,6 +121,7 @@ public abstract class AbstractArray implements TruffleObject {
 
     public abstract long getPointer();
 
-    // TODO: equals must be smarter than checking memory address, as a MultiDimView should be considered as part of its parent
+    // TODO: equals must be smarter than checking memory address, as a MultiDimView should be considered as part of its parent,
+    //   similarly to what "isLastComputationArrayAccess" is doing.
     //   The hash instead should be different. We might also not touch equals, and have another method "isPartOf"
 }

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class GrCUDAStreamManager {
@@ -71,16 +72,48 @@ public class GrCUDAStreamManager {
      */
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
 
-        // TODO: activeCompSet deve tenere set di comp. Devo assicurarmi di rimuovere gli elementi dal set!!!
-        //   Devo poi costruire una list di comp da syncare. Innanziuttuto i parent.
-        //   Poi posso avere che la comp ritorna uno stream aggiuntivo
-        //   Aggiugno tutte le comp associate allo stream alla lista di cose da syncare
-        //   Se lo stream è default, invece, faccio una device sync e tolgo tutte le values dalla mappa
+        // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
 
-        vertex.getParentComputations().forEach(c -> {
+        // Skip syncing if no computation is active;
+        if (!activeComputationsPerStream.isEmpty()) {
+            Set<GrCUDAComputationalElement> computationsToSync = new HashSet<>(vertex.getParentComputations());
+
+            // Retrieve an additional stream dependency from the kernel, if required;
+            Optional<CUDAStream> additionalStream = vertex.getComputation().additionalStreamDependency();
+            if (additionalStream.isPresent()) {
+                // If we require synchronization on the default stream, perform it in a specialized way;
+                if (additionalStream.get().isDefaultStream()) {
+                    System.out.println("--\tsync stream " + additionalStream.get() + " by " + vertex.getComputation());
+                    // Synchronize the device;
+                    runtime.cudaDeviceSynchronize();
+                    // All computations are now finished;
+                    activeComputationsPerStream.keySet().forEach(s -> {
+                        activeComputationsPerStream.get(s).forEach(GrCUDAComputationalElement::setComputationFinished);
+                        activeComputationsPerStream.put(s, new HashSet<>());
+                    });
+                } else {
+                    // Else add the computations related to the additional streams to the set and sync it;
+                    computationsToSync.addAll(activeComputationsPerStream.get(additionalStream.get()));
+                    syncParentStreamsImpl(computationsToSync, vertex.getComputation());
+                }
+            } else {
+                syncParentStreamsImpl(computationsToSync, vertex.getComputation());
+            }
+        }
+    }
+
+    /**
+     * Synchronize a list of computations on their streams;
+     * @param computationsToSync a list of computations whose streams should be synced
+     * @param computationThatSyncs the computation that triggered the syncing process
+     */
+    private void syncParentStreamsImpl(
+            Set<GrCUDAComputationalElement> computationsToSync,
+            GrCUDAComputationalElement computationThatSyncs) {
+        computationsToSync.forEach(c -> {
             // Synchronize computations that are not yet finished and can use streams;
             if (c.canUseStream() && !c.isComputationFinished()) {
-                System.out.println("--\tsync stream " + c.getStream() + " by " + vertex.getComputation());
+                System.out.println("--\tsync stream " + c.getStream() + " by " + computationThatSyncs);
                 runtime.cudaStreamSynchronize(c.getStream());
                 // Set the parent computations as finished;
                 c.setComputationFinished();

@@ -30,6 +30,7 @@ package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewReadExecution;
 import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewWriteExecution;
+import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -86,6 +87,25 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
     public void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
         super.setLastComputationArrayAccess(lastComputationArrayAccess);
         this.mdDeviceArray.setLastComputationArrayAccess(lastComputationArrayAccess);
+    }
+
+    /**
+     * Propagate the stream mapping to the parent array, so other temporary views are aware of this mapping;
+     * @param streamMapping the stream to which this array is associated
+     */
+    @Override
+    public void setStreamMapping(CUDAStream streamMapping) {
+        this.mdDeviceArray.setStreamMapping(streamMapping);
+        this.streamMapping = streamMapping;
+    }
+
+    /**
+     * Return the parent stream mapping, to guarantee that all views have the same mapping;
+     * @return the stream to which this array is associated
+     */
+    @Override
+    public CUDAStream getStreamMapping() {
+        return this.mdDeviceArray.getStreamMapping();
     }
 
     @Override

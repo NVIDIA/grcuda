@@ -10,6 +10,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Basic class that represents GrCUDA computations,
@@ -31,7 +32,7 @@ public abstract class GrCUDAComputationalElement {
      * Subclasses can keep an internal reference to the stream, e.g. if it can be manually modified by the user,
      * but it is required to keep that value consistent to this one if it is modified;
      */
-    private CUDAStream stream = new DefaultStream();
+    private CUDAStream stream = DefaultStream.get();
     /**
      * Keep track of whether this computation has already been executed, and represents a "dead" vertex in the DAG.
      * Computations that are already executed will not be considered when computing dependencies;
@@ -180,6 +181,29 @@ public abstract class GrCUDAComputationalElement {
      */
     public Collection<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
         return this.dependencyComputation.computeDependencies(other);
+    }
+
+    /**
+     * Compute and return an additional stream dependency used by this computation.
+     * This function is used by {@link com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager} to synchronize streams
+     * that might not be directly used by this computation, but that have to be synchronized for this computation
+     * to take place correctly. For example, in pre-Pascal GPUs it is required to ensure that no kernel is running if
+     * the array accessed is visible to the global stream.
+     * The actual invocation is wrapped by a {@link ArrayStreamArchitecturePolicy},
+     * as the invocation depends on the GPU architecture;
+     * @return An additional stream to synchronize
+     */
+    public final Optional<CUDAStream> additionalStreamDependency() {
+        return grCUDAExecutionContext.getArrayStreamArchitecturePolicy().execute(this::additionalStreamDependencyImpl);
+    }
+
+    /**
+     * Actual implementation of {@link GrCUDAComputationalElement#additionalStreamDependency}, it can be overridden
+     * by concrete computations to provide additional streams for synchronization;
+     * @return An additional stream to synchronize
+     */
+    protected Optional<CUDAStream> additionalStreamDependencyImpl() {
+        return Optional.empty();
     }
 
     /**

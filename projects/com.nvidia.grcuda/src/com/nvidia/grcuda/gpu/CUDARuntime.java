@@ -35,6 +35,7 @@ import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
@@ -43,6 +44,7 @@ import com.nvidia.grcuda.gpu.computation.PostPascalArrayStreamAssociation;
 import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.nvidia.grcuda.gpu.stream.DefaultStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -614,25 +616,22 @@ public final class CUDARuntime {
             @TruffleBoundary
             public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
 
-                // TODO: update CUDAStream attachment if arguments are device array and cuda stream (or global stream)
-
-                long streamAddr;
-                long arrayAddr;
-
+                Object streamObj;
+                Object arrayObj;
                 final int MEM_ATTACH_SINGLE = 0x04;
                 final int MEM_ATTACH_GLOBAL = 0x01;
                 int flag = MEM_ATTACH_SINGLE;
 
                 if (args.length == 1) {
-                    arrayAddr = extractArrayPointer(args[0]);
-                    streamAddr = 0; // Use default stream;
+                    arrayObj = args[0];
+                    streamObj = DefaultStream.get();
                     flag = MEM_ATTACH_GLOBAL;
                 } else if (args.length == 2) {
-                    streamAddr = extractStreamPointer(args[0]);
-                    arrayAddr = extractArrayPointer(args[1]);
+                    streamObj = args[0];
+                    arrayObj = args[1];
                 } else if (args.length == 3) {
-                    streamAddr = extractStreamPointer(args[0]);
-                    arrayAddr = extractArrayPointer(args[1]);
+                    streamObj = args[0];
+                    arrayObj = args[1];
                     if (args[2] instanceof Integer) {
                         flag = ((Integer) args[2]);
                     } else {
@@ -643,9 +642,22 @@ public final class CUDARuntime {
                     throw ArityException.create(3, args.length);
                 }
 
+                // Extract pointers;
+                long streamAddr;
+                long arrayAddr;
+                streamAddr = extractStreamPointer(streamObj);
+                arrayAddr = extractArrayPointer(arrayObj);
+
                 // If using the default stream (0 address) use the "cudaMemAttachGlobal" flag;
                 if (streamAddr == 0) {
                     flag = MEM_ATTACH_GLOBAL;
+                }
+
+                // Track the association between the stream and the array, if possible;
+                if (streamObj instanceof CUDAStream) {
+                    if (arrayObj instanceof AbstractArray) {
+                        ((AbstractArray) arrayObj).setStreamMapping((CUDAStream) streamObj);
+                    }
                 }
 
                 // Always set "size" to 0 to cover the entire array;
@@ -677,6 +689,8 @@ public final class CUDARuntime {
                 return ((LittleEndianNativeArrayView) array).getStartAddress();
             } else if (array instanceof DeviceArray) {
                 return ((DeviceArray) array).getPointer();
+            } else if (array instanceof MultiDimDeviceArray) {
+                return ((MultiDimDeviceArray) array).getPointer();
             } else {
                 throw new GrCUDAException("expected GPUPointer or LittleEndianNativeArrayView or DeviceArray");
             }
