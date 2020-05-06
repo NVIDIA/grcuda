@@ -7,13 +7,13 @@ import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 
 import java.util.HashSet;
 
-public class GrCUDAStreamManagerTest extends GrCUDAStreamManager {
-    GrCUDAStreamManagerTest(CUDARuntime runtime, boolean syncParents) {
+public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
+    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents) {
         super(runtime);
         this.syncParents = syncParents;
     }
 
-    GrCUDAStreamManagerTest(CUDARuntime runtime) {
+    GrCUDAStreamManagerMock(CUDARuntime runtime) {
         this(runtime, false);
     }
 

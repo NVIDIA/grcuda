@@ -9,26 +9,26 @@ import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 /**
  * Mock class to test the GrCUDAExecutionContextTest, it has a null CUDARuntime;
  */
-public class GrCUDAExecutionContextTest extends GrCUDAExecutionContext {
+public class GrCUDAExecutionContextMock extends GrCUDAExecutionContext {
 
-    public GrCUDAExecutionContextTest(boolean syncStream) {
+    public GrCUDAExecutionContextMock(boolean syncStream) {
         super(null, null,
-                new GrCUDAStreamManagerTest(null, syncStream), new DefaultDependencyComputationBuilder());
+                new GrCUDAStreamManagerMock(null, syncStream), new DefaultDependencyComputationBuilder());
     }
 
-    public GrCUDAExecutionContextTest() {
+    public GrCUDAExecutionContextMock() {
         super(null, null,
-                new GrCUDAStreamManagerTest(null), new DefaultDependencyComputationBuilder());
+                new GrCUDAStreamManagerMock(null), new DefaultDependencyComputationBuilder());
     }
 
-    public GrCUDAExecutionContextTest(DependencyComputationBuilder dependencyBuilder) {
+    public GrCUDAExecutionContextMock(DependencyComputationBuilder dependencyBuilder) {
         super(null, null,
-                new GrCUDAStreamManagerTest(null), dependencyBuilder);
+                new GrCUDAStreamManagerMock(null), dependencyBuilder);
     }
 
-    public GrCUDAExecutionContextTest(DependencyComputationBuilder dependencyBuilder, boolean syncStream) {
+    public GrCUDAExecutionContextMock(DependencyComputationBuilder dependencyBuilder, boolean syncStream) {
         super(null, null,
-                new GrCUDAStreamManagerTest(null, syncStream), dependencyBuilder);
+                new GrCUDAStreamManagerMock(null, syncStream), dependencyBuilder);
     }
 
     public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {

@@ -25,11 +25,10 @@ public class GrCUDAStreamManager {
     /**
      * Track the active computations each stream has, excluding the default stream;
      */
-    protected final Map<CUDAStream, Set<GrCUDAComputationalElement>> activeComputationsPerStream;
+    protected final Map<CUDAStream, Set<GrCUDAComputationalElement>> activeComputationsPerStream = new HashMap<>();
 
     public GrCUDAStreamManager(CUDARuntime runtime) {
         this.runtime = runtime;
-        this.activeComputationsPerStream = new HashMap<>();
     }
 
     /**
@@ -71,7 +70,6 @@ public class GrCUDAStreamManager {
      * @param vertex a computation whose parents should be synchronized
      */
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
-
         // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
 
         // Skip syncing if no computation is active;
@@ -129,7 +127,7 @@ public class GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
-        this.activeComputationsPerStream.put(newStream, new HashSet<>());
+        activeComputationsPerStream.put(newStream, new HashSet<>());
         return newStream;
     }
 
@@ -141,16 +139,16 @@ public class GrCUDAStreamManager {
     }
 
     public int getNumActiveComputationsOnStream(CUDAStream stream) {
-        return this.activeComputationsPerStream.get(stream).size();
+        return activeComputationsPerStream.get(stream).size();
     }
 
     protected void addActiveComputation(GrCUDAComputationalElement computation) {
-        this.activeComputationsPerStream.get(computation.getStream()).add(computation);
+        activeComputationsPerStream.get(computation.getStream()).add(computation);
     }
 
     protected void removeActiveComputation(GrCUDAComputationalElement computation) {
         // TODO: keep set of "free" streams;
-        this.activeComputationsPerStream.get(computation.getStream()).remove(computation);
+        activeComputationsPerStream.get(computation.getStream()).remove(computation);
     }
 
     /**

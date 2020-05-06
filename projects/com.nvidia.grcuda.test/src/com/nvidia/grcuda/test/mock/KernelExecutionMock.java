@@ -10,9 +10,9 @@ import java.util.List;
 /**
  * Mock class to test the DAG execution;
  */
-public class KernelExecutionTest extends GrCUDAComputationalElement {
+public class KernelExecutionMock extends GrCUDAComputationalElement {
 
-    public KernelExecutionTest(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
+    public KernelExecutionMock(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
         super(grCUDAExecutionContext, args);
     }
 

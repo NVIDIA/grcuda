@@ -2,9 +2,9 @@ package com.nvidia.grcuda.test.gpu;
 
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
-import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextTest;
-import com.nvidia.grcuda.test.mock.KernelExecutionTest;
-import com.nvidia.grcuda.test.mock.MockArgument;
+import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMock;
+import com.nvidia.grcuda.test.mock.KernelExecutionMock;
+import com.nvidia.grcuda.test.mock.ArgumentMock;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -33,10 +33,10 @@ public class ExecutionDAGTest {
 
     @Test
     public void addVertexToDAGTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
         // Create two mock kernel executions;
-        new KernelExecutionTest(context,
-                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
+        new KernelExecutionMock(context,
+                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -46,8 +46,8 @@ public class ExecutionDAGTest {
         assertTrue(dag.getFrontier().get(0).isFrontier());
         assertTrue(dag.getFrontier().get(0).isStart());
 
-        new KernelExecutionTest(context,
-                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
+        new KernelExecutionMock(context,
+                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3))).schedule();
 
         assertEquals(2, dag.getNumVertices());
         assertEquals(1, dag.getNumEdges());
@@ -66,15 +66,15 @@ public class ExecutionDAGTest {
 
     @Test
     public void dependencyPipelineSimpleMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
-        new KernelExecutionTest(context,
-                Arrays.asList(new MockArgument(1), new MockArgument(2), new MockArgument(3))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(3))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        new KernelExecutionMock(context,
+                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(3))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -108,17 +108,17 @@ public class ExecutionDAGTest {
 
     @Test
     public void complexFrontierMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
 
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
         //    \----> C(2)
         // The final frontier is composed by C(2), D(3), E(1), F(4);
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(2))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(3))).schedule();
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(4))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(4))).schedule();
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(2))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(3))).schedule();
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(4))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(4))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -146,18 +146,18 @@ public class ExecutionDAGTest {
 
     @Test
     public void complexFrontierWithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextTest(true);
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(true);
 
         // This time, simulate the synchronization process between kernels;
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
         //    C(2)
         // The final frontier is composed by C(2) F(4);
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(2))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(1))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(2))).schedule();
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(3))).schedule();
-        new KernelExecutionTest(context, Arrays.asList(new MockArgument(1), new MockArgument(4))).schedule();
-        new KernelExecutionTest(context, Collections.singletonList(new MockArgument(4))).schedule();
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(2))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(3))).schedule();
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(4))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(4))).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -327,6 +327,7 @@ public class ExecutionDAGTest {
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 2.0);
             }
+            // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
 //            y.setArrayElement(0, 0);
 
             Value buildkernel = context.eval("grcuda", "buildkernel");
