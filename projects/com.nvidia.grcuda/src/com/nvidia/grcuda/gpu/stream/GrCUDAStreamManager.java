@@ -4,12 +4,15 @@ import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 
 public class GrCUDAStreamManager {
@@ -27,8 +30,25 @@ public class GrCUDAStreamManager {
      */
     protected final Map<CUDAStream, Set<GrCUDAComputationalElement>> activeComputationsPerStream = new HashMap<>();
 
+    private final RetrieveStream retrieveStream;
+
+    // TODO: tests on the 2 retrieve stream policies, with extra tests on LIFO;
     public GrCUDAStreamManager(CUDARuntime runtime) {
+        this(runtime, runtime.getContext().getRetrieveStreamPolicy());
+    }
+
+    public GrCUDAStreamManager(CUDARuntime runtime, RetrieveStreamPolicyEnum retrieveStreamPolicyEnum) {
         this.runtime = runtime;
+        switch(retrieveStreamPolicyEnum) {
+            case LIFO:
+                this.retrieveStream = new LifoRetrieveStream();
+                break;
+            case ALWAYS_NEW:
+                this.retrieveStream = new AlwaysNewRetrieveStream();
+                break;
+            default:
+                this.retrieveStream = new LifoRetrieveStream();
+        }
     }
 
     /**
@@ -37,13 +57,13 @@ public class GrCUDAStreamManager {
      * @param vertex an input computation for which we want to assign a stream
      */
     public void assignStream(ExecutionDAG.DAGVertex vertex) {
+
         // If the computation cannot use customized streams, return immediately;
         if (vertex.getComputation().canUseStream()) {
             CUDAStream stream;
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
-                // TODO: can we do better? E.g. re-use a stream that is not being used
-                stream = createStream();
+                stream = retrieveStream.retrieve();
             } else {
                 // Else, compute the streams used by the parent computations.
                 // If more than one stream is available, keep the first;
@@ -73,6 +93,7 @@ public class GrCUDAStreamManager {
         // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
 
         // Skip syncing if no computation is active;
+        // FIXME: this doesn't check if streams are empty! it works only at the very start
         if (!activeComputationsPerStream.isEmpty()) {
             Set<GrCUDAComputationalElement> computationsToSync = new HashSet<>(vertex.getParentComputations());
 
@@ -85,10 +106,7 @@ public class GrCUDAStreamManager {
                     // Synchronize the device;
                     runtime.cudaDeviceSynchronize();
                     // All computations are now finished;
-                    activeComputationsPerStream.keySet().forEach(s -> {
-                        activeComputationsPerStream.get(s).forEach(GrCUDAComputationalElement::setComputationFinished);
-                        activeComputationsPerStream.put(s, new HashSet<>());
-                    });
+                    resetActiveComputationState();
                 } else {
                     // Else add the computations related to the additional streams to the set and sync it;
                     System.out.println("--\tsyncing additional stream " + additionalStream.get() + "...");
@@ -147,9 +165,29 @@ public class GrCUDAStreamManager {
         activeComputationsPerStream.get(computation.getStream()).add(computation);
     }
 
+    /**
+     * Remove a computation from the map that associates streams to their active computations,
+     * and mark the stream as free if no other computations are active on the stream;
+     * @param computation a computation that is no longer active
+     */
     protected void removeActiveComputation(GrCUDAComputationalElement computation) {
-        // TODO: keep set of "free" streams;
         activeComputationsPerStream.get(computation.getStream()).remove(computation);
+        // If this stream doesn't have any computation associated to it, it's free to use;
+        if (activeComputationsPerStream.get(computation.getStream()).isEmpty()) {
+            retrieveStream.update(computation.getStream());
+        }
+    }
+
+    /**
+     * Reset the association between streams and computations. All computations are finished, and all streams are free;
+     */
+    private void resetActiveComputationState() {
+        activeComputationsPerStream.keySet().forEach(s -> {
+            activeComputationsPerStream.get(s).forEach(GrCUDAComputationalElement::setComputationFinished);
+            activeComputationsPerStream.put(s, new HashSet<>());
+        });
+        // All streams are free;
+        retrieveStream.update(streams);
     }
 
     /**
@@ -158,6 +196,50 @@ public class GrCUDAStreamManager {
     public void cleanup() {
         streams.forEach(runtime::cudaStreamDestroy);
         activeComputationsPerStream.clear();
+        retrieveStream.cleanup();
         streams.clear();
+    }
+
+    /**
+     * By default, create a new stream every time;
+     */
+    private class AlwaysNewRetrieveStream extends RetrieveStream {
+
+        @Override
+        public CUDAStream retrieve() {
+            return createStream();
+        }
+    }
+
+    /**
+     * Keep a queue of free (currently not utilized) streams, and retrieve the oldest one added to the queue;
+     */
+    private class LifoRetrieveStream extends RetrieveStream {
+
+        /**
+         * Keep a queue of free streams;
+         */
+        private final Queue<CUDAStream> freeStreams = new ArrayDeque<>();
+
+        @Override
+        void update(CUDAStream stream) {
+            freeStreams.add(stream);
+        }
+
+        @Override
+        void update(Collection<CUDAStream> streams) {
+            freeStreams.addAll(streams);
+        }
+
+        @Override
+        CUDAStream retrieve() {
+            if (freeStreams.isEmpty()) {
+                // Create a new stream if none is available;
+                return createStream();
+            } else {
+                // Get the first stream available, and remove it from the list of free streams;
+                return freeStreams.poll();
+            }
+        }
     }
 }

@@ -47,6 +47,7 @@ import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.SyncGrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -64,6 +65,7 @@ public final class GrCUDAContext {
 
     public static final ExecutionPolicyEnum DEFAULT_EXECUTION_POLICY = ExecutionPolicyEnum.DEFAULT;
     public static final DependencyPolicyEnum DEFAULT_DEPENDENCY_POLICY = DependencyPolicyEnum.DEFAULT;
+    public static final RetrieveStreamPolicyEnum DEFAULT_RETRIEVE_STREAM_POLICY = RetrieveStreamPolicyEnum.LIFO;
 
     private static final String ROOT_NAMESPACE = "CU";
 
@@ -73,12 +75,16 @@ public final class GrCUDAContext {
     private final ArrayList<Runnable> disposables = new ArrayList<>();
     private final AtomicInteger moduleId = new AtomicInteger(0);
     private volatile boolean cudaInitialized = false;
+    private final RetrieveStreamPolicyEnum retrieveStreamPolicy;
 
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
 
     public GrCUDAContext(Env env) {
         this.env = env;
+
+        // Retrieve the stream retrieval policy;
+        retrieveStreamPolicy = parseRetrieveStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveStreamPolicy));
 
         // Retrieve the dependency computation policy;
         DependencyPolicyEnum dependencyPolicy = parseDependencyPolicy(env.getOptions().get(GrCUDAOptions.DependencyPolicy));
@@ -177,6 +183,10 @@ public final class GrCUDAContext {
         return uncachedMapCallTargets;
     }
 
+    public RetrieveStreamPolicyEnum getRetrieveStreamPolicy() {
+        return retrieveStreamPolicy;
+    }
+
     /**
      * Compute the maximum number of concurrent threads that can be spawned by GrCUDA.
      * This value is usually smaller or equal than the number of logical CPU threads available on the machine.
@@ -212,6 +222,18 @@ public final class GrCUDAContext {
                 return DependencyPolicyEnum.DEFAULT;
             default:
                 return GrCUDAContext.DEFAULT_DEPENDENCY_POLICY;
+        }
+    }
+
+    @TruffleBoundary
+    private static RetrieveStreamPolicyEnum parseRetrieveStreamPolicy(String policyString) {
+        switch(policyString) {
+            case "lifo":
+                return RetrieveStreamPolicyEnum.LIFO;
+            case "always_new":
+                return RetrieveStreamPolicyEnum.ALWAYS_NEW;
+            default:
+                return GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY;
         }
     }
 

@@ -4,12 +4,13 @@ import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
+import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
 
 import java.util.HashSet;
 
 public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents) {
-        super(runtime);
+        super(runtime, RetrieveStreamPolicyEnum.ALWAYS_NEW);
         this.syncParents = syncParents;
     }
 

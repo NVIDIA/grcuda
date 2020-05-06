@@ -10,7 +10,7 @@ public enum ExecutionPolicyEnum {
         this.name = name;
     }
 
-    public String getName() {
+    public final String getName() {
         return name;
     }
 }

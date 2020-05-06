@@ -130,6 +130,10 @@ public final class CUDARuntime {
     // using this slow/uncached instance since all calls are non-critical
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
+    public GrCUDAContext getContext() {
+        return context;
+    }
+
     interface CallSupport {
         String getName();
 

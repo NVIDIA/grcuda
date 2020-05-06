@@ -60,4 +60,6 @@ public final class GrCUDAOptions {
     @Option(category = OptionCategory.USER, help = "Chose how data dependencies between GrCUDA computations are computed", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> DependencyPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_DEPENDENCY_POLICY.getName());
 
+    @Option(category = OptionCategory.USER, help = "Chose how streams for new GrCUDA computations are provided", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> RetrieveStreamPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY.getName());
 }
