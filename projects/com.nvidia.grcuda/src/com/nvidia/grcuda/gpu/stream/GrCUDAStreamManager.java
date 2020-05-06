@@ -91,6 +91,7 @@ public class GrCUDAStreamManager {
                     });
                 } else {
                     // Else add the computations related to the additional streams to the set and sync it;
+                    System.out.println("--\tsyncing additional stream " + additionalStream.get() + "...");
                     computationsToSync.addAll(activeComputationsPerStream.get(additionalStream.get()));
                     syncParentStreamsImpl(computationsToSync, vertex.getComputation());
                 }
