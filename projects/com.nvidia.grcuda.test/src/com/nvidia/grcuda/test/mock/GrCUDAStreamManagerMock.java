@@ -2,11 +2,13 @@ package com.nvidia.grcuda.test.mock;
 
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
 
-import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents) {
@@ -26,7 +28,7 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = new CUDAStream(0, numStreams++);
         streams.add(newStream);
-        this.activeComputationsPerStream.put(newStream, new HashSet<>());
+//        this.activeComputationsPerStream.put(newStream, new HashSet<>());
         return newStream;
     }
 
@@ -43,5 +45,9 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
                 }
             });
         }
+    }
+
+    public Map<CUDAStream, Set<GrCUDAComputationalElement>> getActiveComputationsMap() {
+        return this.activeComputationsPerStream;
     }
 }

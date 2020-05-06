@@ -146,7 +146,7 @@ public class GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
-        activeComputationsPerStream.put(newStream, new HashSet<>());
+//        activeComputationsPerStream.put(newStream, new HashSet<>());
         return newStream;
     }
 
@@ -162,7 +162,13 @@ public class GrCUDAStreamManager {
     }
 
     protected void addActiveComputation(GrCUDAComputationalElement computation) {
-        activeComputationsPerStream.get(computation.getStream()).add(computation);
+        CUDAStream stream = computation.getStream();
+        // Start tracking the stream if it wasn't already tracked;
+        if (!activeComputationsPerStream.containsKey(stream)) {
+            activeComputationsPerStream.put(stream, new HashSet<>());
+        }
+        // Associate the computation to the stream;
+        activeComputationsPerStream.get(stream).add(computation);
     }
 
     /**
@@ -171,10 +177,12 @@ public class GrCUDAStreamManager {
      * @param computation a computation that is no longer active
      */
     protected void removeActiveComputation(GrCUDAComputationalElement computation) {
-        activeComputationsPerStream.get(computation.getStream()).remove(computation);
+        CUDAStream stream = computation.getStream();
+        activeComputationsPerStream.get(stream).remove(computation);
         // If this stream doesn't have any computation associated to it, it's free to use;
-        if (activeComputationsPerStream.get(computation.getStream()).isEmpty()) {
-            retrieveStream.update(computation.getStream());
+        if (activeComputationsPerStream.get(stream).isEmpty()) {
+            activeComputationsPerStream.remove(stream);
+            retrieveStream.update(stream);
         }
     }
 
@@ -184,8 +192,10 @@ public class GrCUDAStreamManager {
     private void resetActiveComputationState() {
         activeComputationsPerStream.keySet().forEach(s -> {
             activeComputationsPerStream.get(s).forEach(GrCUDAComputationalElement::setComputationFinished);
-            activeComputationsPerStream.put(s, new HashSet<>());
+//            activeComputationsPerStream.put(s, new HashSet<>());
         });
+        // Streams don't have any active computation;
+        activeComputationsPerStream.clear();
         // All streams are free;
         retrieveStream.update(streams);
     }

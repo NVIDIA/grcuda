@@ -3,6 +3,7 @@ package com.nvidia.grcuda.test.gpu.stream;
 import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMock;
+import com.nvidia.grcuda.test.mock.GrCUDAStreamManagerMock;
 import com.nvidia.grcuda.test.mock.KernelExecutionMock;
 import com.nvidia.grcuda.test.mock.ArgumentMock;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -12,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class GrCUDAStreamManagerTest {
     @Test
@@ -126,7 +128,8 @@ public class GrCUDAStreamManagerTest {
         assertEquals(0, dag.getVertices().get(2).getComputation().getStream().getStreamNumber());
         assertEquals(0, dag.getVertices().get(3).getComputation().getStream().getStreamNumber());
         assertEquals(1, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(3).getComputation().getStream()));
-        assertEquals(0, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(1).getComputation().getStream()));
+        // The stream has no active computation;
+        assertFalse(((GrCUDAStreamManagerMock) context.getStreamManager()).getActiveComputationsMap().containsKey(dag.getVertices().get(1).getComputation().getStream()));
     }
 
     @Test
