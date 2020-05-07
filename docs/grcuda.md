@@ -585,107 +585,110 @@ print(device0.isCurrent())  # true
 
 Table: Device Properties Names (see also
 [CUDA Runtime Documentation](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html))
-| Property Name                             |
-|-------------------------------------------|
-| `asyncEngineCount`                        |
-| `canFlushRemoteWrites`                    |
-| `canMapHostMemory`                        |
-| `canUseHostPointerForRegisteredMem`       |
-| `clockRate`                               |
-| `computeCapabilityMajor`                  |
-| `computeCapabilityMinor`                  |
-| `computeMode`                             |
-| `computePreemptionSupported`              |
-| `concurrentKernels`                       |
-| `concurrentManagedAccess`                 |
-| `cooperativeLaunch`                       |
-| `cooperativeMultiDeviceLaunch`            |
-| `deviceName`                              |
-| `directManagedMemAccessFromHost`          |
-| `eccEnabled`                              |
-| `freeDeviceMemory`                        |
-| `globalL1CacheSupported`                  |
-| `globalMemoryBusWidth`                    |
-| `gpuOverlap`                              |
-| `hostNativeAtomicSupported`               |
-| `hostRegisterSupported`                   |
-| `integrated`                              |
-| `isMultiGpuBoard`                         |
-| `kernelExecTimeout`                       |
-| `l2CacheSize`                             |
-| `localL1CacheSupported`                   |
-| `managedMemory`                           |
-| `maxBlockDimX`                            |
-| `maxBlockDimY`                            |
-| `maxBlockDimZ`                            |
-| `maxGridDimX`                             |
-| `maxGridDimY`                             |
-| `maxGridDimZ`                             |
-| `maxPitch`                                |
-| `maxRegistersPerBlock`                    |
-| `maxRegistersPerMultiprocessor`           |
-| `maxSharedMemoryPerBlock`                 |
-| `maxSharedMemoryPerBlockOptin`            |
-| `maxSharedMemoryPerMultiprocessor`        |
-| `maxSurface1DLayeredLayers`               |
-| `maxSurface1DWidth`                       |
-| `maxSurface2DHeight`                      |
-| `maxSurface2DLayeredHeight`               |
-| `maxSurface2DLayeredLayers`               |
-| `maxSurface2DLayeredWidth`                |
-| `maxSurface2DWidth`                       |
-| `maxSurface3DDepth`                       |
-| `maxSurface3DHeight`                      |
-| `maxSurface3DWidth`                       |
-| `maxSurfaceCubemapLayeredLayers`          |
-| `maxSurfaceCubemapLayeredWidth`           |
-| `maxSurfaceCubemapWidth`                  |
-| `maxTexture1DLayeredLayers`               |
-| `maxTexture1DLayeredWidth`                |
-| `maxTexture1DLinearWidth`                 |
-| `maxTexture1DMipmappedWidth`              |
-| `maxTexture1DWidth`                       |
-| `maxTexture2DGatherHeight`                |
-| `maxTexture2DGatherWidth`                 |
-| `maxTexture2DHeight`                      |
-| `maxTexture2DLayeredHeight`               |
-| `maxTexture2DLayeredLayers`               |
-| `maxTexture2DLayeredWidth`                |
-| `maxTexture2DLinearHeight`                |
-| `maxTexture2DLinearPitch`                 |
-| `maxTexture2DLinearWidth`                 |
-| `maxTexture2DMipmappedHeight`             |
-| `maxTexture2DMipmappedWidth`              |
-| `maxTexture2DWidth`                       |
-| `maxTexture3DDepth`                       |
-| `maxTexture3DDepthAlt`                    |
-| `maxTexture3DHeight`                      |
-| `maxTexture3DHeightAlt`                   |
-| `maxTexture3DWidth`                       |
-| `maxTexture3DWidthAlt`                    |
-| `maxTextureCubemapLayeredLayers`          |
-| `maxTextureCubemapLayeredWidth`           |
-| `maxTextureCubemapWidth`                  |
-| `maxThreadsPerBlock`                      |
-| `maxThreadsPerMultiProcessor`             |
-| `memoryClockRate`                         |
-| `multiGpuBoardGroupID`                    |
-| `multiProcessorCount`                     |
-| `pageableMemoryAccess`                    |
-| `pageableMemoryAccessUsesHostPageTables`  |
-| `pciBusId`                                |
-| `pciDeviceId`                             |
-| `pciDomainId`                             |
-| `singleToDoublePrecisionPerfRatio`        |
-| `streamPrioritiesSupported`               |
-| `surfaceAlignment`                        |
-| `tccDriver`                               |
-| `textureAlignment`                        |
-| `texturePitchAlignment`                   |
-| `totalConstantMemory`                     |
-| `totalDeviceMemory`                       |
-| `unifiedAddressing`                       |
-| `warpSize`                                |
+
+```text
+Property Name:
+
+asyncEngineCount
+canFlushRemoteWrites
+canMapHostMemory
+canUseHostPointerForRegisteredMem
+clockRate
+computeCapabilityMajor
+computeCapabilityMinor
+computeMode
+computePreemptionSupported
+concurrentKernels
+concurrentManagedAccess
+cooperativeLaunch
+cooperativeMultiDeviceLaunch
+deviceName
+directManagedMemAccessFromHost
+eccEnabled
+freeDeviceMemory
+globalL1CacheSupported
+globalMemoryBusWidth
+gpuOverlap
+hostNativeAtomicSupported
+hostRegisterSupported
+integrated
+isMultiGpuBoard
+kernelExecTimeout
+l2CacheSize
+localL1CacheSupported`
+managedMemory
+maxBlockDimX
+maxBlockDimY
+maxBlockDimZ
+maxGridDimX
+maxGridDimY
+maxGridDimZ
+maxPitch
+maxRegistersPerBlock
+maxRegistersPerMultiprocessor
+maxSharedMemoryPerBlock
+maxSharedMemoryPerBlockOptin
+maxSharedMemoryPerMultiprocessor
+maxSurface1DLayeredLayers
+maxSurface1DWidth
+maxSurface2DHeight
+maxSurface2DLayeredHeight
+maxSurface2DLayeredLayers
+maxSurface2DLayeredWidth
+maxSurface2DWidth
+maxSurface3DDepth
+maxSurface3DHeight
+maxSurface3DWidth
+maxSurfaceCubemapLayeredLayers
+maxSurfaceCubemapLayeredWidth
+maxSurfaceCubemapWidth
+maxTexture1DLayeredLayers
+maxTexture1DLayeredWidth
+maxTexture1DLinearWidth
+maxTexture1DMipmappedWidth
+maxTexture1DWidth
+maxTexture2DGatherHeight
+maxTexture2DGatherWidth
+maxTexture2DHeight
+maxTexture2DLayeredHeight
+maxTexture2DLayeredLayers
+maxTexture2DLayeredWidth
+maxTexture2DLinearHeight
+maxTexture2DLinearPitch
+maxTexture2DLinearWidth
+maxTexture2DMipmappedHeight
+maxTexture2DMipmappedWidth
+maxTexture2DWidth
+maxTexture3DDepth
+maxTexture3DDepthAlt
+maxTexture3DHeight
+maxTexture3DHeightAlt
+maxTexture3DWidth
+maxTexture3DWidthAlt
+maxTextureCubemapLayeredLayers
+maxTextureCubemapLayeredWidth
+maxTextureCubemapWidth
+maxThreadsPerBlock
+maxThreadsPerMultiProcessor
+memoryClockRate
+multiGpuBoardGroupID
+multiProcessorCount
+pageableMemoryAccess
+pageableMemoryAccessUsesHostPageTables
+pciBusId
+pciDeviceId
+pciDomainId
+singleToDoublePrecisionPerfRatio
+streamPrioritiesSupported
+surfaceAlignment
+tccDriver
+textureAlignment
+texturePitchAlignment
+totalConstantMemory
+totalDeviceMemory
+unifiedAddressing
+warpSize
+```
 
 ### CUDA Runtime Functions
 
