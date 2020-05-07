@@ -46,19 +46,20 @@ import org.junit.rules.TemporaryFolder;
 public class BindKernelTest {
 
     /** CUDA C source code of incrementing kernel. */
-    private static final String INCREMENT_KERNEL_SOURCE = "extern \"C\"                                \n" +
-                    "__global__ void inc_kernel(int *out_arr, const int *in_arr, int num_elements) {   \n" +
-                    "  for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;       \n" +
-                    "       idx += gridDim.x * blockDim.x) {                                           \n" +
-                    "    out_arr[idx] = in_arr[idx] + 1;                                               \n" +
-                    "  }                                                                               \n" +
+    private static final String INCREMENT_KERNEL_SOURCE = "extern \"C\"                                  \n" +
+                    "__global__ void inc_kernel(int *out_arr, const int *in_arr, int num_elements) {     \n" +
+                    "  for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;         \n" +
+                    "       idx += gridDim.x * blockDim.x) {                                             \n" +
+                    "    out_arr[idx] = in_arr[idx] + 1;                                                 \n" +
+                    "  }                                                                                 \n" +
+                    "}\n" +
+                    "\n" +
+                    "__global__ void cxx_inc_kernel(int *out_arr, const int *in_arr, int num_elements) { \n" +
+                    "  for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;         \n" +
+                    "       idx += gridDim.x * blockDim.x) {                                             \n" +
+                    "    out_arr[idx] = in_arr[idx] + 1;                                                 \n" +
+                    "  }                                                                                 \n" +
                     "}\n";
-
-    /** NFI signature of incrementing kernel. */
-    private static final String INCREMENT_KERNEL_LEGACY_NFI_SIGNATURE = "pointer, pointer, sint32";
-
-    /** NIDL signature of incrementing kernel. */
-    private static final String INCREMENT_KERNEL_NIDL_SIGNATURE = "out_arr : out pointer sint32, in_arr : in pointer sint32, num_elements : sint32";
 
     private static final int NUM_ELEMENTS = 1000;
 
@@ -83,12 +84,13 @@ public class BindKernelTest {
         assertEquals(0, nvccReturnCode);
     }
 
-    void testWithSignature(String signature) {
+    void testWithSignature(String... bindArgs) {
         // Build inc_kernel symbol, launch it, and check results.
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value bindkernel = context.eval("grcuda", "bindkernel");
-            Value incKernel = bindkernel.execute(BindKernelTest.ptxFileName, "inc_kernel", signature);
+            Value incKernel = bindArgs.length > 1 ? bindkernel.execute(BindKernelTest.ptxFileName, bindArgs[0], bindArgs[1])
+                            : bindkernel.execute(BindKernelTest.ptxFileName, bindArgs[0]);
             assertNotNull(incKernel);
             assertTrue(incKernel.canExecute());
             assertEquals(0, incKernel.getMember("launchCount").asInt());
@@ -115,12 +117,23 @@ public class BindKernelTest {
     }
 
     @Test
-    public void testBindKernelWithLegacyNFISignature() {
-        testWithSignature(INCREMENT_KERNEL_LEGACY_NFI_SIGNATURE);
+    public void testBindKernelWithLegacyNFISignatureToCKernel() {
+        testWithSignature("inc_kernel", "pointer, pointer, sint32");
     }
 
     @Test
-    public void testBindKernelWithNIDLSignature() {
-        testWithSignature(INCREMENT_KERNEL_NIDL_SIGNATURE);
+    public void testBindKernelWithLegacyNFISignatureToCxxKernel() {
+        testWithSignature("_Z14cxx_inc_kernelPiPKii", "pointer, pointer, sint32");
     }
+
+    @Test
+    public void testBindKernelWithNDILSignatureToCKernel() {
+        testWithSignature("inc_kernel(out_arr: out pointer sint32, in_arr: in pointer sint32, num_elements: sint32)");
+    }
+
+    @Test
+    public void testBindKernelWithNDILSignatureToCxxKernel() {
+        testWithSignature("cxx cxx_inc_kernel(out_arr: out pointer sint32, in_arr: in pointer sint32, num_elements: sint32)");
+    }
+
 }

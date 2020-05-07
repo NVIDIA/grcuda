@@ -29,6 +29,8 @@
 package com.nvidia.grcuda;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public final class FunctionBinding extends Binding {
 
@@ -40,11 +42,11 @@ public final class FunctionBinding extends Binding {
         this.returnType = returnType;
     }
 
-    public static Binding newCxxBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
+    public static FunctionBinding newCxxBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
         return new FunctionBinding(name, parameterList, returnType, true);
     }
 
-    public static Binding newCBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
+    public static FunctionBinding newCBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
         return new FunctionBinding(name, parameterList, returnType, false);
     }
 
@@ -56,5 +58,9 @@ public final class FunctionBinding extends Binding {
     @Override
     public String toNIDLString() {
         return name + "(" + getNIDLParameterSignature() + "): " + returnType.toString().toLowerCase();
+    }
+
+    public String toNFISignature() {
+        return "(" + Arrays.stream(parameters).map(Parameter::toNFISignatureElement).collect(Collectors.joining(", ")) + "): " + returnType.getNFITypeName();
     }
 }

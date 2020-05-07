@@ -29,10 +29,17 @@
 package com.nvidia.grcuda.functions;
 
 import java.util.ArrayList;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 import com.nvidia.grcuda.Binding;
+import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.KernelBinding;
+import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.gpu.LazyKernel;
 import com.nvidia.grcuda.parser.antlr.NIDLParser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -42,12 +49,12 @@ public class BindAllFunction extends Function {
 
     @SuppressWarnings("unused") private final CUDARuntime cudaRuntime;
 
-    // private final Namespace rootNamespace;
+    private final GrCUDAContext context;
 
     public BindAllFunction(GrCUDAContext context) {
         super("bindall");
         this.cudaRuntime = context.getCUDARuntime();
-        // this.rootNamespace = context.getRootNamespace();
+        this.context = context;
     }
 
     @Override
@@ -55,16 +62,101 @@ public class BindAllFunction extends Function {
     public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
         checkArgumentLength(arguments, 3);
 
-        String namespaceName = expectString(arguments[0], "argument 1 of bindkernel must be namespace string");
+        String namespaceName = expectString(arguments[0], "argument 1 of bindall must be namespace string");
         String libraryFile = expectString(arguments[1], "argument 2 of bindall must be library file name (.so)");
         String nidlFile = expectString(arguments[2], "argument 3 of bindkall must bei NIDL file name (.nidl)");
 
+        String[] namespaceComponents = splitNamespaceString(namespaceName);
         ArrayList<Binding> bindings = NIDLParser.parseNIDLFile(nidlFile);
-        // Namespace namespace = new Namespace(namespaceName);
-        bindings.forEach(binding -> {
-            System.out.println(binding);
-        });
+        NamespaceTriple namespaceTriple = getOrCreateNamespace(namespaceComponents);
+        bindings.forEach(binding -> binding.setLibraryFileName(libraryFile));
 
-        return "bindall(namespace=" + namespaceName + ", libraryFile=" + libraryFile + ", nidlFile=" + nidlFile + ")";
+        // check binding type
+        boolean kernelBindingPresent = false;
+        boolean functionBindingPresent = false;
+        for (Binding binding : bindings) {
+            kernelBindingPresent |= binding instanceof KernelBinding;
+            functionBindingPresent |= binding instanceof FunctionBinding;
+        }
+        if (!kernelBindingPresent && !functionBindingPresent) {
+            // nothing to do
+            return namespaceTriple.parentNamespace;
+        }
+        if (kernelBindingPresent && functionBindingPresent) {
+            // NIDL file cannot contain both kernel and host function bindings
+            throw new GrCUDAException("kernel and host function binding specified, can either bind kernel or host function");
+        }
+        if (kernelBindingPresent) {
+            bindings.forEach(binding -> namespaceTriple.leafNamespace.addKernel(new LazyKernel((KernelBinding) binding, cudaRuntime)));
+        }
+        if (functionBindingPresent) {
+            bindings.forEach(binding -> namespaceTriple.leafNamespace.addFunction(new HostFunction((FunctionBinding) binding, cudaRuntime)));
+        }
+
+        if (namespaceTriple.childNamespace == null) {
+            return namespaceTriple.parentNamespace;
+        } else {
+            // only add child namespace if all preceding operations were completed successfully
+            namespaceTriple.parentNamespace.addNamespace(namespaceTriple.childNamespace);
+            return namespaceTriple.leafNamespace;
+        }
+    }
+
+    private NamespaceTriple getOrCreateNamespace(String[] namespaceComponents) {
+        Namespace namespace = context.getRootNamespace();
+        int pos = 0;
+        for (; pos < namespaceComponents.length; pos++) {
+            Optional<Object> maybeNamespaceObject = namespace.lookup(namespaceComponents[pos]);
+            if (!maybeNamespaceObject.isPresent()) {
+                // components[0] ... components[pos-1] are existing namespaces
+                // but component[pos] does not exist.
+                break;
+            }
+            Object o = maybeNamespaceObject.get();
+            if (!(o instanceof Namespace)) {
+                throw new GrCUDAException("Identifier " + namespaceComponents[pos] + " does not refer to a namespace");
+            }
+            namespace = (Namespace) o;
+        }
+        Namespace parentNamespace = namespace;
+        Namespace childNamespace = null;
+        while (pos < namespaceComponents.length) {
+            Namespace ns = new Namespace(namespaceComponents[pos]);
+            if (childNamespace == null) {
+                childNamespace = ns;
+            } else {
+                namespace.addNamespace(ns);
+            }
+            namespace = ns;
+            pos += 1;
+        }
+        return new NamespaceTriple(parentNamespace, childNamespace, namespace);
+    }
+
+    private final class NamespaceTriple {
+        private final Namespace parentNamespace;
+        private final Namespace childNamespace;
+        private final Namespace leafNamespace;
+
+        private NamespaceTriple(Namespace parentNs, Namespace childNs, Namespace leafNs) {
+            this.parentNamespace = parentNs;
+            this.childNamespace = childNs;
+            this.leafNamespace = leafNs;
+        }
+    }
+
+    private static String[] splitNamespaceString(String namespaceName) {
+        String[] names = namespaceName.trim().split("::");
+        if (names.length == 0) {
+            throw new GrCUDAException("invalid namespace name");
+        }
+        // check whether namespace is composed of valid identifiers
+        Pattern identifier = Pattern.compile("[a-zA-Z_]\\w*");
+        for (String name : names) {
+            if (!identifier.matcher(name).matches()) {
+                throw new GrCUDAException("\"" + name + "\" is not a name in \"" + namespaceName + "\"");
+            }
+        }
+        return names;
     }
 }

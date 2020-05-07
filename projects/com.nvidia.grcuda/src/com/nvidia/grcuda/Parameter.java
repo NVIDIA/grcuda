@@ -172,15 +172,13 @@ public class Parameter {
         }
     }
 
-    public static Parameter[] parseSignature(String kernelSignature) throws TypeException {
+    public static ArrayList<Parameter> parseParameterSignature(String parameterSignature) throws TypeException {
         CompilerAsserts.neverPartOfCompilation();
         ArrayList<Parameter> params = new ArrayList<>();
-        for (String s : kernelSignature.trim().split(",")) {
+        for (String s : parameterSignature.trim().split(",")) {
             params.add(parseNIDLOrLegacyParameterString(params.size(), s.trim()));
         }
-        Parameter[] paramArray = new Parameter[params.size()];
-        params.toArray(paramArray);
-        return paramArray;
+        return params;
     }
 
     public Type getType() {
@@ -221,15 +219,11 @@ public class Parameter {
                 break;
             default:
         }
-        try {
-            buf.append(type.getMangled());
-        } catch (TypeException e) {
-            throw new GrCUDAException(e.getMessage());
-        }
+        buf.append(type.getMangled());
         return buf.toString();
     }
 
-    public String toSignature() {
+    public String toNIDLSignatureElement() {
         String pointerStr;
         switch (kind) {
             case POINTER_IN:
@@ -245,6 +239,17 @@ public class Parameter {
                 pointerStr = "";
         }
         return name + ": " + pointerStr + type.toString().toLowerCase();
+    }
+
+    public String toNFISignatureElement() {
+        switch (kind) {
+            case POINTER_IN:
+            case POINTER_INOUT:
+            case POINTER_OUT:
+                return "pointer";
+            default:
+                return type.getNFITypeName();
+        }
     }
 
     public boolean isSynonymousWithPointerTo(Type elementType) {

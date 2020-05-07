@@ -29,21 +29,23 @@
 package com.nvidia.grcuda;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public abstract class Binding {
     protected final boolean hasCxxMangledName;
     protected final String name;
-    protected final ArrayList<Parameter> parameterList;
+    protected final Parameter[] parameters;
     protected String[] namespaceList;
     protected String mangledName;
+    protected String libraryFileName;
 
     /**
      * Create a new binding.
      *
      * @param name a C style name or as fully qualified C++ name (e.g.,
      *            `namespace1::namespace2::name`).
-     * @param parameterList list of arguments names, types, and directions
+     * @param parameterList list of parameter names, types, and directions
      * @param hasCxxMangledName true if `name` is a C++ name and the symbol name is therefore
      *            mangled.
      */
@@ -54,7 +56,8 @@ public abstract class Binding {
         if (identifierList.length > 1) {
             System.arraycopy(identifierList, 0, namespaceList, 0, identifierList.length - 1);
         }
-        this.parameterList = parameterList;
+        Parameter[] params = new Parameter[parameterList.size()];
+        this.parameters = parameterList.toArray(params);
         this.hasCxxMangledName = hasCxxMangledName;
     }
 
@@ -88,13 +91,13 @@ public abstract class Binding {
             mangled += name.length() + name;
         }
         // add arguments
-        if (parameterList.size() == 0) {
+        if (parameters.length == 0) {
             mangled += 'v';     // f() -> f(void) -> void
         } else {
-            ArrayList<Parameter> processedSymbolParameters = new ArrayList<>(parameterList.size());
-            ArrayList<Integer> referencePositions = new ArrayList<>(parameterList.size());
+            ArrayList<Parameter> processedSymbolParameters = new ArrayList<>(parameters.length);
+            ArrayList<Integer> referencePositions = new ArrayList<>(parameters.length);
             int lastReference = 0;
-            for (Parameter currentParam : parameterList) {
+            for (Parameter currentParam : parameters) {
                 if (currentParam.getKind() == Parameter.Kind.BY_VALUE) {
                     // parameter of primitive type passed by-value: is not a symbol parameter
                     mangled += currentParam.getMangledType();
@@ -134,8 +137,16 @@ public abstract class Binding {
         this.namespaceList = namespaceList.toArray(this.namespaceList);
     }
 
+    public void setLibraryFileName(String libraryFileName) {
+        this.libraryFileName = libraryFileName;
+    }
+
+    public String getLibraryFileName() {
+        return libraryFileName;
+    }
+
     public String getNIDLParameterSignature() {
-        return parameterList.stream().map(Parameter::toSignature).collect(Collectors.joining(", "));
+        return Arrays.stream(parameters).map(Parameter::toNFISignatureElement).collect(Collectors.joining(", "));
     }
 
     public String toNIDLString() {
@@ -144,10 +155,13 @@ public abstract class Binding {
 
     @Override
     public String toString() {
-        String argString = parameterList.stream().map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
+        String argString = Arrays.stream(parameters).map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
         return "Binding(name=" + name + ", argumentList=" + argString +
                         ", cxxnamespace=" + String.join("::", namespaceList) +
                         ", hasCxxMangledName=" + hasCxxMangledName + ", symbol=" + getSymbolName() + ")";
     }
 
+    public String getName() {
+        return name;
+    }
 }

@@ -62,6 +62,7 @@ public final class Kernel implements TruffleObject {
 
     private final CUDARuntime cudaRuntime;
     private final String kernelName;
+    private final String kernelSymbol;
     private final long nativeKernelFunctionHandle;
     private final CUModule module;
     private final Parameter[] kernelParameters;
@@ -72,36 +73,42 @@ public final class Kernel implements TruffleObject {
      * Create a kernel without PTX code.
      *
      * @param cudaRuntime captured reference to the CUDA runtime instance
-     * @param kernelName name of the kernel symbol
+     * @param kernelName name of the kernel as exposed through Truffle
+     * @param kernelSymbol name of the kernel symbol*
      * @param kernelFunction native pointer to the kernel function (CUfunction)
      * @param kernelSignature signature string of the kernel (NFI or NIDL)
      * @param module CUmodule that contains the kernel function
      */
-    public Kernel(CUDARuntime cudaRuntime, String kernelName, long kernelFunction,
+    public Kernel(CUDARuntime cudaRuntime, String kernelName,
+                    String kernelSymbol, long kernelFunction,
                     String kernelSignature, CUModule module) {
-        this(cudaRuntime, kernelName, kernelFunction, kernelSignature, module, "");
+        this(cudaRuntime, kernelName, kernelSymbol, kernelFunction, kernelSignature, module, "");
     }
 
     /**
      * Create a kernel and hold on to the PTX code.
      *
      * @param cudaRuntime captured reference to the CUDA runtime instance
-     * @param kernelName name of the kernel symbol
+     * @param kernelName name of kernel as exposed through Truffle
+     * @param kernelSymbol name of the kernel symbol
      * @param kernelFunction native pointer to the kernel function (CUfunction)
      * @param kernelSignature signature string of the kernel (NFI or NIDL)
      * @param module CUmodule that contains the kernel function
      * @param ptx PTX source code for the kernel.
      */
-    public Kernel(CUDARuntime cudaRuntime, String kernelName, long kernelFunction,
-                    String kernelSignature, CUModule module, String ptx) {
+    public Kernel(CUDARuntime cudaRuntime, String kernelName, String kernelSymbol,
+                    long kernelFunction, String kernelSignature, CUModule module, String ptx) {
         try {
-            this.kernelParameters = Parameter.parseSignature(kernelSignature);
+            ArrayList<Parameter> paramList = Parameter.parseParameterSignature(kernelSignature);
+            Parameter[] params = new Parameter[paramList.size()];
+            this.kernelParameters = paramList.toArray(params);
         } catch (TypeException e) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException(e.getMessage());
         }
         this.cudaRuntime = cudaRuntime;
         this.kernelName = kernelName;
+        this.kernelSymbol = kernelSymbol;
         this.nativeKernelFunctionHandle = kernelFunction;
         this.module = module;
         this.ptxCode = ptx;
@@ -284,6 +291,10 @@ public final class Kernel implements TruffleObject {
         return kernelName;
     }
 
+    public String getSymbolName() {
+        return kernelSymbol;
+    }
+
     public int getLaunchCount() {
         return launchCount;
     }
@@ -293,7 +304,7 @@ public final class Kernel implements TruffleObject {
     protected static final String PTX = "ptx";
     protected static final String NAME = "name";
     protected static final String LAUNCH_COUNT = "launchCount";
-    private static final MemberSet MEMBERS = new MemberSet(PTX, NAME, LAUNCH_COUNT);
+    static final MemberSet MEMBERS = new MemberSet(PTX, NAME, LAUNCH_COUNT);
 
     @ExportMessage
     @SuppressWarnings("static-method")

@@ -36,11 +36,11 @@ public final class KernelBinding extends Binding {
         super(name, parameterList, hasCxxMangledName);
     }
 
-    public static Binding newCxxBinding(String name, ArrayList<Parameter> parameterList) {
+    public static KernelBinding newCxxBinding(String name, ArrayList<Parameter> parameterList) {
         return new KernelBinding(name, parameterList, true);
     }
 
-    public static Binding newCBinding(String name, ArrayList<Parameter> parameterList) {
+    public static KernelBinding newCBinding(String name, ArrayList<Parameter> parameterList) {
         return new KernelBinding(name, parameterList, false);
     }
 }

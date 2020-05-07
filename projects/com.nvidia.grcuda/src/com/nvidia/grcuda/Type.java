@@ -30,33 +30,39 @@ package com.nvidia.grcuda;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
-public enum Type {          // C++ Type in LP64:
-    BOOLEAN(1, true),       // bool
-    CHAR(1, true),          // char
-    SINT8(1, true),         // (signed) char
-    UINT8(1, true),         // unsigned char
-    CHAR8(1, true),         // char8_t
-    CHAR16(2, true),        // char16_t
-    SINT16(2, true),        // (signed) short
-    UINT16(2, true),        // (unsigned) short
-    CHAR32(4, true),        // char32_t
-    SINT32(4, true),        // (signed) int
-    UINT32(4, true),        // unsigned int
-    WCHAR(4, true),         // wchar_t (non Windows)
-    SINT64(8, true),        // (signed) long
-    UINT64(8, true),        // (unsigned) long
-    SLL64(8, true),         // (signed) long long
-    ULL64(8, true),         // unsigned long long
-    FLOAT(4, true),         // float
-    DOUBLE(8, true),        // double
-    NFI_POINTER(8, false),  // void* (w/o type) as used in NFI
-    STRING(8, false),       // const char*
-    VOID(0, false);         // void
+public enum Type {
+    BOOLEAN("bool", "uint8", "b", 1, true),
+    CHAR("char", "sint8", "c", 1, true),
+    SINT8("sint8", "sint8", "a", 1, true),
+    UINT8("uint8", "uint8", "h", 1, true),
+    CHAR8("char8", "uint8", "Du", 1, true),
+    CHAR16("char16", "uint16", "Ds", 2, true),
+    SINT16("sint16", "sint16", "s", 2, true),
+    UINT16("uint16", "uint16", "t", 2, true),
+    CHAR32("char32", "uint32", "Di", 4, true),
+    SINT32("sint32", "sint32", "i", 4, true),
+    UINT32("uint32", "uint32", "j", 4, true),
+    WCHAR("wchar", "sint32", "w", 4, true),
+    SINT64("sint64", "sint64", "l", 8, true),
+    UINT64("uint64", "uint64", "m", 8, true),
+    SLL64("sll64", "sint64", "x", 8, true),
+    ULL64("ull64", "uint64", "y", 8, true),
+    FLOAT("float", "float", "f", 4, true),
+    DOUBLE("double", "double", "d", 8, true),
+    NFI_POINTER("void", "pointer", "Pv", 8, false),  // void* (w/o type) as used in NFI
+    STRING("string", "string", "PKc", 8, false),  // const char*
+    VOID("void", "void", "v", 0, false);
 
+    private final String nidlTypeName;
+    private final String nfiTypeName;
+    private final String cxxEncoding;
     private final int sizeBytes;
     private final boolean isElementType;
 
-    Type(int sizeBytes, boolean isElementType) {
+    Type(String nidlTypeName, String nfiTypeName, String cxxEncoding, int sizeBytes, boolean isElementType) {
+        this.nidlTypeName = nidlTypeName;
+        this.nfiTypeName = nfiTypeName;
+        this.cxxEncoding = cxxEncoding;
         this.sizeBytes = sizeBytes;
         this.isElementType = isElementType;
     }
@@ -67,6 +73,14 @@ public enum Type {          // C++ Type in LP64:
 
     public boolean isElementType() {
         return this.isElementType;
+    }
+
+    public String getNIDLTypeName() {
+        return this.nidlTypeName;
+    }
+
+    public String getNFITypeName() {
+        return this.nfiTypeName;
     }
 
     public boolean isSynonymousWith(Type type) {
@@ -169,49 +183,7 @@ public enum Type {          // C++ Type in LP64:
         }
     }
 
-    String getMangled() throws TypeException {
-        switch (this) {
-            case BOOLEAN:
-                return "b";
-            case CHAR:
-                return "c";
-            case SINT8:
-                return "a";
-            case UINT8:
-                return "h";
-            case CHAR8:
-                return "Du";
-            case CHAR16:
-                return "Ds";
-            case SINT16:
-                return "s";
-            case UINT16:
-                return "t";
-            case CHAR32:
-                return "Di";
-            case SINT32:
-                return "i";
-            case UINT32:
-                return "j";
-            case WCHAR:
-                return "w";
-            case SINT64:
-                return "l";
-            case UINT64:
-                return "m";
-            case SLL64:
-                return "x";
-            case ULL64:
-                return "y";
-            case FLOAT:
-                return "f";
-            case DOUBLE:
-                return "d";
-            case VOID:
-                return "v";
-            default:
-                CompilerDirectives.transferToInterpreter();
-                throw new TypeException("no mangling character for type '" + this + "'");
-        }
+    String getMangled() {
+        return this.cxxEncoding;
     }
 }

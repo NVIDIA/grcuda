@@ -1,6 +1,18 @@
 # Type Mapping for C++
 
-For clang/gcc under Linux (LP64)
+grCUDA needs to interact with tree different type systems:
+
+- The Java types of the Truffle interop protocol (`boolean`, `byte`, `short`, `int`, `long`, `float`, `double`, `String`)
+  as described in [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
+  These types are used in the interop with the different GraalVM langauges.
+- C++ language types (see [C++ Fundamental Types](https://en.cppreference.com/w/cpp/language/types)
+  These types are used to used to bind to GPU kernels as well as to C++ host functions.
+- C interface types from TruffleNFI (`void`, `sint8`, `uint8`, `sint16`, `uint16`, `sint32`, `uint32`, `sint64`, `uint64`,
+    `float`, `double`, `pointer`, `object`, `string`).
+  [NativeSimpleType.java](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.nfi.spi/src/com/oracle/truffle/nfi/spi/types/NativeSimpleType.java)
+  defines these types. grCUDA uses TruffleNFI to invoke native host functions. While TruffleNFI is designed for C APIs, the C++ types are necessary create the mangled symbols names to invoke with TruffleNFI.
+
+Types for clang/gcc under Linux (LP64)
 
  C++ Type          |Bytes| Sym | NIDL Type          | NFI      | Java Type
 -------------------|-----|-----|--------------------|----------|----------
@@ -27,8 +39,8 @@ void               |  0  |  v  | void               | void     | void
 U *                |  8  | PU  | inout pointer V    | pointer  | n/a
 U *                |  8  | PU  | out pointer V      | pointer  | n/a
 const U *          |  8  | PKU | in pointer V       | pointer  | n/a
-void *             |  8  | PU  | inout pointer void | pointer  | n/a
-void *             |  8  | PU  | out pointer void   | pointer  | n/a
+void *             |  8  | Pv  | inout pointer void | pointer  | n/a
+void *             |  8  | Pv  | out pointer void   | pointer  | n/a
 const void *       |  8  | PKv | in pointer void    | pointer  | n/a
 const char *       |  8  | PKc | string             | string   | String
 
@@ -48,17 +60,3 @@ Synonymous types are that can substituted without coercion:
 - uint64, ull64
 - inout pointer V, out pointer U, synonymous(U, V), inout pointer void, out pointer void
 - in pointer V, in pointer U, synonymous(U, V), in pointer void
-
-## C++ Mangling substitution rules
-
-```
-void foo(int *)                 -> _Z3fooPi
-void foo(const int *)           -> _Z3fooPKi
-void foo(int *, int *)          -> _Z3fooPiS_  (NOT _Z3fooPiPi)
-void foo(int *, const int *)    -> _Z3fooPiPki (NO substitution)
-void foo(const int *, int *)    -> _Z3fooPiPki (NO substitution)
-void foo(int *, int*, void *, void*)         -> _Z3fooPiS_PvS0_
-void foo(int *, int*, float, void*)          -> _Z3fooPiS_fPvS0_
-void foo(int *, int*, float*, void*, void*)  -> _Z3fooPiS_PfPvS1_
-```
-

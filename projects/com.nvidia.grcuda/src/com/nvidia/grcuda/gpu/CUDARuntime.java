@@ -35,6 +35,9 @@ import static com.nvidia.grcuda.functions.Function.expectPositiveLong;
 
 import java.util.HashMap;
 import org.graalvm.collections.Pair;
+
+import com.nvidia.grcuda.Binding;
+import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -279,6 +282,17 @@ public final class CUDARuntime {
     /**
      * Get function as callable from native library.
      *
+     * @param binding function binding
+     * @return a callable as a TruffleObject
+     */
+    @TruffleBoundary
+    public Object getSymbol(FunctionBinding binding) throws UnknownIdentifierException {
+        return getSymbol(binding.getLibraryFileName(), binding.getSymbolName(), binding.toNFISignature(), "");
+    }
+
+    /**
+     * Get function as callable from native library.
+     *
      * @param libraryPath path to library (.so file)
      * @param symbolName name of the function (symbol) too look up
      * @param nfiSignature NFI signature of the function
@@ -437,7 +451,7 @@ public final class CUDARuntime {
                 }
             }
         },
-        CUDA_MALLOCMANAGED("cudaMallocManaged", "(pointer, uint64, sint32): sint32") {
+        CUDA_MALLOCMANAGED("cudaMallocManaged", "(pointer, uint64, uint32): sint32") {
             @Override
             @TruffleBoundary
             public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
@@ -497,15 +511,20 @@ public final class CUDARuntime {
     private HashMap<String, CUModule> loadedModules = new HashMap<>();
 
     @TruffleBoundary
-    public Kernel loadKernel(String cubinFile, String kernelName, String signature) {
+    public Kernel loadKernel(Binding binding) {
+        return loadKernel(binding.getLibraryFileName(), binding.getName(), binding.getSymbolName(), binding.getNIDLParameterSignature());
+    }
+
+    @TruffleBoundary
+    public Kernel loadKernel(String cubinFile, String kernelName, String symbolName, String signature) {
         CUModule module = loadedModules.get(cubinFile);
         if (module == null) {
             // load module as it is not yet loaded
             module = cuModuleLoad(cubinFile);
             loadedModules.put(cubinFile, module);
         }
-        long kernelFunction = cuModuleGetFunction(module, kernelName);
-        return new Kernel(this, kernelName, kernelFunction, signature, module);
+        long kernelFunction = cuModuleGetFunction(module, symbolName);
+        return new Kernel(this, kernelName, symbolName, kernelFunction, signature, module);
     }
 
     @TruffleBoundary
@@ -515,7 +534,7 @@ public final class CUDARuntime {
         CUModule module = cuModuleLoadData(ptx.getPtxSource(), moduleName);
         loadedModules.put(moduleName, module);
         long kernelFunctionHandle = cuModuleGetFunction(module, ptx.getLoweredKernelName());
-        return new Kernel(this, ptx.getLoweredKernelName(), kernelFunctionHandle,
+        return new Kernel(this, kernelName, ptx.getLoweredKernelName(), kernelFunctionHandle,
                         signature, module, ptx.getPtxSource());
     }
 

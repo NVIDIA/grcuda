@@ -53,32 +53,33 @@ public class BindTest {
                     "    out_arr[idx] = in_arr[idx] + 1.0f; \n" +
                     "  } \n" +
                     "} \n" +
-                    "__global__ void inc_kernel_inplace(int *inout_arr, int num_elements) { \n" +
+                    "__global__ void inc_inplace_kernel(int *inout_arr, int num_elements) { \n" +
                     "  for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements; \n" +
                     "       idx += gridDim.x * blockDim.x) { \n" +
                     "    inout_arr[idx] += 1; \n" +
                     "  } \n" +
                     "} \n" +
+                    "\n" +
                     "// C functions \n" +
-                    "extern \"C\" int gpu_inc(int blocks, int threads_per_block, \n" +
-                    "                       float *out_arr, const int *in_arr, int num_elements) { \n" +
-                    "  inc_kernel<<<blocks, threads_per_block>>>(out_arr, in_arr, num_elements); \n" +
+                    "extern \"C\" int inc_host(int blocks, int threads_per_block, \n" +
+                    "                          float *out_arr, const int *in_arr, int num_elements) { \n" +
+                    "  inc_kernel<<<blocks,    threads_per_block>>>(out_arr, in_arr, num_elements); \n" +
                     "  return cudaDeviceSynchronize(); \n" +
                     "} \n" +
-                    "extern \"C\" int gpu_inc_inplace(int blocks, int threads_per_block, \n" +
-                    "                               int *inout_arr, int num_elements) { \n" +
-                    "  inc_kernel_inplace<<<blocks, threads_per_block>>>(inout_arr, num_elements); \n" +
+                    "extern \"C\" int inc_inplace_host(int blocks, int threads_per_block, \n" +
+                    "                                  int *inout_arr, int num_elements) { \n" +
+                    "  inc_inplace_kernel<<<blocks, threads_per_block>>>(inout_arr, num_elements); \n" +
                     "  return cudaDeviceSynchronize(); \n" +
                     "} \n" +
                     "// C++ functions \n" +
-                    "int cxx_gpu_inc(int blocks, int threads_per_block, \n" +
-                    "                float *out_arr, const int *in_arr, int num_elements) { \n" +
+                    "int cxx_inc_host(int blocks, int threads_per_block, \n" +
+                    "                 float *out_arr, const int *in_arr, int num_elements) { \n" +
                     "  inc_kernel<<<blocks, threads_per_block>>>(out_arr, in_arr, num_elements); \n" +
                     "  return cudaDeviceSynchronize(); \n" +
                     "} \n" +
-                    "int cxx_gpu_inc_inplace(int blocks, int threads_per_block, \n" +
-                    "                        int *inout_arr, int num_elements) { \n" +
-                    "  inc_kernel_inplace<<<blocks, threads_per_block>>>(inout_arr, num_elements); \n" +
+                    "int cxx_inc_inplace_host(int blocks, int threads_per_block, \n" +
+                    "                         int *inout_arr, int num_elements) { \n" +
+                    "  inc_inplace_kernel<<<blocks, threads_per_block>>>(inout_arr, num_elements); \n" +
                     "  return cudaDeviceSynchronize(); \n" +
                     "}\n";
     private static final int numElements = 100;
@@ -104,7 +105,7 @@ public class BindTest {
         assertEquals(0, nvccReturnCode);
     }
 
-    public void callWithInAndOutArguments(String symbol, String signature) {
+    public void callWithInAndOutArguments(String... bindArgs) {
         try (Context polyglot = Context.newBuilder().allowAllAccess(true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             Value inDeviceArray = cu.getMember("DeviceArray").execute("int", numElements);
@@ -115,7 +116,9 @@ public class BindTest {
             }
 
             // get function from shared library
-            Value function = cu.getMember("bind").execute(dynamicLibraryFile, symbol, signature);
+            Value bind = cu.getMember("bind");
+            Value function = bindArgs.length > 1 ? bind.execute(dynamicLibraryFile, bindArgs[0], bindArgs[1])
+                            : bind.execute(dynamicLibraryFile, bindArgs[0]);
             assertNotNull(function);
 
             // call function
@@ -130,7 +133,7 @@ public class BindTest {
         }
     }
 
-    public void callWithInoutArgument(String symbol, String signature) {
+    public void callWithInoutArgument(String... bindArgs) {
         try (Context polyglot = Context.newBuilder().allowAllAccess(true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             Value inoutDeviceArray = cu.getMember("DeviceArray").execute("int", numElements);
@@ -139,7 +142,9 @@ public class BindTest {
             }
 
             // get function from shared library
-            Value function = cu.getMember("bind").execute(dynamicLibraryFile, symbol, signature);
+            Value bind = cu.getMember("bind");
+            Value function = bindArgs.length > 1 ? bind.execute(dynamicLibraryFile, bindArgs[0], bindArgs[1])
+                            : bind.execute(dynamicLibraryFile, bindArgs[0]);
             assertNotNull(function);
 
             // call function
@@ -156,28 +161,49 @@ public class BindTest {
 
     @Test
     public void testCcallLegacyNFISignatureWithInAndOutArguments() {
-        callWithInAndOutArguments("gpu_inc", "(sint32, sint32, pointer, pointer, sint32): sint32");
+        callWithInAndOutArguments("inc_host", "(sint32, sint32, pointer, pointer, sint32): sint32");
     }
 
     @Test
     public void testCcallLegacyNFISignatureWithInoutArgument() {
-        callWithInoutArgument("gpu_inc_inplace", "(sint32, sint32, pointer, sint32): sint32");
+        callWithInoutArgument("inc_inplace_host", "(sint32, sint32, pointer, sint32): sint32");
     }
 
     @Test
     public void testCxxCallLegacyNFISignatureWithInAndOutArguments() {
-        callWithInAndOutArguments("_Z11cxx_gpu_inciiPfPKii", "(sint32, sint32, pointer, pointer, sint32): sint32");
+        callWithInAndOutArguments("_Z12cxx_inc_hostiiPfPKii", "(sint32, sint32, pointer, pointer, sint32): sint32");
     }
 
     @Test
     public void testCxxCallLegacyNFISignatureWithInoutArgument() {
-        callWithInoutArgument("_Z19cxx_gpu_inc_inplaceiiPii", "(sint32, sint32, pointer, sint32): sint32");
+        callWithInoutArgument("_Z20cxx_inc_inplace_hostiiPii", "(sint32, sint32, pointer, sint32): sint32");
     }
 
-// @Test
-// public void testCcallLegacyNIDLSignatureWithInAndOutArguments() {
-// callWithInAndOutArguments("gpu_inc",
-// "(blocks: sint32, threads_per_block: sint32, out_arr: out pointer float, in_arr: in pointer
-// sint32, num_elements: sint32): sint32");
-// }
+    @Test
+    public void testCcallNIDLSignatureWithInAndOutArguments() {
+        callWithInAndOutArguments("" +
+                        "inc_host(blocks: sint32, threads_per_block: sint32, out_arr: out pointer float, " +
+                        "in_arr: in pointer sint32, num_elements: sint32): sint32");
+    }
+
+    @Test
+    public void testCcallNIDLSignatureWithInoutArguments() {
+        callWithInoutArgument("" +
+                        "inc_inplace_host(blocks: sint32, threads_per_block: sint32, inout_arr: inout pointer sint32, " +
+                        "num_elements: sint32): sint32");
+    }
+
+    @Test
+    public void testCxxCallNIDLSignatureWithInAndOutArguments() {
+        callWithInAndOutArguments("cxx " +
+                        "cxx_inc_host(blocks: sint32, threads_per_block: sint32, out_arr: out pointer float, " +
+                        "in_arr: in pointer sint32, num_elements: sint32): sint32");
+    }
+
+    @Test
+    public void testCxxcallNIDLSignatureWithInoutArguments() {
+        callWithInoutArgument("cxx " +
+                        "cxx_inc_inplace_host(blocks: sint32, threads_per_block: sint32, inout_arr: inout pointer sint32, " +
+                        "num_elements: sint32): sint32");
+    }
 }
