@@ -585,7 +585,7 @@ print(device0.isCurrent())  # true
 
 Table: Device Properties Names (see also
 [CUDA Runtime Documentation](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html))
-| Property Name
+| Property Name                             |
 |-------------------------------------------|
 | `asyncEngineCount`                        |
 | `canFlushRemoteWrites`                    |
