@@ -5,6 +5,7 @@ import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
 import com.nvidia.grcuda.gpu.computation.dependency.DefaultDependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
 
 /**
  * Mock class to test the GrCUDAExecutionContextTest, it has a null CUDARuntime;
@@ -26,9 +27,9 @@ public class GrCUDAExecutionContextMock extends GrCUDAExecutionContext {
                 new GrCUDAStreamManagerMock(null), dependencyBuilder);
     }
 
-    public GrCUDAExecutionContextMock(DependencyComputationBuilder dependencyBuilder, boolean syncStream) {
+    public GrCUDAExecutionContextMock(DependencyComputationBuilder dependencyBuilder, boolean syncStream, RetrieveStreamPolicyEnum retrieveStreamPolicy) {
         super(null, null,
-                new GrCUDAStreamManagerMock(null, syncStream), dependencyBuilder);
+                new GrCUDAStreamManagerMock(null, syncStream, retrieveStreamPolicy), dependencyBuilder);
     }
 
     public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {

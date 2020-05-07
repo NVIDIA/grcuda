@@ -11,6 +11,12 @@ import java.util.Map;
 import java.util.Set;
 
 public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
+
+    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents, RetrieveStreamPolicyEnum retrieveStreamPolicy) {
+        super(runtime, retrieveStreamPolicy);
+        this.syncParents = syncParents;
+    }
+
     GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents) {
         super(runtime, RetrieveStreamPolicyEnum.ALWAYS_NEW);
         this.syncParents = syncParents;
@@ -28,7 +34,6 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = new CUDAStream(0, numStreams++);
         streams.add(newStream);
-//        this.activeComputationsPerStream.put(newStream, new HashSet<>());
         return newStream;
     }
 

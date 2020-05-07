@@ -15,4 +15,9 @@ public class ArgumentMock extends ComputationArgumentWithValue {
     public ArgumentMock(Object value, boolean isConst, boolean isArray) {
         super(ArgumentType.POINTER, isArray, isConst, value);
     }
+
+    @Override
+    public String toString() {
+        return this.getArgumentValue().toString() + (isArray ? "" : " - scalar") + (isConst ? " - const" : "");
+    }
 }

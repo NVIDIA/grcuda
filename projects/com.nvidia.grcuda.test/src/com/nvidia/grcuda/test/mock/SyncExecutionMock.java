@@ -9,28 +9,32 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Mock class to test the DAG execution;
+ * Mock class that represents a synchronous execution,
+ * it can be used to synchronize previous computations using the specified arguments;
  */
-public class KernelExecutionMock extends GrCUDAComputationalElement {
+public class SyncExecutionMock extends GrCUDAComputationalElement {
 
-    public KernelExecutionMock(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
+    public SyncExecutionMock(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
         super(grCUDAExecutionContext, args);
     }
 
     @Override
-    public Object execute() { return NoneValue.get(); }
+    public Object execute() {
+        this.setComputationFinished();
+        return NoneValue.get();
+    }
 
     @Override
-    public boolean canUseStream() { return true; }
+    public boolean canUseStream() { return false; }
 
     @Override
     public void associateArraysToStreamImpl() { }
 
     @Override
     public String toString() {
-        return "kernel mock" + "; args=[" +
+        return "sync" + "; args=[" +
                 this.argumentList.stream().map(Object::toString).collect(Collectors.joining(", ")) +
-                "]" + "; stream=" + this.getStream().getStreamNumber();
+                "]";
     }
 }
 
