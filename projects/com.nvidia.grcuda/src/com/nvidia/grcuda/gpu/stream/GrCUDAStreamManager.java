@@ -32,7 +32,6 @@ public class GrCUDAStreamManager {
 
     private final RetrieveStream retrieveStream;
 
-    // TODO: tests on the 2 retrieve stream policies, with extra tests on LIFO;
     public GrCUDAStreamManager(CUDARuntime runtime) {
         this(runtime, runtime.getContext().getRetrieveStreamPolicy());
     }
@@ -91,26 +90,29 @@ public class GrCUDAStreamManager {
      */
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
         // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
+        //  We can have a function in context called "is any computation running" that checks if the map is empty, and call it from array accesses
+        //  Also add test for it!
 
         // Skip syncing if no computation is active;
-        // FIXME: this doesn't check if streams are empty! it works only at the very start
-        if (!activeComputationsPerStream.isEmpty()) {
+        System.out.println("--\tSYNC REQUEST by " + vertex.getComputation());
+        if (this.isAnyComputationActive()) {
             Set<GrCUDAComputationalElement> computationsToSync = new HashSet<>(vertex.getParentComputations());
 
             // Retrieve an additional stream dependency from the kernel, if required;
             Optional<CUDAStream> additionalStream = vertex.getComputation().additionalStreamDependency();
             if (additionalStream.isPresent()) {
+                CUDAStream stream = additionalStream.get();
                 // If we require synchronization on the default stream, perform it in a specialized way;
-                if (additionalStream.get().isDefaultStream()) {
-                    System.out.println("--\tsync stream " + additionalStream.get() + " by " + vertex.getComputation());
+                if (stream.isDefaultStream()) {
+                    System.out.println("--\tsync stream " + stream + " by " + vertex.getComputation());
                     // Synchronize the device;
                     runtime.cudaDeviceSynchronize();
                     // All computations are now finished;
                     resetActiveComputationState();
                 } else {
                     // Else add the computations related to the additional streams to the set and sync it;
-                    System.out.println("--\tsyncing additional stream " + additionalStream.get() + "...");
-                    computationsToSync.addAll(activeComputationsPerStream.get(additionalStream.get()));
+                    System.out.println("--\tsyncing additional stream " + stream + "...");
+                    computationsToSync.addAll(activeComputationsPerStream.get(stream));
                     syncParentStreamsImpl(computationsToSync, vertex.getComputation());
                 }
             } else {
@@ -146,7 +148,6 @@ public class GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
-//        activeComputationsPerStream.put(newStream, new HashSet<>());
         return newStream;
     }
 
@@ -160,6 +161,13 @@ public class GrCUDAStreamManager {
     public int getNumActiveComputationsOnStream(CUDAStream stream) {
         return activeComputationsPerStream.get(stream).size();
     }
+
+    /**
+     * Check if any computation is currently marked as active, and is running on a stream.
+     * If so, scheduling of new computations is likely to require synchronizations of some sort;
+     * @return if any computation is considered active on a stream
+     */
+    public boolean isAnyComputationActive() { return !this.activeComputationsPerStream.isEmpty(); }
 
     protected void addActiveComputation(GrCUDAComputationalElement computation) {
         CUDAStream stream = computation.getStream();
@@ -192,7 +200,6 @@ public class GrCUDAStreamManager {
     private void resetActiveComputationState() {
         activeComputationsPerStream.keySet().forEach(s -> {
             activeComputationsPerStream.get(s).forEach(GrCUDAComputationalElement::setComputationFinished);
-//            activeComputationsPerStream.put(s, new HashSet<>());
         });
         // Streams don't have any active computation;
         activeComputationsPerStream.clear();

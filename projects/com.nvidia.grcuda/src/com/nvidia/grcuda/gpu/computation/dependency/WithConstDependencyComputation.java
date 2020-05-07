@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.gpu.computation.dependency;
 
+import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
@@ -44,5 +45,10 @@ public class WithConstDependencyComputation extends DependencyComputation {
         activeArgumentSet = newArgumentSet;
         // Return the list of arguments that created dependencies with the new computation;
         return dependencies;
+    }
+
+    @Override
+    public boolean keepArgument(ComputationArgumentWithValue arg) {
+        return (arg.getArgumentValue() instanceof AbstractArray) && !arg.isConst();
     }
 }

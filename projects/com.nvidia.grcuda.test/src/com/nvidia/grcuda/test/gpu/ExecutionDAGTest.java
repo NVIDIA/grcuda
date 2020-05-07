@@ -327,8 +327,39 @@ public class ExecutionDAGTest {
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 2.0);
             }
+
+            Value buildkernel = context.eval("grcuda", "buildkernel");
+            Value squareKernel = buildkernel.execute(SQUARE_2_KERNEL, "square", "const pointer, pointer, sint32");
+            assertNotNull(squareKernel);
+
+            Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+
+            // Perform the computation;
+            configuredSquareKernel.execute(x, z, numElements);
+
+            // Verify the output;
+            assertEquals(0.0, y.getArrayElement(0).asFloat(), 0.1);
+            assertEquals(4.0, z.getArrayElement(0).asFloat(), 0.1);
+        }
+    }
+
+    @Test
+    public void dependencyPipelineSimple4Test() {
+
+        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+
+            final int numElements = 100000;
+            final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
+            Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
+            Value x = deviceArrayConstructor.execute("float", numElements);
+            Value y = deviceArrayConstructor.execute("float", numElements);
+            Value z = deviceArrayConstructor.execute("float", numElements);
+
+            for (int i = 0; i < numElements; ++i) {
+                x.setArrayElement(i, 2.0);
+            }
             // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
-//            y.setArrayElement(0, 0);
+            y.setArrayElement(0, 0);
 
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value squareKernel = buildkernel.execute(SQUARE_2_KERNEL, "square", "const pointer, pointer, sint32");

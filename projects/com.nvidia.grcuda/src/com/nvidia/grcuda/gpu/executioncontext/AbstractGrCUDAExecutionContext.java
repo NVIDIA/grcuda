@@ -98,6 +98,13 @@ public abstract class AbstractGrCUDAExecutionContext {
     }
 
     /**
+     * Check if any computation is currently marked as active, and is running on a stream managed by this context.
+     * If so, scheduling of new computations is likely to require synchronizations of some sort;
+     * @return if any computation is considered active on a stream managed by this context
+     */
+    public abstract boolean isAnyComputationActive();
+
+    /**
      * Delete internal structures that require manual cleanup operations;
      */
     public void cleanup() { }

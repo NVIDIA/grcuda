@@ -316,7 +316,7 @@ public class WithConstDependencyComputationTest {
 
         try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with_const").allowAllAccess(true).build()) {
 
-            final int numElements = 10;
+            final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);
@@ -338,8 +338,9 @@ public class WithConstDependencyComputationTest {
             configuredSquareKernel.execute(x, z, numElements);
 
             // Read the array x before syncing the computation. Depending on the GPU, this might sync the device;
-            assertEquals(2.0, x.getArrayElement(0).asFloat(), 0.1);
-            assertEquals(2.0, x.getArrayElement(numElements - 1).asFloat(), 0.1);
+            for (int i = 0; i < numElements; ++i) {
+                assertEquals(2.0, x.getArrayElement(i).asFloat(), 0.1);
+            }
 
             // Verify the output;
             assertEquals(4.0, y.getArrayElement(0).asFloat(), 0.1);

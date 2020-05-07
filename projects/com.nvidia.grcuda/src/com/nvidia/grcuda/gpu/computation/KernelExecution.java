@@ -81,10 +81,10 @@ public class KernelExecution extends GrCUDAComputationalElement {
 
     @Override
     public void associateArraysToStreamImpl() {
-        for (Object o : this.args.getOriginalArgs()) {
-            if (o instanceof AbstractArray) {
+        for (ComputationArgumentWithValue a : args.getKernelArgumentWithValues()) {
+            if (this.getDependencyComputation().keepArgument(a)) {
                 // Attach the array to the stream, synchronously;
-                grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), (AbstractArray) o);
+                grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), (AbstractArray) a.getArgumentValue());
             }
         }
     }

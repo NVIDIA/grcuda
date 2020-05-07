@@ -33,4 +33,16 @@ public abstract class DependencyComputation {
     public Collection<ComputationArgumentWithValue> getActiveArgumentSet() {
         return activeArgumentSet;
     }
+
+    /**
+     * Provide an additional, optional filter used by dependency computations.
+     * The filter defines if and how arguments can be used in user-defined {@link GrCUDAComputationalElement}
+     * whose behaviour is influenced by how dependencies are computed.
+     * For example, a filter could keep only non-const array arguments, and ignore the others;
+     * @param arg an argument to analyse
+     * @return if this argument should be kept or not for the user-defined computation
+     */
+    public boolean keepArgument(ComputationArgumentWithValue arg) {
+        return true;
+    }
 }

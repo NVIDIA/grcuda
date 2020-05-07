@@ -86,6 +86,14 @@ public abstract class AbstractArray implements TruffleObject {
         this.streamMapping = streamMapping;
     }
 
+    public boolean isLastComputationArrayAccess() { return isLastComputationArrayAccess; }
+
+    public void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
+        isLastComputationArrayAccess = lastComputationArrayAccess;
+    }
+
+    public abstract long getPointer();
+
     // Implementation of InteropLibrary
 
     @ExportMessage
@@ -112,14 +120,6 @@ public abstract class AbstractArray implements TruffleObject {
      */
     @ExportMessage
     public abstract long getArraySize();
-
-    public boolean isLastComputationArrayAccess() { return isLastComputationArrayAccess; }
-
-    public void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
-        isLastComputationArrayAccess = lastComputationArrayAccess;
-    }
-
-    public abstract long getPointer();
 
     // TODO: equals must be smarter than checking memory address, as a MultiDimView should be considered as part of its parent,
     //   similarly to what "isLastComputationArrayAccess" is doing.

@@ -62,6 +62,11 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 //        }
     }
 
+    @Override
+    public boolean isAnyComputationActive() {
+        return this.streamManager.isAnyComputationActive();
+    }
+
     public GrCUDAStreamManager getStreamManager() {
         return streamManager;
     }

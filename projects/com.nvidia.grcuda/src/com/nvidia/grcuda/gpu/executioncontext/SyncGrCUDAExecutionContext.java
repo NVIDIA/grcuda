@@ -40,4 +40,13 @@ public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
         return result;
     }
+
+    /**
+     * All computations are synchronous, and atomic;
+     * @return false
+     */
+    @Override
+    public boolean isAnyComputationActive() {
+        return false;
+    }
 }
