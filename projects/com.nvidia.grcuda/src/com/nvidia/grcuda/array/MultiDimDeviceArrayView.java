@@ -155,7 +155,7 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             throw InvalidArrayIndexException.create(index);
         }
         try {
-            if (this.isLastComputationArrayAccess()) {
+            if (this.canSkipScheduling()) {
                 // Fast path, skip the DAG scheduling;
                 return readArrayElementImpl(index, elementTypeProfile);
             } else {
@@ -201,7 +201,7 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        if (this.isLastComputationArrayAccess()) {
+        if (this.canSkipScheduling()) {
             // Fast path, skip the DAG scheduling;
             writeArrayElementImpl(index, value, valueLibrary, elementTypeProfile);
         } else {

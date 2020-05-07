@@ -45,7 +45,7 @@ public abstract class AbstractArray implements TruffleObject {
      * for array accesses that are immediately following the last one, as they are performed synchronously and there is no
      * reason to explicitly model them in the {@link com.nvidia.grcuda.gpu.ExecutionDAG};
      */
-    private boolean isLastComputationArrayAccess = false;
+    private boolean isLastComputationArrayAccess = true;
 
     public ElementType getElementType() {
         return elementType;
@@ -93,6 +93,16 @@ public abstract class AbstractArray implements TruffleObject {
     }
 
     public abstract long getPointer();
+
+    /**
+     * Check if this array can be accessed by the host (read/write) without having to schedule a {@link com.nvidia.grcuda.gpu.computation.ArrayAccessExecution}.
+     * This is possible if the last computation on this array was also a host array access,
+     * and the array is not exposed on the default stream while other GPU computations are running.
+     * @return if this array can be accessed by the host without scheduling a computation
+     */
+    protected boolean canSkipScheduling() {
+        return this.isLastComputationArrayAccess() && !(this.streamMapping.isDefaultStream() && grCUDAExecutionContext.isAnyComputationActive());
+    }
 
     // Implementation of InteropLibrary
 
