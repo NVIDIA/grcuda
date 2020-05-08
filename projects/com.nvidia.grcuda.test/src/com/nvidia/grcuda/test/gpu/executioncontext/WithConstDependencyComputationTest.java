@@ -186,7 +186,7 @@ public class WithConstDependencyComputationTest {
                 .setDependencyComputationBuilder(new WithConstDependencyComputationBuilder()).build();
 
         // A(1R,2) -> B(1) -> D(1R,3) ---------> G(1,3,4)
-        //         \- C(2R) \- E(1R,4) --/--> F(4) -/
+        //         \- C(2R) \- E(1R,4) ----> F(4) -/
         // The final frontier is composed by A(2), C(2R), G(1, 3, 4);
         new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1, true), new ArgumentMock(2))).schedule();
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
@@ -200,7 +200,7 @@ public class WithConstDependencyComputationTest {
 
         // Check the DAG structure;
         assertEquals(7, dag.getNumVertices());
-        assertEquals(8, dag.getNumEdges());
+        assertEquals(7, dag.getNumEdges());
         assertEquals(3, dag.getFrontier().size());
         // Check updates to frontier and start status;
         assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(0), dag.getVertices().get(2), dag.getVertices().get(6))),
@@ -229,6 +229,9 @@ public class WithConstDependencyComputationTest {
         assertFalse(dag.getVertices().get(3).getChildVertices().contains(dag.getVertices().get(4)));
         // Check that G is child exactly of D and F;
         assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(3), dag.getVertices().get(5))), new HashSet<>(dag.getVertices().get(6).getParentVertices()));
+        // Check that E and G are not connected;
+        assertFalse(dag.getVertices().get(6).getParentVertices().contains(dag.getVertices().get(4)));
+        assertFalse(dag.getVertices().get(4).getChildVertices().contains(dag.getVertices().get(6)));
     }
 
     @Test

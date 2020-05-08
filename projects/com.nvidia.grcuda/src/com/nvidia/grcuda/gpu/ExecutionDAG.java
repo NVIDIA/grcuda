@@ -4,9 +4,15 @@ import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.oracle.truffle.api.interop.TruffleObject;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -38,13 +44,29 @@ public class ExecutionDAG implements TruffleObject {
         //////////////////////////////
 
         // For each vertex in the frontier, compute dependencies of the vertex;
+
+        // Collect the vertices from which there are dependencies;
+        Map<DAGVertex, Collection<ComputationArgumentWithValue>> dependentVerticesMap = new HashMap<>();
+        List<DAGVertex> dependentVertices = new ArrayList<>();
         for (DAGVertex frontierVertex : cleanFrontier()) {
             Collection<ComputationArgumentWithValue> dependencies = computeDependencies(frontierVertex, newVertex);
             if (dependencies.size() > 0) {
-                // Create a new edge between the two vertices (book-keeping is automatic);
-                new DAGEdge(frontierVertex, newVertex, dependencies);
+                dependentVerticesMap.put(frontierVertex, dependencies);
+                dependentVertices.add(frontierVertex);
             }
         }
+
+        // Filter dependencies that are unnecessary. For example,
+        //   if a computation C depends on computations A and B, and B depends on A;
+        dependentVertices = dependentVertices.stream()
+                .filter(v -> keepDependency(v, dependentVerticesMap.keySet())).collect(Collectors.toList());
+
+        // Create new edges;
+        for (DAGVertex dependentVertex : dependentVertices) {
+            // Create a new edge between the two vertices (book-keeping is automatic);
+            new DAGEdge(dependentVertex, newVertex, dependentVerticesMap.get(dependentVertex));
+        }
+
         // Remove from the frontier vertices that no longer belong to it;
         frontier = cleanFrontier();
         // Add the new vertex to the frontier if it has no children;
@@ -56,6 +78,32 @@ public class ExecutionDAG implements TruffleObject {
 
     private Collection<ComputationArgumentWithValue> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
         return startVertex.getComputation().computeDependencies(endVertex.getComputation());
+    }
+
+    /**
+     * Determine if a vertex should really be a dependency, given a set of possible dependencies.
+     * The vertex is not going to be a dependency if any of its children is included in the dependency set;
+     * @param vertex a vertex we want to possibly filter, if it's an unnecessary dependency
+     * @param dependentVertices a list of possible dependencies
+     * @return if the vertex should be kept in the dependencies
+     */
+    private boolean keepDependency(DAGVertex vertex, Set<DAGVertex> dependentVertices) {
+        // Perform a BFS starting from the children of "vertex";
+        Queue<DAGVertex> queue = new ArrayDeque<>(vertex.getChildVertices());
+        Set<DAGVertex> visitedVertices = new HashSet<>();
+
+        while (!queue.isEmpty()) {
+            DAGVertex currentVertex = queue.poll();
+            // If the current vertex is in the set of candidate dependencies, we can filter it out;
+            if (dependentVertices.contains(currentVertex)) {
+                return false;
+            } else if (!visitedVertices.contains(currentVertex)) {
+                // Add children to the queue, but only if the current vertex hasn't been seen yet;
+                visitedVertices.add(currentVertex);
+                queue.addAll(currentVertex.getChildVertices());
+            }
+        }
+        return true;
     }
 
     public List<DAGVertex> getVertices() {
