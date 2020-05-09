@@ -6,6 +6,7 @@ from bench.bench_2 import Benchmark2
 from bench.bench_3 import Benchmark3
 from bench.bench_4 import Benchmark4
 from bench.bench_5 import Benchmark5
+from bench.bench_6 import Benchmark6
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -18,6 +19,7 @@ benchmarks = {
     "b3": Benchmark3,
     "b4": Benchmark4,
     "b5": Benchmark5,
+    "b6": Benchmark6,
 }
 
 num_elem = {
@@ -26,6 +28,7 @@ num_elem = {
     "b3": [100],
     "b4": [100],
     "b5": [100],
+    "b6": [100],
 }
 
 policies = {
@@ -34,6 +37,7 @@ policies = {
     "b3": ["default"],
     "b4": ["default"],
     "b5": ["default"],
+    "b6": ["default"],
 }
 
 ##############################

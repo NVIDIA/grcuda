@@ -48,6 +48,13 @@ class Benchmark(ABC):
         pass
 
     @abstractmethod
+    def reset_result(self) -> None:
+        """
+        Reset the values that hold the GPU result
+        """
+        pass
+
+    @abstractmethod
     def cpu_validation(self, gpu_result: object, reinit: bool) -> None:
         """
         Run an equivalent benchmark on CPU to obtain the correct result of the benchmark,
@@ -83,8 +90,12 @@ class Benchmark(ABC):
         if self.current_iter == 0 or realloc:
             self.alloc(size)
         # Initialize memory for the benchmark;
-        if self.current_iter == 0 or reinit:
+        if self.current_iter == 0 or reinit or reinit:
             self.init()
+
+        # Reset the result;
+        # self.reset_result()
+
         # Execute the benchmark;
         gpu_result = self.execute()
 
