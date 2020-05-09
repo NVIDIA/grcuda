@@ -1,6 +1,7 @@
 package com.nvidia.grcuda.test.gpu;
 
-import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMock;
 import com.nvidia.grcuda.test.mock.KernelExecutionMock;
@@ -23,7 +24,7 @@ public class ExecutionDAGTest {
 
     @Test
     public void executionDAGConstructorTest() {
-        ExecutionDAG dag = new ExecutionDAG();
+        ExecutionDAG dag = new ExecutionDAG(DependencyPolicyEnum.DEFAULT);
         assertTrue(dag.getVertices().isEmpty());
         assertTrue(dag.getEdges().isEmpty());
         assertTrue(dag.getFrontier().isEmpty());

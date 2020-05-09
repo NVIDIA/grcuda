@@ -1,7 +1,8 @@
-package com.nvidia.grcuda.gpu;
+package com.nvidia.grcuda.gpu.executioncontext;
 
 import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 import java.util.ArrayDeque;
@@ -24,11 +25,25 @@ public class ExecutionDAG implements TruffleObject {
 
     private final List<DAGVertex> vertices = new ArrayList<>();
     private final List<DAGEdge> edges = new ArrayList<>();
+    private final KeepDependency keepDependency;
 
     /**
      * Current frontier of the DAG, i.e. vertices with no children.
      */
     private List<DAGVertex> frontier = new ArrayList<>();
+
+    public ExecutionDAG(DependencyPolicyEnum dependencyPolicy) {
+        switch (dependencyPolicy) {
+            case WITH_CONST:
+                this.keepDependency = new WithConstKeepDependency();
+                break;
+            case DEFAULT:
+                this.keepDependency = new DefaultKeepDependency();
+                break;
+            default:
+                this.keepDependency = new DefaultKeepDependency();
+        }
+    }
 
     /**
      * Add a new computation to the graph, and compute its dependencies.
@@ -59,7 +74,8 @@ public class ExecutionDAG implements TruffleObject {
         // Filter dependencies that are unnecessary. For example,
         //   if a computation C depends on computations A and B, and B depends on A;
         dependentVertices = dependentVertices.stream()
-                .filter(v -> keepDependency(v, dependentVerticesMap.keySet())).collect(Collectors.toList());
+                .filter(v -> keepDependency.keepDependency(v, dependentVerticesMap.keySet()))
+                .collect(Collectors.toList());
 
         // Create new edges;
         for (DAGVertex dependentVertex : dependentVertices) {
@@ -78,32 +94,6 @@ public class ExecutionDAG implements TruffleObject {
 
     private Collection<ComputationArgumentWithValue> computeDependencies(DAGVertex startVertex, DAGVertex endVertex) {
         return startVertex.getComputation().computeDependencies(endVertex.getComputation());
-    }
-
-    /**
-     * Determine if a vertex should really be a dependency, given a set of possible dependencies.
-     * The vertex is not going to be a dependency if any of its children is included in the dependency set;
-     * @param vertex a vertex we want to possibly filter, if it's an unnecessary dependency
-     * @param dependentVertices a list of possible dependencies
-     * @return if the vertex should be kept in the dependencies
-     */
-    private boolean keepDependency(DAGVertex vertex, Set<DAGVertex> dependentVertices) {
-        // Perform a BFS starting from the children of "vertex";
-        Queue<DAGVertex> queue = new ArrayDeque<>(vertex.getChildVertices());
-        Set<DAGVertex> visitedVertices = new HashSet<>();
-
-        while (!queue.isEmpty()) {
-            DAGVertex currentVertex = queue.poll();
-            // If the current vertex is in the set of candidate dependencies, we can filter it out;
-            if (dependentVertices.contains(currentVertex)) {
-                return false;
-            } else if (!visitedVertices.contains(currentVertex)) {
-                // Add children to the queue, but only if the current vertex hasn't been seen yet;
-                visitedVertices.add(currentVertex);
-                queue.addAll(currentVertex.getChildVertices());
-            }
-        }
-        return true;
     }
 
     public List<DAGVertex> getVertices() {
@@ -144,6 +134,45 @@ public class ExecutionDAG implements TruffleObject {
                 ", |E|=" + edges.size() +
                 "\nvertices=\n" + vertices.stream().map(Object::toString).collect(Collectors.joining(",\n")) +
                 ')';
+    }
+
+    /**
+     * By default, keep all dependencies;
+     */
+    private static class DefaultKeepDependency implements KeepDependency {
+        @Override
+        public boolean keepDependency(DAGVertex vertex, Set<DAGVertex> dependentVertices) {
+            return true;
+        }
+    }
+
+    private static class WithConstKeepDependency implements KeepDependency {
+        /**
+         * Determine if a vertex should really be a dependency, given a set of possible dependencies.
+         * The vertex is not going to be a dependency if any of its children is included in the dependency set;
+         * @param vertex a vertex we want to possibly filter, if it's an unnecessary dependency
+         * @param dependentVertices a list of possible dependencies
+         * @return if the vertex should be kept in the dependencies
+         */
+        @Override
+        public boolean keepDependency(DAGVertex vertex, Set<DAGVertex> dependentVertices) {
+            // Perform a BFS starting from the children of "vertex";
+            Queue<DAGVertex> queue = new ArrayDeque<>(vertex.getChildVertices());
+            Set<DAGVertex> visitedVertices = new HashSet<>();
+
+            while (!queue.isEmpty()) {
+                DAGVertex currentVertex = queue.poll();
+                // If the current vertex is in the set of candidate dependencies, we can filter it out;
+                if (dependentVertices.contains(currentVertex)) {
+                    return false;
+                } else if (!visitedVertices.contains(currentVertex)) {
+                    // Add children to the queue, but only if the current vertex hasn't been seen yet;
+                    visitedVertices.add(currentVertex);
+                    queue.addAll(currentVertex.getChildVertices());
+                }
+            }
+            return true;
+        }
     }
 
     /**

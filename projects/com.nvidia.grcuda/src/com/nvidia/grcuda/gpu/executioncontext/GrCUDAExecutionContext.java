@@ -3,9 +3,8 @@ package com.nvidia.grcuda.gpu.executioncontext;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAThreadManager;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
-import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -26,16 +25,16 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
      */
     private final GrCUDAThreadManager threadManager;
 
-    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyComputationBuilder dependencyBuilder) {
-        this(new CUDARuntime(context, env), new GrCUDAThreadManager(context), dependencyBuilder);
+    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
+        this(new CUDARuntime(context, env), new GrCUDAThreadManager(context), dependencyPolicy);
     }
 
-    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, DependencyComputationBuilder dependencyBuilder) {
-        this(cudaRuntime, threadManager, new GrCUDAStreamManager(cudaRuntime), dependencyBuilder);
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, DependencyPolicyEnum dependencyPolicy) {
+        this(cudaRuntime, threadManager, new GrCUDAStreamManager(cudaRuntime), dependencyPolicy);
     }
 
-    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyComputationBuilder dependencyBuilder) {
-        super(cudaRuntime, dependencyBuilder);
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy) {
+        super(cudaRuntime, dependencyPolicy);
         this.threadManager = threadManager;
         this.streamManager = streamManager;
     }

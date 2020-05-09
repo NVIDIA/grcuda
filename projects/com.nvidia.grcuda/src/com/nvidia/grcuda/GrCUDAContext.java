@@ -89,17 +89,6 @@ public final class GrCUDAContext {
         // Retrieve the dependency computation policy;
         DependencyPolicyEnum dependencyPolicy = parseDependencyPolicy(env.getOptions().get(GrCUDAOptions.DependencyPolicy));
         System.out.println("-- using " + dependencyPolicy.getName() + " dependency policy");
-        DependencyComputationBuilder dependencyBuilder;
-        switch (dependencyPolicy) {
-            case WITH_CONST:
-                dependencyBuilder = new WithConstDependencyComputationBuilder();
-                break;
-            case DEFAULT:
-                dependencyBuilder = new DefaultDependencyComputationBuilder();
-                break;
-            default:
-                dependencyBuilder = new DefaultDependencyComputationBuilder();
-        }
 
         // Retrieve the execution policy;
         ExecutionPolicyEnum executionPolicy = parseExecutionPolicy(env.getOptions().get(GrCUDAOptions.ExecutionPolicy));
@@ -107,13 +96,13 @@ public final class GrCUDAContext {
         System.out.println("-- using " + executionPolicy.getName() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
-                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyBuilder);
+                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy);
                 break;
             case DEFAULT:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyBuilder);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy);
                 break;
             default:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyBuilder);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy);
         }
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);

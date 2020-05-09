@@ -2,8 +2,7 @@ package com.nvidia.grcuda.test.mock;
 
 import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
 import com.nvidia.grcuda.gpu.computation.PrePascalArrayStreamAssociation;
-import com.nvidia.grcuda.gpu.computation.dependency.DefaultDependencyComputationBuilder;
-import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
 
@@ -14,22 +13,22 @@ public class GrCUDAExecutionContextMock extends GrCUDAExecutionContext {
 
     public GrCUDAExecutionContextMock(boolean syncStream) {
         super(null, null,
-                new GrCUDAStreamManagerMock(null, syncStream), new DefaultDependencyComputationBuilder());
+                new GrCUDAStreamManagerMock(null, syncStream), DependencyPolicyEnum.DEFAULT);
     }
 
     public GrCUDAExecutionContextMock() {
         super(null, null,
-                new GrCUDAStreamManagerMock(null), new DefaultDependencyComputationBuilder());
+                new GrCUDAStreamManagerMock(null), DependencyPolicyEnum.DEFAULT);
     }
 
-    public GrCUDAExecutionContextMock(DependencyComputationBuilder dependencyBuilder) {
+    public GrCUDAExecutionContextMock(DependencyPolicyEnum dependencyPolicy) {
         super(null, null,
-                new GrCUDAStreamManagerMock(null), dependencyBuilder);
+                new GrCUDAStreamManagerMock(null), dependencyPolicy);
     }
 
-    public GrCUDAExecutionContextMock(DependencyComputationBuilder dependencyBuilder, boolean syncStream, RetrieveStreamPolicyEnum retrieveStreamPolicy) {
+    public GrCUDAExecutionContextMock(DependencyPolicyEnum dependencyPolicy, boolean syncStream, RetrieveStreamPolicyEnum retrieveStreamPolicy) {
         super(null, null,
-                new GrCUDAStreamManagerMock(null, syncStream, retrieveStreamPolicy), dependencyBuilder);
+                new GrCUDAStreamManagerMock(null, syncStream, retrieveStreamPolicy), dependencyPolicy);
     }
 
     public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {

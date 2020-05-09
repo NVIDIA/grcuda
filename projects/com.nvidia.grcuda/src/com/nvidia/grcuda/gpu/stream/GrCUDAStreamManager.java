@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.gpu.stream;
 
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
 import java.util.ArrayDeque;
@@ -94,7 +94,7 @@ public class GrCUDAStreamManager {
         //  Also add test for it!
 
         // Skip syncing if no computation is active;
-        System.out.println("--\tSYNC REQUEST by " + vertex.getComputation());
+//        System.out.println("--\tSYNC REQUEST by " + vertex.getComputation());
         if (this.isAnyComputationActive()) {
             Set<GrCUDAComputationalElement> computationsToSync = new HashSet<>(vertex.getParentComputations());
 

@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.test.gpu.executioncontext;
 
-import com.nvidia.grcuda.gpu.ExecutionDAG;
-import com.nvidia.grcuda.gpu.computation.dependency.WithConstDependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.test.mock.ArgumentMock;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMock;
@@ -25,7 +25,7 @@ public class WithConstDependencyComputationTest {
 
     @Test
     public void addVertexToDAGTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(new WithConstDependencyComputationBuilder());
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.WITH_CONST);
         // Create two mock kernel executions;
         new KernelExecutionMock(context,
                 Arrays.asList(new ArgumentMock(1, true), new ArgumentMock(2))).schedule();
@@ -59,7 +59,7 @@ public class WithConstDependencyComputationTest {
 
     @Test
     public void dependencyPipelineSimpleMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(new WithConstDependencyComputationBuilder());
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.WITH_CONST);
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
@@ -103,7 +103,7 @@ public class WithConstDependencyComputationTest {
 
     @Test
     public void forkedComputationTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(new WithConstDependencyComputationBuilder());
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.WITH_CONST);
 
         // A(1) --> B(1R)
         //      \-> C(1R)
@@ -141,7 +141,7 @@ public class WithConstDependencyComputationTest {
 
     @Test
     public void complexFrontierMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(new WithConstDependencyComputationBuilder());
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.WITH_CONST);
 
         // A(1R,2) -> B(1) -> D(1R,3)
         //    \----> C(2R) \----> E(1R,4) -> F(4)
@@ -183,7 +183,7 @@ public class WithConstDependencyComputationTest {
     @Test
     public void complexFrontier2MockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
-                .setDependencyComputationBuilder(new WithConstDependencyComputationBuilder()).build();
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).build();
 
         // A(1R,2) -> B(1) -> D(1R,3) ---------> G(1,3,4)
         //         \- C(2R) \- E(1R,4) ----> F(4) -/
@@ -237,7 +237,7 @@ public class WithConstDependencyComputationTest {
     @Test
     public void dependencyPipelineSimpleWithSyncMockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
-                .setDependencyComputationBuilder(new WithConstDependencyComputationBuilder()).setSyncStream(true).build();
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).setSyncStream(true).build();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
@@ -282,7 +282,7 @@ public class WithConstDependencyComputationTest {
     @Test
     public void forkedComputationWithSyncTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
-                .setDependencyComputationBuilder(new WithConstDependencyComputationBuilder()).setSyncStream(true).build();
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).setSyncStream(true).build();
 
         // A(1) --> B(1R)
         //          C(1R)
@@ -321,7 +321,7 @@ public class WithConstDependencyComputationTest {
     @Test
     public void complexFrontierWithSyncMockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
-                .setDependencyComputationBuilder(new WithConstDependencyComputationBuilder()).setSyncStream(true).build();
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).setSyncStream(true).build();
 
         // A(1R,2) -> B(1) -> D(1R,3)
         //            C(2R)   E(1R,4) -> F(4)
@@ -367,7 +367,7 @@ public class WithConstDependencyComputationTest {
     @Test
     public void complexFrontier2WithSyncMockTest() throws UnsupportedTypeException {
         GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
-                .setDependencyComputationBuilder(new WithConstDependencyComputationBuilder()).setSyncStream(true).build();
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).setSyncStream(true).build();
 
         // A(1R,2) -> B(1) -> D(1R,3) ---------> G(1, 3, 4)
         //            C(2R)   E(1R,4) -> F(4) -/

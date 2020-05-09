@@ -3,7 +3,7 @@ package com.nvidia.grcuda.gpu.executioncontext;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
-import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -12,12 +12,12 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  */
 public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
-    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyComputationBuilder dependencyBuilder) {
-        super(context, env, dependencyBuilder);
+    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
+        super(context, env, dependencyPolicy);
     }
 
-    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyComputationBuilder dependencyBuilder) {
-        super(cudaRuntime, dependencyBuilder);
+    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy) {
+        super(cudaRuntime, dependencyPolicy);
     }
 
     /**

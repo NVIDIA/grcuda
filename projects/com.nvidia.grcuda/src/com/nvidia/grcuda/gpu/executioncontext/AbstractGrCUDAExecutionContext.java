@@ -3,11 +3,13 @@ package com.nvidia.grcuda.gpu.executioncontext;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.ExecutionDAG;
 import com.nvidia.grcuda.gpu.Kernel;
 import com.nvidia.grcuda.gpu.computation.ArrayStreamArchitecturePolicy;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
+import com.nvidia.grcuda.gpu.computation.dependency.DefaultDependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.computation.dependency.WithConstDependencyComputationBuilder;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -39,21 +41,30 @@ public abstract class AbstractGrCUDAExecutionContext {
     /**
      * Reference to the computational DAG that represents dependencies between computations;
      */
-    protected final ExecutionDAG dag = new ExecutionDAG();
+    protected final ExecutionDAG dag;
 
     /**
      * Reference to how dependencies between computational elements are computed within this execution context;
      */
     private final DependencyComputationBuilder dependencyBuilder;
 
-    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyComputationBuilder dependencyBuilder) {
-        this.cudaRuntime = new CUDARuntime(context, env);
-        this.dependencyBuilder = dependencyBuilder;
+    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
+        this(new CUDARuntime(context, env), dependencyPolicy);
     }
 
-    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyComputationBuilder dependencyBuilder) {
+    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy) {
         this.cudaRuntime = cudaRuntime;
-        this.dependencyBuilder = dependencyBuilder;
+        switch (dependencyPolicy) {
+            case WITH_CONST:
+                this.dependencyBuilder = new WithConstDependencyComputationBuilder();
+                break;
+            case DEFAULT:
+                this.dependencyBuilder = new DefaultDependencyComputationBuilder();
+                break;
+            default:
+                this.dependencyBuilder = new DefaultDependencyComputationBuilder();
+        }
+        this.dag = new ExecutionDAG(dependencyPolicy);
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.nvidia.grcuda.test.gpu.stream;
 
-import com.nvidia.grcuda.gpu.ExecutionDAG;
+import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
 import com.nvidia.grcuda.test.mock.ArgumentMock;
