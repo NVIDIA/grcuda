@@ -94,7 +94,7 @@ class Benchmark(ABC):
             self.init()
 
         # Reset the result;
-        # self.reset_result()
+        self.reset_result()
 
         # Execute the benchmark;
         gpu_result = self.execute()

@@ -10,7 +10,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 1024
+NUM_THREADS_PER_BLOCK = 128
 
 NB_KERNEL = """   
     extern "C" __global__ void nb_1(const int* x, const float* y, float* z, int size, int n_feat, int n_classes) {
@@ -135,10 +135,23 @@ ENSEMBLE_KERNEL = """
 
 class Benchmark6(Benchmark):
     """
-    Compute a complex pipeline of kernels, doing mock computations, and using read-only arguments;
-                         ┌─> B(const Y, R1) ───────────────────┐
-        A: (const X, Y) ─┤                                     ├─> E(const R1, const R2, R)
-                         └─> C(const Y, Z) ─> D(const Z, R2) ──┘
+    Compute a an ensemble of Categorical Naive Bayes and Ridge Regression classifiers.
+    Predictions are aggregated averaging the class scores after softmax normalization.
+    The computation is done on mock data and parameters, but is conceptually identical to a real ML pipeline.
+    In the DAG below, input arguments that are not involved in the computation of dependencies are omitted;
+
+    RR-1: standard normalization
+    RR-2: matrix multiplication
+    RR-3: add vector to matrix, row-wise
+    NB-1: matrix multiplication
+    NB-2: row-wise maximum
+    NB-3: log of sum of exponential, row-wise
+    NB-4: exponential, element-wise
+
+         ┌─> RR-1(const X,Z) ─> RR-2(const Z,R2) ─> RR-3(R2) ─> SOFTMAX(R1) ─────────────┐
+        ─┤                                                                               ├─> ARGMAX(const R1,const R2,R)
+         └─> NB-1(const X,R1) ─> NB-2(const R1,AMAX) ─> (...)                            │
+               (...) -> NB-3(const R1,const AMAX,L) ─> NB-4(R1,const L) ─> SOFTMAX(R2) ──┘
     """
 
     def __init__(self, benchmark: BenchmarkResult):

@@ -112,11 +112,17 @@ class BenchmarkResult:
         :param total_time: execution time of the benchmark iteration
         """
         self._dict_current["total_time_sec"] = total_time
-        tot_time_phases = sum([x["time_sec"] if "time_sec" in x else 0 for x in self._dict_current["phases"]])
+
+        # Keep only phases related to GPU computation;
+        blacklisted_phases = ["allocation", "initalization", "reset_result"]
+        filtered_phases = [x for x in self._dict_current["phases"] if x["name"] not in blacklisted_phases]
+        tot_time_phases = sum([x["time_sec"] if "time_sec" in x else 0 for x in filtered_phases])
         self._dict_current["overhead_sec"] = total_time - tot_time_phases
+        self._dict_current["computation_sec"] = tot_time_phases
         if self.debug:
             BenchmarkResult.log_message(f"\ttotal execution time: {total_time:.4f} sec," +
-                                        f" overhead: {total_time - tot_time_phases:.4f} sec")
+                                        f" overhead: {total_time - tot_time_phases:.4f} sec, " +
+                                        f" computation: {tot_time_phases:.4f} sec")
 
     def add_phase(self, phase: dict) -> None:
         """
@@ -149,9 +155,15 @@ class BenchmarkResult:
         exec_times = [x["total_time_sec"] for x in results_filtered][skip:]
         mean_time = np.mean(exec_times) if exec_times else np.nan
         std_time = np.std(exec_times) if exec_times else np.nan
+
+        comp_exec_times = [x["computation_sec"] for x in results_filtered][skip:]
+        comp_mean_time = np.mean(comp_exec_times) if comp_exec_times else np.nan
+        comp_std_time = np.std(comp_exec_times) if comp_exec_times else np.nan
+
         BenchmarkResult.log_message(f"summary of benchmark={name}, policy={policy}, size={size}," +
                                     f" realloc={realloc}, reinit={reinit};" +
-                                    f" mean execution time={mean_time:.4f}±{std_time:.4f} sec")
+                                    f" mean total time={mean_time:.4f}±{std_time:.4f} sec;" +
+                                    f" mean computation time={comp_mean_time:.4f}±{comp_std_time:.4f} sec")
 
     def save_to_file(self) -> None:
         with open(self._output_path, "w+") as f:
