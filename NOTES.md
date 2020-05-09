@@ -38,6 +38,12 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
     * The `cudaStreamAttachMemAsync` is also exposed, to exclusively associate a managed memory array to a given stream. 
     This is used, on Pre-Pascal GPUs, to access arrays on CPU while a kernel is using other arrays on GPU
 * Most of the new code is unit-tested and integration-tested, and there is a Python benchmarking suite to measure execution time with different settings
+    * For example, the file `projects/resources/python/benchmark/bench/bench_6` is a fairly complex ML ensemble using multiple GPU kernels on different streams. 
+    Compared to sequential scheduling, we are up to **40% faster**!
+* **Streams** are managed internally by the GrCUDA runtime: we keep track of existing streams that are currently empty, and schedule computations on them in a FIFO order.
+ New streams are created only if no existing stream is available
+* **Read-only** input arguments can be specified with the `const` keyword; they will be ignored in the dependency computations if possible:
+ for example, if there are 2 kernels that use the same read-only input array, they will be executed concurrently 
 
 * **Current limitations**
     1. **Dependency computation does not consider disjoint parameter subsets.**
@@ -48,16 +54,16 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
       If `Y` was read-only in `K1`, this wait would have been unnecessary.
     Instead, we can assign computations to different threads, block the thread execution, and start child computations with callbacks.
     This was the first approach, but it gave sync errors (probably due to other problems that are now solved)    
-    3. **Streams are not reused if they are free:** I'm creating new streams for computations without dependencies, but I could re-use existing streams that are currently free.
-    This avoids memory leaks, but requires a bit of extra book-keeping.
-    4. **Scalar values are not considered for dependencies**: they are read-only when used as input, but there could be output-input depenencies ([API Design, point 4](#api-design)) 
+    3. **Scalar values are not considered for dependencies**: they are read-only when used as input, but there could be output-input depenencies in libraries ([API Design, point 4](#api-design)) 
+    4. Read-only arguments are visible on the **default stream**, instead of having their visibility limited to the stream where they are used.
+     This makes the arguments visible to kernels running on different streams, but accesses by the CPU to these arguments require full device synchronization.
 
 ## Open questions
 
 ### Questions on API design (i.e. how do we provide the best user experience)
 
-1. How to understand if a parameter is read-only? ([API Design, point 4](#api-design))
-2. How do we track scalar values? ([API Design, point 5](#api-design))
+1. ~~How to understand if a parameter is read-only? ([API Design, point 4](#api-design))~~ We can use the `const` keyword in the computation signature
+2. How do we track scalar values in library function outputs? ([API Design, point 5](#api-design))
 3. How can user specify options cleanly? ([API Design, point 2](#api-design))
     * Using only context startup options is limiting, but it simplify the problem (we don't have to worry about changing how the DAG is built at runtime)
     * If we want provide more flexibility, we can add functions to the DSL, but that's not very clean
@@ -93,15 +99,15 @@ Dependencies can be explicitely specified by the user using handles, or we can t
  4. How do we identify if a **parameter is read-only**? If two kernels use the same parameter but only read from it, they can execute in parallel
      * This is not trivial: LLVM can understand, for example, if a scalar value is read-only, but doing that with an array is not always possible
      * Users might have to specify which parameters are read-only in the kernel signature, which is still better than using explicit handles
+     * For now, we let programmers manually specify read-only array arguments using the `const` keyword, as done in `CUDA`
  5. How do we handle scalar values? We could also have dependencies due to scalar values (e.g. a computation is started only if the error in the next iteration is above a threashold)
      * Currently, only reads from `DeviceArray` (and similar) return scalar values, and they must be done synchronously, as the result is immediately exposed to the guest language. 
      * Array reads (and writes) are done synchronously by the host, and we guarantee that no kernel that uses the affected array is running
      * Kernels do not return scalar values, and scalar outputs are stored in a size-1 array (which we can treat as any other array)
-     * Moreover, **a user can extract a scalar from a size-1 array, and use it as input to another kernel. This creates a dependency that cannot be found automatically!**
-     * The only way around that is to have the option to manually specify dependencies
-     * Library functions can return scalars! 
+     * Then the programmer can pass the size-1 array to another computation (handled like any array), or extract the value with an array read that triggers synchronization
+     * Scalar values are only problematic when considering library functions that return them
      * One idea could be to *box* scalar values with Truffle nodes and store the actual value using a `Future`.
-     If the user reads or writes the value, we wait for the GPU computation to end. Then the scalar value can be unboxed to avoid further overheads. 
+     If the user reads or writes the value, we wait for the GPU computation to end. Then the scalar value can be unboxed to avoid further overheads.
      * But running library functions on streams is problematic (see problem 6), so this solution might not be required
  6. Library functions: library functions are more complex to handle as they could also have code running on the host side.
     * They also do not expose streams, so it could be difficult to pipeline them
