@@ -56,9 +56,12 @@ public final class DeviceArray implements TruffleObject {
     private static final String POINTER = "pointer";
     private static final String COPY_FROM = "copyFrom";
     private static final String COPY_TO = "copyTo";
+    private static final String FREE = "free";
+    private static final String IS_MEMORY_FREED = "isMemoryFreed";
+    private static final String ACCESSED_FREED_MEMORY_MESSAGE = "memory of array freed";
 
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO);
-    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO);
+    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO, FREE, IS_MEMORY_FREED);
+    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO, FREE, IS_MEMORY_FREED);
 
     @ExportLibrary(InteropLibrary.class)
     public static final class MemberSet implements TruffleObject {
@@ -116,6 +119,9 @@ public final class DeviceArray implements TruffleObject {
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
+    /** Flag set when underlying off-heap memory has been freed. */
+    private boolean arrayFreed = false;
+
     public DeviceArray(CUDARuntime runtime, long numElements, Type elementType) {
         this.runtime = runtime;
         this.numElements = numElements;
@@ -125,26 +131,82 @@ public final class DeviceArray implements TruffleObject {
     }
 
     long getSizeBytes() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return sizeBytes;
     }
 
     public long getPointer() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return nativeView.getStartAddress();
     }
 
     public Type getElementType() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return elementType;
     }
 
     @Override
     public String toString() {
-        return "DeviceArray(elementType=" + elementType + ", numElements=" + numElements + ", nativeView=" + nativeView + ')';
+        if (arrayFreed) {
+            return "DeviceArray(memory freed)";
+        } else {
+            return "DeviceArray(elementType=" + elementType + ", numElements=" + numElements + ", nativeView=" + nativeView + ')';
+        }
     }
 
     @Override
     protected void finalize() throws Throwable {
-        runtime.cudaFree(nativeView);
+        if (!arrayFreed) {
+            runtime.cudaFree(nativeView);
+        }
         super.finalize();
+    }
+
+    public void copyFrom(long fromPointer, long numCopyElements) throws IndexOutOfBoundsException {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
+        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
+        if (numBytesToCopy > getSizeBytes()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException();
+        }
+        runtime.cudaMemcpy(getPointer(), fromPointer, numBytesToCopy);
+    }
+
+    public void copyTo(long toPointer, long numCopyElements) throws IndexOutOfBoundsException {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
+        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
+        if (numBytesToCopy > getSizeBytes()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IndexOutOfBoundsException();
+        }
+        runtime.cudaMemcpy(toPointer, getPointer(), numBytesToCopy);
+    }
+
+    public void freeMemory() {
+        if (arrayFreed) {
+            throw new GrCUDAException("device array already freed");
+        }
+        runtime.cudaFree(nativeView);
+        arrayFreed = true;
+    }
+
+    public boolean isMemoryFreed() {
+        return arrayFreed;
     }
 
     // Implementation of InteropLibrary
@@ -152,17 +214,25 @@ public final class DeviceArray implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     boolean hasArrayElements() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return true;
     }
 
     @ExportMessage
     public long getArraySize() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return numElements;
     }
 
     @ExportMessage
     boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < numElements;
+        return !arrayFreed && index >= 0 && index < numElements;
     }
 
     @ExportMessage
@@ -179,7 +249,10 @@ public final class DeviceArray implements TruffleObject {
     @ExportMessage
     Object readArrayElement(long index,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
-
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
@@ -206,7 +279,10 @@ public final class DeviceArray implements TruffleObject {
     public void writeArrayElement(long index, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException, InvalidArrayIndexException {
-
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
@@ -257,7 +333,7 @@ public final class DeviceArray implements TruffleObject {
     boolean isMemberReadable(String memberName,
                     @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
         String name = memberProfile.profile(memberName);
-        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name);
+        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name) || FREE.equals(name) || IS_MEMORY_FREED.equals(name);
     }
 
     @ExportMessage
@@ -276,6 +352,12 @@ public final class DeviceArray implements TruffleObject {
         if (COPY_TO.equals(memberName)) {
             return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.TO_POINTER);
         }
+        if (FREE.equals(memberName)) {
+            return new DeviceArrayFreeFunction();
+        }
+        if (IS_MEMORY_FREED.equals(memberName)) {
+            return isMemoryFreed();
+        }
         CompilerDirectives.transferToInterpreter();
         throw UnknownIdentifierException.create(memberName);
     }
@@ -283,7 +365,7 @@ public final class DeviceArray implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     boolean isMemberInvocable(String memberName) {
-        return COPY_FROM.equals(memberName) || COPY_TO.equals(memberName);
+        return COPY_FROM.equals(memberName) || COPY_TO.equals(memberName) || FREE.equals(memberName);
     }
 
     @ExportMessage
@@ -306,21 +388,22 @@ public final class DeviceArray implements TruffleObject {
         return getPointer();
     }
 
-    public void copyFrom(long fromPointer, long numCopyElements) throws IndexOutOfBoundsException {
-        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
-        if (numBytesToCopy > getSizeBytes()) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IndexOutOfBoundsException();
+    @ExportLibrary(InteropLibrary.class)
+    final class DeviceArrayFreeFunction implements TruffleObject {
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isExecutable() {
+            return true;
         }
-        runtime.cudaMemcpy(getPointer(), fromPointer, numBytesToCopy);
-    }
 
-    public void copyTo(long toPointer, long numCopyElements) throws IndexOutOfBoundsException {
-        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
-        if (numBytesToCopy > getSizeBytes()) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IndexOutOfBoundsException();
+        @ExportMessage
+        Object execute(Object[] arguments) throws ArityException {
+            if (arguments.length != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(0, arguments.length);
+            }
+            freeMemory();
+            return NoneValue.get();
         }
-        runtime.cudaMemcpy(toPointer, getPointer(), numBytesToCopy);
     }
 }

@@ -42,6 +42,13 @@ host functions from capturing pointers to device array objects
 or their elements. Because device arrays are managed by the garbage collector,
 capturing of references in native code can potentially lead to danging references.
 
+The CUDA-managed memory of the device array can be **freed explicitly** by calling
+the `free()` method of `DeviceArray`. This will release the allocated memory
+through `cudaFree()`. Once the underlying memory is freed, the `DeviceArray`
+enters a defunct state. All subsequent accesses with throw an exception. The
+Boolean property `isMemoryFreed` of `DeviceArray` can be checked whether the device
+array's memory buffer has already be freed.
+
 ### Array Allocation Expressions
 
 Device arrays are allocated using a syntax that is similar to arrays C/C++. Multi-dimensional
