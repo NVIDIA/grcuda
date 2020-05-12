@@ -116,14 +116,13 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
         if ((thisDimension + 1) == mdDeviceArray.getNumberDimensions()) {
             long flatIndex = offset + index * stride;
             switch (elementTypeProfile.profile(mdDeviceArray.getElementType())) {
-                case BYTE:
                 case CHAR:
                     return mdDeviceArray.getNativeView().getByte(flatIndex);
-                case SHORT:
+                case SINT16:
                     return mdDeviceArray.getNativeView().getShort(flatIndex);
-                case INT:
+                case SINT32:
                     return mdDeviceArray.getNativeView().getInt(flatIndex);
-                case LONG:
+                case SINT64:
                     return mdDeviceArray.getNativeView().getLong(flatIndex);
                 case FLOAT:
                     return mdDeviceArray.getNativeView().getFloat(flatIndex);
@@ -150,17 +149,16 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
             long flatIndex = offset + index * stride;
             try {
                 switch (elementTypeProfile.profile(mdDeviceArray.getElementType())) {
-                    case BYTE:
                     case CHAR:
                         mdDeviceArray.getNativeView().setByte(flatIndex, valueLibrary.asByte(value));
                         break;
-                    case SHORT:
+                    case SINT16:
                         mdDeviceArray.getNativeView().setShort(flatIndex, valueLibrary.asShort(value));
                         break;
-                    case INT:
+                    case SINT32:
                         mdDeviceArray.getNativeView().setInt(flatIndex, valueLibrary.asInt(value));
                         break;
-                    case LONG:
+                    case SINT64:
                         mdDeviceArray.getNativeView().setLong(flatIndex, valueLibrary.asLong(value));
                         break;
                     case FLOAT:
@@ -179,17 +177,5 @@ public final class MultiDimDeviceArrayView implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("tried to write non-last dimension in MultiDimDeviceArrayView");
         }
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasMembers() {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return null;
     }
 }

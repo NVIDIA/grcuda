@@ -35,10 +35,14 @@ import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -46,13 +50,18 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 @ExportLibrary(InteropLibrary.class)
 public class MultiDimDeviceArray implements TruffleObject {
 
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet();
-    private static final MemberSet MEMBERS = new MemberSet("pointer");
+    private static final String POINTER = "pointer";
+    private static final String FREE = "free";
+    private static final String IS_MEMORY_FREED = "isMemoryFreed";
+    private static final String ACCESSED_FREED_MEMORY_MESSAGE = "memory of array freed";
+
+    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(FREE, IS_MEMORY_FREED);
+    private static final MemberSet MEMBERS = new MemberSet(POINTER, FREE, IS_MEMORY_FREED);
 
     private final CUDARuntime runtime;
 
     /** Data type of the elements stored in the array. */
-    private final ElementType elementType;
+    private final Type elementType;
 
     /** Number of elements in each dimension. */
     private final long[] elementsPerDimension;
@@ -69,7 +78,13 @@ public class MultiDimDeviceArray implements TruffleObject {
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public MultiDimDeviceArray(CUDARuntime runtime, ElementType elementType, long[] dimensions,
+    /**
+     * true if nativeView's off-heap memory has been freed and the view invalid flag. This flag is
+     * set in free().
+     */
+    private boolean arrayFreed = false;
+
+    public MultiDimDeviceArray(CUDARuntime runtime, Type elementType, long[] dimensions,
                     boolean useColumnMajor) {
         if (dimensions.length < 2) {
             CompilerDirectives.transferToInterpreter();
@@ -87,11 +102,11 @@ public class MultiDimDeviceArray implements TruffleObject {
         }
         this.runtime = runtime;
         this.elementType = elementType;
+        this.columnMajor = useColumnMajor;
         this.elementsPerDimension = new long[dimensions.length];
         System.arraycopy(dimensions, 0, this.elementsPerDimension, 0, dimensions.length);
         this.stridePerDimension = computeStride(dimensions, columnMajor);
         this.totalElementCount = prod;
-        this.columnMajor = useColumnMajor;
         this.nativeView = runtime.cudaMallocManaged(getSizeBytes());
     }
 
@@ -156,14 +171,22 @@ public class MultiDimDeviceArray implements TruffleObject {
     }
 
     public final long getPointer() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return nativeView.getStartAddress();
     }
 
-    final ElementType getElementType() {
+    public final Type getElementType() {
         return elementType;
     }
 
     final LittleEndianNativeArrayView getNativeView() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return nativeView;
     }
 
@@ -178,8 +201,22 @@ public class MultiDimDeviceArray implements TruffleObject {
 
     @Override
     protected void finalize() throws Throwable {
-        runtime.cudaFree(nativeView);
+        if (!arrayFreed) {
+            runtime.cudaFree(nativeView);
+        }
         super.finalize();
+    }
+
+    public void freeMemory() {
+        if (arrayFreed) {
+            throw new GrCUDAException("device array already freed");
+        }
+        runtime.cudaFree(nativeView);
+        arrayFreed = true;
+    }
+
+    public boolean isMemoryFreed() {
+        return arrayFreed;
     }
 
     //
@@ -227,7 +264,7 @@ public class MultiDimDeviceArray implements TruffleObject {
     @ExportMessage
     boolean isMemberReadable(String member,
                     @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        return "pointer".equals(memberProfile.profile(member));
+        return POINTER.equals(memberProfile.profile(member)) || FREE.equals(memberProfile.profile(member)) || IS_MEMORY_FREED.contentEquals(memberProfile.profile(member));
     }
 
     @ExportMessage
@@ -237,7 +274,32 @@ public class MultiDimDeviceArray implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.create(member);
         }
-        return getPointer();
+        if (POINTER.equals(memberProfile.profile(member))) {
+            return getPointer();
+        }
+        if (IS_MEMORY_FREED.equals(memberProfile.profile(member))) {
+            return arrayFreed;
+        }
+        if (FREE.equals(memberProfile.profile(member))) {
+            return new MultiDimDeviceArrayFreeFunction();
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw new GrCUDAInternalException("trying to read unknown member '" + member + "'");
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberInvocable(String memberName) {
+        return FREE.equals(memberName);
+    }
+
+    @ExportMessage
+    Object invokeMember(String memberName,
+                    Object[] arguments,
+                    @CachedLibrary("this") InteropLibrary interopRead,
+                    @CachedLibrary(limit = "1") InteropLibrary interopExecute)
+                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+        return interopExecute.execute(interopRead.readMember(this, memberName), arguments);
     }
 
     @ExportMessage
@@ -248,5 +310,24 @@ public class MultiDimDeviceArray implements TruffleObject {
     @ExportMessage
     long asPointer() {
         return getPointer();
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    final class MultiDimDeviceArrayFreeFunction implements TruffleObject {
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object[] arguments) throws ArityException {
+            if (arguments.length != 0) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(0, arguments.length);
+            }
+            freeMemory();
+            return NoneValue.get();
+        }
     }
 }

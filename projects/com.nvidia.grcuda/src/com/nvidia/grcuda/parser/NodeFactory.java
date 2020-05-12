@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,8 @@ package com.nvidia.grcuda.parser;
 
 import java.util.ArrayList;
 import org.antlr.v4.runtime.Token;
-import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.Type;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.nodes.ArithmeticNode;
 import com.nvidia.grcuda.nodes.ArrayNode;
@@ -52,7 +53,7 @@ public class NodeFactory {
         this.source = source;
     }
 
-    public ArrayNode createArrayNode(Token typeToken, ArrayList<ExpressionNode> sizeNodes) throws ParserException {
+    public ArrayNode createArrayNode(Token typeToken, ArrayList<ExpressionNode> sizeNodes) throws GrCUDAParserException {
         return ArrayNodeGen.create(lookupType(typeToken), sizeNodes);
     }
 
@@ -76,7 +77,7 @@ public class NodeFactory {
                 break;
             default:
                 // should not happen due to lexer
-                throw new RuntimeException("unexpected operation: " + opToken.getText());
+                throw new GrCUDAInternalException("unexpected operation: " + opToken.getText());
         }
         return result;
     }
@@ -86,11 +87,11 @@ public class NodeFactory {
     }
 
     public IdentifierNode createIdentifier(Token identifierToken) {
-        return IdentifierNodeGen.create(identifierToken.getText(), "");
+        return IdentifierNodeGen.create(identifierToken.getText());
     }
 
     public IdentifierNode createIdentifierInNamespace(Token identifierToken, Token namespaceToken) {
-        return IdentifierNodeGen.create(identifierToken.getText(), namespaceToken.getText());
+        return IdentifierNodeGen.create(namespaceToken.getText(), identifierToken.getText());
 
     }
 
@@ -99,7 +100,7 @@ public class NodeFactory {
             return new IntegerLiteral(Integer.parseInt(literalToken.getText()));
         } catch (NumberFormatException e) {
             // ignore parse error cannot happen due to regular expression in lexer
-            throw new RuntimeException("unable to parse integer literal " + e.getMessage());
+            throw new GrCUDAInternalException("unable to parse integer literal " + e.getMessage());
         }
     }
 
@@ -110,11 +111,11 @@ public class NodeFactory {
         return new StringLiteral(stringValue.substring(1, stringValue.length() - 1));
     }
 
-    private ElementType lookupType(Token typeToken) {
+    private Type lookupType(Token typeToken) {
         try {
-            return ElementType.lookupType(typeToken.getText());
+            return Type.fromGrCUDATypeString(typeToken.getText());
         } catch (TypeException e) {
-            throw new ParserException(e.getMessage(),
+            throw new GrCUDAParserException(e.getMessage(),
                             source,
                             typeToken.getLine(), typeToken.getCharPositionInLine(),
                             Math.max(typeToken.getStopIndex() - typeToken.getStartIndex(), 0));

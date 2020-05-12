@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +28,11 @@
  */
 package com.nvidia.grcuda;
 
-import com.nvidia.grcuda.cuml.CUMLRegistry;
-import com.nvidia.grcuda.gpu.CUDAException;
+import org.graalvm.options.OptionDescriptors;
+
 import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.parser.ParserAntlr;
-import com.nvidia.grcuda.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -49,15 +48,10 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     @Override
     protected GrCUDAContext createContext(Env env) {
-        GrCUDAContext context = new GrCUDAContext(env);
-        context.getCUDARuntime().registerCUDAFunctions(context.getFunctionTable());
-        if (CUMLRegistry.isCUMLEnabled()) {
-            new CUMLRegistry(context).registerCUMLFunctions(context.getFunctionTable());
+        if (!env.isNativeAccessAllowed()) {
+            throw new GrCUDAException("cannot create CUDA context without native access");
         }
-        if (TensorRTRegistry.isTensorRTEnabled()) {
-            new TensorRTRegistry(context).registerTensorRTFunctions(context.getFunctionTable());
-        }
-        return context;
+        return new GrCUDAContext(env);
     }
 
     @Override
@@ -70,7 +64,7 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     }
 
     @Override
-    protected CallTarget parse(ParsingRequest request) throws CUDAException {
+    protected CallTarget parse(ParsingRequest request) {
         ExpressionNode expression = new ParserAntlr().parse(request.getSource());
         GrCUDARootNode newParserRoot = new GrCUDARootNode(this, expression);
         return Truffle.getRuntime().createCallTarget(newParserRoot);
@@ -83,5 +77,10 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     @Override
     protected void disposeContext(GrCUDAContext cxt) {
         cxt.disposeAll();
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new GrCUDAOptionsOptionDescriptors();
     }
 }

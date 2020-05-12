@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -103,18 +102,6 @@ public final class DeviceList implements TruffleObject, Iterable<Device> {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean hasMembers() {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return null;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
     boolean hasArrayElements() {
         return true;
     }
@@ -129,18 +116,6 @@ public final class DeviceList implements TruffleObject, Iterable<Device> {
         return index >= 0 && index < devices.length;
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isArrayElementModifiable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
-        return false;
-    }
-
     @ExportMessage
     Object readArrayElement(long index) throws InvalidArrayIndexException {
         if ((index < 0) || (index >= devices.length)) {
@@ -148,12 +123,5 @@ public final class DeviceList implements TruffleObject, Iterable<Device> {
             throw InvalidArrayIndexException.create(index);
         }
         return devices[(int) index];
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    void writeArrayElement(@SuppressWarnings("unused") long index, @SuppressWarnings("unused") Object value) throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.create();
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,22 +41,16 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public abstract class Function implements TruffleObject {
 
-    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    public static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private final String name;
-    private final String namespace;
 
-    protected Function(String name, String namespace) {
+    protected Function(String name) {
         this.name = name;
-        this.namespace = namespace;
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getNamespace() {
-        return namespace;
     }
 
     protected static String expectString(Object argument, String errorMessage) throws UnsupportedTypeException {
@@ -64,30 +58,29 @@ public abstract class Function implements TruffleObject {
         try {
             return INTEROP.asString(argument);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{argument}, errorMessage);
         }
     }
 
-    protected static int expectInt(Object number) throws UnsupportedTypeException {
+    public static int expectInt(Object number) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
         try {
             return INTEROP.asInt(number);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{number}, "expected integer number argument");
         }
     }
 
     protected static long expectLong(Object number, String message) throws UnsupportedTypeException {
+        CompilerAsserts.neverPartOfCompilation();
         try {
             return INTEROP.asLong(number);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{number}, message);
         }
     }
 
-    protected static long expectLong(Object number) throws UnsupportedTypeException {
+    public static long expectLong(Object number) throws UnsupportedTypeException {
         return expectLong(number, "expected long number argument");
     }
 
@@ -100,7 +93,7 @@ public abstract class Function implements TruffleObject {
         return value;
     }
 
-    protected static long expectPositiveLong(Object number) throws UnsupportedTypeException {
+    public static long expectPositiveLong(Object number) throws UnsupportedTypeException {
         long value = expectLong(number);
         if (value < 0) {
             CompilerDirectives.transferToInterpreter();
@@ -109,7 +102,7 @@ public abstract class Function implements TruffleObject {
         return value;
     }
 
-    protected static void checkArgumentLength(Object[] arguments, int expected) throws ArityException {
+    public static void checkArgumentLength(Object[] arguments, int expected) throws ArityException {
         if (arguments.length != expected) {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(expected, arguments.length);
@@ -120,15 +113,17 @@ public abstract class Function implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isExecutable() {
+    public final boolean isExecutable() {
         return true;
     }
 
     @ExportMessage
-    final Object execute(@SuppressWarnings("unused") Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+    public Object execute(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         return call(arguments);
     }
 
-    protected abstract Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException;
-
+    @SuppressWarnings("unused")
+    protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 }

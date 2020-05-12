@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda.nodes;
 
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDAInternalException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -55,7 +57,7 @@ public final class ArithmeticNode extends BinaryNode {
         Object right = rightNode.execute(frame);
         if (!(left instanceof Number) || !(right instanceof Number)) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException("operation expects integer types");
+            throw new GrCUDAException("operation expects integer types", this);
         }
         int leftInt = ((Number) left).intValue();
         int rightInt = ((Number) right).intValue();
@@ -73,6 +75,6 @@ public final class ArithmeticNode extends BinaryNode {
                 return leftInt % rightInt;
         }
         CompilerDirectives.transferToInterpreter();
-        throw new RuntimeException("fall-through in ArithmeticNode");
+        throw new GrCUDAInternalException("fall-through in ArithmeticNode", this);
     }
 }

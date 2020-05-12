@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,16 +35,21 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public final class ExternalFunction extends Function {
 
-    private final Object externalFunction;
+    private final Object nfiCallable;
 
-    public ExternalFunction(String name, String namespace, Object externalFunction) {
-        super(name, namespace);
-        this.externalFunction = externalFunction;
+    public ExternalFunction(String name, Object nfiCallable) {
+        super(name);
+        this.nfiCallable = nfiCallable;
     }
 
     @Override
     @TruffleBoundary
     protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-        return INTEROP.execute(externalFunction, arguments);
+        return INTEROP.execute(nfiCallable, arguments);
+    }
+
+    @Override
+    public String toString() {
+        return "ExternalFunction(name=" + getName() + ", nfiCallable=" + nfiCallable + ")";
     }
 }

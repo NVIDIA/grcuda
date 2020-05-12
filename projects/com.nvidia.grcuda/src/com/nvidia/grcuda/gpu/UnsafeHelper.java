@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,6 +46,7 @@ public class UnsafeHelper {
             f.setAccessible(true);
             unsafe = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
+            // this needs to be a RuntimeException since it is raised during static initialization
             throw new RuntimeException(e);
         }
     }
@@ -56,6 +57,14 @@ public class UnsafeHelper {
 
     public static PointerObject createPointerObject() {
         return new PointerObject();
+    }
+
+    public static Integer8Object createInteger8Object() {
+        return new Integer8Object();
+    }
+
+    public static Integer16Object createInteger16Object() {
+        return new Integer16Object();
     }
 
     public static Integer32Object createInteger32Object() {
@@ -179,6 +188,40 @@ public class UnsafeHelper {
                 offset += 1;
             }
             return new String(bytes, 0, offset, Charset.forName("ISO-8859-1"));
+        }
+    }
+
+    public static final class Integer8Object extends MemoryObject {
+
+        Integer8Object() {
+            super(unsafe.allocateMemory(1));
+        }
+
+        public byte getValue() {
+            return unsafe.getByte(getAddress());
+        }
+
+        public char getChar() {
+            return unsafe.getChar(getAddress());
+        }
+
+        public void setValue(byte value) {
+            unsafe.putByte(getAddress(), value);
+        }
+    }
+
+    public static final class Integer16Object extends MemoryObject {
+
+        Integer16Object() {
+            super(unsafe.allocateMemory(2));
+        }
+
+        public short getValue() {
+            return unsafe.getShort(getAddress());
+        }
+
+        public void setValue(short value) {
+            unsafe.putShort(getAddress(), value);
         }
     }
 

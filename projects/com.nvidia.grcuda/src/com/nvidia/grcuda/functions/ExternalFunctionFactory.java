@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,30 +28,25 @@
  */
 package com.nvidia.grcuda.functions;
 
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
 
-public class ExternalFunctionFactory {
+public final class ExternalFunctionFactory {
 
     private final String name;
     private final String symbolName;
-    private final String namespace;
     private final String nfiSignature;
 
-    public ExternalFunctionFactory(String name, String namespace, String symbolName, String nfiSignature) {
+    public ExternalFunctionFactory(String name, String symbolName, String nfiSignature) {
         this.name = name;
-        this.namespace = namespace;
         this.symbolName = symbolName;
         this.nfiSignature = nfiSignature;
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getNamespace() {
-        return namespace;
     }
 
     public String getSymbolName() {
@@ -62,13 +57,12 @@ public class ExternalFunctionFactory {
         return nfiSignature;
     }
 
-    public ExternalFunction makeFunction(CUDARuntime cudaRuntime, String libraryPath) {
+    public ExternalFunction makeFunction(CUDARuntime cudaRuntime, String libraryPath, String hint) {
         try {
-            return new ExternalFunction(name, namespace,
-                            cudaRuntime.getSymbol(libraryPath, symbolName, nfiSignature));
+            return new ExternalFunction(name, cudaRuntime.getSymbol(libraryPath, symbolName, nfiSignature, hint));
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(e);
+            throw new GrCUDAException(e);
         }
     }
 }

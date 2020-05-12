@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,11 @@
  */
 package com.nvidia.grcuda;
 
+import java.util.Arrays;
+import java.util.Optional;
+
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 
 public final class GrCUDAException extends RuntimeException implements TruffleException {
@@ -43,6 +47,23 @@ public final class GrCUDAException extends RuntimeException implements TruffleEx
     public GrCUDAException(String message, Node node) {
         super(message);
         this.node = node;
+    }
+
+    public GrCUDAException(InteropException e) {
+        this(e.getMessage());
+    }
+
+    public GrCUDAException(int errorCode, String[] functionName) {
+        this("CUDA error " + errorCode + " in " + format(functionName));
+    }
+
+    public GrCUDAException(int errorCode, String message, String[] functionName) {
+        this(message + '(' + errorCode + ") in " + format(functionName));
+    }
+
+    public static String format(String... name) {
+        Optional<String> result = Arrays.asList(name).stream().reduce((a, b) -> a + "::" + b);
+        return result.orElse("<empty>");
     }
 
     @Override

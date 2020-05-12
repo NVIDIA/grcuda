@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,66 +32,130 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 import com.nvidia.grcuda.DeviceArray;
-import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.Type;
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.TypeException;
+import com.nvidia.grcuda.DeviceArray.MemberSet;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.ValueProfile;
 
+@ExportLibrary(InteropLibrary.class)
 public final class DeviceArrayFunction extends Function {
+
+    private static final String MAP = "map";
+
+    private static final MemberSet MEMBERS = new MemberSet(MAP);
 
     private final CUDARuntime runtime;
 
     public DeviceArrayFunction(CUDARuntime runtime) {
-        super("DeviceArray", "");
+        super("DeviceArray");
         this.runtime = runtime;
     }
 
     @Override
     @TruffleBoundary
     public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 2) {
-            throw ArityException.create(2, arguments.length);
+        if (arguments.length < 1) {
+            throw ArityException.create(1, arguments.length);
         }
         String typeName = expectString(arguments[0], "first argument of DeviceArray must be string (type name)");
+        Type elementType;
+        try {
+            elementType = Type.fromGrCUDATypeString(typeName);
+        } catch (TypeException e) {
+            throw new GrCUDAException(e.getMessage());
+        }
+        if (arguments.length == 1) {
+            return new TypedDeviceArrayFunction(runtime, elementType);
+        } else {
+            return createArray(arguments, 1, elementType, runtime);
+        }
+    }
+
+    static Object createArray(Object[] arguments, int start, Type elementType, CUDARuntime runtime) throws UnsupportedTypeException {
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
-        for (int i = 1; i < arguments.length; ++i) {
+        for (int i = start; i < arguments.length; ++i) {
             Object arg = arguments[i];
             if (INTEROP.isString(arg)) {
                 if (useColumnMajor.isPresent()) {
-                    throw new RuntimeException("string option already provided");
+                    throw new GrCUDAException("string option already provided");
                 } else {
-                    String strArg = expectString(arg,
-                                    "string argument expected that specifies order ('C' or 'F')");
+                    String strArg = expectString(arg, "string argument expected that specifies order ('C' or 'F')");
                     if (strArg.equals("f") || strArg.equals("F")) {
                         useColumnMajor = Optional.of(true);
                     } else if (strArg.equals("c") || strArg.equals("C")) {
                         useColumnMajor = Optional.of(false);
                     } else {
-                        throw new RuntimeException("invalid string argument '" + strArg +
-                                        "', only \"C\" or \"F\" are allowed");
+                        throw new GrCUDAException("invalid string argument '" + strArg + "', only \"C\" or \"F\" are allowed");
                     }
                 }
             } else {
                 long n = expectLong(arg, "expected number argument for dimension size");
                 if (n < 1) {
-                    throw new RuntimeException("array dimension less than 1");
+                    throw new GrCUDAException("array dimension less than 1");
                 }
                 elementsPerDim.add(n);
             }
         }
-        try {
-            ElementType elementType = ElementType.lookupType(typeName);
-            if (elementsPerDim.size() == 1) {
-                return new DeviceArray(runtime, elementsPerDim.get(0), elementType);
-            }
-            long[] dimensions = elementsPerDim.stream().mapToLong(l -> l).toArray();
-            return new MultiDimDeviceArray(runtime, elementType, dimensions, useColumnMajor.orElse(false));
-        } catch (TypeException e) {
-            throw new RuntimeException(e.getMessage());
+        if (elementsPerDim.size() == 1) {
+            return new DeviceArray(runtime, elementsPerDim.get(0), elementType);
         }
+        long[] dimensions = elementsPerDim.stream().mapToLong(l -> l).toArray();
+        return new MultiDimDeviceArray(runtime, elementType, dimensions, useColumnMajor.orElse(false));
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return MEMBERS;
+    }
+
+    @ExportMessage(name = "isMemberReadable")
+    @ExportMessage(name = "isMemberInvocable")
+    @SuppressWarnings("static-method")
+    boolean isMemberExisting(String memberName,
+                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
+        String name = memberProfile.profile(memberName);
+        return MAP.equals(name);
+    }
+
+    @ExportMessage
+    Object readMember(String memberName,
+                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
+        if (MAP.equals(memberProfile.profile(memberName))) {
+            return new MapDeviceArrayFunction(runtime);
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw UnknownIdentifierException.create(memberName);
+    }
+
+    @ExportMessage
+    Object invokeMember(String memberName,
+                    Object[] arguments,
+                    @CachedLibrary("this") InteropLibrary interopRead,
+                    @CachedLibrary(limit = "1") InteropLibrary interopExecute)
+                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+        return interopExecute.execute(interopRead.readMember(this, memberName), arguments);
     }
 }
