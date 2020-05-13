@@ -18,6 +18,12 @@ $ make -j
 You can validate the `libtrt` wrapper library using the C test
 application in `app/libtrt_load_and_sample.c`.
 
+If not already downloaded, download some test images from the MNIST data set
+into the `data` directory. Run the script `download_mnist_test_digits.py` in the
+`data` directory to download the MNIST data set and extract the first occurrence
+of the digits zero to nine in the test set.
+This script stores the images in PGM format as `0.pgm` to `9.pgm`.
+
 ```console
 $ cd tensorrt/build
 $ ./libtrt_load_and_sample ../../examples/tensorrt/models/lenet5.engine \
