@@ -46,6 +46,7 @@ import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -93,6 +94,11 @@ public final class GrCUDAContext {
             Namespace blas = new Namespace(CUBLASRegistry.NAMESPACE);
             namespace.addNamespace(blas);
             new CUBLASRegistry(this).registerCUBLASFunctions(blas);
+        }
+        if (this.getOption(GrCUDAOptions.TensorRTEnabled)) {
+            Namespace trt = new Namespace(TensorRTRegistry.NAMESPACE);
+            namespace.addNamespace(trt);
+            new TensorRTRegistry(this).registerTensorRTFunctions(trt);
         }
         this.rootNamespace = namespace;
     }

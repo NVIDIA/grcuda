@@ -47,4 +47,6 @@ mx.grcuda/eclipse-launches
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDLLexer.java
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDLLexer.tokens
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDLParser.java
-
+tensorrt/build
+examples/tensorrt/python/logs
+examples/tensorrt/cpp/build
