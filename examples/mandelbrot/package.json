@@ -1,0 +1,16 @@
+{
+  "name": "mandelbrot",
+  "version": "0.1.0",
+  "description": "Mandelbrot Set as ASCII Art",
+  "main": "app.js",
+  "repository": "https://github.com/NVIDIA/grcuda/examples/mandelbrot",
+  "scripts": {},
+  "author": "",
+  "license": "SEE LICENSE IN license.txt",
+  "dependencies": {
+    "express": "^4.17.1"
+  },
+  "devDependencies": {
+    "standard": "^14.3.3"
+  }
+}
