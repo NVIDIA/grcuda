@@ -35,16 +35,21 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public final class ExternalFunction extends Function {
 
-    private final Object externalFunction;
+    private final Object nfiCallable;
 
-    public ExternalFunction(String name, Object externalFunction) {
+    public ExternalFunction(String name, Object nfiCallable) {
         super(name);
-        this.externalFunction = externalFunction;
+        this.nfiCallable = nfiCallable;
     }
 
     @Override
     @TruffleBoundary
     protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-        return INTEROP.execute(externalFunction, arguments);
+        return INTEROP.execute(nfiCallable, arguments);
+    }
+
+    @Override
+    public String toString() {
+        return "ExternalFunction(name=" + getName() + ", nfiCallable=" + nfiCallable + ")";
     }
 }

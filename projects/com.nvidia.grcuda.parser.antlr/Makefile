@@ -28,19 +28,28 @@
 
 QUIETLY$(MX_VERBOSE) = @
 
-SOURCE=${PARSER_PATH}/GrCUDA.g4
-STAMP=${PARSER_PATH}/GrCUDA.g4.stamp
+SOURCE_GRCUDA=${PARSER_PATH}/GrCUDA.g4
+SOURCE_NIDL=${PARSER_PATH}/NIDL.g4
+STAMP_GRCUDA=${PARSER_PATH}/GrCUDA.g4.stamp
+STAMP_NIDL=${PARSER_PATH}/NIDL.g4.stamp
 
-GEN_FILES=${OUTPUT_PATH}/GrCUDALexer.java ${OUTPUT_PATH}/GrCUDAParser.java
+GEN_FILES=${OUTPUT_PATH}/GrCUDALexer.java ${OUTPUT_PATH}/GrCUDAParser.java \
+					${OUTPUT_PATH}/NIDLLexer.java ${OUTPUT_PATH}/NIDLParser.java
 
 .PHONY: default clean
-default: ${GEN_FILES} ${STAMP}
+default: ${GEN_FILES} ${STAMP_GRCUDA} ${STAMP_NIDL}
 
-${STAMP}: ${SOURCE}
+${STAMP_GRCUDA}: ${SOURCE_GRCUDA}
 	$(QUIETLY) touch $@
-	$(QUIETLY) ${JAVA_HOME}/bin/java -cp ${ANTLR_JAR} org.antlr.v4.Tool -no-visitor -no-listener -package ${PARSER_PKG} -o ${OUTPUT_PATH} ${SOURCE}
+	$(QUIETLY) ${JAVA_HOME}/bin/java -cp ${ANTLR_JAR} org.antlr.v4.Tool \
+		-no-visitor -no-listener -package ${PARSER_PKG} -o ${OUTPUT_PATH} ${SOURCE_GRCUDA}
 
-${GEN_FILES}: %.java: ${STAMP}
+${STAMP_NIDL}: ${SOURCE_NIDL}
+	$(QUIETLY) touch $@
+	$(QUIETLY) ${JAVA_HOME}/bin/java -cp ${ANTLR_JAR} org.antlr.v4.Tool \
+		-no-visitor -no-listener -package ${PARSER_PKG} -o ${OUTPUT_PATH} ${SOURCE_NIDL}
+
+${GEN_FILES}: %.java: ${STAMP_GRCUDA} ${STAMP_NIDL}
 	$(QUIETLY) python3 ${POSTPROCESSOR} $@
 
 clean:

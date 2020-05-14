@@ -28,34 +28,58 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.Type;
+import com.nvidia.grcuda.FunctionBinding;
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
-/**
- * Special curried version of the device array creation function that is specific to a data type.
- */
-public final class TypedDeviceArrayFunction extends Function {
+public class HostFunction extends Function {
 
-    private final CUDARuntime runtime;
-    private final Type elementType;
+    private final CUDARuntime cudaRuntime;
+    private final FunctionBinding binding;
+    private Object nfiCallable = null;
 
-    public TypedDeviceArrayFunction(CUDARuntime runtime, Type elementType) {
-        super("TypedDeviceArray");
-        this.runtime = runtime;
-        this.elementType = elementType;
+    public HostFunction(FunctionBinding binding, CUDARuntime runtime) {
+        super(binding.getName());
+        this.binding = binding;
+        this.cudaRuntime = runtime;
     }
 
     @Override
     @TruffleBoundary
-    public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 1) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
+    protected Object call(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        assertFunctionResolved();
+        return INTEROP.execute(nfiCallable, arguments);
+    }
+
+    @Override
+    public String toString() {
+        return "HostFunction(name=" + binding.getName() + ", nfiCallable=" + nfiCallable + ")";
+    }
+
+    public void resolveSymbol() throws UnknownIdentifierException {
+        synchronized (this) {
+            if (nfiCallable == null) {
+                nfiCallable = cudaRuntime.getSymbol(binding);
+                assert nfiCallable != null : "NFI callable non-null";
+            }
         }
-        return DeviceArrayFunction.createArray(arguments, 0, elementType, runtime);
+    }
+
+    private void assertFunctionResolved() {
+        synchronized (this) {
+            if (nfiCallable == null) {
+                try {
+                    nfiCallable = cudaRuntime.getSymbol(binding);
+                } catch (UnknownIdentifierException e) {
+                    throw new GrCUDAException("symbol " + binding.getSymbolName() + " not found: " + e);
+                }
+                assert nfiCallable != null : "NFI callable non-null";
+            }
+        }
     }
 }

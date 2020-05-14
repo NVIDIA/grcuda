@@ -116,7 +116,7 @@ public abstract class Function implements TruffleObject {
     }
 
     @ExportMessage
-    public Object execute(@SuppressWarnings("unused") Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+    public Object execute(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         return call(arguments);
     }
 

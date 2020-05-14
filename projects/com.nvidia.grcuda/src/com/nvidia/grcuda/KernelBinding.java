@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,36 +26,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.functions;
+package com.nvidia.grcuda;
 
-import com.nvidia.grcuda.Type;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import java.util.ArrayList;
 
-/**
- * Special curried version of the device array creation function that is specific to a data type.
- */
-public final class TypedDeviceArrayFunction extends Function {
+public final class KernelBinding extends Binding {
 
-    private final CUDARuntime runtime;
-    private final Type elementType;
-
-    public TypedDeviceArrayFunction(CUDARuntime runtime, Type elementType) {
-        super("TypedDeviceArray");
-        this.runtime = runtime;
-        this.elementType = elementType;
+    private KernelBinding(String name, ArrayList<Parameter> parameterList, boolean hasCxxMangledName) {
+        super(name, parameterList, hasCxxMangledName);
     }
 
-    @Override
-    @TruffleBoundary
-    public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
-        if (arguments.length < 1) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
-        }
-        return DeviceArrayFunction.createArray(arguments, 0, elementType, runtime);
+    public static KernelBinding newCxxBinding(String name, ArrayList<Parameter> parameterList) {
+        return new KernelBinding(name, parameterList, true);
+    }
+
+    public static KernelBinding newCBinding(String name, ArrayList<Parameter> parameterList) {
+        return new KernelBinding(name, parameterList, false);
     }
 }

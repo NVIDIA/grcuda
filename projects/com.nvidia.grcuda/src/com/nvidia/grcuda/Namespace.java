@@ -33,6 +33,7 @@ import java.util.TreeMap;
 
 import com.nvidia.grcuda.DeviceArray.MemberSet;
 import com.nvidia.grcuda.functions.Function;
+import com.nvidia.grcuda.gpu.LazyKernel;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -76,6 +77,10 @@ public final class Namespace implements TruffleObject {
 
     public void addFunction(Function function) {
         addInternal(function.getName(), function);
+    }
+
+    public void addKernel(LazyKernel kernel) {
+        addInternal(kernel.getKernelName(), kernel);
     }
 
     public void addNamespace(Namespace namespace) {

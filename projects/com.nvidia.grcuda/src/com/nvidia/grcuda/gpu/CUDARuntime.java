@@ -35,6 +35,9 @@ import static com.nvidia.grcuda.functions.Function.expectPositiveLong;
 
 import java.util.HashMap;
 import org.graalvm.collections.Pair;
+
+import com.nvidia.grcuda.Binding;
+import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -279,18 +282,38 @@ public final class CUDARuntime {
     /**
      * Get function as callable from native library.
      *
-     * @param libraryPath path to library (.so file)
-     * @param symbolName name of the function (symbol) too look up
-     * @param signature NFI signature of the function
+     * @param binding function binding
      * @return a callable as a TruffleObject
      */
     @TruffleBoundary
-    public Object getSymbol(String libraryPath, String symbolName, String signature) throws UnknownIdentifierException {
-        return getSymbol(libraryPath, symbolName, signature, "");
+    public Object getSymbol(FunctionBinding binding) throws UnknownIdentifierException {
+        return getSymbol(binding.getLibraryFileName(), binding.getSymbolName(), binding.toNFISignature(), "");
     }
 
+    /**
+     * Get function as callable from native library.
+     *
+     * @param libraryPath path to library (.so file)
+     * @param symbolName name of the function (symbol) too look up
+     * @param nfiSignature NFI signature of the function
+     * @return a callable as a TruffleObject
+     */
     @TruffleBoundary
-    public Object getSymbol(String libraryPath, String symbolName, String signature, String hint) throws UnknownIdentifierException {
+    public Object getSymbol(String libraryPath, String symbolName, String nfiSignature) throws UnknownIdentifierException {
+        return getSymbol(libraryPath, symbolName, nfiSignature, "");
+    }
+
+    /**
+     * Get function as callable from native library.
+     *
+     * @param libraryPath path to library (.so file)
+     * @param symbolName name of the function (symbol) too look up
+     * @param nfiSignature NFI signature of the function
+     * @param hint additional string shown to user when symbol cannot be loaded
+     * @return a callable as a TruffleObject
+     */
+    @TruffleBoundary
+    public Object getSymbol(String libraryPath, String symbolName, String nfiSignature, String hint) throws UnknownIdentifierException {
 
         Pair<String, String> functionKey = Pair.create(libraryPath, symbolName);
         Object callable = boundFunctions.get(functionKey);
@@ -310,7 +333,7 @@ public final class CUDARuntime {
             }
             try {
                 Object symbol = INTEROP.readMember(library, symbolName);
-                callable = INTEROP.invokeMember(symbol, "bind", signature);
+                callable = INTEROP.invokeMember(symbol, "bind", nfiSignature);
             } catch (UnsatisfiedLinkError | UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
                 throw new GrCUDAException("unexpected behavior: " + e.getMessage());
             }
@@ -428,7 +451,7 @@ public final class CUDARuntime {
                 }
             }
         },
-        CUDA_MALLOCMANAGED("cudaMallocManaged", "(pointer, uint64, sint32): sint32") {
+        CUDA_MALLOCMANAGED("cudaMallocManaged", "(pointer, uint64, uint32): sint32") {
             @Override
             @TruffleBoundary
             public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
@@ -488,38 +511,31 @@ public final class CUDARuntime {
     private HashMap<String, CUModule> loadedModules = new HashMap<>();
 
     @TruffleBoundary
-    public Kernel loadKernel(String cubinFile, String kernelName, String signature) {
+    public Kernel loadKernel(Binding binding) {
+        return loadKernel(binding.getLibraryFileName(), binding.getName(), binding.getSymbolName(), binding.getNIDLParameterSignature());
+    }
+
+    @TruffleBoundary
+    public Kernel loadKernel(String cubinFile, String kernelName, String symbolName, String signature) {
         CUModule module = loadedModules.get(cubinFile);
-        try {
-            if (module == null) {
-                module = cuModuleLoad(cubinFile);
-            }
-            long kernelFunction = cuModuleGetFunction(module, kernelName);
-            return new Kernel(this, kernelName, module, kernelFunction, signature);
-        } catch (Exception e) {
-            if ((module != null) && (module.getRefCount() == 1)) {
-                cuModuleUnload(module);
-            }
-            throw e;
+        if (module == null) {
+            // load module as it is not yet loaded
+            module = cuModuleLoad(cubinFile);
+            loadedModules.put(cubinFile, module);
         }
+        long kernelFunction = cuModuleGetFunction(module, symbolName);
+        return new Kernel(this, kernelName, symbolName, kernelFunction, signature, module);
     }
 
     @TruffleBoundary
     public Kernel buildKernel(String code, String kernelName, String signature) {
         String moduleName = "truffle" + context.getNextModuleId();
         PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14");
-        CUModule module = null;
-        try {
-            module = cuModuleLoadData(ptx.getPtxSource(), moduleName);
-            long kernelFunction = cuModuleGetFunction(module, ptx.getLoweredKernelName());
-            return new Kernel(this, ptx.getLoweredKernelName(), module, kernelFunction,
-                            signature, ptx.getPtxSource());
-        } catch (Exception e) {
-            if (module != null) {
-                cuModuleUnload(module);
-            }
-            throw e;
-        }
+        CUModule module = cuModuleLoadData(ptx.getPtxSource(), moduleName);
+        loadedModules.put(moduleName, module);
+        long kernelFunctionHandle = cuModuleGetFunction(module, ptx.getLoweredKernelName());
+        return new Kernel(this, kernelName, ptx.getLoweredKernelName(), kernelFunctionHandle,
+                        signature, module, ptx.getPtxSource());
     }
 
     @TruffleBoundary
@@ -530,12 +546,9 @@ public final class CUDARuntime {
         }
         try (UnsafeHelper.Integer64Object modulePtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULELOAD.getSymbol(this);
-            Object result = INTEROP.execute(callable,
-                            modulePtr.getAddress(), cubinName);
+            Object result = INTEROP.execute(callable, modulePtr.getAddress(), cubinName);
             checkCUReturnCode(result, "cuModuleLoad");
-            CUModule module = new CUModule(cubinName, modulePtr.getValue());
-            loadedModules.put(cubinName, module);
-            return module;
+            return new CUModule(cubinName, modulePtr.getValue());
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -552,9 +565,7 @@ public final class CUDARuntime {
             Object result = INTEROP.execute(callable,
                             modulePtr.getAddress(), ptx);
             checkCUReturnCode(result, "cuModuleLoadData");
-            CUModule module = new CUModule(moduleName, modulePtr.getValue());
-            loadedModules.put(moduleName, module);
-            return module;
+            return new CUModule(moduleName, modulePtr.getValue());
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -564,7 +575,7 @@ public final class CUDARuntime {
     public void cuModuleUnload(CUModule module) {
         try {
             Object callable = CUDADriverFunction.CU_MODULEUNLOAD.getSymbol(this);
-            Object result = INTEROP.execute(callable, module.module);
+            Object result = INTEROP.execute(callable, module.modulePointer);
             checkCUReturnCode(result, "cuModuleUnload");
         } catch (InteropException e) {
             throw new GrCUDAException(e);
@@ -572,11 +583,18 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
+    /**
+     * Get function handle to kernel in module.
+     *
+     * @param kernelModule CUmodule containing the kernel function
+     * @param kernelName
+     * @return native CUfunction function handle
+     */
     public long cuModuleGetFunction(CUModule kernelModule, String kernelName) {
         try (UnsafeHelper.Integer64Object functionPtr = UnsafeHelper.createInteger64Object()) {
             Object callable = CUDADriverFunction.CU_MODULEGETFUNCTION.getSymbol(this);
             Object result = INTEROP.execute(callable,
-                            functionPtr.getAddress(), kernelModule.module, kernelName);
+                            functionPtr.getAddress(), kernelModule.getModulePointer(), kernelName);
             checkCUReturnCode(result, "cuModuleGetFunction");
             return functionPtr.getValue();
         } catch (InteropException e) {
@@ -603,7 +621,7 @@ public final class CUDARuntime {
             Dim3 gridSize = config.getGridSize();
             Dim3 blockSize = config.getBlockSize();
             Object result = INTEROP.execute(callable,
-                            kernel.getKernelFunction(),
+                            kernel.getKernelFunctionHandle(),
                             gridSize.getX(),
                             gridSize.getY(),
                             gridSize.getZ(),
@@ -736,11 +754,12 @@ public final class CUDARuntime {
         // unload all modules
         for (CUModule module : loadedModules.values()) {
             try {
-                cuModuleUnload(module);
+                module.close();
             } catch (Exception e) {
                 /* ignore exception */
             }
         }
+        loadedModules.clear();
     }
 
     public enum CUDADriverFunction {
@@ -888,41 +907,35 @@ public final class CUDARuntime {
         }
     }
 
-    final class CUModule {
+    final class CUModule implements AutoCloseable {
         final String cubinFile;
-        final long module;
-        int refCount;
+        /** Pointer to the native CUmodule object. */
+        final long modulePointer;
+        boolean closed = false;
 
-        CUModule(String cubinFile, long module) {
+        CUModule(String cubinFile, long modulePointer) {
             this.cubinFile = cubinFile;
-            this.module = module;
-            this.refCount = 1;
+            this.modulePointer = modulePointer;
+            this.closed = false;
         }
 
         public long getModulePointer() {
-            return module;
-        }
-
-        public int getRefCount() {
-            return refCount;
-        }
-
-        public void incrementRefCount() {
-            refCount += 1;
-        }
-
-        public void decrementRefCount() {
-            refCount -= 1;
-            if (refCount == 0) {
-                cuModuleUnload(this);
+            if (closed) {
+                CompilerDirectives.transferToInterpreter();
+                throw new GrCUDAException(String.format("cannot get module pointer, module (%016x) already closed", modulePointer));
             }
+            return modulePointer;
+        }
+
+        public boolean isClosed() {
+            return closed;
         }
 
         @Override
         public boolean equals(Object other) {
             if (other instanceof CUModule) {
                 CUModule otherModule = (CUModule) other;
-                return otherModule.cubinFile.equals(cubinFile);
+                return otherModule.cubinFile.equals(cubinFile) && otherModule.closed == closed;
             } else {
                 return false;
             }
@@ -931,6 +944,14 @@ public final class CUDARuntime {
         @Override
         public int hashCode() {
             return cubinFile.hashCode();
+        }
+
+        @Override
+        public void close() {
+            if (!closed) {
+                cuModuleUnload(this);
+                closed = true;
+            }
         }
     }
 }

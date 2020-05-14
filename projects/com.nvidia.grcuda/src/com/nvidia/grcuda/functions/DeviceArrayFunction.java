@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 import com.nvidia.grcuda.DeviceArray;
-import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.TypeException;
@@ -73,9 +73,9 @@ public final class DeviceArrayFunction extends Function {
             throw ArityException.create(1, arguments.length);
         }
         String typeName = expectString(arguments[0], "first argument of DeviceArray must be string (type name)");
-        ElementType elementType;
+        Type elementType;
         try {
-            elementType = ElementType.lookupType(typeName);
+            elementType = Type.fromGrCUDATypeString(typeName);
         } catch (TypeException e) {
             throw new GrCUDAException(e.getMessage());
         }
@@ -86,7 +86,7 @@ public final class DeviceArrayFunction extends Function {
         }
     }
 
-    static Object createArray(Object[] arguments, int start, ElementType elementType, CUDARuntime runtime) throws UnsupportedTypeException {
+    static Object createArray(Object[] arguments, int start, Type elementType, CUDARuntime runtime) throws UnsupportedTypeException {
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
         for (int i = start; i < arguments.length; ++i) {

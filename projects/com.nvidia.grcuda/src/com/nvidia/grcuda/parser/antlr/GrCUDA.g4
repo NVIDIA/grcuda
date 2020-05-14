@@ -38,7 +38,7 @@ import com.nvidia.grcuda.nodes.ExpressionNode;
 import com.nvidia.grcuda.nodes.IdentifierNode;
 import com.nvidia.grcuda.nodes.GrCUDARootNode;
 import com.nvidia.grcuda.parser.NodeFactory;
-import com.nvidia.grcuda.parser.ParserException;
+import com.nvidia.grcuda.parser.GrCUDAParserException;
 import com.oracle.truffle.api.source.Source;
 }
 
@@ -55,31 +55,33 @@ public static ExpressionNode parseCUDA(Source source) {
     ParserErrorListener parserErrorListener = new ParserErrorListener(source);
     parser.addErrorListener(parserErrorListener);
     ExpressionNode expression = parser.expr().result;
-    Optional<ParserException> maybeException = parserErrorListener.getException();
+    Optional<GrCUDAParserException> maybeException = parserErrorListener.getException();
     if (maybeException.isPresent()) {
-       throw maybeException.get();
+      throw maybeException.get();
     } else {
-       return expression;
+      return expression;
     }
 }
 
 private static class ParserErrorListener extends BaseErrorListener {
-    private ParserException exception;
+    private GrCUDAParserException exception;
     private Source source;
 
     ParserErrorListener(Source source) {
-        this.source = source;
+      this.source = source;
     }
-  
+
     @Override
-    public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine,
-    	                    String msg, RecognitionException e) {
-        Token token = (Token) offendingSymbol;
-        exception = new ParserException(msg, source, line, charPositionInLine, Math.max(token.getStopIndex() - token.getStartIndex(), 0));
+    public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                            int line, int charPositionInLine,
+                            String msg, RecognitionException e) {
+      Token token = (Token) offendingSymbol;
+      exception = new GrCUDAParserException(msg, source, line, charPositionInLine,
+                                            Math.max(token.getStopIndex() - token.getStartIndex(), 0));
     }
-    
-    public Optional<ParserException> getException() {
-        return Optional.ofNullable(exception);
+
+    public Optional<GrCUDAParserException> getException() {
+      return Optional.ofNullable(exception);
     }
 }
 }
@@ -152,7 +154,7 @@ constFactor returns [ExpressionNode result]
 // lexer
 
 String: '"' StringChar* '"';
-Identifier: Letter (Letter | Digit)+;
+Identifier: Letter (Letter | Digit)*;
 IntegerLiteral: Digit+;
 
 fragment Digit: [0-9];

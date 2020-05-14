@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,42 +26,41 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.parser;
+package com.nvidia.grcuda;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
-public class ParserException extends RuntimeException implements TruffleException {
+public final class FunctionBinding extends Binding {
 
-    private static final long serialVersionUID = -6653370806148433373L;
-    private final Source source;
-    private final int line;
-    private final int column;
-    private final int length;
+    private final Type returnType;
 
-    public ParserException(String message, Source source, int line, int charPositionInLine, int length) {
-        super(message);
-        this.source = source;
-        this.line = line;
-        this.column = charPositionInLine;
-        this.length = length;
+    private FunctionBinding(String name, ArrayList<Parameter> parameterList,
+                    Type returnType, boolean hasCxxMangledName) {
+        super(name, parameterList, hasCxxMangledName);
+        this.returnType = returnType;
+    }
+
+    public static FunctionBinding newCxxBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
+        return new FunctionBinding(name, parameterList, returnType, true);
+    }
+
+    public static FunctionBinding newCBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
+        return new FunctionBinding(name, parameterList, returnType, false);
     }
 
     @Override
-    public SourceSection getSourceLocation() {
-        return source.createSection(line, column, length);
+    public String toString() {
+        return super.toString() + " : " + returnType.toString().toLowerCase();
     }
 
     @Override
-    public Node getLocation() {
-        return null;
+    public String toNIDLString() {
+        return name + "(" + getNIDLParameterSignature() + "): " + returnType.toString().toLowerCase();
     }
 
-    @Override
-    public boolean isSyntaxError() {
-        return true;
+    public String toNFISignature() {
+        return "(" + Arrays.stream(parameters).map(Parameter::toNFISignatureElement).collect(Collectors.joining(", ")) + "): " + returnType.getNFITypeName();
     }
-
 }

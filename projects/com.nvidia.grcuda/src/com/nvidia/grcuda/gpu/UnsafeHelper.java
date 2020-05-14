@@ -59,6 +59,14 @@ public class UnsafeHelper {
         return new PointerObject();
     }
 
+    public static Integer8Object createInteger8Object() {
+        return new Integer8Object();
+    }
+
+    public static Integer16Object createInteger16Object() {
+        return new Integer16Object();
+    }
+
     public static Integer32Object createInteger32Object() {
         return new Integer32Object();
     }
@@ -180,6 +188,40 @@ public class UnsafeHelper {
                 offset += 1;
             }
             return new String(bytes, 0, offset, Charset.forName("ISO-8859-1"));
+        }
+    }
+
+    public static final class Integer8Object extends MemoryObject {
+
+        Integer8Object() {
+            super(unsafe.allocateMemory(1));
+        }
+
+        public byte getValue() {
+            return unsafe.getByte(getAddress());
+        }
+
+        public char getChar() {
+            return unsafe.getChar(getAddress());
+        }
+
+        public void setValue(byte value) {
+            unsafe.putByte(getAddress(), value);
+        }
+    }
+
+    public static final class Integer16Object extends MemoryObject {
+
+        Integer16Object() {
+            super(unsafe.allocateMemory(2));
+        }
+
+        public short getValue() {
+            return unsafe.getShort(getAddress());
+        }
+
+        public void setValue(short value) {
+            unsafe.putShort(getAddress(), value);
         }
     }
 

@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,46 +25,40 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda;
+package com.nvidia.grcuda.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
-public enum ElementType {
-    BYTE(1),
-    CHAR(2),
-    SHORT(2),
-    INT(4),
-    LONG(8),
-    FLOAT(4),
-    DOUBLE(8);
+public class NIDLParserException extends RuntimeException implements TruffleException {
 
-    private final int sizeBytes;
+    private static final long serialVersionUID = -7520277230665801341L;
+    private final String message;
+    private final String filename;
+    private final int line;
+    private final int column;
 
-    ElementType(int sizeBytes) {
-        this.sizeBytes = sizeBytes;
+    public NIDLParserException(String message, String filename, int line, int charPositionInLine) {
+        super(message);
+        this.message = message;
+        this.filename = filename;
+        this.line = line;
+        this.column = charPositionInLine;
     }
 
-    public int getSizeBytes() {
-        return this.sizeBytes;
+    @Override
+    public String getMessage() {
+        return "NIDL parse error: [" + filename + " " + line + ":" + column + "] " + message;
     }
 
-    public static ElementType lookupType(String type) throws TypeException {
-        switch (type) {
-            case "char":
-                return ElementType.BYTE;
-            case "short":
-                return ElementType.SHORT;
-            case "int":
-                return ElementType.INT;
-            case "long":
-                return ElementType.LONG;
-            case "float":
-                return ElementType.FLOAT;
-            case "double":
-                return ElementType.DOUBLE;
-            default:
-                CompilerDirectives.transferToInterpreter();
-                throw new TypeException("invalid type '" + type + "'");
-        }
+    @Override
+    public Node getLocation() {
+        // null = location not available
+        return null;
+    }
+
+    @Override
+    public boolean isSyntaxError() {
+        return true;
     }
 }
