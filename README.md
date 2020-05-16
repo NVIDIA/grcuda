@@ -8,7 +8,7 @@ This Truffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.
 
 Supported and tested GraalVM languages:
 
-- Python]
+- Python
 - JavaScript/NodeJS
 - Ruby
 - R
