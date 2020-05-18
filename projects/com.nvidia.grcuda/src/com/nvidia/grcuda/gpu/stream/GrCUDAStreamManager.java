@@ -30,23 +30,39 @@ public class GrCUDAStreamManager {
      */
     protected final Map<CUDAStream, Set<GrCUDAComputationalElement>> activeComputationsPerStream = new HashMap<>();
 
-    private final RetrieveStream retrieveStream;
+    private final RetrieveNewStream retrieveNewStream;
+    private final RetrieveParentStream retrieveParentStream;
 
-    public GrCUDAStreamManager(CUDARuntime runtime) {
-        this(runtime, runtime.getContext().getRetrieveStreamPolicy());
+    public GrCUDAStreamManager(CUDARuntime runtime) { 
+        this(runtime, runtime.getContext().getRetrieveNewStreamPolicy(), runtime.getContext().getRetrieveParentStreamPolicyEnum());
     }
 
-    public GrCUDAStreamManager(CUDARuntime runtime, RetrieveStreamPolicyEnum retrieveStreamPolicyEnum) {
+    public GrCUDAStreamManager(
+            CUDARuntime runtime,
+            RetrieveNewStreamPolicyEnum retrieveNewStreamPolicyEnum,
+            RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum) {
         this.runtime = runtime;
-        switch(retrieveStreamPolicyEnum) {
-            case LIFO:
-                this.retrieveStream = new LifoRetrieveStream();
+        // Get how streams are retrieved for computations without parents;
+        switch(retrieveNewStreamPolicyEnum) {
+            case FIFO:
+                this.retrieveNewStream = new FifoRetrieveStream();
                 break;
             case ALWAYS_NEW:
-                this.retrieveStream = new AlwaysNewRetrieveStream();
+                this.retrieveNewStream = new AlwaysNewRetrieveStream();
                 break;
             default:
-                this.retrieveStream = new LifoRetrieveStream();
+                this.retrieveNewStream = new FifoRetrieveStream();
+        }
+        // Get how streams are retrieved for computations with parents;
+        switch(retrieveParentStreamPolicyEnum) {
+            case DISJOINT:
+                this.retrieveParentStream = new DisjointRetrieveParentStream();
+                break;
+            case DEFAULT:
+                this.retrieveParentStream = new DefaultRetrieveParentStream();
+                break;
+            default:
+                this.retrieveParentStream = new DefaultRetrieveParentStream();
         }
     }
 
@@ -62,13 +78,10 @@ public class GrCUDAStreamManager {
             CUDAStream stream;
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
-                stream = retrieveStream.retrieve();
+                stream = retrieveNewStream.retrieve();
             } else {
                 // Else, compute the streams used by the parent computations.
-                // If more than one stream is available, keep the first;
-                // TODO: this should be more complex!
-                //  If 2 child computations have disjoint set of dependencies, they can use 2 streams and run in parallel!
-                stream = vertex.getParentComputations().get(0).getStream();
+                stream = this.retrieveParentStream.retrieve(vertex);
             }
             // Set the stream;
             vertex.getComputation().setStream(stream);
@@ -190,7 +203,7 @@ public class GrCUDAStreamManager {
         // If this stream doesn't have any computation associated to it, it's free to use;
         if (activeComputationsPerStream.get(stream).isEmpty()) {
             activeComputationsPerStream.remove(stream);
-            retrieveStream.update(stream);
+            retrieveNewStream.update(stream);
         }
     }
 
@@ -204,7 +217,7 @@ public class GrCUDAStreamManager {
         // Streams don't have any active computation;
         activeComputationsPerStream.clear();
         // All streams are free;
-        retrieveStream.update(streams);
+        retrieveNewStream.update(streams);
     }
 
     /**
@@ -213,14 +226,14 @@ public class GrCUDAStreamManager {
     public void cleanup() {
         streams.forEach(runtime::cudaStreamDestroy);
         activeComputationsPerStream.clear();
-        retrieveStream.cleanup();
+        retrieveNewStream.cleanup();
         streams.clear();
     }
 
     /**
      * By default, create a new stream every time;
      */
-    private class AlwaysNewRetrieveStream extends RetrieveStream {
+    private class AlwaysNewRetrieveStream extends RetrieveNewStream {
 
         @Override
         public CUDAStream retrieve() {
@@ -231,7 +244,7 @@ public class GrCUDAStreamManager {
     /**
      * Keep a queue of free (currently not utilized) streams, and retrieve the oldest one added to the queue;
      */
-    private class LifoRetrieveStream extends RetrieveStream {
+    private class FifoRetrieveStream extends RetrieveNewStream {
 
         /**
          * Keep a queue of free streams;
@@ -257,6 +270,28 @@ public class GrCUDAStreamManager {
                 // Get the first stream available, and remove it from the list of free streams;
                 return freeStreams.poll();
             }
+        }
+    }
+
+    /**
+     * By default, use the same stream as the parent computation;
+     */
+    private static class DefaultRetrieveParentStream extends RetrieveParentStream {
+
+        @Override
+        public CUDAStream retrieve(ExecutionDAG.DAGVertex vertex) {
+            return vertex.getParentComputations().get(0).getStream();
+        }
+    }
+
+    /**
+     * TODO: keep track of disjoint argument sets
+     */
+    private class DisjointRetrieveParentStream extends RetrieveParentStream {
+
+        @Override
+        public CUDAStream retrieve(ExecutionDAG.DAGVertex vertex) {
+            return vertex.getParentComputations().get(0).getStream();
         }
     }
 }

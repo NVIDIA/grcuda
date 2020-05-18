@@ -54,12 +54,15 @@ public final class GrCUDAOptions {
     @Option(category = OptionCategory.USER, help = "Set the location of the cuml library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> CuMLLibrary = new OptionKey<>(CUMLRegistry.DEFAULT_LIBRARY);
 
-    @Option(category = OptionCategory.USER, help = "Chose the scheduling policy of GrCUDA computations", stability = OptionStability.EXPERIMENTAL) //
+    @Option(category = OptionCategory.USER, help = "Choose the scheduling policy of GrCUDA computations", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> ExecutionPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_EXECUTION_POLICY.getName());
 
-    @Option(category = OptionCategory.USER, help = "Chose how data dependencies between GrCUDA computations are computed", stability = OptionStability.EXPERIMENTAL) //
+    @Option(category = OptionCategory.USER, help = "Choose how data dependencies between GrCUDA computations are computed", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> DependencyPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_DEPENDENCY_POLICY.getName());
 
-    @Option(category = OptionCategory.USER, help = "Chose how streams for new GrCUDA computations are provided", stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<String> RetrieveStreamPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY.getName());
+    @Option(category = OptionCategory.USER, help = "Choose how streams for new GrCUDA computations are created", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> RetrieveNewStreamPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY.getName());
+
+    @Option(category = OptionCategory.USER, help = "Choose how streams for new GrCUDA computations are obtained from parent computations", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> RetrieveParentStreamPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY.getName());
 }

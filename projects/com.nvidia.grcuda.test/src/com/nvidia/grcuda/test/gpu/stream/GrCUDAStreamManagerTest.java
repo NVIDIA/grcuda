@@ -2,7 +2,7 @@ package com.nvidia.grcuda.test.gpu.stream;
 
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
-import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
+import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.test.mock.ArgumentMock;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMockBuilder;
 import com.nvidia.grcuda.test.mock.GrCUDAStreamManagerMock;
@@ -23,20 +23,20 @@ import static org.junit.Assert.assertFalse;
 @RunWith(Parameterized.class)
 public class GrCUDAStreamManagerTest {
     /**
-     * Tests are executed for each of the {@link com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum} values;
+     * Tests are executed for each of the {@link RetrieveNewStreamPolicyEnum} values;
      * @return the current stream policy
      */
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
-                {RetrieveStreamPolicyEnum.ALWAYS_NEW},
-                {RetrieveStreamPolicyEnum.LIFO},
+                {RetrieveNewStreamPolicyEnum.ALWAYS_NEW},
+                {RetrieveNewStreamPolicyEnum.FIFO},
         });
     }
 
-    private final RetrieveStreamPolicyEnum policy;
+    private final RetrieveNewStreamPolicyEnum policy;
 
-    public GrCUDAStreamManagerTest(RetrieveStreamPolicyEnum policy) {
+    public GrCUDAStreamManagerTest(RetrieveNewStreamPolicyEnum policy) {
         this.policy = policy;
     }
 
@@ -235,9 +235,9 @@ public class GrCUDAStreamManagerTest {
 
         ExecutionDAG dag = context.getDag();
         // Check that kernels have been given the right stream;
-        int numStreams = this.policy == RetrieveStreamPolicyEnum.LIFO ? 2 : numLoops * 2;
-        int streamCheck1 = this.policy == RetrieveStreamPolicyEnum.LIFO ? 0 : numLoops * 2 - 2;
-        int streamCheck2 = this.policy == RetrieveStreamPolicyEnum.LIFO ? 1 : numLoops * 2 - 1;
+        int numStreams = this.policy == RetrieveNewStreamPolicyEnum.FIFO ? 2 : numLoops * 2;
+        int streamCheck1 = this.policy == RetrieveNewStreamPolicyEnum.FIFO ? 0 : numLoops * 2 - 2;
+        int streamCheck2 = this.policy == RetrieveNewStreamPolicyEnum.FIFO ? 1 : numLoops * 2 - 1;
 
         assertEquals(numStreams, context.getStreamManager().getNumberOfStreams());
         assertEquals(streamCheck1, dag.getVertices().get(numLoops * 3 - 3).getComputation().getStream().getStreamNumber());

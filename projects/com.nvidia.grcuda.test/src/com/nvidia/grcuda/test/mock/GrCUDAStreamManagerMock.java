@@ -5,20 +5,29 @@ import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
-import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
+import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
+import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 
 import java.util.Map;
 import java.util.Set;
 
 public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
 
-    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents, RetrieveStreamPolicyEnum retrieveStreamPolicy) {
-        super(runtime, retrieveStreamPolicy);
+    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents,
+                            RetrieveNewStreamPolicyEnum retrieveStreamPolicy,
+                            RetrieveParentStreamPolicyEnum parentStreamPolicyEnum) {
+        super(runtime, retrieveStreamPolicy, parentStreamPolicyEnum);
+        this.syncParents = syncParents;
+    }
+
+    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents,
+                            RetrieveNewStreamPolicyEnum retrieveStreamPolicy) {
+        super(runtime, retrieveStreamPolicy, RetrieveParentStreamPolicyEnum.DEFAULT);
         this.syncParents = syncParents;
     }
 
     GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents) {
-        super(runtime, RetrieveStreamPolicyEnum.ALWAYS_NEW);
+        super(runtime, RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveParentStreamPolicyEnum.DEFAULT);
         this.syncParents = syncParents;
     }
 

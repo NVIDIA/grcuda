@@ -1,12 +1,12 @@
 package com.nvidia.grcuda.gpu.stream;
 
-public enum RetrieveStreamPolicyEnum {
-    LIFO("lifo"),
-    ALWAYS_NEW("always_new");
+public enum RetrieveParentStreamPolicyEnum {
+    DEFAULT("default"),
+    DISJOINT("disjoiint");
 
     private final String name;
 
-    RetrieveStreamPolicyEnum(String name) {
+    RetrieveParentStreamPolicyEnum(String name) {
         this.name = name;
     }
 

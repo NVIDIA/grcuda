@@ -39,15 +39,13 @@ import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.computation.dependency.DefaultDependencyComputationBuilder;
-import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
-import com.nvidia.grcuda.gpu.computation.dependency.WithConstDependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.SyncGrCUDAExecutionContext;
-import com.nvidia.grcuda.gpu.stream.RetrieveStreamPolicyEnum;
+import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
+import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -65,7 +63,8 @@ public final class GrCUDAContext {
 
     public static final ExecutionPolicyEnum DEFAULT_EXECUTION_POLICY = ExecutionPolicyEnum.DEFAULT;
     public static final DependencyPolicyEnum DEFAULT_DEPENDENCY_POLICY = DependencyPolicyEnum.DEFAULT;
-    public static final RetrieveStreamPolicyEnum DEFAULT_RETRIEVE_STREAM_POLICY = RetrieveStreamPolicyEnum.LIFO;
+    public static final RetrieveNewStreamPolicyEnum DEFAULT_RETRIEVE_STREAM_POLICY = RetrieveNewStreamPolicyEnum.FIFO;
+    public static final RetrieveParentStreamPolicyEnum DEFAULT_PARENT_STREAM_POLICY = RetrieveParentStreamPolicyEnum.DEFAULT;
 
     private static final String ROOT_NAMESPACE = "CU";
 
@@ -75,7 +74,8 @@ public final class GrCUDAContext {
     private final ArrayList<Runnable> disposables = new ArrayList<>();
     private final AtomicInteger moduleId = new AtomicInteger(0);
     private volatile boolean cudaInitialized = false;
-    private final RetrieveStreamPolicyEnum retrieveStreamPolicy;
+    private final RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy;
+    private final RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum;
 
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
@@ -84,7 +84,10 @@ public final class GrCUDAContext {
         this.env = env;
 
         // Retrieve the stream retrieval policy;
-        retrieveStreamPolicy = parseRetrieveStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveStreamPolicy));
+        retrieveNewStreamPolicy = parseRetrieveStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveNewStreamPolicy));
+        
+        // Retrieve how streams are obtained from parent computations;
+        retrieveParentStreamPolicyEnum = parseParentStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveParentStreamPolicy));
 
         // Retrieve the dependency computation policy;
         DependencyPolicyEnum dependencyPolicy = parseDependencyPolicy(env.getOptions().get(GrCUDAOptions.DependencyPolicy));
@@ -172,8 +175,12 @@ public final class GrCUDAContext {
         return uncachedMapCallTargets;
     }
 
-    public RetrieveStreamPolicyEnum getRetrieveStreamPolicy() {
-        return retrieveStreamPolicy;
+    public RetrieveNewStreamPolicyEnum getRetrieveNewStreamPolicy() {
+        return retrieveNewStreamPolicy;
+    }
+    
+    public RetrieveParentStreamPolicyEnum getRetrieveParentStreamPolicyEnum() {
+        return retrieveParentStreamPolicyEnum;
     }
 
     /**
@@ -215,16 +222,28 @@ public final class GrCUDAContext {
     }
 
     @TruffleBoundary
-    private static RetrieveStreamPolicyEnum parseRetrieveStreamPolicy(String policyString) {
+    private static RetrieveNewStreamPolicyEnum parseRetrieveStreamPolicy(String policyString) {
         switch(policyString) {
-            case "lifo":
-                return RetrieveStreamPolicyEnum.LIFO;
+            case "fifo":
+                return RetrieveNewStreamPolicyEnum.FIFO;
             case "always_new":
-                return RetrieveStreamPolicyEnum.ALWAYS_NEW;
+                return RetrieveNewStreamPolicyEnum.ALWAYS_NEW;
             default:
                 return GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY;
         }
     }
+    @TruffleBoundary
+    private static RetrieveParentStreamPolicyEnum parseParentStreamPolicy(String policyString) {
+        switch(policyString) {
+            case "disjoint":
+                return RetrieveParentStreamPolicyEnum.DISJOINT;
+            case "default":
+                return RetrieveParentStreamPolicyEnum.DEFAULT;
+            default:
+                return GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY;
+        }
+    }
+
 
     /**
      * Cleanup the GrCUDA context at the end of the execution;
