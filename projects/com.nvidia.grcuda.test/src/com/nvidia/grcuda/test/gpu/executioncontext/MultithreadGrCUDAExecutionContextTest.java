@@ -1,11 +1,9 @@
-package com.nvidia.grcuda.test.gpu;
+package com.nvidia.grcuda.test.gpu.executioncontext;
 
-import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
-import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.test.mock.ArgumentMock;
-import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMock;
 import com.nvidia.grcuda.test.mock.KernelExecutionMock;
+import com.nvidia.grcuda.test.mock.MultithreadGrCUDAExecutionContextMock;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.junit.Test;
 
@@ -17,24 +15,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class ExecutionDAGTest {
+public class MultithreadGrCUDAExecutionContextTest {
 
     @Test
-    public void executionDAGConstructorTest() {
-        ExecutionDAG dag = new ExecutionDAG(DependencyPolicyEnum.DEFAULT);
-        assertTrue(dag.getVertices().isEmpty());
-        assertTrue(dag.getEdges().isEmpty());
-        assertTrue(dag.getFrontier().isEmpty());
-        assertEquals(0, dag.getNumVertices());
-        assertEquals(0, dag.getNumEdges());
-    }
-
-    @Test
-    public void addVertexToDAGTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
+    public void multithreadAddVertexToDAGTest() throws UnsupportedTypeException {
+        MultithreadGrCUDAExecutionContextMock context = new MultithreadGrCUDAExecutionContextMock();
         // Create two mock kernel executions;
         new KernelExecutionMock(context,
-                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3))).schedule();
+                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2)), 100).schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -44,8 +32,9 @@ public class ExecutionDAGTest {
         assertTrue(dag.getFrontier().get(0).isFrontier());
         assertTrue(dag.getFrontier().get(0).isStart());
 
-        new KernelExecutionMock(context,
-                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3))).schedule();
+        KernelExecutionMock k2 = new KernelExecutionMock(context,
+                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2)), 100);
+        k2.schedule();
 
         assertEquals(2, dag.getNumVertices());
         assertEquals(1, dag.getNumEdges());
@@ -60,19 +49,25 @@ public class ExecutionDAGTest {
         assertEquals(dag.getVertices().get(0), dag.getVertices().get(1).getParentVertices().get(0));
         // Check if the second vertex is a child of the first;
         assertEquals(dag.getVertices().get(1), dag.getVertices().get(0).getChildVertices().get(0));
+
+        context.waitFinish(k2);
+        assertEquals(0, dag.getFrontier().size());
     }
 
     @Test
     public void dependencyPipelineSimpleMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
+        MultithreadGrCUDAExecutionContextMock context = new MultithreadGrCUDAExecutionContextMock();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        // A(1) -> C(1,2,3) -> D(3)
+        // B(2) /
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1)), 100).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2)), 100).schedule();
         new KernelExecutionMock(context,
-                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(3))).schedule();
+                Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3)), 100).schedule();
+        KernelExecutionMock k3 = new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(3)), 100);
+        k3.schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -102,21 +97,29 @@ public class ExecutionDAGTest {
         assertEquals(1, dag.getVertices().get(2).getChildren().size());
         assertEquals(dag.getVertices().get(2), dag.getVertices().get(3).getParentVertices().get(0));
         assertEquals(dag.getVertices().get(3), dag.getVertices().get(2).getChildVertices().get(0));
+
+        context.waitFinish(k3);
+        assertEquals(0, dag.getFrontier().size());
     }
 
     @Test
-    public void complexFrontierMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
+    public void complexFrontierMockTest() throws UnsupportedTypeException, InterruptedException {
+        MultithreadGrCUDAExecutionContextMock context = new MultithreadGrCUDAExecutionContextMock();
 
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
-        //    \----> C(2)
-        // The final frontier is composed by C(2), D(3), E(1), F(4);
-        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(2))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
-        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(3))).schedule();
-        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(4))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(4))).schedule();
+        //   \ C(2)
+        KernelExecutionMock k1 = new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(2)), 100);
+        k1.schedule();
+        KernelExecutionMock k2 = new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1)), 200);
+        k2.schedule();
+        KernelExecutionMock k3 = new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2)), 100);
+        k3.schedule();
+        KernelExecutionMock k4 = new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(3)), 100);
+        k4.schedule();
+        KernelExecutionMock k5 = new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(4)), 100);
+        k5.schedule();
+        KernelExecutionMock k6 = new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(4)), 100);
+        k6.schedule();
 
         ExecutionDAG dag = context.getDag();
 
@@ -124,7 +127,7 @@ public class ExecutionDAGTest {
         assertEquals(6, dag.getNumVertices());
         assertEquals(5, dag.getNumEdges());
         assertEquals(4, dag.getFrontier().size());
-        // Check updates to frontier and start status;
+
         assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(2), dag.getVertices().get(3), dag.getVertices().get(4), dag.getVertices().get(5))),
                 new HashSet<>(dag.getFrontier()));
 
@@ -140,44 +143,14 @@ public class ExecutionDAGTest {
         assertFalse(dag.getVertices().get(4).isStart());
         assertTrue(dag.getVertices().get(5).isFrontier());
         assertFalse(dag.getVertices().get(5).isStart());
-    }
 
-    @Test
-    public void complexFrontierWithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(true);
-
-        // This time, simulate the synchronization process between kernels;
-        // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
-        //    C(2)
-        // The final frontier is composed by C(2) F(4);
-        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(2))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
-        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(3))).schedule();
-        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(4))).schedule();
-        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(4))).schedule();
-
-        ExecutionDAG dag = context.getDag();
+        context.waitFinish(k3);
+        context.waitFinish(k6);
 
         // Check the DAG structure;
         assertEquals(6, dag.getNumVertices());
-        assertEquals(4, dag.getNumEdges());
-        assertEquals(2, dag.getFrontier().size());
-        // Check updates to frontier and start status;
-        assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(2), dag.getVertices().get(5))),
-                new HashSet<>(dag.getFrontier()));
-
-        assertFalse(dag.getVertices().get(0).isFrontier());
-        assertTrue(dag.getVertices().get(0).isStart());
-        assertFalse(dag.getVertices().get(1).isFrontier());
-        assertFalse(dag.getVertices().get(1).isStart());
-        assertTrue(dag.getVertices().get(2).isFrontier());
-        assertTrue(dag.getVertices().get(2).isStart());
-        assertFalse(dag.getVertices().get(3).isFrontier());
-        assertFalse(dag.getVertices().get(3).isStart());
-        assertFalse(dag.getVertices().get(4).isFrontier());
-        assertFalse(dag.getVertices().get(4).isStart());
-        assertTrue(dag.getVertices().get(5).isFrontier());
-        assertFalse(dag.getVertices().get(5).isStart());
+        assertEquals(5, dag.getNumEdges());
+        assertEquals(0, dag.getFrontier().size());
     }
+
 }

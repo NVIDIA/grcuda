@@ -89,7 +89,7 @@ public abstract class AbstractArray implements TruffleObject {
 
     public boolean isLastComputationArrayAccess() { return isLastComputationArrayAccess; }
 
-    public void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
+    public synchronized void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
         isLastComputationArrayAccess = lastComputationArrayAccess;
     }
 

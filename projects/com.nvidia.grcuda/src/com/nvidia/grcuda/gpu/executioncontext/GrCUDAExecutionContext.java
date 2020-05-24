@@ -20,10 +20,6 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
      * scheduling computations on different streams;
      */
     private final GrCUDAStreamManager streamManager;
-    /**
-     * Store a reference to the thread manager used to schedule GPU computations;
-     */
-    private final GrCUDAThreadManager threadManager;
 
     public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
         this(new CUDARuntime(context, env), new GrCUDAThreadManager(context), dependencyPolicy);
@@ -35,7 +31,6 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
     public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy) {
         super(cudaRuntime, dependencyPolicy);
-        this.threadManager = threadManager;
         this.streamManager = streamManager;
     }
 
@@ -54,11 +49,6 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
         // Start the computation;
         return executeComputationSync(vertex);
-
-//        // If the computation can be executed immediately, start it;
-//        if (vertex.isExecutable() && threadManager != null) {
-//            threadManager.submitRunnable(new ComputationThread(vertex));
-//        }
     }
 
     @Override
@@ -75,7 +65,6 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
      */
     @Override
     public void cleanup() {
-        threadManager.finalizeManager();
         streamManager.cleanup();
     }
 
@@ -89,36 +78,5 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
         vertex.getComputation().setComputationStarted();
         vertex.getComputation().updateIsComputationArrayAccess();
         return vertex.getComputation().execute();
-    }
-
-    private class ComputationThread implements Runnable {
-
-        private final ExecutionDAG.DAGVertex vertex;
-
-        public ComputationThread(ExecutionDAG.DAGVertex vertex) {
-            this.vertex = vertex;
-        }
-
-        public void run(){
-            // Perform the computation;
-            System.out.println("Starting execution of " + vertex.getComputation());
-            vertex.getComputation().setComputationStarted();
-            try {
-                vertex.getComputation().execute();
-            } catch (UnsupportedTypeException e) {
-                e.printStackTrace();
-            }
-            // Synchronize on the stream associated to this computation;
-            System.out.println("\tsync thread on stream " + vertex.getComputation().getStream());
-            cudaRuntime.cudaStreamSynchronize(vertex.getComputation().getStream());
-            vertex.getComputation().setComputationFinished();
-            System.out.println("\tfinish sync thread on stream " + vertex.getComputation().getStream());
-            // Update the status of this computation and of its children;
-            vertex.getChildVertices().forEach(v -> {
-                if (v.isExecutable() && threadManager != null) {
-                    threadManager.submitRunnable(new ComputationThread(v));
-                }
-            });
-        }
     }
 }

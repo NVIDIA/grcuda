@@ -162,7 +162,12 @@ public class GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
+        System.out.println("craeted stream " + newStream);
         return newStream;
+    }
+
+    public void syncStream(CUDAStream stream) {
+        runtime.cudaStreamSynchronize(stream);
     }
 
     /**

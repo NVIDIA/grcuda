@@ -3,7 +3,7 @@ package com.nvidia.grcuda.test.mock;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
-import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,12 +13,32 @@ import java.util.stream.Collectors;
  */
 public class KernelExecutionMock extends GrCUDAComputationalElement {
 
-    public KernelExecutionMock(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
+    /**
+     * Simulate an execution by forcing a wait that last the given number of milliseconds;
+     */
+    private int durationMs = 0;
+
+    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
         super(grCUDAExecutionContext, args);
     }
 
+    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args, int durationMs) {
+        super(grCUDAExecutionContext, args);
+        this.durationMs = durationMs;
+    }
+
     @Override
-    public Object execute() { return NoneValue.get(); }
+    public Object execute() {
+        if (this.durationMs > 0) {
+            try {
+                Thread.sleep(this.durationMs);
+            } catch (InterruptedException e) {
+                System.out.println("ERROR; failed to pause " + this + " for " + this.durationMs + " msec");
+                e.printStackTrace();
+            }
+        }
+        return NoneValue.get();
+    }
 
     @Override
     public boolean canUseStream() { return true; }

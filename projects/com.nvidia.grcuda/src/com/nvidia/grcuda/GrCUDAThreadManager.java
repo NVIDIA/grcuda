@@ -8,23 +8,29 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 public class GrCUDAThreadManager {
 
     private final ExecutorService threadPool;
     private final GrCUDAContext context;
-    private final List<Thread> toJoin;
+    protected final List<Thread> toJoin;
 
     public GrCUDAThreadManager(GrCUDAContext context) {
-        this.toJoin = new LinkedList<>();
-        this.context = context;
-        this.threadPool = Executors.newFixedThreadPool(context.getNumberOfThreads(), this::createJavaThread);
+        this(context, context.getNumberOfThreads());
     }
 
-    private Thread createJavaThread(Runnable runnable) {
+    public GrCUDAThreadManager(GrCUDAContext context, int numberOfThreads) {
+        this.toJoin = new LinkedList<>();
+        this.context = context;
+        this.threadPool = Executors.newFixedThreadPool(numberOfThreads, this::createJavaThread);
+    }
+
+    protected Thread createJavaThread(Runnable runnable) {
         Thread thread = context.getEnv().createThread(runnable);
         toJoin.add(thread);
+        System.out.println("-- created thread " + thread);
         return thread;
     }
 
@@ -34,6 +40,10 @@ public class GrCUDAThreadManager {
 
     public <T> Future<T> submitCallable(Callable<T> task) {
         return threadPool.submit(task);
+    }
+
+    public <T> void submitTask(FutureTask<T> task) {
+        threadPool.submit(task);
     }
 
     public <T> List<T> getResults(Collection<Future<T>> futures) {
@@ -47,6 +57,10 @@ public class GrCUDAThreadManager {
             }
         });
         return results;
+    }
+
+    public ExecutorService getThreadPool() {
+        return threadPool;
     }
 
     public void finalizeManager() {

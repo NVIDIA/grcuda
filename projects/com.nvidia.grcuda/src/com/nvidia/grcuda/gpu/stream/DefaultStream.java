@@ -2,7 +2,7 @@ package com.nvidia.grcuda.gpu.stream;
 
 public class DefaultStream extends CUDAStream {
     
-    static final int DEFAULT_STREAM_NUMBER = 0;
+    static final int DEFAULT_STREAM_NUMBER = -1;
 
     private static final DefaultStream defaultStream = new DefaultStream();
     

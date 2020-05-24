@@ -175,6 +175,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
             throw InvalidArrayIndexException.create(index);
         }
         try {
+//            System.out.println("reading index " + index + " on array " + this.toString());
             if (this.canSkipScheduling()) {
                 // Fast path, skip the DAG scheduling;
                 return readArrayElementImpl(index, elementTypeProfile);
@@ -188,6 +189,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     }
 
     public Object readArrayElementImpl(long index, ValueProfile elementTypeProfile) {
+//        System.out.println("read array impl[" + index + "] of " + this);
         switch (elementTypeProfile.profile(elementType)) {
             case BYTE:
             case CHAR:

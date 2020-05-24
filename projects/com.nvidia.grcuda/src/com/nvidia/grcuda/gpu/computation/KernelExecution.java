@@ -83,8 +83,11 @@ public class KernelExecution extends GrCUDAComputationalElement {
     public void associateArraysToStreamImpl() {
         for (ComputationArgumentWithValue a : args.getKernelArgumentWithValues()) {
             if (this.getDependencyComputation().keepArgument(a)) {
-                // Attach the array to the stream, synchronously;
-                grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), (AbstractArray) a.getArgumentValue());
+                AbstractArray array = (AbstractArray) a.getArgumentValue();
+                // Attach the array to the stream, synchronously, if the array isn't already attached to this stream;
+                if (!array.getStreamMapping().equals(this.getStream())) {
+                    grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), (AbstractArray) a.getArgumentValue());
+                }
             }
         }
     }
@@ -110,7 +113,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
 
         @Override
         public List<ComputationArgumentWithValue> initialize() {
-            // TODO: what aboout scalars? We cannot treat them in the same way, as they are copied and not referenced
+            // TODO: what about scalars? We cannot treat them in the same way, as they are copied and not referenced
             //   There should be a semantic to manually specify scalar dependencies? For now we have to skip them;
             return this.args.getKernelArgumentWithValues().stream()
                     .filter(ComputationArgument::isArray).collect(Collectors.toList());

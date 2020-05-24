@@ -831,6 +831,8 @@ public final class CUDARuntime {
             Object callable = CUDADriverFunction.CU_LAUNCHKERNEL.getSymbol(this);
             Dim3 gridSize = config.getGridSize();
             Dim3 blockSize = config.getBlockSize();
+            System.out.println("LAUNCH KERNEL " + kernel.getKernelName() + "; GRID=" + gridSize + "; BLOCK=" + blockSize + "; SMEMORY=" + config.getDynamicSharedMemoryBytes() +
+                    "; STREAM=" + stream + "; ARGS=" + args);
             Object result = INTEROP.execute(callable,
                             kernel.getKernelFunction(),
                             gridSize.getX(),
@@ -956,6 +958,7 @@ public final class CUDARuntime {
                                             result.getClass().getName());
         }
         if (returnCode != 0) {
+            System.out.println("ERROR CODE=" + returnCode);
             throw new GrCUDAException(returnCode, DriverAPIErrorMessages.getString(returnCode), function);
         }
     }

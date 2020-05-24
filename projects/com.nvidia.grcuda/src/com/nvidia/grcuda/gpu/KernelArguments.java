@@ -6,6 +6,7 @@ import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public final class KernelArguments implements Closeable {
@@ -49,6 +50,10 @@ public final class KernelArguments implements Closeable {
         return kernelArgumentWithValues;
     }
 
+    @Override
+    public String toString() {
+        return "KernelArgs=" + Arrays.toString(originalArgs);
+    }
 
     @Override
     public void close() {

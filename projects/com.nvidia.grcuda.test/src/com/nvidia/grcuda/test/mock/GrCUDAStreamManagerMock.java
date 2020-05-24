@@ -47,6 +47,11 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     }
 
     @Override
+    public void syncStream(CUDAStream stream) {
+
+    }
+
+    @Override
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
         if (syncParents) {
             vertex.getParentComputations().forEach(c -> {

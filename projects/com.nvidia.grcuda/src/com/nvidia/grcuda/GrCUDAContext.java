@@ -43,9 +43,10 @@ import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.executioncontext.MultithreadGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.SyncGrCUDAExecutionContext;
-import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
+import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -101,6 +102,9 @@ public final class GrCUDAContext {
             case SYNC:
                 this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy);
                 break;
+            case MULTITHREAD:
+                this.grCUDAExecutionContext = new MultithreadGrCUDAExecutionContext(this, env, dependencyPolicy);
+                break;
             case DEFAULT:
                 this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy);
                 break;
@@ -130,7 +134,6 @@ public final class GrCUDAContext {
             new CUBLASRegistry(this).registerCUBLASFunctions(blas);
         }
         this.rootNamespace = namespace;
-
     }
 
     public Env getEnv() {
@@ -202,6 +205,8 @@ public final class GrCUDAContext {
         switch(policyString) {
             case "sync":
                 return ExecutionPolicyEnum.SYNC;
+            case "multithread":
+                return ExecutionPolicyEnum.MULTITHREAD;
             case "default":
                 return ExecutionPolicyEnum.DEFAULT;
             default:
