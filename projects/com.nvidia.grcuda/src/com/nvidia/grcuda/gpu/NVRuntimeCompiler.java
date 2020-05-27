@@ -108,13 +108,14 @@ public class NVRuntimeCompiler {
         if (opts.length == 0) {
             return nvrtcCompileProgramInternal(program, 0, 0L);
         } else {
-            ArrayList<StringObject> optCStrings = new ArrayList<>(opts.length);
+            ArrayList<StringObject> optCStrings = new ArrayList<>();
             try (UnsafeHelper.PointerArray optCStringArr = new PointerArray(opts.length)) {
                 int idx = 0;
                 for (String optString : opts) {
                     UnsafeHelper.StringObject cString = UnsafeHelper.StringObject.fromJavaString(optString);
                     optCStrings.add(cString);
                     optCStringArr.setValueAt(idx, cString.getAddress());
+                    idx++;
                 }
                 NVRTCResult result = nvrtcCompileProgramInternal(program, opts.length,
                                 optCStringArr.getAddress());

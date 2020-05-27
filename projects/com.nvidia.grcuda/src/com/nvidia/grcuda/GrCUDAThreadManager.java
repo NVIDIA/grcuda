@@ -28,7 +28,7 @@ public class GrCUDAThreadManager {
     }
 
     protected Thread createJavaThread(Runnable runnable) {
-        Thread thread = context.getEnv().createThread(runnable);
+        Thread thread = context.getEnv().createThread(runnable, context.getEnv().getContext());
         toJoin.add(thread);
         System.out.println("-- created thread " + thread);
         return thread;

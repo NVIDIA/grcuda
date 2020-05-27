@@ -130,6 +130,8 @@ public final class CUDARuntime {
     // using this slow/uncached instance since all calls are non-critical
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
+    private GPUPointer innerCudaContext;
+
     public GrCUDAContext getContext() {
         return context;
     }
@@ -364,6 +366,21 @@ public final class CUDARuntime {
         }
     }
 
+    @TruffleBoundary
+    public GPUPointer getInnerCudaContext() {
+        if (this.innerCudaContext == null) {
+            assertCUDAInitialized();
+        }
+        return this.innerCudaContext;
+    }
+
+    @TruffleBoundary
+    public GPUPointer initializeInnerCudaContext() {
+        int CU_CTX_SCHED_YIELD = 0x02; // Optimal multi-threaded host flag;
+        int device = 0; // Support only device 0;
+        return new GPUPointer(cuDevicePrimaryCtxRetain(device));
+    }
+
     /**
      * Synchronous version of "cudaStreamAttachMemAsync". This function doesn't exist in the CUDA API, but it is useful to have;
      * @param stream the stream to which we attach the array
@@ -371,6 +388,7 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public void cudaStreamAttachMem(CUDAStream stream, AbstractArray array) {
+        System.out.println("\t* attach array=" + array + " to " + stream);
         cudaStreamAttachMemAsync(stream, array);
         cudaStreamSynchronize(stream);
     }
@@ -731,7 +749,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public Kernel buildKernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String code, String kernelName, String signature) {
         String moduleName = "truffle" + context.getNextModuleId();
-        PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14");
+        PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14", "-G", "-lineinfo");
         CUModule module = null;
         try {
             module = cuModuleLoadData(ptx.getPtxSource(), moduleName);
@@ -938,10 +956,37 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
+    private long cuCtxGetCurrent() {
+        try (UnsafeHelper.PointerObject ctxPointer = UnsafeHelper.createPointerObject()) {
+            Object callable = CUDADriverFunction.CU_CTXGETCURRENT.getSymbol(this);
+            Object result = INTEROP.execute(callable, ctxPointer.getAddress());
+            checkCUDAReturnCode(result, "cuCtxGetCurrent");
+            System.out.println("got context=" + ctxPointer.getValueOfPointer() + " at address " + ctxPointer.getAddress());
+            return ctxPointer.getValueOfPointer();
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    @TruffleBoundary
+    public void cuCtxSetCurrent(GPUPointer ctxPointer) {
+        try {
+            Object callable = CUDADriverFunction.CU_CTXSETCURRENT.getSymbol(this);
+            Object result = INTEROP.execute(callable, ctxPointer.getRawPointer());
+            checkCUDAReturnCode(result, "cuCtxSetCurrent");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    @TruffleBoundary
     private void assertCUDAInitialized() {
         if (!context.isCUDAInitialized()) {
+            cuInit();
             // a simple way to create the device context in the driver is to call CUDA function
             cudaDeviceSynchronize();
+            this.innerCudaContext = initializeInnerCudaContext();
+
             context.setCUDAInitialized();
         }
     }
@@ -977,6 +1022,8 @@ public final class CUDARuntime {
     public enum CUDADriverFunction {
         CU_CTXCREATE("cuCtxCreate", "(pointer, uint32, sint32) :sint32"),
         CU_CTXDESTROY("cuCtxDestroy", "(pointer): sint32"),
+        CU_CTXGETCURRENT("cuCtxGetCurrent", "(pointer) :sint32"),
+        CU_CTXSETCURRENT("cuCtxSetCurrent", "(pointer) :sint32"),
         CU_CTXSYNCHRONIZE("cuCtxSynchronize", "(): sint32"),
         CU_DEVICEGETCOUNT("cuDeviceGetCount", "(pointer): sint32"),
         CU_DEVICEGET("cuDeviceGet", "(pointer, sint32): sint32"),

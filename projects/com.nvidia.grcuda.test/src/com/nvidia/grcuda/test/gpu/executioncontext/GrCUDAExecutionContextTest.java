@@ -34,7 +34,7 @@ public class GrCUDAExecutionContextTest {
         this.policy = policy;
     }
 
-    private static final int NUM_THREADS_PER_BLOCK = 128;
+    private static final int NUM_THREADS_PER_BLOCK = 32;
 
     private static final String SQUARE_KERNEL =
             "extern \"C\" __global__ void square(float* x, int n) {\n" +
@@ -107,7 +107,7 @@ public class GrCUDAExecutionContextTest {
 //            Thread.sleep(10000);
 
             // Verify the output;
-            assertEquals(4.0, x.getArrayElement(0).asFloat(), 0.1);
+            assertEquals(4.0, x.getArrayElement(1).asFloat(), 0.1);
         }
     }
 

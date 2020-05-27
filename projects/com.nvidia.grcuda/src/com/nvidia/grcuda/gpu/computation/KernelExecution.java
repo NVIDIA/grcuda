@@ -6,6 +6,7 @@ import com.nvidia.grcuda.gpu.ConfiguredKernel;
 import com.nvidia.grcuda.gpu.Kernel;
 import com.nvidia.grcuda.gpu.KernelArguments;
 import com.nvidia.grcuda.gpu.KernelConfig;
+import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 
@@ -37,8 +38,8 @@ public class KernelExecution extends GrCUDAComputationalElement {
 
     @Override
     public Object execute() {
-       grCUDAExecutionContext.getCudaRuntime().cuLaunchKernel(kernel, config, args, this.getStream());
-       return NoneValue.get();
+        grCUDAExecutionContext.getCudaRuntime().cuLaunchKernel(kernel, config, args, this.getStream());
+        return NoneValue.get();
     }
 
     public ConfiguredKernel getConfiguredKernel() {

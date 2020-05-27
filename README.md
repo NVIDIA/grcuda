@@ -262,7 +262,8 @@ graalpython -m ginstall install numpy;
 
 8. **Setup your IDE with** `mx ideinit`
 * Also update the project SDK and the default JUnit configurations to use the GraalVM SDK in `$GRAAL_HOME`, and update the `PATH` variable so that it can find `nvcc`
-
+* Modify the template Junit test configuration adding `-Djava.library.path="/path/to/graalvmbuild/lib` to the VM options to find `trufflenfi`
+ and update the environment variables with `PATH=your/path/env/var` to find `nvcc`
 9. **Run tests with** `mx unittest com.nvidia`
 * Run a specific test using, for example, `mx unittest com.nvidia.grcuda.test.gpu.ExecutionDAGTest#executionDAGConstructorTest`
 

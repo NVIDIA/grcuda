@@ -109,7 +109,7 @@ suite = {
             "subDir": "projects",
             "license": ["BSD-3"],
             "sourceDirs": ["src"],
-            "javaCompliance": "1.8",
+            "javaCompliance": "11",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "dependencies": [
                 "truffle:TRUFFLE_API",
@@ -128,7 +128,7 @@ suite = {
                 "truffle:TRUFFLE_TEST",
             ],
             "checkstyle": "com.nvidia.grcuda",
-            "javaCompliance": "1.8",
+            "javaCompliance": "11",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Truffle,CUDA",
             "testProject": True,

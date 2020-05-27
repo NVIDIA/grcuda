@@ -61,4 +61,19 @@ public class MultithreadGrCUDAExecutionContextMock extends MultithreadGrCUDAExec
             }
         }
     }
+
+    @Override
+    protected ComputationThread getNewComputationThread(ExecutionDAG.DAGVertex vertex) {
+        return new ComputationThreadMock(vertex);
+    }
+
+    protected class ComputationThreadMock extends ComputationThread {
+
+        public ComputationThreadMock(ExecutionDAG.DAGVertex vertex) {
+            super(vertex);
+        }
+
+        // Don't do anything;
+        protected void setContext() { }
+    }
 }

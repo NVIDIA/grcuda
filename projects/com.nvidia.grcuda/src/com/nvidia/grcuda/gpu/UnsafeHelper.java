@@ -31,6 +31,7 @@ package com.nvidia.grcuda.gpu;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -143,7 +144,7 @@ public class UnsafeHelper {
 
         @TruffleBoundary
         static StringObject fromJavaString(String javaString) {
-            byte[] bytes = javaString.getBytes(Charset.forName("ISO-8859-1"));
+            byte[] bytes = javaString.getBytes(StandardCharsets.ISO_8859_1);
             StringObject so = new StringObject(bytes.length + 1); // + 1 for \NULL terminator
             for (int i = 0; i < bytes.length; i++) {
                 unsafe.putByte(so.getAddress() + i, bytes[i]);
