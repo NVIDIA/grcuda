@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda.gpu;
 
+import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -85,6 +86,16 @@ public final class CUDARuntime {
     }
     public int getNumStreams() {
         return numUserAllocatedStreams;
+    }
+
+    /**
+     * CUDA events are used to synchronize stream computations, and guarantee that a computation starts
+     * only when all computations that depends from it are completed. Keep track of the number of events created;
+     */
+    private long numEvents = 0;
+    public void incrementNumEvents() { numEvents++; }
+    public long getNumEvents() {
+        return numEvents;
     }
 
     /**
@@ -691,6 +702,81 @@ public final class CUDARuntime {
 
                 // Always set "size" to 0 to cover the entire array;
                 callSymbol(cudaRuntime, streamAddr, arrayAddr, 0, flag);
+                return NoneValue.get();
+            }
+        },
+        CUDA_EVENTCREATE("cudaEventCreate", "(pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 0);
+                try (UnsafeHelper.PointerObject eventPointer = UnsafeHelper.createPointerObject()) {
+                    callSymbol(cudaRuntime, eventPointer.getAddress());
+                    CUDAEvent event = new CUDAEvent(eventPointer.getValueOfPointer(), cudaRuntime.getNumEvents());
+                    cudaRuntime.incrementNumEvents();
+                    return event;
+                }
+            }
+        },
+        CUDA_EVENTDESTROY("cudaEventDestroy", "(pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 1);
+                Object pointerObj = args[0];
+                long addr;
+                if (pointerObj instanceof CUDAEvent) {
+                    addr = ((CUDAEvent) pointerObj).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAEvent object");
+                }
+                callSymbol(cudaRuntime, addr);
+                return NoneValue.get();
+            }
+        },
+        CUDA_EVENTRECORD("cudaEventRecord", "(pointer, pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 2);
+                Object eventObj = args[0];
+                Object streamObj = args[1];
+                long eventAddr, streamAddr;
+                if (eventObj instanceof CUDAEvent) {
+                    eventAddr = ((CUDAEvent) eventObj).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAEvent object");
+                }
+                if (streamObj instanceof CUDAStream) {
+                    streamAddr = ((CUDAStream) streamObj).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAStream object");
+                }
+                callSymbol(cudaRuntime, eventAddr, streamAddr);
+                return NoneValue.get();
+            }
+        },
+        CUDA_STREAMWAITEVENT("cudaStreamWaitEvent", "(pointer, pointer, uint32): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 2);
+                Object streamObj = args[0];
+                Object eventObj = args[1];
+                long streamAddr, eventAddr;
+                final int FLAGS = 0x0; // Flags must be zero according to CUDA documentation;
+
+                if (streamObj instanceof CUDAStream) {
+                    streamAddr = ((CUDAStream) streamObj).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAStream object");
+                }
+                if (eventObj instanceof CUDAEvent) {
+                    eventAddr = ((CUDAEvent) eventObj).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAEvent object");
+                }
+                callSymbol(cudaRuntime, streamAddr, eventAddr, FLAGS);
                 return NoneValue.get();
             }
         };
