@@ -13,7 +13,8 @@ public class DefaultStream extends CUDAStream {
     public static DefaultStream get() { return defaultStream; }
 
     @Override
-    public boolean isDefaultStream() { return true; }
+    public boolean isDefaultStream() {
+        return true; }
 
     @Override
     public String toString() {

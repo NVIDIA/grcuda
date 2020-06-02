@@ -88,10 +88,12 @@ public class KernelExecution extends GrCUDAComputationalElement {
                 AbstractArray array = (AbstractArray) a.getArgumentValue();
                 if (getDependencyComputation().streamResetAttachFilter(a)) {
                     // If the array was attached to a stream, and now it is a const parameter, reset its visibility to the default stream;
-                    grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(DefaultStream.get(), array);
+                    if (!array.getStreamMapping().isDefaultStream()) {
+                        grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMemAsync(DefaultStream.get(), array);
+                    }
                 } else if (!array.getStreamMapping().equals(this.getStream())) {
                     // Attach the array to the stream if the array isn't already attached to this stream;
-                    grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), array);
+                    grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMemAsync(this.getStream(), array);
                 }
             }
         }

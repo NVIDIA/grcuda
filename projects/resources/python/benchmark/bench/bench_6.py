@@ -10,7 +10,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 128
+NUM_THREADS_PER_BLOCK = 1024
 
 NB_KERNEL = """   
     extern "C" __global__ void nb_1(const int* x, const float* y, float* z, int size, int n_feat, int n_classes) {
@@ -189,8 +189,8 @@ class Benchmark6(Benchmark):
         self.nb_amax = None
         self.nb_l = None
 
-        self.num_features = 10000  # self.nb_feat_log_prob_np.shape[1]
-        self.num_classes = 50  # self.nb_feat_log_prob_np.shape[0]
+        self.num_features = 1000  # self.nb_feat_log_prob_np.shape[1]
+        self.num_classes = 5  # self.nb_feat_log_prob_np.shape[0]
 
         self.num_blocks_size = 0
         self.num_blocks_feat = (self.num_features + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK

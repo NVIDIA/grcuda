@@ -56,7 +56,6 @@ public class WithConstDependencyComputation extends DependencyComputation {
      */
     @Override
     public boolean streamResetAttachFilter(ComputationArgumentWithValue arg) {
-        AbstractArray array = (AbstractArray) arg.getArgumentValue();
-        return arg.isConst() && !array.getStreamMapping().isDefaultStream();
+        return arg.isConst();
     }
 }
