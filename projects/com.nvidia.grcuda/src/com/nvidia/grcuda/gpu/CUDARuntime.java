@@ -355,6 +355,9 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public void cudaStreamAttachMemAsync(CUDAStream stream, AbstractArray array) {
+
+        System.out.println("\t* attach array=" + array + " to " + stream);
+
         final int MEM_ATTACH_SINGLE = 0x04;
         final int MEM_ATTACH_GLOBAL = 0x01;
         try {
@@ -393,7 +396,6 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public void cudaStreamAttachMem(CUDAStream stream, AbstractArray array) {
-        System.out.println("\t* attach array=" + array + " to " + stream);
         cudaStreamAttachMemAsync(stream, array);
         cudaStreamSynchronize(stream);
     }
@@ -854,8 +856,6 @@ public final class CUDARuntime {
             Object callable = CUDADriverFunction.CU_LAUNCHKERNEL.getSymbol(this);
             Dim3 gridSize = config.getGridSize();
             Dim3 blockSize = config.getBlockSize();
-            System.out.println("LAUNCH KERNEL " + kernel.getKernelName() + "; GRID=" + gridSize + "; BLOCK=" + blockSize + "; SMEMORY=" + config.getDynamicSharedMemoryBytes() +
-                    "; STREAM=" + stream + "; ARGS=" + args);
             Object result = INTEROP.execute(callable,
                             kernel.getKernelFunction(),
                             gridSize.getX(),
@@ -966,7 +966,6 @@ public final class CUDARuntime {
             Object callable = CUDADriverFunction.CU_CTXGETCURRENT.getSymbol(this);
             Object result = INTEROP.execute(callable, ctxPointer.getAddress());
             checkCUDAReturnCode(result, "cuCtxGetCurrent");
-            System.out.println("got context=" + ctxPointer.getValueOfPointer() + " at address " + ctxPointer.getAddress());
             return ctxPointer.getValueOfPointer();
         } catch (InteropException e) {
             throw new GrCUDAException(e);

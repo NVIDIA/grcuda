@@ -35,14 +35,14 @@ public abstract class DependencyComputation {
     }
 
     /**
-     * Provide an additional, optional filter used by dependency computations.
-     * The filter defines if and how arguments can be used in user-defined {@link GrCUDAComputationalElement}
-     * whose behaviour is influenced by how dependencies are computed.
-     * For example, a filter could keep only non-const array arguments, and ignore the others;
+     * Provide an additional, optional filter used to determine
+     * if an array argument should have its visibility reset to the {@link com.nvidia.grcuda.gpu.stream.DefaultStream}
+     * through {@link GrCUDAComputationalElement#associateArraysToStream()}
+     * For example, a filter might want to reset the visibility of const array arguments, and ignore the others;
      * @param arg an argument to analyse
-     * @return if this argument should be kept or not for the user-defined computation
+     * @return if this argument visibility should be reset or not
      */
-    public boolean keepArgument(ComputationArgumentWithValue arg) {
-        return true;
+    public boolean streamResetAttachFilter(ComputationArgumentWithValue arg) {
+        return false;
     }
 }

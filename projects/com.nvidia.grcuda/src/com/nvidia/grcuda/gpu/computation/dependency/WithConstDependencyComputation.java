@@ -47,8 +47,16 @@ public class WithConstDependencyComputation extends DependencyComputation {
         return dependencies;
     }
 
+    /**
+     * If the array was attached to a stream, and now it is a const parameter, reset its visibility to the default stream.
+     * For simplicity, we keep the visibility of all arguments currently used as const to the default stream.
+     * This allow the scheduling of multiple computations that use the same argument as const;
+     * @param arg an argument to analyse
+     * @return if this argument visibility should be reset or not
+     */
     @Override
-    public boolean keepArgument(ComputationArgumentWithValue arg) {
-        return (arg.getArgumentValue() instanceof AbstractArray) && !arg.isConst();
+    public boolean streamResetAttachFilter(ComputationArgumentWithValue arg) {
+        AbstractArray array = (AbstractArray) arg.getArgumentValue();
+        return arg.isConst() && !array.getStreamMapping().isDefaultStream();
     }
 }

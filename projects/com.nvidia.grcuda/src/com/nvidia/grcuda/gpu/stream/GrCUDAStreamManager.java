@@ -103,12 +103,8 @@ public class GrCUDAStreamManager {
      * @param vertex a computation whose parents should be synchronized
      */
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
-        // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
-        //  We can have a function in context called "is any computation running" that checks if the map is empty, and call it from array accesses
-        //  Also add test for it!
 
         // Skip syncing if no computation is active;
-//        System.out.println("--\tSYNC REQUEST by " + vertex.getComputation());
         if (this.isAnyComputationActive()) {
             Set<GrCUDAComputationalElement> computationsToSync = new HashSet<>(vertex.getParentComputations());
 
@@ -123,16 +119,28 @@ public class GrCUDAStreamManager {
                     runtime.cudaDeviceSynchronize();
                     // All computations are now finished;
                     resetActiveComputationState();
-                } else {
-                    // Else add the computations related to the additional streams to the set and sync it;
+                } else if (!getParentStreams(computationsToSync).contains(stream)) {
+                    // Else add the computations related to the additional streams to the set and sync it,
+                    //   as long as the additional stream isn't the same as the one that we have to sync anyway;
                     System.out.println("--\tsyncing additional stream " + stream + "...");
                     computationsToSync.addAll(activeComputationsPerStream.get(stream));
+                    syncParentStreamsImpl(computationsToSync, vertex.getComputation());
+                } else {
                     syncParentStreamsImpl(computationsToSync, vertex.getComputation());
                 }
             } else {
                 syncParentStreamsImpl(computationsToSync, vertex.getComputation());
             }
         }
+    }
+
+    /**
+     * Obtain the set of CUDAStreams that have to be synchronized;
+     * @param computationsToSync a set of computations to sync
+     * @return the set of CUDAStreams that have to be synchronized
+     */
+    private Set<CUDAStream> getParentStreams(Set<GrCUDAComputationalElement> computationsToSync) {
+        return computationsToSync.stream().map(GrCUDAComputationalElement::getStream).collect(Collectors.toSet());
     }
 
     /**
@@ -143,14 +151,20 @@ public class GrCUDAStreamManager {
     private void syncParentStreamsImpl(
             Set<GrCUDAComputationalElement> computationsToSync,
             GrCUDAComputationalElement computationThatSyncs) {
+
+        // Keep a set of streams synced so far, to avoid syncing the same stream multiple times;
+        Set<CUDAStream> syncedStreams = new HashSet<>();
+
         computationsToSync.forEach(c -> {
             // When scheduling a computation that uses the same stream of the parent, avoid manual synchronization as it is handled by CUDA;
             if (!(computationThatSyncs.canUseStream() && computationThatSyncs.getStream().equals(c.getStream()))) {
                 // Synchronize computations that are not yet finished and can use streams;
                 if (c.canUseStream() && !c.isComputationFinished()) {
-                    System.out.println("--\tsync stream " + c.getStream() + " by " + computationThatSyncs);
-                    // FIXME: avoid syncing the same stream multiple times, if a previous computation hasn't been marked as finished yet;
-                    runtime.cudaStreamSynchronize(c.getStream());
+                    if (!syncedStreams.contains(c.getStream())) {
+                        System.out.println("--\tsync stream " + c.getStream() + " by " + computationThatSyncs);
+                        runtime.cudaStreamSynchronize(c.getStream());
+                        syncedStreams.add(c.getStream());
+                    }
                     // Set the parent computations as finished;
                     c.setComputationFinished();
                     // Decrement the active computation count;
@@ -168,7 +182,6 @@ public class GrCUDAStreamManager {
     public CUDAStream createStream() {
         CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
         streams.add(newStream);
-        System.out.println("craeted stream " + newStream);
         return newStream;
     }
 

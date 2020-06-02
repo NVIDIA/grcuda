@@ -102,9 +102,6 @@ public final class GrCUDAContext {
             case SYNC:
                 this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy);
                 break;
-            case MULTITHREAD:
-                this.grCUDAExecutionContext = new MultithreadGrCUDAExecutionContext(this, env, dependencyPolicy);
-                break;
             case DEFAULT:
                 this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy);
                 break;
@@ -205,8 +202,6 @@ public final class GrCUDAContext {
         switch(policyString) {
             case "sync":
                 return ExecutionPolicyEnum.SYNC;
-            case "multithread":
-                return ExecutionPolicyEnum.MULTITHREAD;
             case "default":
                 return ExecutionPolicyEnum.DEFAULT;
             default:

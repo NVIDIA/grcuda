@@ -9,6 +9,7 @@ import com.nvidia.grcuda.gpu.KernelConfig;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
+import com.nvidia.grcuda.gpu.stream.DefaultStream;
 
 import java.util.Arrays;
 import java.util.List;
@@ -83,11 +84,14 @@ public class KernelExecution extends GrCUDAComputationalElement {
     @Override
     public void associateArraysToStreamImpl() {
         for (ComputationArgumentWithValue a : args.getKernelArgumentWithValues()) {
-            if (this.getDependencyComputation().keepArgument(a)) {
+            if (a.getArgumentValue() instanceof AbstractArray) {
                 AbstractArray array = (AbstractArray) a.getArgumentValue();
-                // Attach the array to the stream, synchronously, if the array isn't already attached to this stream;
-                if (!array.getStreamMapping().equals(this.getStream())) {
-                    grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), (AbstractArray) a.getArgumentValue());
+                if (getDependencyComputation().streamResetAttachFilter(a)) {
+                    // If the array was attached to a stream, and now it is a const parameter, reset its visibility to the default stream;
+                    grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(DefaultStream.get(), array);
+                } else if (!array.getStreamMapping().equals(this.getStream())) {
+                    // Attach the array to the stream if the array isn't already attached to this stream;
+                    grCUDAExecutionContext.getCudaRuntime().cudaStreamAttachMem(this.getStream(), array);
                 }
             }
         }

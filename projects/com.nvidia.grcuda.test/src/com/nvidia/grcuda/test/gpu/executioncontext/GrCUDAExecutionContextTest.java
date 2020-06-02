@@ -23,8 +23,7 @@ public class GrCUDAExecutionContextTest {
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
                 {"sync"},
-                {"default"},
-//                {"multithread"},
+                {"default"}
         });
     }
 
@@ -196,7 +195,7 @@ public class GrCUDAExecutionContextTest {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy).allowAllAccess(true).build()) {
 
-            final int numElements = 100000;
+            final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);
@@ -217,17 +216,23 @@ public class GrCUDAExecutionContextTest {
             configuredSquareKernel.execute(x, z, numElements);
 
             // Verify the output;
-            assertEquals(0.0, y.getArrayElement(0).asFloat(), 0.1);
             assertEquals(4.0, z.getArrayElement(0).asFloat(), 0.1);
+            assertEquals(0.0, y.getArrayElement(0).asFloat(), 0.1);
         }
     }
 
+    /**
+     * The read on "y" has to sync on the stream where the kernel is running, although that kernel doesn't use "y".
+     * This is due to the pre-Pascal limitations on managed memory accesses,
+     * and the inability to access an array while it is being used by a running kernel.
+     * In this case, also perform an operation on y, instead of leaving it uninitialized;
+     */
     @Test
     public void dependencyPipelineSimple4Test() throws InterruptedException {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy).allowAllAccess(true).build()) {
 
-            final int numElements = 100000;
+            final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value x = deviceArrayConstructor.execute("float", numElements);
@@ -237,7 +242,7 @@ public class GrCUDAExecutionContextTest {
             for (int i = 0; i < numElements; ++i) {
                 x.setArrayElement(i, 2.0);
             }
-            // FIXME: if I write on array x, launch K(Y) then read(x), the last comp on x is array access, so no sync is done!!!
+            // Access the y array;
             y.setArrayElement(0, 0);
 
             Value buildkernel = context.eval("grcuda", "buildkernel");

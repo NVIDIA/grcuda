@@ -46,9 +46,4 @@ public class DefaultDependencyComputation extends DependencyComputation {
         // Return the list of arguments that created dependencies with the new computation;
         return new ArrayList<>(dependencies);
     }
-
-    @Override
-    public boolean keepArgument(ComputationArgumentWithValue arg) {
-        return arg.getArgumentValue() instanceof AbstractArray;
-    }
 }
