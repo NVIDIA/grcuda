@@ -385,6 +385,17 @@ public final class CUDARuntime {
         }
     }
 
+    /**
+     * Synchronous version of "cudaStreamAttachMemAsync". This function doesn't exist in the CUDA API, but it is useful to have;
+     * @param stream the stream to which we attach the array
+     * @param array an array that should be assigned exclusively to a stream
+     */
+    @TruffleBoundary
+    public void cudaStreamAttachMem(CUDAStream stream, AbstractArray array) {
+        cudaStreamAttachMemAsync(stream, array);
+        cudaStreamSynchronize(stream);
+    }
+
     @TruffleBoundary
     public GPUPointer getInnerCudaContext() {
         if (this.innerCudaContext == null) {
@@ -401,14 +412,71 @@ public final class CUDARuntime {
     }
 
     /**
-     * Synchronous version of "cudaStreamAttachMemAsync". This function doesn't exist in the CUDA API, but it is useful to have;
-     * @param stream the stream to which we attach the array
-     * @param array an array that should be assigned exclusively to a stream
+     * Create a new {@link CUDAEvent} and keep track of it;
+     * @return a new CUDA event
      */
     @TruffleBoundary
-    public void cudaStreamAttachMem(CUDAStream stream, AbstractArray array) {
-        cudaStreamAttachMemAsync(stream, array);
-        cudaStreamSynchronize(stream);
+    public CUDAEvent cudaEventCreate() {
+        try (UnsafeHelper.PointerObject eventPointer = UnsafeHelper.createPointerObject()) {
+            Object callable = CUDARuntimeFunction.CUDA_EVENTCREATE.getSymbol(this);
+            Object result = INTEROP.execute(callable, eventPointer.getAddress());
+            checkCUDAReturnCode(result, "cudaEventCreate");
+            CUDAEvent event = new CUDAEvent(eventPointer.getValueOfPointer(), getNumEvents());
+            incrementNumEvents();
+            return event;
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    /**
+     * Destroy a given CUDA event;
+     * @param event a CUDA Event to destroy
+     */
+    @TruffleBoundary
+    public void cudaEventDestroy(CUDAEvent event) {
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_EVENTDESTROY.getSymbol(this);
+            Object result = INTEROP.execute(callable, event.getRawPointer());
+            checkCUDAReturnCode(result, "cudaEventDestroy");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    /**
+     * Add a given event to a stream. The event is a stream-ordered checkpoint on which we can perform synchronization,
+     * or force another stream to wait for the event to occur before executing any other scheduled operation queued on that stream;
+     * @param event a CUDA event
+     * @param stream a CUDA stream to which the event is associated
+     */
+    @TruffleBoundary
+    public void cudaEventRecord(CUDAEvent event, CUDAStream stream) {
+        try {
+            System.out.println("\t* event on stream; stream=" + stream.getStreamNumber() + "; event=" + event.getEventNumber());
+            Object callable = CUDARuntimeFunction.CUDA_EVENTRECORD.getSymbol(this);
+            Object result = INTEROP.execute(callable, event.getRawPointer(), stream.getRawPointer());
+            checkCUDAReturnCode(result, "cudaEventRecord");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    /**
+     * Tell a stream to wait for a given event to occur on another stream before executing any other computation;
+     * @param stream a CUDA stream to which the event is associated
+     * @param event a CUDA event that the stream should wait for
+     */
+    @TruffleBoundary
+    public void cudaStreamWaitEvent(CUDAStream stream, CUDAEvent event) {
+        try {
+            System.out.println("\t* stream wait event; stream=" + stream.getStreamNumber() + "; event=" + event.getEventNumber());
+            Object callable = CUDARuntimeFunction.CUDA_STREAMWAITEVENT.getSymbol(this);
+            Object result = INTEROP.execute(callable, stream.getRawPointer(), event.getRawPointer());
+            checkCUDAReturnCode(result, "cudaStreamWaitEvent");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
     }
 
     /**
