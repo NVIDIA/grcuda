@@ -348,6 +348,11 @@ public final class CUDARuntime {
         }
     }
 
+    /**
+     * Limit the visibility of a managed memory array to the specified stream;
+     * @param stream the stream to which we attach the array
+     * @param array an array that should be assigned exclusively to a stream
+     */
     @TruffleBoundary
     public void cudaStreamAttachMemAsync(CUDAStream stream, AbstractArray array) {
         final int MEM_ATTACH_SINGLE = 0x04;

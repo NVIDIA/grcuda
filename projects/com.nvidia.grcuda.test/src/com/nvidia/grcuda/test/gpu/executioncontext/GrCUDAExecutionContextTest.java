@@ -22,9 +22,9 @@ public class GrCUDAExecutionContextTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
-//                {"sync"},
-//                {"default"},
-                {"multithread"},
+                {"sync"},
+                {"default"},
+//                {"multithread"},
         });
     }
 
@@ -103,8 +103,6 @@ public class GrCUDAExecutionContextTest {
 
             // Perform the computation;
             configuredSquareKernel.execute(x, numElements);
-
-//            Thread.sleep(10000);
 
             // Verify the output;
             assertEquals(4.0, x.getArrayElement(1).asFloat(), 0.1);

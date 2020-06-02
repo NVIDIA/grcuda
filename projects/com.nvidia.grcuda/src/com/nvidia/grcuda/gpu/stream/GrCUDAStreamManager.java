@@ -144,14 +144,20 @@ public class GrCUDAStreamManager {
             Set<GrCUDAComputationalElement> computationsToSync,
             GrCUDAComputationalElement computationThatSyncs) {
         computationsToSync.forEach(c -> {
-            // Synchronize computations that are not yet finished and can use streams;
-            if (c.canUseStream() && !c.isComputationFinished()) {
-                System.out.println("--\tsync stream " + c.getStream() + " by " + computationThatSyncs);
-                runtime.cudaStreamSynchronize(c.getStream());
-                // Set the parent computations as finished;
-                c.setComputationFinished();
-                // Decrement the active computation count;
-                removeActiveComputation(c);
+            // When scheduling a computation that uses the same stream of the parent, avoid manual synchronization as it is handled by CUDA;
+            if (!(computationThatSyncs.canUseStream() && computationThatSyncs.getStream().equals(c.getStream()))) {
+                // Synchronize computations that are not yet finished and can use streams;
+                if (c.canUseStream() && !c.isComputationFinished()) {
+                    System.out.println("--\tsync stream " + c.getStream() + " by " + computationThatSyncs);
+                    // FIXME: avoid syncing the same stream multiple times, if a previous computation hasn't been marked as finished yet;
+                    runtime.cudaStreamSynchronize(c.getStream());
+                    // Set the parent computations as finished;
+                    c.setComputationFinished();
+                    // Decrement the active computation count;
+                    removeActiveComputation(c);
+                }
+            } else {
+                System.out.println("--\tavoid manual sync of " + c + " by " + computationThatSyncs);
             }
         });
     }
