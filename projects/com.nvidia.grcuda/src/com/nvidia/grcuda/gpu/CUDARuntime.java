@@ -453,7 +453,6 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaEventRecord(CUDAEvent event, CUDAStream stream) {
         try {
-            System.out.println("\t* event on stream; stream=" + stream.getStreamNumber() + "; event=" + event.getEventNumber());
             Object callable = CUDARuntimeFunction.CUDA_EVENTRECORD.getSymbol(this);
             Object result = INTEROP.execute(callable, event.getRawPointer(), stream.getRawPointer());
             checkCUDAReturnCode(result, "cudaEventRecord");
@@ -470,9 +469,9 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaStreamWaitEvent(CUDAStream stream, CUDAEvent event) {
         try {
-            System.out.println("\t* stream wait event; stream=" + stream.getStreamNumber() + "; event=" + event.getEventNumber());
+            final int FLAGS = 0x0; // Must be 0 according to CUDA documentation;
             Object callable = CUDARuntimeFunction.CUDA_STREAMWAITEVENT.getSymbol(this);
-            Object result = INTEROP.execute(callable, stream.getRawPointer(), event.getRawPointer());
+            Object result = INTEROP.execute(callable, stream.getRawPointer(), event.getRawPointer(), FLAGS);
             checkCUDAReturnCode(result, "cudaStreamWaitEvent");
         } catch (InteropException e) {
             throw new GrCUDAException(e);

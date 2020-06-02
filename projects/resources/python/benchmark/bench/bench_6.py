@@ -10,7 +10,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 1024
+NUM_THREADS_PER_BLOCK = 32
 
 NB_KERNEL = """   
     extern "C" __global__ void nb_1(const int* x, const float* y, float* z, int size, int n_feat, int n_classes) {
@@ -19,7 +19,7 @@ NB_KERNEL = """
             for (int j = 0; j < n_classes; j++) {
                 for (int q = 0; q < n_feat; q++) {
                     z[i * n_classes + j] += x[i * n_feat + q] * y[j * n_feat + q];
-                }
+                } 
             }
         }
     }
@@ -326,6 +326,12 @@ class Benchmark6(Benchmark):
         self.argmax(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.r2, self.r, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "argmax", "time_sec": end - start})
+
+        # Add a final sync step to measure the real computation time;
+        start = time.time()
+        tmp = self.r[0]
+        end = time.time()
+        self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
 
         self.benchmark.add_to_benchmark("gpu_result", 0)
         if self.benchmark.debug:
