@@ -26,6 +26,7 @@ import static org.junit.Assert.assertFalse;
 public class GrCUDAStreamManagerTest {
     /**
      * Tests are executed for each of the {@link RetrieveNewStreamPolicyEnum} values;
+     *
      * @return the current stream policy
      */
     @Parameterized.Parameters
@@ -243,7 +244,7 @@ public class GrCUDAStreamManagerTest {
 
         // Create 2 parallel branches on dependent computations, and check that the total amount of streams created is what is expected;
         int numLoops = 10;
-        for (int i = 0; i < numLoops * 2; i+=2) {
+        for (int i = 0; i < numLoops * 2; i += 2) {
             new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(i))).schedule();
             new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(i + 1))).schedule();
             // Sync point;
@@ -395,6 +396,26 @@ public class GrCUDAStreamManagerTest {
 
         new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
         assertFalse(((GrCUDAStreamManagerMock) context.getStreamManager()).getActiveComputationsMap().containsKey(dag.getVertices().get(3).getComputation().getStream()));
+    }
 
+    @Test
+    public void repeatedSyncTest() throws UnsupportedTypeException {
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(false)
+                .setRetrieveNewStreamPolicy(this.policy).build();
+
+        int numTest = 10;
+        ExecutionDAG dag = context.getDag();
+
+        for (int i = 0; i < numTest; i++) {
+            new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+            new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+            new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(2))).schedule();
+
+            new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+            new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+            assertEquals(0, dag.getVertices().get(0).getComputation().getStream().getStreamNumber());
+            assertEquals(1, dag.getVertices().get(1).getComputation().getStream().getStreamNumber());
+            assertEquals(0, dag.getVertices().get(0).getComputation().getStream().getStreamNumber());
+        }
     }
 }

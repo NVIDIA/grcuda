@@ -325,15 +325,24 @@ public class GrCUDAStreamManager {
          * Keep a queue of free streams;
          */
         private final Queue<CUDAStream> freeStreams = new ArrayDeque<>();
+        /**
+         * Ensure that streams in the queue are always unique;
+         */
+        private final Set<CUDAStream> uniqueFreeStreams = new HashSet<>();
 
         @Override
         void update(CUDAStream stream) {
-            freeStreams.add(stream);
+            if (!uniqueFreeStreams.contains(stream)) {
+                freeStreams.add(stream);
+                uniqueFreeStreams.add(stream);
+            }
         }
 
         @Override
         void update(Collection<CUDAStream> streams) {
-            freeStreams.addAll(streams);
+            Set<CUDAStream> newStreams = streams.stream().filter(s -> !freeStreams.contains(s)).collect(Collectors.toSet());
+            freeStreams.addAll(newStreams);
+            uniqueFreeStreams.addAll(newStreams);
         }
 
         @Override
@@ -343,7 +352,9 @@ public class GrCUDAStreamManager {
                 return createStream();
             } else {
                 // Get the first stream available, and remove it from the list of free streams;
-                return freeStreams.poll();
+                CUDAStream stream = freeStreams.poll();
+                uniqueFreeStreams.remove(stream);
+                return stream;
             }
         }
     }
