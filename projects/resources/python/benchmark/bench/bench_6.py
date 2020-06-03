@@ -282,12 +282,6 @@ class Benchmark6(Benchmark):
         end = time.time()
         self.benchmark.add_phase({"name": "rr_2", "time_sec": end - start})
 
-        # RR - 3.
-        start = time.time()
-        self.rr_3(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r2, self.ridge_intercept, self.size, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "rr_3", "time_sec": end - start})
-
         # NB - 2.
         start = time.time()
         self.nb_2(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.nb_amax, self.size, self.num_classes)
@@ -296,10 +290,15 @@ class Benchmark6(Benchmark):
 
         # NB - 3.
         start = time.time()
-        self.nb_3(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.nb_amax, self.nb_l, self.size,
-                                                               self.num_classes)
+        self.nb_3(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.nb_amax, self.nb_l, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "nb_3", "time_sec": end - start})
+
+        # RR - 3.
+        start = time.time()
+        self.rr_3(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r2, self.ridge_intercept, self.size, self.num_classes)
+        end = time.time()
+        self.benchmark.add_phase({"name": "rr_3", "time_sec": end - start})
 
         # NB - 4.
         start = time.time()

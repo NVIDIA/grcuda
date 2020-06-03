@@ -159,8 +159,7 @@ public class GrCUDAStreamManagerTest {
         // Synchronize computations;
         new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(3))).schedule();
         // The stream has no active computation;
-        // FIXME: the computation on streams synced with events must also be declared as finished! A new K(2) should not depend on B(2) right now!!
-        assertEquals(1, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(1).getComputation().getStream()));
+        assertFalse(((GrCUDAStreamManagerMock) context.getStreamManager()).getActiveComputationsMap().containsKey(dag.getVertices().get(1).getComputation().getStream()));
         assertFalse(((GrCUDAStreamManagerMock) context.getStreamManager()).getActiveComputationsMap().containsKey(dag.getVertices().get(3).getComputation().getStream()));
     }
 
@@ -356,5 +355,46 @@ public class GrCUDAStreamManagerTest {
         assertEquals(2, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(3).getComputation().getStream()));
         assertEquals(2, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(4).getComputation().getStream()));
         assertEquals(2, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(5).getComputation().getStream()));
+    }
+
+    @Test
+    public void syncParentsOfParentsTest() throws UnsupportedTypeException {
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(false)
+                .setRetrieveNewStreamPolicy(this.policy).setRetrieveParentStreamPolicy(RetrieveParentStreamPolicyEnum.DISJOINT).build();
+
+        // A(1,2) -> B(1)
+        //       \-> C(2,3) -> D(2)
+        //                 \-> E(3)
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1), new ArgumentMock(2))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+        new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(2), new ArgumentMock(3))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(3))).schedule();
+
+        ExecutionDAG dag = context.getDag();
+
+        // Check that kernels have been given the right stream;
+        assertEquals(3, context.getStreamManager().getNumberOfStreams());
+        assertEquals(0, dag.getVertices().get(0).getComputation().getStream().getStreamNumber());
+        assertEquals(0, dag.getVertices().get(1).getComputation().getStream().getStreamNumber());
+        assertEquals(1, dag.getVertices().get(2).getComputation().getStream().getStreamNumber());
+        assertEquals(1, dag.getVertices().get(3).getComputation().getStream().getStreamNumber());
+        assertEquals(2, dag.getVertices().get(4).getComputation().getStream().getStreamNumber());
+        assertEquals(2, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(0).getComputation().getStream()));
+        assertEquals(2, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(2).getComputation().getStream()));
+        assertEquals(1, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(4).getComputation().getStream()));
+
+        // Syncing E(3) will sync also computations on stream 1 and 0;
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(3))).schedule();
+        assertEquals(1, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(3).getComputation().getStream()));
+        assertEquals(1, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(1).getComputation().getStream()));
+        assertFalse(((GrCUDAStreamManagerMock) context.getStreamManager()).getActiveComputationsMap().containsKey(dag.getVertices().get(4).getComputation().getStream()));
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+        assertEquals(1, context.getStreamManager().getNumActiveComputationsOnStream(dag.getVertices().get(3).getComputation().getStream()));
+        assertFalse(((GrCUDAStreamManagerMock) context.getStreamManager()).getActiveComputationsMap().containsKey(dag.getVertices().get(1).getComputation().getStream()));
+
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        assertFalse(((GrCUDAStreamManagerMock) context.getStreamManager()).getActiveComputationsMap().containsKey(dag.getVertices().get(3).getComputation().getStream()));
+
     }
 }

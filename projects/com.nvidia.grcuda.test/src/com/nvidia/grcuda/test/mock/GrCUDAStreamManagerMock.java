@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.test.mock;
 
+import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
@@ -54,9 +55,18 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     @Override
     protected void syncDevice() { }
 
-    // The mocked stream manager doesn't require to use events;
     @Override
-    protected void syncStreamsUsingEvents(ExecutionDAG.DAGVertex vertex) { }
+    protected void syncStreamsUsingEvents(ExecutionDAG.DAGVertex vertex) {
+        for (GrCUDAComputationalElement parent : vertex.getParentComputations()) {
+            CUDAStream stream = parent.getStream();
+            // Skip synchronization on the same stream where the new computation is executed,
+            //   as operations scheduled on a stream are executed in order;
+            if (!vertex.getComputation().getStream().equals(stream)) {
+                // Track that the current computation has a parent executed on a different stream;
+                trackAdditionalComputationsToFinish(vertex.getComputation(), parent);
+            }
+        }
+    }
 
     public Map<CUDAStream, Set<GrCUDAComputationalElement>> getActiveComputationsMap() {
         return this.activeComputationsPerStream;

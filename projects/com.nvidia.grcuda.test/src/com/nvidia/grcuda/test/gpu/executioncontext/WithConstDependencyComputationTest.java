@@ -380,8 +380,9 @@ public class WithConstDependencyComputationTest {
         new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
         assertEquals(4, dag.getFrontier().size());
 
+        // Note that syncing F(4) will also sync B(1) although it's on a different stream;
         new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(4))).schedule();
-        assertEquals(2, dag.getFrontier().size());
+        assertEquals(1, dag.getFrontier().size());
 
         new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(3))).schedule();
         assertEquals(0, dag.getFrontier().size());
