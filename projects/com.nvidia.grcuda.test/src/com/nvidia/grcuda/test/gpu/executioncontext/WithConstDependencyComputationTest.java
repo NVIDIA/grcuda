@@ -3,10 +3,13 @@ package com.nvidia.grcuda.test.gpu.executioncontext;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
+import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
+import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 import com.nvidia.grcuda.test.mock.ArgumentMock;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMock;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMockBuilder;
 import com.nvidia.grcuda.test.mock.KernelExecutionMock;
+import com.nvidia.grcuda.test.mock.SyncExecutionMock;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -254,15 +257,15 @@ public class WithConstDependencyComputationTest {
         // Check the DAG structure;
         assertEquals(4, dag.getNumVertices());
         assertEquals(3, dag.getNumEdges());
-        assertEquals(1, dag.getFrontier().size());
+        assertEquals(2, dag.getFrontier().size());
         // Check updates to frontier and start status;
-        assertEquals(new HashSet<>(Collections.singletonList(dag.getVertices().get(3))),
+        assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(2), dag.getVertices().get(3))),
                 new HashSet<>(dag.getFrontier()));
         assertFalse(dag.getVertices().get(0).isFrontier());
         assertTrue(dag.getVertices().get(0).isStart());
         assertFalse(dag.getVertices().get(1).isFrontier());
         assertTrue(dag.getVertices().get(1).isStart());
-        assertFalse(dag.getVertices().get(2).isFrontier());
+        assertTrue(dag.getVertices().get(2).isFrontier());
         assertFalse(dag.getVertices().get(2).isStart());
         assertTrue(dag.getVertices().get(3).isFrontier());
         assertFalse(dag.getVertices().get(3).isStart());
@@ -277,6 +280,10 @@ public class WithConstDependencyComputationTest {
         assertEquals(1, dag.getVertices().get(2).getChildren().size());
         assertEquals(dag.getVertices().get(2), dag.getVertices().get(3).getParentVertices().get(0));
         assertEquals(dag.getVertices().get(3), dag.getVertices().get(2).getChildVertices().get(0));
+
+        // Finish the computation;
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        assertEquals(0, dag.getFrontier().size());
     }
 
     @Test
@@ -285,7 +292,7 @@ public class WithConstDependencyComputationTest {
                 .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).setSyncStream(true).build();
 
         // A(1) --> B(1R)
-        //          C(1R)
+        //      \-> C(1R)
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1, true))).schedule();
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1, true))).schedule();
@@ -294,38 +301,42 @@ public class WithConstDependencyComputationTest {
 
         // Check the DAG structure;
         assertEquals(3, dag.getNumVertices());
-        assertEquals(1, dag.getNumEdges());
-        assertEquals(2, dag.getFrontier().size());
+        assertEquals(2, dag.getNumEdges());
+        assertEquals(3, dag.getFrontier().size());
 
-        assertFalse(dag.getVertices().get(0).isFrontier());
+        assertTrue(dag.getVertices().get(0).isFrontier());
         assertTrue(dag.getVertices().get(0).isStart());
         assertTrue(dag.getVertices().get(1).isFrontier());
         assertFalse(dag.getVertices().get(1).isStart());
         assertTrue(dag.getVertices().get(2).isFrontier());
-        assertTrue(dag.getVertices().get(2).isStart());
+        assertFalse(dag.getVertices().get(2).isStart());
 
         assertEquals(dag.getVertices().get(0), dag.getVertices().get(1).getParentVertices().get(0));
-        assertEquals(0, dag.getVertices().get(2).getParentVertices().size());
+        assertEquals(1, dag.getVertices().get(2).getParentVertices().size());
         assertFalse(dag.getVertices().get(2).getParentVertices().contains(dag.getVertices().get(1)));
         assertFalse(dag.getVertices().get(1).getChildVertices().contains(dag.getVertices().get(2)));
 
         // Add a fourth computation that depends on both B and C, and depends on both;
         // A(1) -> B(1R) -> D(1)
-        //         C(1R) /
+        //     \-> C(1R) /
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
         assertEquals(4, dag.getNumVertices());
-        assertEquals(3, dag.getNumEdges());
+        assertEquals(4, dag.getNumEdges());
         assertEquals(1, dag.getFrontier().size());
+
+        // Finish the computation;
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
+        assertEquals(0, dag.getFrontier().size());
     }
 
     @Test
     public void complexFrontierWithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
-                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).setSyncStream(true).build();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.WITH_CONST, true,
+                RetrieveNewStreamPolicyEnum.FIFO, RetrieveParentStreamPolicyEnum.DISJOINT);
 
-        // A(1R,2) -> B(1) -> D(1R,3)
-        //            C(2R)   E(1R,4) -> F(4)
-        // The final frontier is composed by C(2R), D(1R, 3), F(4);
+        // A(1R,2) -> B(1) ---> D(1R,3)
+        //        \-> C(2R) \-> E(1R,4) -> F(4)
+        // The final frontier is composed by  A(1R,2), B(1), C(2R), D(1R,3), E(1R,4), F(4);
         new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1, true), new ArgumentMock(2))).schedule();
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2, true))).schedule();
@@ -337,22 +348,22 @@ public class WithConstDependencyComputationTest {
 
         // Check the DAG structure;
         assertEquals(6, dag.getNumVertices());
-        assertEquals(3, dag.getNumEdges());
-        assertEquals(3, dag.getFrontier().size());
+        assertEquals(5, dag.getNumEdges());
+        assertEquals(6, dag.getFrontier().size());
         // Check updates to frontier and start status;
-        assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(2), dag.getVertices().get(3), dag.getVertices().get(5))),
+        assertEquals(new HashSet<>(dag.getVertices()),
                 new HashSet<>(dag.getFrontier()));
 
-        assertFalse(dag.getVertices().get(0).isFrontier());
+        assertTrue(dag.getVertices().get(0).isFrontier());
         assertTrue(dag.getVertices().get(0).isStart());
-        assertFalse(dag.getVertices().get(1).isFrontier());
+        assertTrue(dag.getVertices().get(1).isFrontier());
         assertFalse(dag.getVertices().get(1).isStart());
         assertTrue(dag.getVertices().get(2).isFrontier());
-        assertTrue(dag.getVertices().get(2).isStart());
+        assertFalse(dag.getVertices().get(2).isStart());
         assertTrue(dag.getVertices().get(3).isFrontier());
         assertFalse(dag.getVertices().get(3).isStart());
-        assertFalse(dag.getVertices().get(4).isFrontier());
-        assertTrue(dag.getVertices().get(4).isStart());
+        assertTrue(dag.getVertices().get(4).isFrontier());
+        assertFalse(dag.getVertices().get(4).isStart());
         assertTrue(dag.getVertices().get(5).isFrontier());
         assertFalse(dag.getVertices().get(5).isStart());
         // Check that D is a child of B and C and D are not connected;
@@ -362,16 +373,28 @@ public class WithConstDependencyComputationTest {
         // Check that D and E are not connected;
         assertFalse(dag.getVertices().get(4).getParentVertices().contains(dag.getVertices().get(3)));
         assertFalse(dag.getVertices().get(3).getChildVertices().contains(dag.getVertices().get(4)));
+
+        // Synchronize computations;
+        // A(1R,2) -> B(1) ---> D(1R,3)
+        //        \-> C(2R) \-> E(1R,4) -> F(4)
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        assertEquals(4, dag.getFrontier().size());
+
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(4))).schedule();
+        assertEquals(2, dag.getFrontier().size());
+
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(3))).schedule();
+        assertEquals(0, dag.getFrontier().size());
     }
 
     @Test
     public void complexFrontier2WithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
-                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST).setSyncStream(true).build();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.WITH_CONST, true,
+                RetrieveNewStreamPolicyEnum.FIFO, RetrieveParentStreamPolicyEnum.DISJOINT);
 
         // A(1R,2) -> B(1) -> D(1R,3) ---------> G(1, 3, 4)
-        //            C(2R)   E(1R,4) -> F(4) -/
-        // The final frontier is composed by C(2R), G(1, 3, 4);
+        //        \-> C(2R) \-> E(1R,4) -> F(4) -/
+        // The final frontier is composed by A(1R,2), C(2R), G(1, 3, 4);
         new KernelExecutionMock(context, Arrays.asList(new ArgumentMock(1, true), new ArgumentMock(2))).schedule();
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(1))).schedule();
         new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(2, true))).schedule();
@@ -384,24 +407,26 @@ public class WithConstDependencyComputationTest {
 
         // Check the DAG structure;
         assertEquals(7, dag.getNumVertices());
-        assertEquals(5, dag.getNumEdges());
-        assertEquals(2, dag.getFrontier().size());
+        assertEquals(7, dag.getNumEdges());
+        assertEquals(3, dag.getFrontier().size());
         // Check updates to frontier and start status;
-        assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(2), dag.getVertices().get(6))),
+        assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(0), dag.getVertices().get(2), dag.getVertices().get(6))),
                 new HashSet<>(dag.getFrontier()));
 
-        assertFalse(dag.getVertices().get(0).isFrontier());
+        assertTrue(dag.getVertices().get(0).isFrontier());
         assertTrue(dag.getVertices().get(0).isStart());
         assertFalse(dag.getVertices().get(1).isFrontier());
         assertFalse(dag.getVertices().get(1).isStart());
         assertTrue(dag.getVertices().get(2).isFrontier());
-        assertTrue(dag.getVertices().get(2).isStart());
+        assertFalse(dag.getVertices().get(2).isStart());
         assertFalse(dag.getVertices().get(3).isFrontier());
         assertFalse(dag.getVertices().get(3).isStart());
         assertFalse(dag.getVertices().get(4).isFrontier());
-        assertTrue(dag.getVertices().get(4).isStart());
+        assertFalse(dag.getVertices().get(4).isStart());
         assertFalse(dag.getVertices().get(5).isFrontier());
         assertFalse(dag.getVertices().get(5).isStart());
+        assertTrue(dag.getVertices().get(6).isFrontier());
+        assertFalse(dag.getVertices().get(6).isStart());
         // Check that D is a child of B and C and D are not connected;
         assertEquals(dag.getVertices().get(1), dag.getVertices().get(3).getParentVertices().get(0));
         assertFalse(dag.getVertices().get(3).getParentVertices().contains(dag.getVertices().get(2)));
@@ -411,5 +436,11 @@ public class WithConstDependencyComputationTest {
         assertFalse(dag.getVertices().get(3).getChildVertices().contains(dag.getVertices().get(4)));
         // Check that G is child exactly of D and F;
         assertEquals(new HashSet<>(Arrays.asList(dag.getVertices().get(3), dag.getVertices().get(5))), new HashSet<>(dag.getVertices().get(6).getParentVertices()));
+
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(2))).schedule();
+        assertEquals(1, dag.getFrontier().size());
+
+        new SyncExecutionMock(context, Collections.singletonList(new ArgumentMock(4))).schedule();
+        assertEquals(0, dag.getFrontier().size());
     }
 }

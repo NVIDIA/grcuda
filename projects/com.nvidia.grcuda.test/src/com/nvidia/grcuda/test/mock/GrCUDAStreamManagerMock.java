@@ -8,7 +8,9 @@ import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
@@ -47,24 +49,14 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     }
 
     @Override
-    public void syncStream(CUDAStream stream) {
-
-    }
+    public void syncStream(CUDAStream stream) { }
 
     @Override
-    public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
-        if (syncParents) {
-            vertex.getParentComputations().forEach(c -> {
-                // Synchronize computations that are not yet finished and can use streams;
-                if (!c.isComputationFinished() && c.canUseStream()) {
-                    // Set the parent computations as finished;
-                    c.setComputationFinished();
-                    // Decrement the active computation count;
-                    removeActiveComputation(c);
-                }
-            });
-        }
-    }
+    protected void syncDevice() { }
+
+    // The mocked stream manager doesn't require to use events;
+    @Override
+    protected void syncStreamsUsingEvents(ExecutionDAG.DAGVertex vertex) { }
 
     public Map<CUDAStream, Set<GrCUDAComputationalElement>> getActiveComputationsMap() {
         return this.activeComputationsPerStream;
