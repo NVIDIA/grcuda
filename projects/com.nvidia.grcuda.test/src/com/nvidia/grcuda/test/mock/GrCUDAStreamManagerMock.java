@@ -9,10 +9,12 @@ import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
 
@@ -53,22 +55,16 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     public void syncStream(CUDAStream stream) { }
 
     @Override
-    protected void syncDevice() { }
+    protected void syncStreamsUsingEvents(ExecutionDAG.DAGVertex vertex) { }
 
     @Override
-    protected void syncStreamsUsingEvents(ExecutionDAG.DAGVertex vertex) {
-        for (GrCUDAComputationalElement parent : vertex.getParentComputations()) {
-            CUDAStream stream = parent.getStream();
-            // Skip synchronization on the same stream where the new computation is executed,
-            //   as operations scheduled on a stream are executed in order;
-            if (!vertex.getComputation().getStream().equals(stream)) {
-                // Track that the current computation has a parent executed on a different stream;
-                trackAdditionalComputationsToFinish(vertex.getComputation(), parent);
-            }
-        }
-    }
+    protected void syncDevice() { }
 
     public Map<CUDAStream, Set<GrCUDAComputationalElement>> getActiveComputationsMap() {
-        return this.activeComputationsPerStream;
+        Map<CUDAStream, Set<GrCUDAComputationalElement>> activeComputations = new HashMap<>();
+        for (Map.Entry<CUDAStream, Set<ExecutionDAG.DAGVertex>> e : this.activeComputationsPerStream.entrySet()) {
+            activeComputations.put(e.getKey(), e.getValue().stream().map(ExecutionDAG.DAGVertex::getComputation).collect(Collectors.toSet()));
+        }
+        return activeComputations;
     }
 }

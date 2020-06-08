@@ -342,7 +342,7 @@ class Benchmark8(Benchmark):
         self.sobel_kernel((self.num_blocks_size, self.num_blocks_size), (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK))\
             (self.blurred_large, self.mask_large, self.size, self.size)
         end = time.time()
-        self.benchmark.add_phase({"name": "sobel_small", "time_sec": end - start})
+        self.benchmark.add_phase({"name": "sobel_large", "time_sec": end - start})
 
         # Extend large edge detection mask;
         start = time.time()

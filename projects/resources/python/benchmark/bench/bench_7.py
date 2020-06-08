@@ -51,7 +51,7 @@ SUM_KERNEL = """
     """ % (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK)
 
 DIVIDE_KERNEL = """
-    extern "C" __global__ void divide(const float* x, float *y, const float *val, int n) {
+    extern "C" __global__ void divide(const float* x, float *y, float *val, int n) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx < n) {
             y[idx] = x[idx] / val[0];
@@ -74,7 +74,7 @@ class Benchmark7(Benchmark):
         super().__init__("b7", benchmark)
         self.size = 0
         self.num_nnz = 0
-        self.max_degree = 100  # Each vertex has 10 edges;
+        self.max_degree = 10  # Each vertex has 10 edges;
         self.num_iterations = 10
         self.ptr = None
         self.idx = None
@@ -133,7 +133,7 @@ class Benchmark7(Benchmark):
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
         self.spmv_kernel = build_kernel(SPMV_KERNEL, "spmv", "const pointer, const pointer, const pointer, const pointer, pointer, sint32, sint32")
         self.sum_kernel = build_kernel(SUM_KERNEL, "sum", "const pointer, pointer, sint32")
-        self.divide_kernel = build_kernel(DIVIDE_KERNEL, "divide", "const pointer, pointer, const pointer, sint32")
+        self.divide_kernel = build_kernel(DIVIDE_KERNEL, "divide", "const pointer, pointer, pointer, sint32")
 
     @time_phase("initialization")
     def init(self):
@@ -153,7 +153,7 @@ class Benchmark7(Benchmark):
         y = []
         val = []
         for i in range(self.size):
-            # Create 10 random edges;
+            # Create max_degree random edges;
             edges = sorted(sample(range(self.size), self.max_degree))
             for j in edges:
                 x += [i]
@@ -220,6 +220,12 @@ class Benchmark7(Benchmark):
             end = time.time()
             self.benchmark.add_phase({"name": f"divide_h_{i}", "time_sec": end - start})
 
+            start = time.time()
+            self.auth_norm[0] = 0.0
+            self.hub_norm[0] = 0.0
+            end = time.time()
+            self.benchmark.add_phase({"name": f"norm_reset_{i}", "time_sec": end - start})
+
         # Add a final sync step to measure the real computation time;
         start = time.time()
         tmp1 = self.auth1[0]
@@ -259,9 +265,7 @@ class Benchmark7(Benchmark):
             N = self.size
 
             auth1 = np.ones(N)
-            auth2 = np.ones(N)
             hub1 = np.ones(N)
-            hub2 = np.ones(N)
 
             # Main iteration;
             for i in range(self.num_iterations):
