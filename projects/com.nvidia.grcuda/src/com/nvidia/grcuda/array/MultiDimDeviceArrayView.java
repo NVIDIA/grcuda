@@ -89,6 +89,9 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
         this.mdDeviceArray.setLastComputationArrayAccess(lastComputationArrayAccess);
     }
 
+    @Override
+    public boolean isLastComputationArrayAccess() { return this.mdDeviceArray.isLastComputationArrayAccess(); }
+
     /**
      * Propagate the stream mapping to the parent array, so other temporary views are aware of this mapping;
      * @param streamMapping the stream to which this array is associated

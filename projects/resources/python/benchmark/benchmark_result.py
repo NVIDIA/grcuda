@@ -114,7 +114,7 @@ class BenchmarkResult:
         self._dict_current["total_time_sec"] = total_time
 
         # Keep only phases related to GPU computation;
-        blacklisted_phases = ["allocation", "initalization", "reset_result"]
+        blacklisted_phases = ["allocation", "initialization", "reset_result"]
         filtered_phases = [x for x in self._dict_current["phases"] if x["name"] not in blacklisted_phases]
         tot_time_phases = sum([x["time_sec"] if "time_sec" in x else 0 for x in filtered_phases])
         self._dict_current["overhead_sec"] = total_time - tot_time_phases

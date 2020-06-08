@@ -325,7 +325,7 @@ class Benchmark6(Benchmark):
         start = time.time()
         tmp = self.r[0]
         end = time.time()
-        self.benchmark.add_phase({"name": "argmax", "time_sec": end - start})
+        self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
 
         self.benchmark.add_to_benchmark("gpu_result", 0)
         if self.benchmark.debug:

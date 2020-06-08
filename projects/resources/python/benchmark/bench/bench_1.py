@@ -13,16 +13,16 @@ from benchmark_result import BenchmarkResult
 NUM_THREADS_PER_BLOCK = 128
 
 SQUARE_KERNEL = """
-    extern "C" __global__ void square(float* x, int n) {
+    extern "C" __global__ void square(const float* x, float* y, int n) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx < n) {
-            x[idx] = x[idx] * x[idx];
+            y[idx] = x[idx] * x[idx];
         }
     }
     """
 
 DIFF_KERNEL = """
-    extern "C" __global__ void diff(float* x, float* y, float* z, int n) {
+    extern "C" __global__ void diff(const float* x, const float* y, float* z, int n) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx < n) {
             z[idx] = x[idx] - y[idx];
@@ -31,28 +31,27 @@ DIFF_KERNEL = """
     """
 
 REDUCE_KERNEL = """
-    extern "C" __global__ void reduce(float *x, float *res, int n) {
-        __shared__ float cache[%d];
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n) {
-            cache[threadIdx.x] = x[i];
-        }
-        __syncthreads();
-    
-        // Perform tree reduction;
-        i = %d / 2;
-        while (i > 0) {
-            if (threadIdx.x < i) {
-                cache[threadIdx.x] += cache[threadIdx.x + i];
-            }
-            __syncthreads();
-            i /= 2;
-        }
-        if (threadIdx.x == 0) {
-            atomicAdd(res, cache[0]);
-        }
+
+// From https://devblogs.nvidia.com/faster-parallel-reductions-kepler/
+
+__inline__ __device__ float warp_reduce(float val) {
+    int warp_size = 32;
+    for (int offset = warp_size / 2; offset > 0; offset /= 2) 
+        val += __shfl_down_sync(0xFFFFFFFF, val, offset);
+    return val;
+}
+
+__global__ void reduce(const float *in, float* out, int N) {
+    int warp_size = 32;
+    float sum = float(0);
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
+        sum += in[i];
     }
-    """ % (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK)
+    sum = warp_reduce(sum); // Obtain the sum of values in the current warp;
+    if ((threadIdx.x & (warp_size - 1)) == 0) // Same as (threadIdx.x % warp_size) == 0 but faster
+        atomicAdd(out, sum); // The first thread in the warp updates the output;
+}
+"""
 
 ##############################
 ##############################
@@ -72,6 +71,8 @@ class Benchmark1(Benchmark):
         self.size = 0
         self.x = None
         self.y = None
+        self.x1 = None
+        self.y1 = None
         self.z = None
         self.res = None
         self.num_blocks = 0
@@ -88,6 +89,8 @@ class Benchmark1(Benchmark):
         # Allocate 2 vectors;
         self.x = polyglot.eval(language="grcuda", string=f"float[{size}]")
         self.y = polyglot.eval(language="grcuda", string=f"float[{size}]")
+        self.x1 = polyglot.eval(language="grcuda", string=f"float[{size}]")
+        self.y1 = polyglot.eval(language="grcuda", string=f"float[{size}]")
 
         # Allocate a support vector;
         self.z = polyglot.eval(language="grcuda", string=f"float[{size}]")
@@ -95,9 +98,9 @@ class Benchmark1(Benchmark):
 
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
-        self.square_kernel = build_kernel(SQUARE_KERNEL, "square", "pointer, sint32")
-        self.diff_kernel = build_kernel(DIFF_KERNEL, "diff", "pointer, pointer, pointer, sint32")
-        self.reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "pointer, pointer, sint32")
+        self.square_kernel = build_kernel(SQUARE_KERNEL, "square", "const pointer, pointer, sint32")
+        self.diff_kernel = build_kernel(DIFF_KERNEL, "diff", "const pointer, const pointer, pointer, sint32")
+        self.reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "const pointer, pointer, sint32")
 
     @time_phase("initialization")
     def init(self):
@@ -111,20 +114,22 @@ class Benchmark1(Benchmark):
                 self.x[i] = 1 / (i + 1)
                 self.y[i] = 2 / (i + 1)
 
+    @time_phase("reset_result")
+    def reset_result(self) -> None:
+        self.res[0] = 0.0
+
     def execute(self) -> object:
-        # This must be reset at every execution;
-        self.res[0] = 0
 
         # Call the kernel. The 2 computations are independent, and can be done in parallel;
         start = time.time()
-        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.size)
-        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.size)
+        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.x1, self.size)
+        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.y1, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "square", "time_sec": end - start})
 
         # C. Compute the difference of the 2 vectors. This must be done after the 2 previous computations;
         start = time.time()
-        self.diff_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.y, self.z, self.size)
+        self.diff_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x1, self.y1, self.z, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "diff", "time_sec": end - start})
 
@@ -134,7 +139,12 @@ class Benchmark1(Benchmark):
         end = time.time()
         self.benchmark.add_phase({"name": "reduce", "time_sec": end - start})
 
+        # Add a final sync step to measure the real computation time;
+        start = time.time()
         result = self.res[0]
+        end = time.time()
+        self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
+
         self.benchmark.add_to_benchmark("gpu_result", result)
         if self.benchmark.debug:
             BenchmarkResult.log_message(f"\tgpu result: {result:.4f}")

@@ -207,10 +207,14 @@ public class GrCUDAStreamManager {
         });
         // Book-keeping: all computations on the synchronized streams are guaranteed to be finished;
         streamsToSync.forEach(s -> {
-            activeComputationsPerStream.get(s).forEach(c -> {
-                c.setComputationFinished();
-                setParentComputationsFinished(c);
-            });
+            try {
+                activeComputationsPerStream.get(s).forEach(c -> {
+                    c.setComputationFinished();
+                    setParentComputationsFinished(c);
+                });
+            } catch (NullPointerException e) {
+                System.out.println("missing stream " + s.getStreamNumber() + " for sync");
+            }
             // Now the stream is free to be re-used;
             activeComputationsPerStream.remove(s);
             retrieveNewStream.update(s);
