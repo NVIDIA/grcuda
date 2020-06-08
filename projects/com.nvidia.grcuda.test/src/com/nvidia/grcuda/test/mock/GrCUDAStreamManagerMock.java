@@ -18,31 +18,22 @@ import java.util.stream.Collectors;
 
 public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
 
-    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents,
+    GrCUDAStreamManagerMock(CUDARuntime runtime,
                             RetrieveNewStreamPolicyEnum retrieveStreamPolicy,
                             RetrieveParentStreamPolicyEnum parentStreamPolicyEnum) {
         super(runtime, retrieveStreamPolicy, parentStreamPolicyEnum);
-        this.syncParents = syncParents;
     }
 
-    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents,
+    GrCUDAStreamManagerMock(CUDARuntime runtime,
                             RetrieveNewStreamPolicyEnum retrieveStreamPolicy) {
         super(runtime, retrieveStreamPolicy, RetrieveParentStreamPolicyEnum.DEFAULT);
-        this.syncParents = syncParents;
-    }
-
-    GrCUDAStreamManagerMock(CUDARuntime runtime, boolean syncParents) {
-        super(runtime, RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveParentStreamPolicyEnum.DEFAULT);
-        this.syncParents = syncParents;
     }
 
     GrCUDAStreamManagerMock(CUDARuntime runtime) {
-        this(runtime, false);
+        super(runtime, RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveParentStreamPolicyEnum.DEFAULT);
     }
 
     int numStreams = 0;
-
-    final boolean syncParents;
 
     @Override
     public CUDAStream createStream() {
@@ -59,6 +50,8 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
 
     @Override
     protected void syncDevice() { }
+
+    public List<CUDAStream> getStreams() { return this.streams; }
 
     public Map<CUDAStream, Set<GrCUDAComputationalElement>> getActiveComputationsMap() {
         Map<CUDAStream, Set<GrCUDAComputationalElement>> activeComputations = new HashMap<>();

@@ -6,18 +6,12 @@ import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 
 public class GrCUDAExecutionContextMockBuilder {
 
-    boolean syncStream = false;
     DependencyPolicyEnum dependencyPolicy = DependencyPolicyEnum.DEFAULT;
     RetrieveNewStreamPolicyEnum retrieveStreamPolicy = RetrieveNewStreamPolicyEnum.FIFO;
     RetrieveParentStreamPolicyEnum parentStreamPolicyEnum = RetrieveParentStreamPolicyEnum.DEFAULT;
 
     public GrCUDAExecutionContextMock build() {
-        return new GrCUDAExecutionContextMock(dependencyPolicy, syncStream, retrieveStreamPolicy, parentStreamPolicyEnum);
-    }
-
-    public GrCUDAExecutionContextMockBuilder setSyncStream(boolean syncStream) {
-        this.syncStream = syncStream;
-        return this;
+        return new GrCUDAExecutionContextMock(dependencyPolicy, retrieveStreamPolicy, parentStreamPolicyEnum);
     }
 
     public GrCUDAExecutionContextMockBuilder setDependencyPolicy(DependencyPolicyEnum dependencyPolicy) {

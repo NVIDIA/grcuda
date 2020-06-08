@@ -132,7 +132,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void streamSelectionSimpleWithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(true).setRetrieveNewStreamPolicy(this.policy).build();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setRetrieveNewStreamPolicy(this.policy).build();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
@@ -166,7 +166,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void streamSelectionWithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(true).setRetrieveNewStreamPolicy(this.policy).build();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setRetrieveNewStreamPolicy(this.policy).build();
 
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
         //    \-> C(2)
@@ -202,7 +202,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void streamSelection2WithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(true).setRetrieveNewStreamPolicy(this.policy).build();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setRetrieveNewStreamPolicy(this.policy).build();
 
         // A(1,2) -> B(1) -> D(1,3)
         //   \-> C(2)
@@ -240,7 +240,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void generateManyStreamsTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(true).setRetrieveNewStreamPolicy(this.policy).build();
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setRetrieveNewStreamPolicy(this.policy).build();
 
         // Create 2 parallel branches on dependent computations, and check that the total amount of streams created is what is expected;
         int numLoops = 10;
@@ -264,7 +264,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void disjointArgumentStreamTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(true)
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
                 .setRetrieveNewStreamPolicy(this.policy).setRetrieveParentStreamPolicy(RetrieveParentStreamPolicyEnum.DISJOINT).build();
 
         // A(1,2) -> B(1)
@@ -293,7 +293,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void disjointArgumentStreamCrossTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(false)
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
                 .setRetrieveNewStreamPolicy(this.policy).setRetrieveParentStreamPolicy(RetrieveParentStreamPolicyEnum.DISJOINT).build();
 
         // A(1,2) -> C(1,3)
@@ -322,7 +322,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void disjointArgumentStreamCross2Test() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(false)
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
                 .setRetrieveNewStreamPolicy(this.policy).setRetrieveParentStreamPolicy(RetrieveParentStreamPolicyEnum.DISJOINT).build();
 
         // A(1,2,7) -> D(1,3,5)
@@ -360,7 +360,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void syncParentsOfParentsTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(false)
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
                 .setRetrieveNewStreamPolicy(this.policy).setRetrieveParentStreamPolicy(RetrieveParentStreamPolicyEnum.DISJOINT).build();
 
         // A(1,2) -> B(1)
@@ -400,7 +400,7 @@ public class GrCUDAStreamManagerTest {
 
     @Test
     public void repeatedSyncTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder().setSyncStream(false)
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
                 .setRetrieveNewStreamPolicy(this.policy).build();
 
         int numTest = 10;

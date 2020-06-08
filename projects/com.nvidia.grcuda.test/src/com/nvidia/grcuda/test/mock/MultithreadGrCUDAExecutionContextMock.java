@@ -20,11 +20,6 @@ public class MultithreadGrCUDAExecutionContextMock extends MultithreadGrCUDAExec
 
     private static final int THREAD_NUM = 16;
 
-    public MultithreadGrCUDAExecutionContextMock(boolean syncStream) {
-        super(null, new GrCUDAThreadManagerMock(THREAD_NUM),
-                new GrCUDAStreamManagerMock(null, syncStream), DependencyPolicyEnum.DEFAULT);
-    }
-
     public MultithreadGrCUDAExecutionContextMock() {
         super(null, new GrCUDAThreadManagerMock(THREAD_NUM),
                 new GrCUDAStreamManagerMock(null), DependencyPolicyEnum.DEFAULT);
@@ -35,11 +30,11 @@ public class MultithreadGrCUDAExecutionContextMock extends MultithreadGrCUDAExec
                 new GrCUDAStreamManagerMock(null), dependencyPolicy);
     }
 
-    public MultithreadGrCUDAExecutionContextMock(DependencyPolicyEnum dependencyPolicy, boolean syncStream,
+    public MultithreadGrCUDAExecutionContextMock(DependencyPolicyEnum dependencyPolicy,
                                                  RetrieveNewStreamPolicyEnum retrieveStreamPolicy,
                                                  RetrieveParentStreamPolicyEnum parentStreamPolicyEnum) {
         super(null, new GrCUDAThreadManagerMock(THREAD_NUM),
-                new GrCUDAStreamManagerMock(null, syncStream, retrieveStreamPolicy, parentStreamPolicyEnum), dependencyPolicy);
+                new GrCUDAStreamManagerMock(null, retrieveStreamPolicy, parentStreamPolicyEnum), dependencyPolicy);
     }
 
     public ArrayStreamArchitecturePolicy getArrayStreamArchitecturePolicy() {

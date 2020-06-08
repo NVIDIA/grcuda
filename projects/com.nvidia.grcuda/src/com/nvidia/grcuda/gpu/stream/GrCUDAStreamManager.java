@@ -4,6 +4,7 @@ import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
+import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -238,6 +239,24 @@ public class GrCUDAStreamManager {
         return newStream;
     }
 
+    /**
+     * Check if a given stream is free to use, and has no active computations on it;
+     * @param stream a CUDAStream
+     * @return if the stream has no active computations on it
+     */
+    public boolean isStreamFree(CUDAStream stream) throws IllegalStateException {
+        if (activeComputationsPerStream.containsKey(stream)) {
+            if (activeComputationsPerStream.get(stream).isEmpty()) {
+                // The stream cannot be in the map without at least one active computation;
+                throw new IllegalStateException("stream " + stream.getStreamNumber() + " is tracked but has 0 active computations");
+            } else {
+                return false; // Stream is active;
+            }
+        } else {
+            return true; // Stream is not active;
+        }
+    }
+
     public void syncStream(CUDAStream stream) {
         runtime.cudaStreamSynchronize(stream);
     }
@@ -254,7 +273,11 @@ public class GrCUDAStreamManager {
     }
 
     public int getNumActiveComputationsOnStream(CUDAStream stream) {
-        return activeComputationsPerStream.get(stream).size();
+        if (this.isStreamFree(stream)) {
+            return 0;
+        } else {
+            return activeComputationsPerStream.get(stream).size();
+        }
     }
 
     /**
