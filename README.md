@@ -294,5 +294,17 @@ and you can create more benchmarks by inheriting from the `Benchmark` class
     8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
     9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default
 
+## DAG Scheduling Settings
+The automatic DAG scheduling of GrCUDA supports different settings that can be used for debugging or to simplify the dependency computation in some circumstances
+
+* `ExecutionPolicy`: this regulates the global scheduling policy;
+ `default` uses the DAG for asynchronous parallel execution, while `sync` executes each computation synchronously and can be used for debugging or to measure the execution time of each kernel
+* `DependencyPolicy`: choose how data dependencies between GrCUDA computations are computed;
+`with_const` considers read-only parameter, while `default` assumes that all arguments can be modified in a computation
+* `RetrieveNewStreamPolicy`: choose how streams for new GrCUDA computations are created;
+ `fifo` (the default) reuses free streams whenever possible, while `always_new` creates new streams every time a computation should use a stream different from its parent
+* `RetrieveParentStreamPolicy`: choose how streams for new GrCUDA computations are obtained from parent computations;
+`default` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint
+ 
 
 

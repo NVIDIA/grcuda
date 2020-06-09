@@ -92,7 +92,7 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
 
 ## Detailed development notes
 
-## API Design
+### API Design
     
 Dependencies are inferred automatically, instead of being manually specified by the user using handles
  1. Automatic dependency inferring is more interesting from a research perspective, and *cleaner* for end-users
@@ -124,7 +124,7 @@ Dependencies are inferred automatically, instead of being manually specified by 
     * They can also return scalars (see problem 5)
     * If we run them on threads, we parallelize at least the CPU side
 
-## What is a computational element in GrCUDA?
+### What is a computational element in GrCUDA?
 
 `bindkernel`, `buildkernel` functions create a `Kernel` object that contains information about the signature and code
  * `Kernel` is an executable `InteropLibrary` class that creates a `ConfiguredKernel` that contains information about the number of blocks, shared memory size, etc...
@@ -149,7 +149,7 @@ Library functions (non-kernels) can also be loaded, using `BindFunction`
 Invocation to computational elements are wrapped in classes that extend a generic `GrCUDAComputationalElement`.
 `GrCUDAComputationalElement` is used to build the vertices of the DAG and exposes interfaces to compute data dependencies with other `GrCUDAComputationalElements` and to schedule the computation
  
-## Other notes on GrCUDA architecture
+### Other notes on GrCUDA architecture
 
 These notes relate to the structure of the original GrCUDA repository. You can skip them if you are already familiar with it!
 
