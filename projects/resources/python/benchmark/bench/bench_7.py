@@ -68,6 +68,12 @@ class Benchmark7(Benchmark):
     Compute the HITS algorithm on a graph. The algorithm is composed of repeated sparse matrix-vector multiplications
     computed on a matrix and its transpose (outgoing and ingoing edges of a graph). The 2 matrix multiplications,
     for each iteration, can be computed in parallel;
+
+     ┌─> SPMV(const H1,A2) ┬─> SUM(const A2,A_norm) ┬─> DIVIDE(A1,const A2,const A_norm) ─> CPU: A_norm=0 ─> (repeat)
+     │                     └─────────┐              │
+    ─┤                     ┌─────────│──────────────┘
+     │                     │         └──────────────┐
+     └─> SPMV(const A1,H2) ┴─> SUM(const H2,H_norm) ┴─> DIVIDE(H1,const H2,const H_norm) ─> CPU: H_norm=0 ─> (repeat)
     """
 
     def __init__(self, benchmark: BenchmarkResult):
