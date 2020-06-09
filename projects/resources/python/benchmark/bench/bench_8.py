@@ -10,7 +10,8 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 32
+NUM_THREADS_PER_BLOCK_2D = 32
+NUM_THREADS_PER_BLOCK = 1024
 
 GAUSSIAN_BLUR = """
 extern "C" __global__ void gaussian_blur(const float *image, float *result, int rows, int cols, const float* kernel, int diameter) {
@@ -218,6 +219,7 @@ class Benchmark8(Benchmark):
         self.gpu_result = None
 
         self.num_blocks_size = 0
+        self.num_blocks_size_2d = 0
 
         self.gaussian_blur_kernel = None
         self.sobel_kernel = None
@@ -230,6 +232,7 @@ class Benchmark8(Benchmark):
     @time_phase("allocation")
     def alloc(self, size: int):
         self.size = size
+        self.num_blocks_size_2d = (size + NUM_THREADS_PER_BLOCK_2D - 1) // NUM_THREADS_PER_BLOCK_2D
         self.num_blocks_size = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 
         self.gpu_result = np.zeros(self.size)
@@ -312,34 +315,34 @@ class Benchmark8(Benchmark):
 
         # Blur - Small;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_size, self.num_blocks_size), (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK))\
+        self.gaussian_blur_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
             (self.image, self.blurred_small, self.size, self.size, self.kernel_small, self.kernel_small_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_small", "time_sec": end - start})
 
         # Blur - Large;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_size, self.num_blocks_size), (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK))\
+        self.gaussian_blur_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
             (self.image, self.blurred_large, self.size, self.size, self.kernel_large, self.kernel_large_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_large", "time_sec": end - start})
 
         # Blur - Unsharpen;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_size, self.num_blocks_size), (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK))\
+        self.gaussian_blur_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
             (self.image, self.blurred_unsharpen, self.size, self.size, self.kernel_unsharpen, self.kernel_unsharpen_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_unsharpen", "time_sec": end - start})
 
         # Sobel filter (edge detection);
         start = time.time()
-        self.sobel_kernel((self.num_blocks_size, self.num_blocks_size), (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK))\
+        self.sobel_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
             (self.blurred_small, self.mask_small, self.size, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "sobel_small", "time_sec": end - start})
 
         start = time.time()
-        self.sobel_kernel((self.num_blocks_size, self.num_blocks_size), (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK))\
+        self.sobel_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
             (self.blurred_large, self.mask_large, self.size, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "sobel_large", "time_sec": end - start})

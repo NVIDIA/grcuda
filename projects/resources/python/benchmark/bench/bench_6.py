@@ -10,7 +10,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 32
+NUM_THREADS_PER_BLOCK = 1024
 
 NB_KERNEL = """   
     extern "C" __global__ void nb_1(const int* x, const float* y, float* z, int size, int n_feat, int n_classes) {

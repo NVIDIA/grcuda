@@ -10,7 +10,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 32
+NUM_THREADS_PER_BLOCK = 1024
 
 SPMV_KERNEL = """
     extern "C" __global__ void spmv(const int *ptr, const int *idx, const int *val, const float *vec, float *res, int num_rows, int num_nnz) {

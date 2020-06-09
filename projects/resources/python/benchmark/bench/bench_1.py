@@ -10,7 +10,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 128
+NUM_THREADS_PER_BLOCK = 1024
 
 SQUARE_KERNEL = """
     extern "C" __global__ void square(const float* x, float* y, int n) {
