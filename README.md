@@ -288,8 +288,8 @@ and you can create more benchmarks by inheriting from the `Benchmark` class
     3. `-o`, `--output_path`: full path to the file where results are stored. By default results are stored in `data/results`,
     and the file name is generated automatically
     4. `--realloc`: if true, allocate new memory and rebuild the GPU code at each iteration. False by default
-    5. `-reinit`: if true, re-initialize the values used in each benchmark at each iteration. True by default
-    6. `-c`, `--cpu_validation`: if present, validate the result of each benchmark using the CPU
+    5. `--reinit`: if true, re-initialize the values used in each benchmark at each iteration. True by default
+    6. `-c`, `--cpu_validation`: if present, validate the result of each benchmark using the CPU (use `--no_cpu_validation` to skip it instead)
     7. `-b`, `--benchmark`: run the benchmark only for the specified kernel. Otherwise run all benchmarks specified in `benchmark_main.py`
     8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
     9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default

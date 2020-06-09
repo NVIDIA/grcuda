@@ -2,19 +2,22 @@
 
 The main idea is to **represent GrCUDA computations as vertices of a DAG**, connected using their dependencies (e.g. the output of a kernel is used as input in another one).
  * The DAG allows scheduling parallel computations on different streams and avoid synchronization when not necessary
- * See `projects/resources/python/examples` for simple examples of how this technique can be useful
+ * See `projects/resources/python/examples` and `projects/resources/python/benchmark/bench` for simple examples of how this technique can be useful
  
 **Differences w.r.t. existing techniques** (e.g. TensorFlow or [CUDA Graphs](https://devblogs.nvidia.com/cuda-graphs/)):
  1. The DAG creation is automatic, instead of being built by the user
  2. The DAG is built at runtime, not at compile time or eagerly. This means that we don't have to worry about the control flow of the host program, but only about data dependencies, 
- as we dynamically add and schedule new vertices/computations as the user provides them. We can also collect profiling information and adjust the DAG creation based on that (e.g. how many CUDA streams we need)
+ as we dynamically add and schedule new vertices/computations as the user provides them. We can also collect profiling information and adjust the DAG creation based on that 
+ (e.g. how many CUDA streams we need, or how large each GPU block should be)
 
 **How it works, in a few words**    
  * The class `GpuExecutionContext` tracks GPU computational elements (e.g. `kernels`) declarations and invocations
  * When a new computation is created, or when it is called, it notifies `GpuExecutionContext` so that it updates the `DAG` by computing the data dependencies of the new computation
  * `GpuExecutionContext` uses the DAG to understand if the new computation can start immediately, or it must wait for other computations to finish
- * Different computations are overlapped using different CUDA streams
- * If a computation requires one or more computations to finish before starting, it will have to wait by using a synchronization point on the right CUDA stream(s) 
+ * Different computations are overlapped using different CUDA streams, assigned by the `GrCUDAStreamManager` based on dependencies and free resources
+ * Computations on the GPU are asynchronous and are scheduled on streams without explicit synchronization points, as CUDA guarantee that computations are stream-ordered
+ * Synchronziation between streams happens with CUDA events, without blocking the host CPU thread
+ * If a computation is done by the CPU (e.g. an array read) we synchronize only the necessary streams, and the host is blocked until the required data is available 
  
 ## What's already there
 
@@ -25,38 +28,44 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
     2. `GrCUDAComputationalElement`: abstract class that wraps GrCUDA computations, e.g. kernel executions and array accesses. 
     It provides `GpuExecutionContext` with functions used to compute dependencies or decide if the computation must be done synchronously (e.g. array accesses)
     3. `ExecutionDAG`: the DAG representing the dependencies between computations, it is composed of vertices that wrap each `GrCUDAComputationalElement`
-    4. `GrCUDAStreamManager`: class that handles the creation and the assignment of streams to kernels
+    4. `GrCUDAStreamManager`: class that handles the creation and the assignment of streams to kernels, and the synchronization between different streams or the host thread
 * **Basic execution flow**
     1. The host language (i.e. the user) calls an `InteropLibrary` object that can be associated to a `GrCUDAComputationalElement`, e.g. a kernel execution or an array access
     2. A new `GrCUDAComputationalElement` is created and registered to the `GpuExecutionContext`, to represent the computation
     3. `GpuExecutionContext` adds the computation to the DAG and computes its dependencies
     4. Based on the dependencies, the `GpuExecutionContext` associates a stream to the computation through `GrCUDAStreamManager`
     5. `GpuExecutionContext` executes the computation on the chosen stream, performing synchronization if necessary
+    * GPU computations do not require synchronization w.r.t. previous computations on the stream where they executed, as CUDA guarantees stream-ordered execution.
+     CUDA streams are synchronized with (asynchronous) CUDA events, without blocking the host. 
+     CPU computations that require a GPU result are synchronized with `cudaStreamSynchronize` only on the necessary streams
     6. In case of subsequent array accesses, we skip the scheduling part as accesses are synchronous, and minimize overheads
+    7. From the point of view of GrCUDA, asynchronous GPU computations are considered **active** until the CPU requires the result of either them or their children.
+     Active computations are used in dependency computations (unless all their parameters have been *covered* by children) and to determine which streams are free.
 * The CUDA stream interface has been added to GrCUDA, and is accessible by the users (not recommended, but possible)
     * Users can create/destroy streams, and assign streams to kernels
+    * The CUDA events API is also available
     * The `cudaStreamAttachMemAsync` is also exposed, to exclusively associate a managed memory array to a given stream. 
     This is used, on Pre-Pascal GPUs, to access arrays on CPU while a kernel is using other arrays on GPU
 * Most of the new code is unit-tested and integration-tested, and there is a Python benchmarking suite to measure execution time with different settings
-    * For example, the file `projects/resources/python/benchmark/bench/bench_6` is a fairly complex ML ensemble using multiple GPU kernels on different streams. 
-    Compared to sequential scheduling, we are up to **40% faster**!
+    * For example, the file `projects/resources/python/benchmark/bench/bench_8` is a fairly complex image processing pipeline that automatically manages up to 4 different streams
+    Compared to sequential scheduling, we are up to **2.5x faster**!
 * **Streams** are managed internally by the GrCUDA runtime: we keep track of existing streams that are currently empty, and schedule computations on them in a FIFO order.
  New streams are created only if no existing stream is available
 * **Read-only** input arguments can be specified with the `const` keyword; they will be ignored in the dependency computations if possible:
  for example, if there are 2 kernels that use the same read-only input array, they will be executed concurrently 
 
 * **Current limitations**
-    1. **Dependency computation does not consider disjoint parameter subsets.**
+    1. ~~Dependency computation does not consider disjoint parameter subsets.~~ **Now available!**
      Consider 3 kernels, `K1(X, Y)`, `K2(X)`, `K3(Y)`: `K2` and `K3` are both depending on `K1`, but are using different inputs, and can run in parallel.
-     Currently, I'm just computing that they both depend on `K1`, but I'm not considering that they have disjoint dependencies.
-    2. **Synchronization happens the main execution thread**, this limits parallel execution:
+    2. ~~Synchronization happens the main execution thread.~~ **We now support fully asynchronous GPU execution on a single CPU thread thanks to CUDA events**
      in the example before, calling `K2` requires to sync on the stream used by `K1`, and `K3` starts only after `K2` has started.
-      If `Y` was read-only in `K1`, this wait would have been unnecessary.
-    Instead, we can assign computations to different threads, block the thread execution, and start child computations with callbacks.
-    This was the first approach, but it gave sync errors (probably due to other problems that are now solved)    
-    3. **Scalar values are not considered for dependencies**: they are read-only when used as input, but there could be output-input depenencies in libraries ([API Design, point 4](#api-design)) 
+      If `Y` was read-only in `K1`, this wait would have been unnecessary
+    3. **Scalar values are not considered for dependencies**: they are read-only when used as input, but there could be output-input dependencies in library functions with scalar output ([API Design, point 4](#api-design)) 
     4. Read-only arguments are visible on the **default stream**, instead of having their visibility limited to the stream where they are used.
      This makes the arguments visible to kernels running on different streams, but accesses by the CPU to these arguments require full device synchronization.
+     This limitation is likely to occur only on Pre-Pascal devices, however
+    5. **Library functions are not considered for asynchronous execution**: not all library functions expose a stream interface for asynchronous execution, and they are currently ignored by the DAG scheduler. 
+    We need to add, at the very least, a synchronization point before synchronous library functions
 
 ## Open questions
 
@@ -85,16 +94,16 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
 
 ## API Design
     
-Dependencies can be explicitely specified by the user using handles, or we can try inferring dependencies automatically
+Dependencies are inferred automatically, instead of being manually specified by the user using handles
  1. Automatic dependency inferring is more interesting from a research perspective, and *cleaner* for end-users
      * One option is to perform synchronization *white-listing*: have explicit sync points after every kernel call, and remove dependencies if possible.
-      **Pro:** it should be better at guaranteeing correctness. **Cons:** finding if we *do not* have a dependency is more complex that finding if we have one
+      **Pro:** it should be better for guaranteeing correctness. **Cons:** finding if we *do not* have a dependency is more complex than finding if we have one
      * The other option is *black-listing*, i.e. do not have any sync point and add them if a dependency is found.
-      This is the option currently used: it is simpler, faster, and so far I could not find cases where the 2 approaches are not identical
+      This is the option currently used: it is simpler, faster, and provides identical results to the other approach
  2. The API needs ways to modify the scheduling policy, if desired (e.g. go back to fully synchronized execution)
      * Context startup option? Easy, but cannot be modified
      * Expose a function in the GrCUDA DSL? More flexibility, but changing options using the DSL is not very clean
- 3. How to handle CPU control flow? In GrCUDA we are not aware of `if` and `for` loops on the host side
+ 3. ~~How to handle CPU control flow? In GrCUDA we are not aware of `if` and `for` loops on the host side~~
      * The DAG is built dynamically: we need to update it as we receive scheduling orders, and decide if we can execute or not. We don't care about the original control flow
  4. How do we identify if a **parameter is read-only**? If two kernels use the same parameter but only read from it, they can execute in parallel
      * This is not trivial: LLVM can understand, for example, if a scalar value is read-only, but doing that with an array is not always possible
@@ -137,10 +146,8 @@ Library functions (non-kernels) can also be loaded, using `BindFunction`
  * This loads the function using NFI, and returns a callable object
  * They can also return scalar values (see [API Design, point 6](#api-design))
 
-Other stuff? E.g. `map` and `shred`, currently not documented
-
-Invocation to computational elements are wrapped in classes that extend a generic `GrCUDAComputationalElement`, 
-which is used to build the vertices of the DAG and exposes interfaces to compute data dependencies with other `GrCUDAComputationalElements` and to schedule the computation
+Invocation to computational elements are wrapped in classes that extend a generic `GrCUDAComputationalElement`.
+`GrCUDAComputationalElement` is used to build the vertices of the DAG and exposes interfaces to compute data dependencies with other `GrCUDAComputationalElements` and to schedule the computation
  
 ## Other notes on GrCUDA architecture
 
