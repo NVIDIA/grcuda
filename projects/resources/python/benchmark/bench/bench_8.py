@@ -10,70 +10,93 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK_2D = 32
-NUM_THREADS_PER_BLOCK = 1024
+NUM_THREADS_PER_BLOCK_2D = 8
+NUM_THREADS_PER_BLOCK = 256
+WARP_SIZE = 32
 
 GAUSSIAN_BLUR = """
 extern "C" __global__ void gaussian_blur(const float *image, float *result, int rows, int cols, const float* kernel, int diameter) {
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
-    int j = blockDim.y * blockIdx.y + threadIdx.y;
-    if (i < rows && j < cols) {
-        float sum = 0;
-        int radius = diameter / 2;
-        for (int x = -radius; x <= radius; ++x) {
-            for (int y = -radius; y <= radius; ++y) {
-                int nx = x + i;
-                int ny = y + j;
-                if (nx >= 0 && ny >= 0 && nx < rows && ny < cols) {
-                    sum += kernel[(x + radius) * diameter + (y + radius)] * image[nx * cols + ny];
+    extern __shared__ float kernel_local[];
+    for(int i = threadIdx.x; i < diameter; i += blockDim.x) {
+        for(int j = threadIdx.y; j < diameter; j += blockDim.y) {
+            kernel_local[i * diameter + j] = kernel[i * diameter + j];
+        }
+    }
+    __syncthreads();
+
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < rows; i += blockDim.x * gridDim.x) {
+        for(int j = blockIdx.y * blockDim.y + threadIdx.y; j < cols; j += blockDim.y * gridDim.y) {
+            float sum = 0;
+            int radius = diameter / 2;
+            for (int x = -radius; x <= radius; ++x) {
+                for (int y = -radius; y <= radius; ++y) {
+                    int nx = x + i;
+                    int ny = y + j;
+                    if (nx >= 0 && ny >= 0 && nx < rows && ny < cols) {
+                        sum += kernel_local[(x + radius) * diameter + (y + radius)] * image[nx * cols + ny];
+                    }
                 }
             }
+            result[i * cols + j] = sum;
         }
-        result[i * cols + j] = sum;
     }
 }
 """
 
 
 SOBEL = """
+
 extern "C" __global__ void sobel(const float *image, float *result, int rows, int cols) {
-    float SOBEL_X[3][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
-    float SOBEL_Y[3][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
+    // int SOBEL_X[3][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
+    // int SOBEL_Y[3][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
+    __shared__ int SOBEL_X[9];
+    __shared__ int SOBEL_Y[9];
+    if (threadIdx.x == 0 && threadIdx.y == 0) {   
+        SOBEL_X[0] = -1;
+        SOBEL_X[1] = -2;
+        SOBEL_X[2] = -1;
+        SOBEL_X[3] = 0;
+        SOBEL_X[4] = 0;
+        SOBEL_X[5] = 0;
+        SOBEL_X[6] = 1;
+        SOBEL_X[7] = 2;
+        SOBEL_X[8] = 1;
+
+        SOBEL_Y[0] = -1;
+        SOBEL_Y[1] = 0;
+        SOBEL_Y[2] = 1;
+        SOBEL_Y[3] = -2;
+        SOBEL_Y[4] = 0;
+        SOBEL_Y[5] = 2;
+        SOBEL_Y[6] = -1;
+        SOBEL_Y[7] = 0;
+        SOBEL_Y[8] = 1;
+    }
+    __syncthreads();
     
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
-    int j = blockDim.y * blockIdx.y + threadIdx.y;
-    if (i < rows && j < cols) {
-        float sum_gradient_x = 0.0, sum_gradient_y = 0.0;
-        int radius = 1;
-        for (int x = -radius; x <= radius; ++x) {
-            for (int y = -radius; y <= radius; ++y) {
-                int nx = x + i;
-                int ny = y + j;
-                if (nx >= 0 && ny >= 0 && nx < rows && ny < cols) {
-                    float neighbour = image[nx * cols + ny];
-                    sum_gradient_x += SOBEL_X[x+ radius][y + radius] * neighbour;
-                    sum_gradient_y += SOBEL_Y[x+ radius][y + radius] * neighbour;
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < rows; i += blockDim.x * gridDim.x) {
+        for(int j = blockIdx.y * blockDim.y + threadIdx.y; j < cols; j += blockDim.y * gridDim.y) {
+            float sum_gradient_x = 0.0, sum_gradient_y = 0.0;
+            int radius = 1;
+            for (int x = -radius; x <= radius; ++x) {
+                for (int y = -radius; y <= radius; ++y) {
+                    int nx = x + i;
+                    int ny = y + j;
+                    if (nx >= 0 && ny >= 0 && nx < rows && ny < cols) {
+                        float neighbour = image[nx * cols + ny];
+                        int s = (x + radius) * 3 + y + radius;
+                        sum_gradient_x += SOBEL_X[s] * neighbour;
+                        sum_gradient_y += SOBEL_Y[s] * neighbour;
+                    }
                 }
             }
+            result[i * cols + j] = sqrt(sum_gradient_x * sum_gradient_x + sum_gradient_y * sum_gradient_y);
         }
-        result[i * cols + j] = sqrt(sum_gradient_x * sum_gradient_x + sum_gradient_y * sum_gradient_y);
     }
 }
 """
 
 EXTEND_MASK = """
-__device__ float atomicMaxf(float* address, float val)
-{
-    int *address_as_int =(int*)address;
-    int old = *address_as_int, assumed;
-    while (val > __int_as_float(old)) {
-        assumed = old;
-        old = atomicCAS(address_as_int, assumed,
-                        __float_as_int(val));
-        }
-    return __int_as_float(old);
-}
-
 __device__ float atomicMinf(float* address, float val)
 {
     int *address_as_int =(int*)address;
@@ -86,67 +109,65 @@ __device__ float atomicMinf(float* address, float val)
     return __int_as_float(old);
 }
 
-extern "C" __global__ void maximum(const float *x, float *res, int n) {
-    extern __shared__ float shared[%d];
-
-    int tid = threadIdx.x;
-    int gid = (blockDim.x * blockIdx.x) + tid;
-    shared[tid] = -1000; // Some small value; 
-
-    while (gid < n) {
-        shared[tid] = max(shared[tid], x[gid]);
-        gid += gridDim.x*blockDim.x;
-        }
-    __syncthreads();
-    gid = (blockDim.x * blockIdx.x) + tid;  // 1
-    for (unsigned int s=blockDim.x/2; s>0; s>>=1) 
-    {
-        if (tid < s && gid < n)
-            shared[tid] = max(shared[tid], shared[tid + s]);
-        __syncthreads();
+__device__ float atomicMaxf(float* address, float val)
+{
+    int *address_as_int = (int*) address;
+    int old = *address_as_int, assumed;
+    // If val is smaller than current, don't do anything, else update the current value atomically;
+    while (val > __int_as_float(old)) {
+        assumed = old;
+        old = atomicCAS(address_as_int, assumed, __float_as_int(val));
     }
-
-    if (tid == 0)
-      atomicMaxf(res, shared[0]);
+    return __int_as_float(old);
 }
-    
-extern "C" __global__ void minimum(const float *x, float *res, int n) {
-    extern __shared__ float shared[%d];
 
-    int tid = threadIdx.x;
-    int gid = (blockDim.x * blockIdx.x) + tid;
-    shared[tid] = 1000; // Some big value; 
+__inline__ __device__ float warp_reduce_max(float val) {
+    int warp_size = 32;
+    for (int offset = warp_size / 2; offset > 0; offset /= 2) 
+        val = max(val, __shfl_down_sync(0xFFFFFFFF, val, offset));
+    return val;
+}
 
-    while (gid < n) {
-        shared[tid] = min(shared[tid], x[gid]);
-        gid += gridDim.x*blockDim.x;
-        }
-    __syncthreads();
-    gid = (blockDim.x * blockIdx.x) + tid;  // 1
-    for (unsigned int s=blockDim.x/2; s>0; s>>=1) 
-    {
-        if (tid < s && gid < n)
-            shared[tid] = min(shared[tid], shared[tid + s]);
-        __syncthreads();
+__inline__ __device__ float warp_reduce_min(float val) {
+    int warp_size = 32;
+    for (int offset = warp_size / 2; offset > 0; offset /= 2) 
+        val = min(val, __shfl_down_sync(0xFFFFFFFF, val, offset));
+    return val;
+}
+
+__global__ void maximum(const float *in, float* out, int N) {
+    int warp_size = 32;
+    float maximum = -1000;
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) { 
+        maximum = max(maximum, in[i]);
     }
+    maximum = warp_reduce_max(maximum); // Obtain the max of values in the current warp;
+    if ((threadIdx.x & (warp_size - 1)) == 0) // Same as (threadIdx.x % warp_size) == 0 but faster
+        atomicMaxf(out, maximum); // The first thread in the warp updates the output;
+}
 
-    if (tid == 0)
-      atomicMinf(res, shared[0]);
+__global__ void minimum(const float *in, float* out, int N) {
+    int warp_size = 32;
+    float minimum = 1000;
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) { 
+        minimum = min(minimum, in[i]);
+    }
+    minimum = warp_reduce_min(minimum); // Obtain the min of values in the current warp;
+    if ((threadIdx.x & (warp_size - 1)) == 0) // Same as (threadIdx.x % warp_size) == 0 but faster
+        atomicMinf(out, minimum); // The first thread in the warp updates the output;
 }
 
 extern "C" __global__ void extend(float *x, const float *minimum, const float *maximum, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) { 
         float res_tmp = 5 * (x[i] - *minimum) / (*maximum - *minimum);
         x[i] = res_tmp > 1 ? 1 : res_tmp;
     }
 }
-""" % (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK)
+"""
 
 UNSHARPEN = """
 extern "C" __global__ void unsharpen(const float *x, const float *y, float *res, float amount, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) { 
         float res_tmp = x[i] * (1 + amount) - y[i] * amount;
         res_tmp = res_tmp > 1 ? 1 : res_tmp;
         res[i] = res_tmp < 0 ? 0 : res_tmp;
@@ -156,8 +177,7 @@ extern "C" __global__ void unsharpen(const float *x, const float *y, float *res,
 
 COMBINE = """
 extern "C" __global__ void combine(const float *x, const float *y, const float *mask, float *res, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) { 
         res[i] = x[i] * mask[i] + y[i] * (1 - mask[i]);
     }
 }
@@ -199,7 +219,7 @@ class Benchmark8(Benchmark):
         self.mask_large = None
         self.kernel_large = None
         self.kernel_large_diameter = 5
-        self.kernel_large_variance = 10
+        self.kernel_large_variance = 9
         self.maximum = None
         self.minimum = None
 
@@ -220,6 +240,7 @@ class Benchmark8(Benchmark):
 
         self.num_blocks_size = 0
         self.num_blocks_size_2d = 0
+        self.num_blocks_per_processor = 64  # i.e. 8 * number of SM on the GTX960
 
         self.gaussian_blur_kernel = None
         self.sobel_kernel = None
@@ -315,66 +336,65 @@ class Benchmark8(Benchmark):
 
         # Blur - Small;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
+        self.gaussian_blur_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_small_diameter**2)\
             (self.image, self.blurred_small, self.size, self.size, self.kernel_small, self.kernel_small_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_small", "time_sec": end - start})
 
         # Blur - Large;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
+        self.gaussian_blur_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_large_diameter**2)\
             (self.image, self.blurred_large, self.size, self.size, self.kernel_large, self.kernel_large_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_large", "time_sec": end - start})
 
         # Blur - Unsharpen;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
+        self.gaussian_blur_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_unsharpen_diameter**2)\
             (self.image, self.blurred_unsharpen, self.size, self.size, self.kernel_unsharpen, self.kernel_unsharpen_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_unsharpen", "time_sec": end - start})
 
         # Sobel filter (edge detection);
         start = time.time()
-        self.sobel_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
+        self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
             (self.blurred_small, self.mask_small, self.size, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "sobel_small", "time_sec": end - start})
 
         start = time.time()
-        self.sobel_kernel((self.num_blocks_size_2d, self.num_blocks_size_2d), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
+        self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
             (self.blurred_large, self.mask_large, self.size, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "sobel_large", "time_sec": end - start})
 
         # Extend large edge detection mask;
         start = time.time()
-        num_blocks_tmp = (self.size * self.size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
-        self.maximum_kernel(num_blocks_tmp, NUM_THREADS_PER_BLOCK)(self.mask_large, self.maximum, self.size**2)
-        self.minimum_kernel(num_blocks_tmp, NUM_THREADS_PER_BLOCK)(self.mask_large, self.minimum, self.size**2)
-        self.extend_kernel(num_blocks_tmp, NUM_THREADS_PER_BLOCK)(self.mask_large, self.minimum, self.maximum, self.size**2)
+        self.maximum_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)(self.mask_large, self.maximum, self.size**2)
+        self.minimum_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)(self.mask_large, self.minimum, self.size**2)
+        self.extend_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)(self.mask_large, self.minimum, self.maximum, self.size**2)
         end = time.time()
         self.benchmark.add_phase({"name": "extend", "time_sec": end - start})
 
         # Unsharpen;
         start = time.time()
-        self.unsharpen_kernel(num_blocks_tmp, NUM_THREADS_PER_BLOCK)\
+        self.unsharpen_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)\
             (self.image, self.blurred_unsharpen, self.image_unsharpen, self.unsharpen_amount, self.size * self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "unsharpen", "time_sec": end - start})
 
         # Combine results;
         start = time.time()
-        self.combine_mask_kernel(num_blocks_tmp, NUM_THREADS_PER_BLOCK)\
+        self.combine_mask_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)\
             (self.image_unsharpen, self.blurred_large, self.mask_large, self.image2, self.size * self.size)
-        self.combine_mask_kernel(num_blocks_tmp, NUM_THREADS_PER_BLOCK)\
+        self.combine_mask_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)\
             (self.image2, self.blurred_small, self.mask_small, self.image3, self.size * self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "combine", "time_sec": end - start})
 
         # Add a final sync step to measure the real computation time;
         start = time.time()
-        tmp = self.image3[0][0]
+        # tmp = self.image3[0][0]
         end = time.time()
         self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
 

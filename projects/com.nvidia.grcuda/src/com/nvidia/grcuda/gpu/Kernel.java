@@ -343,7 +343,7 @@ public class Kernel implements TruffleObject {
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeAccess,
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeElementAccess,
                     @CachedLibrary(limit = "3") InteropLibrary sharedMemoryAccess) throws UnsupportedTypeException, ArityException {
-        // FIXME: ArityException allows to specify only 1 arity, and cannot be sublassed! We might want to use a custom exception here;
+        // FIXME: ArityException allows to specify only 1 arity, and cannot be subclassed! We might want to use a custom exception here;
         if (arguments.length < 2 || arguments.length > 4) {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(2, arguments.length);
@@ -365,7 +365,6 @@ public class Kernel implements TruffleObject {
             // Stream specified;
             configBuilder.stream(extractStream(arguments[3]));
         }
-
         return new ConfiguredKernel(this, configBuilder.build());
     }
 }
