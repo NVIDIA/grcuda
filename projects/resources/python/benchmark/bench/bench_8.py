@@ -10,8 +10,8 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK_2D = 8
-NUM_THREADS_PER_BLOCK = 256
+NUM_THREADS_PER_BLOCK_2D = 32
+NUM_THREADS_PER_BLOCK = 1024
 WARP_SIZE = 32
 
 GAUSSIAN_BLUR = """
