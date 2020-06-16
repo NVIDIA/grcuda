@@ -10,25 +10,23 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 1024
+NUM_THREADS_PER_BLOCK = 256
 
 SQUARE_KERNEL = """
-    extern "C" __global__ void square(const float* x, float* y, int n) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            y[idx] = x[idx] * x[idx];
-        }
+extern "C" __global__ void square(const float* x, float* y, int n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        y[i] = x[i] * x[i];
     }
-    """
+}
+"""
 
 DIFF_KERNEL = """
-    extern "C" __global__ void diff(const float* x, const float* y, float* z, int n) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            z[idx] = x[idx] - y[idx];
-        }
+extern "C" __global__ void diff(const float* x, const float* y, float* z, int n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        z[i] = x[i] - y[i];
     }
-    """
+}
+"""
 
 REDUCE_KERNEL = """
 
@@ -41,15 +39,15 @@ __inline__ __device__ float warp_reduce(float val) {
     return val;
 }
 
-__global__ void reduce(const float *in, float* out, int N) {
+__global__ void reduce(const float *x, const float *y, float* z, int N) {
     int warp_size = 32;
     float sum = float(0);
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
-        sum += in[i];
+        sum += x[i] - y[i];
     }
     sum = warp_reduce(sum); // Obtain the sum of values in the current warp;
     if ((threadIdx.x & (warp_size - 1)) == 0) // Same as (threadIdx.x % warp_size) == 0 but faster
-        atomicAdd(out, sum); // The first thread in the warp updates the output;
+        atomicAdd(z, sum); // The first thread in the warp updates the output;
 }
 """
 
@@ -62,7 +60,7 @@ class Benchmark1(Benchmark):
     Compute the sum of difference of squares of 2 vectors, using multiple GrCUDA kernels.
     Structure of the computation:
        A: x^2 ──┐
-                ├─> C: z=x-y ──> D: sum(z)
+                ├─> C: z=sum(x-y)
        B: x^2 ──┘
     """
 
@@ -75,16 +73,16 @@ class Benchmark1(Benchmark):
         self.y1 = None
         self.z = None
         self.res = None
-        self.num_blocks = 0
         self.square_kernel = None
         self.diff_kernel = None
         self.reduce_kernel = None
         self.cpu_result = 0
 
+        self.num_blocks = 64
+
     @time_phase("allocation")
     def alloc(self, size: int):
         self.size = size
-        self.num_blocks = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 
         # Allocate 2 vectors;
         self.x = polyglot.eval(language="grcuda", string=f"float[{size}]")
@@ -93,14 +91,12 @@ class Benchmark1(Benchmark):
         self.y1 = polyglot.eval(language="grcuda", string=f"float[{size}]")
 
         # Allocate a support vector;
-        self.z = polyglot.eval(language="grcuda", string=f"float[{size}]")
         self.res = polyglot.eval(language="grcuda", string=f"float[1]")
 
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
         self.square_kernel = build_kernel(SQUARE_KERNEL, "square", "const pointer, pointer, sint32")
-        self.diff_kernel = build_kernel(DIFF_KERNEL, "diff", "const pointer, const pointer, pointer, sint32")
-        self.reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "const pointer, pointer, sint32")
+        self.reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "const pointer, const pointer, pointer, sint32")
 
     @time_phase("initialization")
     def init(self):
@@ -120,22 +116,16 @@ class Benchmark1(Benchmark):
 
     def execute(self) -> object:
 
-        # Call the kernel. The 2 computations are independent, and can be done in parallel;
+        # A, B. Call the kernel. The 2 computations are independent, and can be done in parallel;
         start = time.time()
         self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.x1, self.size)
         self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.y1, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "square", "time_sec": end - start})
 
-        # C. Compute the difference of the 2 vectors. This must be done after the 2 previous computations;
+        # C. Compute the sum of the result;
         start = time.time()
-        self.diff_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x1, self.y1, self.z, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "diff", "time_sec": end - start})
-
-        # D. Compute the sum of the result;
-        start = time.time()
-        self.reduce_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.z, self.res, self.size)
+        self.reduce_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x1, self.y1, self.res, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "reduce", "time_sec": end - start})
 

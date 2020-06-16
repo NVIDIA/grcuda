@@ -219,14 +219,14 @@ class Benchmark8(Benchmark):
         self.mask_large = None
         self.kernel_large = None
         self.kernel_large_diameter = 5
-        self.kernel_large_variance = 9
+        self.kernel_large_variance = 10
         self.maximum = None
         self.minimum = None
 
         self.blurred_unsharpen = None
         self.image_unsharpen = None
         self.kernel_unsharpen = None
-        self.kernel_unsharpen_diameter = 3
+        self.kernel_unsharpen_diameter = 5
         self.kernel_unsharpen_variance = 5
         self.unsharpen_amount = 0.5
 
@@ -336,21 +336,22 @@ class Benchmark8(Benchmark):
 
         # Blur - Small;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_small_diameter**2)\
+        a = 32
+        self.gaussian_blur_kernel((a, a), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_small_diameter**2)\
             (self.image, self.blurred_small, self.size, self.size, self.kernel_small, self.kernel_small_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_small", "time_sec": end - start})
 
         # Blur - Large;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_large_diameter**2)\
+        self.gaussian_blur_kernel((a, a), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_large_diameter**2)\
             (self.image, self.blurred_large, self.size, self.size, self.kernel_large, self.kernel_large_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_large", "time_sec": end - start})
 
         # Blur - Unsharpen;
         start = time.time()
-        self.gaussian_blur_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_unsharpen_diameter**2)\
+        self.gaussian_blur_kernel((a, a), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_unsharpen_diameter**2)\
             (self.image, self.blurred_unsharpen, self.size, self.size, self.kernel_unsharpen, self.kernel_unsharpen_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_unsharpen", "time_sec": end - start})
@@ -394,7 +395,7 @@ class Benchmark8(Benchmark):
 
         # Add a final sync step to measure the real computation time;
         start = time.time()
-        # tmp = self.image3[0][0]
+        tmp = self.image3[0][0]
         end = time.time()
         self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
 

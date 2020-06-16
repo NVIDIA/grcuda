@@ -10,11 +10,16 @@ This document contains some performance results obtained running Graalpython ben
 * **DRAM**: 32 GB, DDR4
 * Execution time measures the total amount of time spent by GPU execution, from the first kernel scheduling until all GPU kernels have finished executing
 * Each benchmark is executed for **30 iterations**, and the average time skips the first 3 to allow the performance of GraalVM to stabilize 
+
+## Results
+
+* **Sync time** is the baseline, it measures synchronous GPU kernel scheduling. In this case, dependencies between kernels are not computed, making GrCUDA overheads even smaller.
+* **DAG** is the computation time when using GrCUDA DAG kernel scheduling, performing transparent GPU resource-sharing.
+
 * The field **Threads** is the number of threads for each block, in CUDA; this number ranges from 32 to 1024. A higher number implies bigger blocks, and possibly less GPU occupation
 * The field **Size** is the number of elements in the input. 
 Depending on the benchmark it could be the size of a vector, the number of rows in a square matrix, the number of vertices of a graph; more information are provided for each benchmark 
 
-## Results
 
 ### Benchmark 1 (bench_1)
 
@@ -84,7 +89,9 @@ for each iteration, can be computed in parallel, and take most of the total comp
 
 The input graph has **size** vertices, degree 10 and uniform distribution. Each execution of this algorithm is composed of 10 iterations.
 Kernel computations are very fast, and the speedup increases for larger input graphs: most likely, this is the effect of having 2 SpMV running concurrently, 
-which makes better use of the available memory bandwidth.
+which makes better use of the available memory bandwidth. The number of blocks is kept constant at 32, as higher block count resulted in worse overall performance.
+
+As the benchmark is composed of 2 independent branches, the **maximum theoretical speedup is 2x**.
 
 Structure of the computation (read-only parameters that do not influence the DAG are omitted):
 
@@ -96,12 +103,15 @@ Structure of the computation (read-only parameters that do not influence the DAG
  └─> SPMV(const A1,H2) ┴─> SUM(const H2,H_norm) ┴─> DIVIDE(H1,const H2,const H_norm) ─> CPU: H_norm=0 ─> (repeat)                       
 ```
 
-| Threads | Size | Sync time (s) | DAG (s) | DAG Speedup |
-|-----|-----|-----|-----|-----|
-|  32  | 10000    |  0.0101   |   0.0116  | 0.87x     | 
-|      |  100000   | 0.0270   |  0.0129  |  2.09x    |  
-|  1024   | 10000    |  0.0107   |   0.0119  |  0.89x    | 
-|     |   100000  |   0.0380  |   0.0145  |  2.62x    | 
+
+| Threads | Vertices | Degree | Sync time (s) | DAG (s) | DAG Speedup |
+|-----|-----|-----|-----|-----|-----|
+|  32  | 100000  | 10       |  0.020   |  0.011   |  1.81x   | 
+|      |   | 100            | 0.088|  0.042         |  2.09x   |
+|    |       1000000 | 10   |  0.224   |   0.196  |   1.14x   | 
+|  1024   |  100000 | 10    |   0.016  |  0.012   |  1.33x   |
+|      |   | 100            | 0.191 |      0.174      |   1.09x |
+|     |   1000000   | 10    | 0.232  |  0.212  |  1.09x   | 
 
 ### Image Processing Pipeline (bench_8)
 

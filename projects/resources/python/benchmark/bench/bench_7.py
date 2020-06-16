@@ -10,54 +10,48 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 1024
+NUM_THREADS_PER_BLOCK = 32
 
 SPMV_KERNEL = """
-    extern "C" __global__ void spmv(const int *ptr, const int *idx, const int *val, const float *vec, float *res, int num_rows, int num_nnz) {
-    
-        int n = blockIdx.x * blockDim.x + threadIdx.x;
-        if (n < num_rows) {
-            float sum = 0;
-            for (int i = ptr[n]; i < ptr[n + 1]; i++) {
-                sum += val[i] * vec[idx[i]];
-            }
-            res[n] = sum;
+extern "C" __global__ void spmv(const int *ptr, const int *idx, const int *val, const float *vec, float *res, int num_rows, int num_nnz) {
+
+    for(int n = blockIdx.x * blockDim.x + threadIdx.x; n < num_rows; n += blockDim.x * gridDim.x) {
+        float sum = 0;
+        for (int i = ptr[n]; i < ptr[n + 1]; i++) {
+            sum += val[i] * vec[idx[i]];
         }
+        res[n] = sum;
     }
-    """
+}
+"""
 
 SUM_KERNEL = """
-    extern "C" __global__ void sum(const float *x, float *res, int n) {
-        __shared__ float cache[%d];
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n) {
-            cache[threadIdx.x] = x[i];
-        }
-        __syncthreads();
+__inline__ __device__ float warp_reduce(float val) {
+    int warp_size = 32;
+    for (int offset = warp_size / 2; offset > 0; offset /= 2) 
+        val += __shfl_down_sync(0xFFFFFFFF, val, offset);
+    return val;
+}
 
-        // Perform tree reduction;
-        i = %d / 2;
-        while (i > 0) {
-            if (threadIdx.x < i) {
-                cache[threadIdx.x] += cache[threadIdx.x + i];
-            }
-            __syncthreads();
-            i /= 2;
-        }
-        if (threadIdx.x == 0) {
-            atomicAdd(res, cache[0]);
-        }
+extern "C" __global__ void sum(const float *x, float* z, int N) {
+    int warp_size = 32;
+    float sum = float(0);
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
+        sum += x[i];
     }
-    """ % (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK)
+    sum = warp_reduce(sum); // Obtain the sum of values in the current warp;
+    if ((threadIdx.x & (warp_size - 1)) == 0) // Same as (threadIdx.x % warp_size) == 0 but faster
+        atomicAdd(z, sum); // The first thread in the warp updates the output;
+}
+"""
 
 DIVIDE_KERNEL = """
-    extern "C" __global__ void divide(const float* x, float *y, float *val, int n) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            y[idx] = x[idx] / val[0];
-        }
+extern "C" __global__ void divide(const float* x, float *y, float *val, int n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+        y[i] = x[i] / val[0];
     }
-    """
+}
+"""
 
 ##############################
 ##############################
@@ -105,7 +99,7 @@ class Benchmark7(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_size = 0
+        self.num_blocks_size = 32
 
         self.spmv_kernel = None
         self.sum_kernel = None
@@ -115,7 +109,6 @@ class Benchmark7(Benchmark):
     def alloc(self, size: int):
         self.size = size
         self.num_nnz = size * self.max_degree
-        self.num_blocks_size = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 
         self.gpu_result = np.zeros(self.size)
 
@@ -144,32 +137,67 @@ class Benchmark7(Benchmark):
     @time_phase("initialization")
     def init(self):
 
-        def create_csr_from_coo(x_in, y_in, val_in):
-            ptr_out = np.zeros(max(np.max(x_in), np.max(y_in)) + 2, dtype=int)
-            for x_curr in x_in:
-                ptr_out[x_curr + 1] += 1
-            ptr_out = np.cumsum(ptr_out)
+        def create_csr_from_coo(x_in, y_in, val_in, size, degree=None):
+            start = time.time()
+            ptr_out = np.zeros(size + 1, dtype=np.int32)
+            end = time.time()
+            print("\tinit zeros=", end - start, "sec")
+            start = time.time()
+
+            if degree:
+                ptr_out[1:] = degree
+            else:
+                values, count = np.unique(x_in, return_counts=True)
+                for v, c in zip(values, count):
+                    ptr_out[v + 1] = c
+
+            end = time.time()
+            print("\tinit ptr=", end - start, "sec")
+            start = time.time()
+            ptr_out = np.cumsum(ptr_out, dtype=np.int32)
+            end = time.time()
+            print("\tinit cumsum=", end - start, "sec")
             return ptr_out, y_in, val_in
 
         self.random_seed = randint(0, 10000000)
         seed(self.random_seed)
 
         # Create a random COO graph;
-        x = []
-        y = []
-        val = []
+        start = time.time()
+        x = [0] * self.size * self.max_degree
+        y = [0] * self.size * self.max_degree
+        val = [1] * self.size * self.max_degree
         for i in range(self.size):
             # Create max_degree random edges;
             edges = sorted(sample(range(self.size), self.max_degree))
-            for j in edges:
-                x += [i]
-                y += [j]
-                val += [1]
+            for j, e in enumerate(edges):
+                x[i * self.max_degree + j] = i
+                y[i * self.max_degree + j] = e
+        end = time.time()
+        print("init coo=", end - start, "sec")
 
         # Turn the COO into CSR and CSC representations;
-        self.ptr_cpu, self.idx_cpu, self.val_cpu = create_csr_from_coo(x, y, val)
+        start = time.time()
+        self.ptr_cpu, self.idx_cpu, self.val_cpu = create_csr_from_coo(x, y, val, self.size, degree=self.max_degree)
+        end = time.time()
+        print("init csr=", end - start, "sec")
+        start = time.time()
         x2, y2 = zip(*sorted(zip(y, x)))
-        self.ptr2_cpu, self.idx2_cpu, self.val2_cpu = create_csr_from_coo(x2, y2, val)
+        end = time.time()
+        print("init sort=", end - start, "sec")
+        start = time.time()
+        self.ptr2_cpu, self.idx2_cpu, self.val2_cpu = create_csr_from_coo(x2, y2, val, self.size)
+        end = time.time()
+        print("init csr2=", end - start, "sec")
+
+        start = time.time()
+        # Low-level copies from numpy array, they are faster but require slow casting to numpy arrays;
+        # self.ptr.copyFrom(int(np.int64(self.ptr_cpu.ctypes.data)), len(self.ptr))
+        # self.ptr2.copyFrom(int(np.int64(self.ptr2_cpu.ctypes.data)), len(self.ptr2))
+        # self.idx.copyFrom(int(np.int64(self.idx_cpu.ctypes.data)), len(self.idx))
+        # self.idx2.copyFrom(int(np.int64(self.idx2_cpu.ctypes.data)), len(self.idx2))
+        # self.val.copyFrom(int(np.int64(self.val_cpu.ctypes.data)), len(self.val))
+        # self.val2.copyFrom(int(np.int64(self.val2_cpu.ctypes.data)), len(self.val2))
         for i in range(len(self.ptr_cpu)):
             self.ptr[i] = int(self.ptr_cpu[i])
             self.ptr2[i] = int(self.ptr2_cpu[i])
@@ -178,6 +206,9 @@ class Benchmark7(Benchmark):
             self.idx2[i] = int(self.idx2_cpu[i])
             self.val[i] = int(self.val_cpu[i])
             self.val2[i] = int(self.val2_cpu[i])
+
+        end = time.time()
+        print("init copy=", end - start, "sec")
 
     @time_phase("reset_result")
     def reset_result(self) -> None:

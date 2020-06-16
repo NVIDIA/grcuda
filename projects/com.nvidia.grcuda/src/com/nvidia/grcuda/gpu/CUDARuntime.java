@@ -909,7 +909,7 @@ public final class CUDARuntime {
     @TruffleBoundary
     public Kernel buildKernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String code, String kernelName, String signature) {
         String moduleName = "truffle" + context.getNextModuleId();
-        PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14", "-G", "-lineinfo");
+        PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14");
         CUModule module = null;
         try {
             module = cuModuleLoadData(ptx.getPtxSource(), moduleName);

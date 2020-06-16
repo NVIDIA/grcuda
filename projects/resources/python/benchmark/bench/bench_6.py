@@ -14,8 +14,7 @@ NUM_THREADS_PER_BLOCK = 1024
 
 NB_KERNEL = """   
     extern "C" __global__ void nb_1(const int* x, const float* y, float* z, int size, int n_feat, int n_classes) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < size) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < size; i += blockDim.x * gridDim.x) {
             for (int j = 0; j < n_classes; j++) {
                 for (int q = 0; q < n_feat; q++) {
                     z[i * n_classes + j] += x[i * n_feat + q] * y[j * n_feat + q];
@@ -25,8 +24,7 @@ NB_KERNEL = """
     }
     
     extern "C" __global__ void nb_2(const float* x, float* y, int n_row_x, int n_col_x) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n_row_x) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             float curr_max = x[i * n_col_x];
             for (int j = 0; j < n_col_x; j++) {
                 curr_max = fmaxf(curr_max, x[i * n_col_x + j]); 
@@ -36,9 +34,8 @@ NB_KERNEL = """
     }
     
     extern "C" __global__ void nb_3(const float* x, const float* y, float* z, int n_row_x, int n_col_x) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        float sum = 0;
-        if (i < n_row_x) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
+            float sum = 0;
             for (int j = 0; j < n_col_x; j++) {
                 sum += expf(x[i * n_col_x + j] - y[i]);
             }
@@ -47,8 +44,7 @@ NB_KERNEL = """
     }
     
     extern "C" __global__ void nb_4(float* x, float* y, int n_row_x, int n_col_x) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n_row_x) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             for (int j = 0; j < n_col_x; j++) {
                 x[i * n_col_x + j] = expf(x[i * n_col_x + j] - y[i]);
             }
@@ -58,8 +54,7 @@ NB_KERNEL = """
 
 RR_KERNEL = """
     extern "C" __global__ void rr_1(const int* x, float *y, int n_row_x, int n_col_x) {
-        int j = blockIdx.x * blockDim.x + threadIdx.x;
-        if (j < n_col_x) {
+        for(int j = blockIdx.x * blockDim.x + threadIdx.x; j < n_col_x; j += blockDim.x * gridDim.x) {
             float feature_mean = 0;
             float sum_sq = 0;
             // Compute mean and variance;
@@ -78,8 +73,7 @@ RR_KERNEL = """
     }
     
     extern "C" __global__ void rr_2(const float* x, const float* y, float* z, int size, int n_feat, int n_classes) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < size) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < size; i += blockDim.x * gridDim.x) {
             for (int j = 0; j < n_classes; j++) {
                 for (int q = 0; q < n_feat; q++) {
                     z[i * n_classes + j] += x[i * n_feat + q] * y[j * n_feat + q];
@@ -89,8 +83,7 @@ RR_KERNEL = """
     }
 
     extern "C" __global__ void rr_3(float* x, const float *y, int n_row_x, int n_col_x) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n_row_x) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             for (int j = 0; j < n_col_x; j++) {
                 x[i * n_col_x + j] += y[j];
             }
@@ -100,8 +93,7 @@ RR_KERNEL = """
 
 ENSEMBLE_KERNEL = """
     extern "C" __global__ void softmax(float *x, int n_row_x, int n_col_x) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n_row_x) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             float row_exp_sum = 0;
             for (int j = 0; j < n_col_x; j++) {
                 row_exp_sum += expf( x[i * n_col_x + j]);
@@ -113,8 +105,7 @@ ENSEMBLE_KERNEL = """
     }
     
     extern "C" __global__ void argmax(const float *x, const float *y, int *z, int n_row_x, int n_col_x) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n_row_x) {
+        for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             int curr_best_index = 0;
             float curr_best = x[i * n_col_x] + y[i * n_col_x];
             for (int j = 0; j < n_col_x; j++) {
@@ -189,11 +180,11 @@ class Benchmark6(Benchmark):
         self.nb_amax = None
         self.nb_l = None
 
-        self.num_features = 1000  # self.nb_feat_log_prob_np.shape[1]
-        self.num_classes = 5  # self.nb_feat_log_prob_np.shape[0]
+        self.num_features = 2000  # self.nb_feat_log_prob_np.shape[1]
+        self.num_classes = 10  # self.nb_feat_log_prob_np.shape[0]
 
-        self.num_blocks_size = 0
-        self.num_blocks_feat = (self.num_features + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
+        self.num_blocks_size = 64
+        self.num_blocks_feat = 32
 
     @time_phase("allocation")
     def alloc(self, size: int):
