@@ -180,11 +180,19 @@ class Benchmark6(Benchmark):
         self.nb_amax = None
         self.nb_l = None
 
-        self.num_features = 2000  # self.nb_feat_log_prob_np.shape[1]
-        self.num_classes = 10  # self.nb_feat_log_prob_np.shape[0]
+        self.num_features = 200  # self.nb_feat_log_prob_np.shape[1]
+        self.num_classes = 5  # self.nb_feat_log_prob_np.shape[0]
 
         self.num_blocks_size = 64
-        self.num_blocks_feat = 32
+        self.num_blocks_feat = 64
+
+        self.x_cpu = None
+        self.nb_feat_log_prob_cpu = None
+        self.ridge_coeff_cpu = None
+        self.nb_class_log_prior_cpu = None
+        self.ridge_intercept_cpu = None
+        self.r1_cpu = None
+        self.r2_cpu = None
 
     @time_phase("allocation")
     def alloc(self, size: int):
@@ -192,19 +200,19 @@ class Benchmark6(Benchmark):
         self.num_blocks_size = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 
         # Allocate vectors;
-        self.x = polyglot.eval(language="grcuda", string=f"int[{size}][{self.num_features}]")
-        self.z = polyglot.eval(language="grcuda", string=f"float[{size}][{self.num_features}]")
+        self.x = polyglot.eval(language="grcuda", string=f"int[{size * self.num_features}]")
+        self.z = polyglot.eval(language="grcuda", string=f"float[{size * self.num_features}]")
 
-        self.nb_feat_log_prob = polyglot.eval(language="grcuda", string=f"float[{self.num_classes}][{self.num_features}]")
+        self.nb_feat_log_prob = polyglot.eval(language="grcuda", string=f"float[{self.num_classes * self.num_features}]")
         self.nb_class_log_prior = polyglot.eval(language="grcuda", string=f"float[{self.num_classes}]")
-        self.ridge_coeff = polyglot.eval(language="grcuda", string=f"float[{self.num_classes}][{self.num_features}]")
+        self.ridge_coeff = polyglot.eval(language="grcuda", string=f"float[{self.num_classes * self.num_features}]")
         self.ridge_intercept = polyglot.eval(language="grcuda", string=f"float[{self.num_classes}]")
 
         self.nb_amax = polyglot.eval(language="grcuda", string=f"float[{self.size}]")
         self.nb_l = polyglot.eval(language="grcuda", string=f"float[{self.size}]")
 
-        self.r1 = polyglot.eval(language="grcuda", string=f"float[{self.size}][{self.num_classes}]")
-        self.r2 = polyglot.eval(language="grcuda", string=f"float[{self.size}][{self.num_classes}]")
+        self.r1 = polyglot.eval(language="grcuda", string=f"float[{self.size * self.num_classes}]")
+        self.r2 = polyglot.eval(language="grcuda", string=f"float[{self.size * self.num_classes}]")
         self.r = polyglot.eval(language="grcuda", string=f"int[{self.size}]")
 
         # Build the kernels;
@@ -226,30 +234,34 @@ class Benchmark6(Benchmark):
         self.random_seed = randint(0, 10000000)
         seed(self.random_seed)
 
-        # Initialize the support device arrays;
-        for i in range(self.num_classes):
-            for j in range(self.num_features):
-                self.nb_feat_log_prob[i][j] = random()  # self.nb_feat_log_prob_np[i][j]
-                self.ridge_coeff[i][j] = random()  # self.ridge_coeff_np[i][j]
-            self.nb_class_log_prior[i] = random()  # self.nb_class_log_prior_np[i]
-            self.ridge_intercept[i] = random()  # self.ridge_intercept_np[i]
-
         # Create a random input;
         max_occurrence_of_ngram = 10
-        for i in range(self.size):
-            for j in range(self.num_features):
-                self.x[i][j] = randint(0, max_occurrence_of_ngram)
-            # Initialize a support array;
-            for j in range(self.num_classes):
-                self.r1[i][j] = self.nb_class_log_prior[j]
-                self.r2[i][j] = 0
+        self.x_cpu = np.random.randint(0, max_occurrence_of_ngram, (self.size, self.num_features), dtype=np.int32)
+
+        self.nb_feat_log_prob_cpu = np.random.random_sample((self.num_classes, self.num_features)).astype(dtype=np.float32)
+        self.ridge_coeff_cpu = np.random.random_sample((self.num_classes, self.num_features)).astype(dtype=np.float32)
+        self.nb_class_log_prior_cpu = np.random.random_sample(self.num_classes).astype(dtype=np.float32)
+        self.ridge_intercept_cpu = np.random.random_sample(self.num_classes).astype(dtype=np.float32)
+
+        self.r1_cpu = np.zeros((self.size, self.num_classes))
+        for j in range(self.num_classes):
+            self.r1_cpu[:, j] = self.nb_class_log_prior_cpu[j]
+        self.r2_cpu = np.zeros((self.size, self.num_classes))
+
+        self.x.copyFrom(int(np.int64(self.x_cpu.ctypes.data)), len(self.x))
+        self.nb_feat_log_prob.copyFrom(int(np.int64(self.nb_feat_log_prob_cpu.ctypes.data)), len(self.nb_feat_log_prob))
+        self.ridge_coeff.copyFrom(int(np.int64(self.ridge_coeff_cpu.ctypes.data)), len(self.ridge_coeff))
+        self.nb_class_log_prior.copyFrom(int(np.int64(self.nb_class_log_prior_cpu.ctypes.data)), len(self.nb_class_log_prior))
+        self.ridge_intercept.copyFrom(int(np.int64(self.ridge_intercept_cpu.ctypes.data)), len(self.ridge_intercept))
+        self.r1.copyFrom(int(np.int64(self.r1_cpu.ctypes.data)), len(self.r1))
+        self.r2.copyFrom(int(np.int64(self.r2_cpu.ctypes.data)), len(self.r2))
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
         for i in range(self.size):
             for j in range(self.num_classes):
-                self.r1[i][j] = self.nb_class_log_prior[j]
-                self.r2[i][j] = 0
+                self.r1[i * self.num_classes + j] = self.nb_class_log_prior[j]
+                self.r2[i * self.num_classes + j] = 0
 
     def execute(self) -> object:
 
@@ -350,26 +362,9 @@ class Benchmark6(Benchmark):
         if self.current_iter == 0 or reinit:
             # Re-initialize the random number generator with the same seed as the GPU to generate the same values;
             seed(self.random_seed)
-            # Initialize the support device arrays;
-            x_g = np.zeros((self.size, self.num_features))
-            feat_log_prob = np.zeros((self.num_classes, self.num_features))
-            ridge_coeff = np.zeros((self.num_classes, self.num_features))
-            class_log_prior = np.zeros(self.num_classes)
-            ridge_intercept = np.zeros(self.num_classes)
-            for i in range(self.num_classes):
-                for j in range(self.num_features):
-                    feat_log_prob[i, j] = random()  # self.nb_feat_log_prob_np[i][j]
-                    ridge_coeff[i, j] = random()  # self.ridge_coeff_np[i][j]
-                class_log_prior[i] = random()  # self.nb_class_log_prior_np[i]
-                ridge_intercept[i] = random()  # self.ridge_intercept_np[i]
 
-            # Create a random input;
-            for i in range(self.size):
-                for j in range(self.num_features):
-                    x_g[i, j] = self.x[i][j]
-
-            r1_g = naive_bayes_predict(x_g, feat_log_prob, class_log_prior)
-            r2_g = ridge_pred(normalize(x_g), ridge_coeff, ridge_intercept)
+            r1_g = naive_bayes_predict(self.x_cpu, self.nb_feat_log_prob_cpu, self.nb_class_log_prior_cpu)
+            r2_g = ridge_pred(normalize(self.x_cpu), self.ridge_coeff_cpu, self.ridge_intercept_cpu)
             r_g = np.argmax(softmax(r1_g) + softmax(r2_g), axis=1)
             self.cpu_result = r_g
 
