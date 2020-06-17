@@ -28,6 +28,7 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.gpu.computation.ArrayReadWriteFunctionExecution;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -95,12 +96,7 @@ public class DeviceArrayCopyFunction implements TruffleObject {
             throw ArityException.create(1, arguments.length);
         }
         long pointer = extractPointer(arguments[0], "fromPointer", pointerAccess);
-        if (direction == CopyDirection.FROM_POINTER) {
-            deviceArray.copyFrom(pointer, numElements);
-        }
-        if (direction == CopyDirection.TO_POINTER) {
-            deviceArray.copyTo(pointer, numElements);
-        }
+        new ArrayReadWriteFunctionExecution<>(deviceArray, direction, pointer, numElements).schedule();
         return deviceArray;
     }
 

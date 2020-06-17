@@ -149,7 +149,8 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         return numElements;
     }
 
-    final long getSizeBytes() {
+    @Override
+    final public long getSizeBytes() {
         return numElements * elementType.getSizeBytes();
     }
 

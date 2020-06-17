@@ -123,7 +123,8 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
         this.registerArray();
     }
 
-    final long getSizeBytes() {
+    @Override
+    final public long getSizeBytes() {
         return sizeBytes;
     }
 
@@ -318,23 +319,5 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     @ExportMessage
     long asPointer() {
         return getPointer();
-    }
-
-    public void copyFrom(long fromPointer, long numCopyElements) throws IndexOutOfBoundsException {
-        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
-        if (numBytesToCopy > getSizeBytes()) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IndexOutOfBoundsException();
-        }
-        grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(getPointer(), fromPointer, numBytesToCopy);
-    }
-
-    public void copyTo(long toPointer, long numCopyElements) throws IndexOutOfBoundsException {
-        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
-        if (numBytesToCopy > getSizeBytes()) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IndexOutOfBoundsException();
-        }
-        grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(toPointer, getPointer(), numBytesToCopy);
     }
 }

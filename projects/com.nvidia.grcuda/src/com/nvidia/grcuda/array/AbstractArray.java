@@ -94,6 +94,7 @@ public abstract class AbstractArray implements TruffleObject {
     }
 
     public abstract long getPointer();
+    public abstract long getSizeBytes();
 
     /**
      * Check if this array can be accessed by the host (read/write) without having to schedule a {@link com.nvidia.grcuda.gpu.computation.ArrayAccessExecution}.

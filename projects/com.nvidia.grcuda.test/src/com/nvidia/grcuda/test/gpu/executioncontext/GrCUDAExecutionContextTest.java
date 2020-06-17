@@ -258,4 +258,55 @@ public class GrCUDAExecutionContextTest {
             assertEquals(4.0, z.getArrayElement(0).asFloat(), 0.1);
         }
     }
+
+    @Test
+    public void dependencyPipelineWithArrayCopyTest() {
+
+        try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy).allowAllAccess(true).build()) {
+
+            final int numElements = 100000;
+            final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
+            Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
+            Value x = deviceArrayConstructor.execute("float", numElements);
+            Value y = deviceArrayConstructor.execute("float", numElements);
+            Value z = deviceArrayConstructor.execute("float", numElements);
+            Value x2 = deviceArrayConstructor.execute("float", numElements);
+            Value y2 = deviceArrayConstructor.execute("float", numElements);
+            Value res = deviceArrayConstructor.execute("float", 1);
+            Value res2 = deviceArrayConstructor.execute("float", 1);
+
+            for (int i = 0; i < numElements; ++i) {
+                x.setArrayElement(i, 1.0 / (i + 1));
+                y.setArrayElement(i, 2.0 / (i + 1));
+            }
+            res.setArrayElement(0, 0.0);
+
+            x2.invokeMember("copyFrom", x, numElements);
+            y2.invokeMember("copyFrom", y, numElements);
+
+            Value buildkernel = context.eval("grcuda", "buildkernel");
+            Value squareKernel = buildkernel.execute(SQUARE_KERNEL, "square", "pointer, sint32");
+            Value diffKernel = buildkernel.execute(DIFF_KERNEL, "diff", "const pointer, const pointer, pointer, sint32");
+            Value reduceKernel = buildkernel.execute(REDUCE_KERNEL, "reduce", "const pointer, pointer, sint32");
+            assertNotNull(squareKernel);
+            assertNotNull(diffKernel);
+            assertNotNull(reduceKernel);
+
+            Value configuredSquareKernel = squareKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+            Value configuredDiffKernel = diffKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+            Value configuredReduceKernel = reduceKernel.execute(numBlocks, NUM_THREADS_PER_BLOCK);
+
+            // Perform the computation;
+            configuredSquareKernel.execute(x2, numElements);
+            configuredSquareKernel.execute(y2, numElements);
+            configuredDiffKernel.execute(x2, y2, z, numElements);
+            configuredReduceKernel.execute(z, res, numElements);
+
+            res.invokeMember("copyTo", res2, 1);
+
+            // Verify the output;
+            float resScalar = res2.getArrayElement(0).asFloat();
+            assertEquals(-4.93, resScalar, 0.01);
+        }
+    }
 }

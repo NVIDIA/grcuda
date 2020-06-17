@@ -112,6 +112,11 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
     }
 
     @Override
+    final public long getSizeBytes() {
+        return mdDeviceArray.getElementsInDimension(thisDimension) * elementType.getSizeBytes();
+    }
+
+    @Override
     public String toString() {
         return String.format("MultiDimDeviceArrayView(dim=%d, offset=%d, stride=%d)\n",
                         thisDimension, offset, stride);
