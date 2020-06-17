@@ -56,53 +56,6 @@ import java.util.Arrays;
 @ExportLibrary(InteropLibrary.class)
 public final class DeviceArray extends AbstractArray implements TruffleObject {
 
-    private static final String POINTER = "pointer";
-    private static final String COPY_FROM = "copyFrom";
-    private static final String COPY_TO = "copyTo";
-
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO);
-    private static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO);
-
-    @ExportLibrary(InteropLibrary.class)
-    public static final class MemberSet implements TruffleObject {
-
-        @CompilationFinal(dimensions = 1) private final String[] values;
-
-        public MemberSet(String... values) {
-            this.values = values;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        public boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        public long getArraySize() {
-            return values.length;
-        }
-
-        @ExportMessage
-        public boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < values.length;
-        }
-
-        @ExportMessage
-        public Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if ((index < 0) || (index >= values.length)) {
-                CompilerDirectives.transferToInterpreter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return values[(int) index];
-        }
-
-        @TruffleBoundary
-        public boolean constainsValue(String name) {
-            return Arrays.asList(values).contains(name);
-        }
-    }
-
     /** Total number of elements stored in the array. */
     private final long numElements;
 
@@ -253,61 +206,6 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " + elementType);
         }
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getMembers(boolean includeInternal) {
-        return includeInternal ? MEMBERS : PUBLIC_MEMBERS;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isMemberReadable(String memberName,
-                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        String name = memberProfile.profile(memberName);
-        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name);
-    }
-
-    @ExportMessage
-    Object readMember(String memberName,
-                    @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
-        if (!isMemberReadable(memberName, memberProfile)) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.create(memberName);
-        }
-        if (POINTER.equals(memberName)) {
-            return getPointer();
-        }
-        if (COPY_FROM.equals(memberName)) {
-            return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.FROM_POINTER);
-        }
-        if (COPY_TO.equals(memberName)) {
-            return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.TO_POINTER);
-        }
-        CompilerDirectives.transferToInterpreter();
-        throw UnknownIdentifierException.create(memberName);
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isMemberInvocable(String memberName) {
-        return COPY_FROM.equals(memberName) || COPY_TO.equals(memberName);
-    }
-
-    @ExportMessage
-    Object invokeMember(String memberName,
-                    Object[] arguments,
-                    @CachedLibrary("this") InteropLibrary interopRead,
-                    @CachedLibrary(limit = "1") InteropLibrary interopExecute)
-                    throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
-        return interopExecute.execute(interopRead.readMember(this, memberName), arguments);
     }
 
     @ExportMessage

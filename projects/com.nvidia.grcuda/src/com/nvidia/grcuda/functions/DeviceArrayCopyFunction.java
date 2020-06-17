@@ -27,7 +27,7 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.computation.ArrayReadWriteFunctionExecution;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
@@ -47,11 +47,11 @@ public class DeviceArrayCopyFunction implements TruffleObject {
         TO_POINTER
     }
 
-    private final DeviceArray deviceArray;
+    private final AbstractArray array;
     private final CopyDirection direction;
 
-    public DeviceArrayCopyFunction(DeviceArray deviceArray, CopyDirection direction) {
-        this.deviceArray = deviceArray;
+    public DeviceArrayCopyFunction(AbstractArray array, CopyDirection direction) {
+        this.array = array;
         this.direction = direction;
     }
 
@@ -88,7 +88,7 @@ public class DeviceArrayCopyFunction implements TruffleObject {
                     @CachedLibrary(limit = "3") InteropLibrary numElementsAccess) throws UnsupportedTypeException, ArityException, IndexOutOfBoundsException {
         long numElements;
         if (arguments.length == 1) {
-            numElements = deviceArray.getArraySize();
+            numElements = array.getArraySize();
         } else if (arguments.length == 2) {
             numElements = extractNumber(arguments[1], "numElements", numElementsAccess);
         } else {
@@ -96,12 +96,12 @@ public class DeviceArrayCopyFunction implements TruffleObject {
             throw ArityException.create(1, arguments.length);
         }
         long pointer = extractPointer(arguments[0], "fromPointer", pointerAccess);
-        new ArrayReadWriteFunctionExecution<>(deviceArray, direction, pointer, numElements).schedule();
-        return deviceArray;
+        new ArrayReadWriteFunctionExecution(array, direction, pointer, numElements).schedule();
+        return array;
     }
 
     @Override
     public String toString() {
-        return "DeviceArrayCopyFunction(deviceArray=" + deviceArray + ", direction=" + direction.name() + ")";
+        return "DeviceArrayCopyFunction(deviceArray=" + array + ", direction=" + direction.name() + ")";
     }
 }

@@ -3,7 +3,6 @@ package com.nvidia.grcuda.gpu.computation;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
-import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -14,12 +13,12 @@ import java.util.Optional;
  * Computational elements that represents a low-level memory copy from/to a {@link AbstractArray}
  * @param <T> the type of {@link AbstractArray} used in the copy
  */
-public class ArrayReadWriteFunctionExecution<T extends AbstractArray> extends GrCUDAComputationalElement {
+public class ArrayReadWriteFunctionExecution extends GrCUDAComputationalElement {
 
     /**
      * The {@link AbstractArray} used in the copy;
      */
-    private final T array;
+    private final AbstractArray array;
     /**
      * Whether this computations copies data from the array or writes to it;
      */
@@ -35,7 +34,7 @@ public class ArrayReadWriteFunctionExecution<T extends AbstractArray> extends Gr
 
     protected boolean isComputationArrayAccess = true;
 
-    public ArrayReadWriteFunctionExecution(T array, DeviceArrayCopyFunction.CopyDirection direction, long pointer, long numElements) {
+    public ArrayReadWriteFunctionExecution(AbstractArray array, DeviceArrayCopyFunction.CopyDirection direction, long pointer, long numElements) {
         super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array, direction.equals(DeviceArrayCopyFunction.CopyDirection.TO_POINTER)));
         this.array = array;
         this.direction = direction;

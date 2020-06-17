@@ -29,7 +29,7 @@ package com.nvidia.grcuda.functions.map;
 
 import static com.nvidia.grcuda.functions.map.MapFunction.checkArity;
 
-import com.nvidia.grcuda.array.DeviceArray.MemberSet;
+import com.nvidia.grcuda.MemberSet;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

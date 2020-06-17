@@ -56,7 +56,7 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
         super(mdDeviceArray.grCUDAExecutionContext, mdDeviceArray.elementType, mdDeviceArray.isLastComputationArrayAccess());
         this.mdDeviceArray = mdDeviceArray;
         this.thisDimension = dim;
-        this.offset = offset;
+        this.offset = offset; // Index at which this array view starts;
         this.stride = stride;
         // Register the array in the GrCUDAExecutionContext;
         this.registerArray();
@@ -74,9 +74,10 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
         return stride;
     }
 
+    // FIXME: when column-major, low-level memcpy is accessing columns instead of rows!
     @Override
     public final long getPointer() {
-        return mdDeviceArray.getPointer();
+        return mdDeviceArray.getPointer() + offset * elementType.getSizeBytes();
     }
 
     /**

@@ -29,7 +29,6 @@
 package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
-import com.nvidia.grcuda.array.DeviceArray.MemberSet;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -47,9 +46,6 @@ import java.util.Arrays;
 
 @ExportLibrary(InteropLibrary.class)
 public class MultiDimDeviceArray extends AbstractArray implements TruffleObject {
-
-    private static final MemberSet PUBLIC_MEMBERS = new MemberSet();
-    private static final MemberSet MEMBERS = new MemberSet("pointer");
 
     /** Number of elements in each dimension. */
     private final long[] elementsPerDimension;
@@ -182,7 +178,6 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     // Implementation of InteropLibrary
     //
 
-
     @ExportMessage
     @SuppressWarnings("static-method")
     @Override
@@ -206,32 +201,6 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         }
         long offset = index * stridePerDimension[0];
         return new MultiDimDeviceArrayView(this, 1, offset, stridePerDimension[1]);
-    }
-
-    @ExportMessage
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    Object getMembers(boolean includeInternal) {
-        return includeInternal ? MEMBERS : PUBLIC_MEMBERS;
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(String member,
-                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
-        return "pointer".equals(memberProfile.profile(member));
-    }
-
-    @ExportMessage
-    Object readMember(String member,
-                    @Shared("member") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
-        if (!isMemberReadable(member, memberProfile)) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.create(member);
-        }
-        return getPointer();
     }
 
     @ExportMessage

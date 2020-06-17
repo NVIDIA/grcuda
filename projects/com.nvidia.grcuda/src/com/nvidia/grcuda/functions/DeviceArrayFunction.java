@@ -32,7 +32,7 @@ import com.nvidia.grcuda.ElementType;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.array.DeviceArray;
-import com.nvidia.grcuda.array.DeviceArray.MemberSet;
+import com.nvidia.grcuda.MemberSet;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CompilerDirectives;

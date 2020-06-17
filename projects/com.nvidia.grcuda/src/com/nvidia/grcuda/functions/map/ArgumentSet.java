@@ -29,7 +29,7 @@ package com.nvidia.grcuda.functions.map;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.nvidia.grcuda.array.DeviceArray.MemberSet;
+import com.nvidia.grcuda.MemberSet;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;

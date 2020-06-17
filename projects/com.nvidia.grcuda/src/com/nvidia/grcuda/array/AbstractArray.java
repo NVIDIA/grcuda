@@ -1,16 +1,27 @@
 package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.MemberSet;
+import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.ValueProfile;
+
+import java.util.Arrays;
 
 /**
  * Simple wrapper around each class that represents device arrays in GrCUDA.
@@ -18,6 +29,13 @@ import com.oracle.truffle.api.library.ExportMessage;
  */
 @ExportLibrary(InteropLibrary.class)
 public abstract class AbstractArray implements TruffleObject {
+
+    protected static final String POINTER = "pointer";
+    protected static final String COPY_FROM = "copyFrom";
+    protected static final String COPY_TO = "copyTo";
+
+    protected static final MemberSet PUBLIC_MEMBERS = new MemberSet(COPY_FROM, COPY_TO);
+    protected static final MemberSet MEMBERS = new MemberSet(POINTER, COPY_FROM, COPY_TO);
 
     /**
      * Reference to the underlying CUDA runtime that manages the array memory.
@@ -122,6 +140,61 @@ public abstract class AbstractArray implements TruffleObject {
     @ExportMessage
     boolean isArrayElementReadable(long index) {
         return false;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getMembers(boolean includeInternal) {
+        return includeInternal ? MEMBERS : PUBLIC_MEMBERS;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberReadable(String memberName,
+                             @Cached.Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) {
+        String name = memberProfile.profile(memberName);
+        return POINTER.equals(name) || COPY_FROM.equals(name) || COPY_TO.equals(name);
+    }
+
+    @ExportMessage
+    Object readMember(String memberName,
+                      @Cached.Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
+        if (!isMemberReadable(memberName, memberProfile)) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.create(memberName);
+        }
+        if (POINTER.equals(memberName)) {
+            return getPointer();
+        }
+        if (COPY_FROM.equals(memberName)) {
+            return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.FROM_POINTER);
+        }
+        if (COPY_TO.equals(memberName)) {
+            return new DeviceArrayCopyFunction(this, DeviceArrayCopyFunction.CopyDirection.TO_POINTER);
+        }
+        CompilerDirectives.transferToInterpreter();
+        throw UnknownIdentifierException.create(memberName);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isMemberInvocable(String memberName) {
+        return COPY_FROM.equals(memberName) || COPY_TO.equals(memberName);
+    }
+
+    @ExportMessage
+    Object invokeMember(String memberName,
+                        Object[] arguments,
+                        @CachedLibrary("this") InteropLibrary interopRead,
+                        @CachedLibrary(limit = "1") InteropLibrary interopExecute)
+            throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+        return interopExecute.execute(interopRead.readMember(this, memberName), arguments);
     }
 
     /**

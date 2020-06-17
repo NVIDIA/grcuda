@@ -29,7 +29,6 @@
 package com.nvidia.grcuda;
 
 import com.nvidia.grcuda.array.DeviceArray;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import org.graalvm.options.OptionDescriptors;
 
 import com.nvidia.grcuda.nodes.ExpressionNode;

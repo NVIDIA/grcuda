@@ -30,7 +30,7 @@ package com.nvidia.grcuda.gpu;
 
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.array.DeviceArray;
-import com.nvidia.grcuda.array.DeviceArray.MemberSet;
+import com.nvidia.grcuda.MemberSet;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.computation.ComputationArgument;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
