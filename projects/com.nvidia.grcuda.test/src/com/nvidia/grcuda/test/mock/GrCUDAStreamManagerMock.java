@@ -43,7 +43,15 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
     }
 
     @Override
+    public void assignEvent(ExecutionDAG.DAGVertex vertex) { }
+
+    @Override
     public void syncStream(CUDAStream stream) { }
+
+    @Override
+    protected void setComputationFinishedInner(GrCUDAComputationalElement computation) {
+        computation.setComputationFinished();
+    }
 
     @Override
     protected void syncStreamsUsingEvents(ExecutionDAG.DAGVertex vertex) { }

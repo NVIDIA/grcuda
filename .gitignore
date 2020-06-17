@@ -44,3 +44,4 @@ mx.grcuda/eclipse-launches
 /venv
 **.log
 /scratch
+**.nvvp

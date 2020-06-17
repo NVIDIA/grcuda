@@ -435,10 +435,14 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public void cudaEventDestroy(CUDAEvent event) {
+        if (!event.isAlive()) {
+            throw new RuntimeException("CUDA event=" + event + " has already been destroyed");
+        }
         try {
             Object callable = CUDARuntimeFunction.CUDA_EVENTDESTROY.getSymbol(this);
             Object result = INTEROP.execute(callable, event.getRawPointer());
             checkCUDAReturnCode(result, "cudaEventDestroy");
+            event.setDead();
         } catch (InteropException e) {
             throw new GrCUDAException(e);
         }
@@ -452,6 +456,9 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public void cudaEventRecord(CUDAEvent event, CUDAStream stream) {
+        if (!event.isAlive()) {
+            throw new RuntimeException("CUDA event=" + event + " has already been destroyed");
+        }
         try {
             Object callable = CUDARuntimeFunction.CUDA_EVENTRECORD.getSymbol(this);
             Object result = INTEROP.execute(callable, event.getRawPointer(), stream.getRawPointer());
@@ -468,6 +475,9 @@ public final class CUDARuntime {
      */
     @TruffleBoundary
     public void cudaStreamWaitEvent(CUDAStream stream, CUDAEvent event) {
+        if (!event.isAlive()) {
+            throw new RuntimeException("CUDA event=" + event + " has already been destroyed");
+        }
         try {
             final int FLAGS = 0x0; // Must be 0 according to CUDA documentation;
             Object callable = CUDARuntimeFunction.CUDA_STREAMWAITEVENT.getSymbol(this);

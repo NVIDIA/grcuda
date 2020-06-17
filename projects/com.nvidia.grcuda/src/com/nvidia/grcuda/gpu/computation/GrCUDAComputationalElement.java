@@ -1,11 +1,13 @@
 package com.nvidia.grcuda.gpu.computation;
 
+import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputation;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.Collection;
@@ -33,6 +35,12 @@ public abstract class GrCUDAComputationalElement {
      * but it is required to keep that value consistent to this one if it is modified;
      */
     private CUDAStream stream = DefaultStream.get();
+    /**
+     * Reference to the event associated to this computation, and recorded on the stream where this computation is executed,
+     * after the computation is started. It offers a precise synchronization point for children computations.
+     * If the computation is not executed on a stream, the event is null;
+     */
+    private CUDAEvent event;
     /**
      * Keep track of whether this computation has already been executed, and represents a "dead" vertex in the DAG.
      * Computations that are already executed will not be considered when computing dependencies;
@@ -124,6 +132,18 @@ public abstract class GrCUDAComputationalElement {
 
     public void setComputationStarted() {
         this.computationStarted = true;
+    }
+
+    public Optional<CUDAEvent> getEvent() {
+        if (event != null) {
+            return Optional.of(event);
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    public void setEvent(CUDAEvent event) {
+        this.event = event;
     }
 
     /**

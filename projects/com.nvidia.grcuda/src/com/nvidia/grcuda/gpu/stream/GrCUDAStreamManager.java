@@ -100,6 +100,21 @@ public class GrCUDAStreamManager {
         }
     }
 
+    /**
+     * Associate a new {@link CUDAEvent} to this computation, if the computation is done on a {@link CUDAStream}.
+     * The event is created and recorded on the stream where the computation is running,
+     * and can be used for precise synchronization of children computation;
+     * @param vertex an input computation for which we want to assign an event
+     */
+    public void assignEvent(ExecutionDAG.DAGVertex vertex) {
+        // If the computation cannot use customized streams, return immediately;
+        if (vertex.getComputation().canUseStream()) {
+            CUDAEvent event = runtime.cudaEventCreate();
+            runtime.cudaEventRecord(event, vertex.getComputation().getStream());
+            vertex.getComputation().setEvent(event);
+        }
+    }
+
     public void syncParentStreams(ExecutionDAG.DAGVertex vertex) {
         // If the vertex can be executed on a CUDA stream, use CUDA events,
         //   otherwise use stream/device synchronization to block the host until synchronization is done;
@@ -144,23 +159,22 @@ public class GrCUDAStreamManager {
      * @param vertex a computation whose parent's streams must be synchronized
      */
     protected void syncStreamsUsingEvents(ExecutionDAG.DAGVertex vertex) {
-        Set<CUDAStream> streamSynchronized = new HashSet<>();
         for (GrCUDAComputationalElement parent : vertex.getParentComputations()) {
             CUDAStream stream = parent.getStream();
             // Skip synchronization on the same stream where the new computation is executed,
             //   as operations scheduled on a stream are executed in order;
             if (!vertex.getComputation().getStream().equals(stream)) {
-                // Don't process the same stream twice, in any case;
-                if (!streamSynchronized.contains(stream)) {
-                    // Create a new synchronization event on the stream;
-                    CUDAEvent event = runtime.cudaEventCreate();
-                    runtime.cudaEventRecord(event, stream);
+                // Synchronize on the events associated to the parents;
+                if (parent.getEvent().isPresent()) {
+                    CUDAEvent event = parent.getEvent().get();
                     runtime.cudaStreamWaitEvent(vertex.getComputation().getStream(), event);
 
-                    streamSynchronized.add(stream);
                     System.out.println("\t* wait event on stream; stream to sync=" + stream.getStreamNumber()
                             + "; stream that waits=" + vertex.getComputation().getStream().getStreamNumber()
                             + "; event=" + event.getEventNumber());
+                } else {
+                    System.out.println("\t* WARNING: missing event to sync child computation=" + vertex.getComputation() +
+                            " and parent computation=" + parent);
                 }
             }
         }
@@ -197,6 +211,16 @@ public class GrCUDAStreamManager {
         });
     }
 
+    protected void setComputationFinishedInner(GrCUDAComputationalElement computation) {
+        computation.setComputationFinished();
+        // Destroy the event associated to this computation;
+        if (computation.getEvent().isPresent()) {
+            runtime.cudaEventDestroy(computation.getEvent().get());
+        } else {
+            System.out.println("\t* WARNING: missing event to destroy for computation=" + computation);
+        }
+    }
+
     private void setComputationsFinished(ExecutionDAG.DAGVertex vertex, Set<CUDAStream> streamsToSync) {
         // Vertices to process;
         final Queue<ExecutionDAG.DAGVertex> queue = new ArrayDeque<>(Collections.singletonList(vertex));
@@ -205,7 +229,7 @@ public class GrCUDAStreamManager {
         // Perform a reverse BFS to process all the parents of the starting computation;
         while (!queue.isEmpty()) {
             ExecutionDAG.DAGVertex currentVertex = queue.poll();
-            currentVertex.getComputation().setComputationFinished();
+            setComputationFinishedInner(currentVertex.getComputation());
             // Book-keeping on the stream of the current computation;
             CUDAStream stream = currentVertex.getComputation().getStream();
 

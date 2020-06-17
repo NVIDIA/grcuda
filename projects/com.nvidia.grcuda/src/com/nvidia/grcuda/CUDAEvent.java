@@ -11,6 +11,10 @@ import java.util.Objects;
 public class CUDAEvent extends GPUPointer {
 
     private final long eventNumber;
+    /**
+     * Keep track of whether this event has been destroyed by {@link com.nvidia.grcuda.gpu.CUDARuntime#cudaEventDestroy}
+     */
+    private boolean isAlive = true;
 
     public CUDAEvent(long rawPointer, long eventNumber) {
         super(rawPointer);
@@ -22,6 +26,20 @@ public class CUDAEvent extends GPUPointer {
     }
 
     public boolean isDefaultStream() { return false; }
+
+    /**
+     * Keep track of whether this event has been destroyed by {@link com.nvidia.grcuda.gpu.CUDARuntime#cudaEventDestroy}
+     */
+    public boolean isAlive() {
+        return isAlive;
+    }
+
+    /**
+     * Set the event as destroyed by the CUDA runtime;
+     */
+    public void setDead() {
+        isAlive = false;
+    }
 
     @Override
     public String toString() {

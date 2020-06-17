@@ -10,8 +10,8 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK_2D = 32
-NUM_THREADS_PER_BLOCK = 1024
+NUM_THREADS_PER_BLOCK_2D = 8
+NUM_THREADS_PER_BLOCK = 32
 WARP_SIZE = 32
 
 GAUSSIAN_BLUR = """
@@ -135,7 +135,7 @@ __inline__ __device__ float warp_reduce_min(float val) {
     return val;
 }
 
-__global__ void maximum(const float *in, float* out, int N) {
+extern "C" __global__ void maximum(const float *in, float* out, int N) {
     int warp_size = 32;
     float maximum = -1000;
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) { 
@@ -146,7 +146,7 @@ __global__ void maximum(const float *in, float* out, int N) {
         atomicMaxf(out, maximum); // The first thread in the warp updates the output;
 }
 
-__global__ void minimum(const float *in, float* out, int N) {
+extern "C" __global__ void minimum(const float *in, float* out, int N) {
     int warp_size = 32;
     float minimum = 1000;
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) { 

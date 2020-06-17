@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.gpu.computation;
 
+import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.ConfiguredKernel;
@@ -104,9 +105,10 @@ public class KernelExecution extends GrCUDAComputationalElement {
 //        return "KernelExecution(" + configuredKernel.toString() + "; args=[" +
 //                Arrays.stream(args.getOriginalArgs()).map(a -> Integer.toString(System.identityHashCode(a))).collect(Collectors.joining(", ")) +
 //                "]" + "; stream=" + this.getStream() + ")";
+        String event = this.getEvent().isPresent() ? Long.toString(this.getEvent().get().getEventNumber()) : "NULL";
         return "kernel=" + kernel.getKernelName() + "; args=[" +
                 Arrays.stream(args.getOriginalArgs()).map(a -> Integer.toString(System.identityHashCode(a))).collect(Collectors.joining(", ")) +
-                "]" + "; stream=" + this.getStream().getStreamNumber();
+                "]" + "; stream=" + this.getStream().getStreamNumber() + "; event=" + event;
     }
 
     static class KernelExecutionInitializer implements InitializeArgumentList {

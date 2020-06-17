@@ -44,11 +44,18 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
         // Add the new computation to the DAG
         ExecutionDAG.DAGVertex vertex = dag.append(computation);
 
-        // Compute the stream where the computation will be done;
+        // Compute the stream where the computation will be done, if the computation can be performed asynchronously;
         streamManager.assignStream(vertex);
 
         // Start the computation;
-        return executeComputationSync(vertex);
+        Object result = executeComputationSync(vertex);
+
+        // Associate a CUDA event to this computation, if performed asynchronously;
+        streamManager.assignEvent(vertex);
+
+        System.out.println("-- running " + vertex.getComputation());
+
+        return result;
     }
 
     @Override
@@ -71,8 +78,6 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
     private Object executeComputationSync(ExecutionDAG.DAGVertex vertex) throws UnsupportedTypeException {
         // Before starting this computation, ensure that all its parents have finished their computation;
         streamManager.syncParentStreams(vertex);
-
-        System.out.println("-- running " + vertex.getComputation());
 
         // Perform the computation;
         vertex.getComputation().setComputationStarted();
