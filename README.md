@@ -267,7 +267,9 @@ graalpython -m ginstall install numpy;
 9. **Run tests with** `mx unittest com.nvidia`
 * Run a specific test using, for example, `mx unittest com.nvidia.grcuda.test.gpu.ExecutionDAGTest#executionDAGConstructorTest`
 
-10. **Execute performance tests using Graalpython**
+10. **Add your GrCUDA directory to the environment with** `export GRCUDA_HOME=/path/to/grcuda`
+
+11. **Execute performance tests using Graalpython**
 
 ```
 cd projects/resources/python/benchmark

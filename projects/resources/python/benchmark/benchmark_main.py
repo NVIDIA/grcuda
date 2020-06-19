@@ -52,10 +52,8 @@ policies = {
 ##############################
 
 
-def create_block_size_list(args) -> list:
+def create_block_size_list(block_size_1d, block_size_2d) -> list:
     block_size = None
-    block_size_1d = args.block_size_1d
-    block_size_2d = args.block_size_2d
     if (not block_size_1d) and block_size_2d:  # Only 2D block size;
         block_size = [{"block_size_2d": b} for b in block_size_2d]
     elif (not block_size_2d) and block_size_1d:  # Only 1D block size;
@@ -140,7 +138,7 @@ if __name__ == "__main__":
         num_elem = {n: args.size for n in num_elem.keys()}
 
     # Setup the block size for each benchmark;
-    block_sizes = create_block_size_list(args)
+    block_sizes = create_block_size_list(args.block_size_1d, args.block_size_2d)
     if (args.block_size_1d or args.block_size_2d) and benchmark_res.debug:
         BenchmarkResult.log_message(f"using block sizes: {block_sizes}")
 
