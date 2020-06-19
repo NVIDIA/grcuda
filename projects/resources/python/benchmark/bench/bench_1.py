@@ -4,13 +4,11 @@ import time
 import numpy as np
 from random import random, randint, seed
 
-from benchmark import Benchmark, time_phase
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
 from benchmark_result import BenchmarkResult
 
 ##############################
 ##############################
-
-NUM_THREADS_PER_BLOCK = 1024
 
 SQUARE_KERNEL = """
 extern "C" __global__ void square(const float* x, float* y, int n) {
@@ -79,10 +77,12 @@ class Benchmark1(Benchmark):
         self.cpu_result = 0
 
         self.num_blocks = 64
+        self.block_size = DEFAULT_BLOCK_SIZE_1D
 
     @time_phase("allocation")
-    def alloc(self, size: int):
+    def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
+        self.block_size = block_size["block_size_1d"]
 
         # Allocate 2 vectors;
         self.x = polyglot.eval(language="grcuda", string=f"float[{size}]")
@@ -118,14 +118,14 @@ class Benchmark1(Benchmark):
 
         # A, B. Call the kernel. The 2 computations are independent, and can be done in parallel;
         start = time.time()
-        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.x1, self.size)
-        self.square_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.y1, self.size)
+        self.square_kernel(self.num_blocks, self.block_size)(self.x, self.x1, self.size)
+        self.square_kernel(self.num_blocks, self.block_size)(self.y, self.y1, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "square", "time_sec": end - start})
 
         # C. Compute the sum of the result;
         start = time.time()
-        self.reduce_kernel(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x1, self.y1, self.res, self.size)
+        self.reduce_kernel(self.num_blocks, self.block_size)(self.x1, self.y1, self.res, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "reduce", "time_sec": end - start})
 

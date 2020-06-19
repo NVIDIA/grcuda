@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 import time
 from typing import Callable
 
+DEFAULT_BLOCK_SIZE_1D = 32
+DEFAULT_BLOCK_SIZE_2D = 8
 
 def time_phase(phase_name: str) -> Callable:
     """
@@ -29,14 +31,17 @@ class Benchmark(ABC):
     def __init__(self, name: str, benchmark: BenchmarkResult):
         self.name = name
         self.benchmark = benchmark
-        self.current_iter = 0
+        self.tot_iter = 0
         self.random_seed = 42  # Default random seed, it will be overwritten with a random one;
+        self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
+        self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
 
     @abstractmethod
-    def alloc(self, size: int) -> None:
+    def alloc(self, size: int, block_size: dict = None) -> None:
         """
         Allocate new memory on GPU used for the benchmark;
         :param size: base factor used in the memory allocation, e.g. size of each array
+        :param block_size: optional dictionary containing block size for 1D and 2D kernels
         """
         pass
 
@@ -72,14 +77,21 @@ class Benchmark(ABC):
         """
         pass
 
-    def run(self, policy: str, size: int, realloc: bool, reinit: bool) -> None:
+    def run(self, num_iter: int, policy: str, size: int, realloc: bool, reinit: bool, block_size: dict = None) -> None:
+
+        # Fix missing block size;
+        if "block_size_1d" not in block_size:
+            block_size["block_size_1d"] = DEFAULT_BLOCK_SIZE_1D
+        if "block_size_2d" not in block_size:
+            block_size["block_size_2d"] = DEFAULT_BLOCK_SIZE_2D
 
         self.benchmark.start_new_benchmark(name=self.name,
                                            policy=policy,
                                            size=size,
                                            realloc=realloc,
                                            reinit=reinit,
-                                           iteration=self.current_iter)
+                                           block_size=block_size,
+                                           iteration=num_iter)
 
         # TODO: set the execution policy;
 
@@ -87,10 +99,10 @@ class Benchmark(ABC):
         start = time.time()
 
         # Allocate memory for the benchmark;
-        if self.current_iter == 0 or realloc:
-            self.alloc(size)
+        if num_iter == 0 or realloc:
+            self.alloc(size, block_size)
         # Initialize memory for the benchmark;
-        if self.current_iter == 0 or reinit or reinit:
+        if num_iter == 0 or reinit or reinit:
             self.init()
 
         # Reset the result;
@@ -110,4 +122,4 @@ class Benchmark(ABC):
         # Write to file the current result;
         self.benchmark.save_to_file()
         # Book-keeping;
-        self.current_iter += 1
+        self.tot_iter += 1

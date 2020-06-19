@@ -4,7 +4,7 @@ import time
 import numpy as np
 from random import random, randint, seed, sample
 
-from benchmark import Benchmark, time_phase
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_BLOCK_SIZE_2D
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -238,9 +238,10 @@ class Benchmark8(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_size = 0
-        self.num_blocks_size_2d = 0
         self.num_blocks_per_processor = 64  # i.e. 8 * number of SM on the GTX960
+
+        self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
+        self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
 
         self.gaussian_blur_kernel = None
         self.sobel_kernel = None
@@ -251,10 +252,10 @@ class Benchmark8(Benchmark):
         self.minimum_kernel = None
 
     @time_phase("allocation")
-    def alloc(self, size: int):
+    def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
-        self.num_blocks_size_2d = (size + NUM_THREADS_PER_BLOCK_2D - 1) // NUM_THREADS_PER_BLOCK_2D
-        self.num_blocks_size = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
+        self.block_size_1d = block_size["block_size_1d"]
+        self.block_size_2d = block_size["block_size_2d"]
 
         self.gpu_result = np.zeros(self.size)
 
@@ -337,58 +338,58 @@ class Benchmark8(Benchmark):
         # Blur - Small;
         start = time.time()
         a = 32
-        self.gaussian_blur_kernel((a, a), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_small_diameter**2)\
+        self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_small_diameter**2)\
             (self.image, self.blurred_small, self.size, self.size, self.kernel_small, self.kernel_small_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_small", "time_sec": end - start})
 
         # Blur - Large;
         start = time.time()
-        self.gaussian_blur_kernel((a, a), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_large_diameter**2)\
+        self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_large_diameter**2)\
             (self.image, self.blurred_large, self.size, self.size, self.kernel_large, self.kernel_large_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_large", "time_sec": end - start})
 
         # Blur - Unsharpen;
         start = time.time()
-        self.gaussian_blur_kernel((a, a), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D), 4 * self.kernel_unsharpen_diameter**2)\
+        self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_unsharpen_diameter**2)\
             (self.image, self.blurred_unsharpen, self.size, self.size, self.kernel_unsharpen, self.kernel_unsharpen_diameter)
         end = time.time()
         self.benchmark.add_phase({"name": "blur_unsharpen", "time_sec": end - start})
 
         # Sobel filter (edge detection);
         start = time.time()
-        self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
+        self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (self.block_size_2d, self.block_size_2d))\
             (self.blurred_small, self.mask_small, self.size, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "sobel_small", "time_sec": end - start})
 
         start = time.time()
-        self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (NUM_THREADS_PER_BLOCK_2D, NUM_THREADS_PER_BLOCK_2D))\
+        self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (self.block_size_2d, self.block_size_2d))\
             (self.blurred_large, self.mask_large, self.size, self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "sobel_large", "time_sec": end - start})
 
         # Extend large edge detection mask;
         start = time.time()
-        self.maximum_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)(self.mask_large, self.maximum, self.size**2)
-        self.minimum_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)(self.mask_large, self.minimum, self.size**2)
-        self.extend_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)(self.mask_large, self.minimum, self.maximum, self.size**2)
+        self.maximum_kernel(self.num_blocks_per_processor, self.block_size_1d)(self.mask_large, self.maximum, self.size**2)
+        self.minimum_kernel(self.num_blocks_per_processor, self.block_size_1d)(self.mask_large, self.minimum, self.size**2)
+        self.extend_kernel(self.num_blocks_per_processor, self.block_size_1d)(self.mask_large, self.minimum, self.maximum, self.size**2)
         end = time.time()
         self.benchmark.add_phase({"name": "extend", "time_sec": end - start})
 
         # Unsharpen;
         start = time.time()
-        self.unsharpen_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)\
+        self.unsharpen_kernel(self.num_blocks_per_processor, self.block_size_1d)\
             (self.image, self.blurred_unsharpen, self.image_unsharpen, self.unsharpen_amount, self.size * self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "unsharpen", "time_sec": end - start})
 
         # Combine results;
         start = time.time()
-        self.combine_mask_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)\
+        self.combine_mask_kernel(self.num_blocks_per_processor, self.block_size_1d)\
             (self.image_unsharpen, self.blurred_large, self.mask_large, self.image2, self.size * self.size)
-        self.combine_mask_kernel(self.num_blocks_per_processor, NUM_THREADS_PER_BLOCK)\
+        self.combine_mask_kernel(self.num_blocks_per_processor, self.block_size_1d)\
             (self.image2, self.blurred_small, self.mask_small, self.image3, self.size * self.size)
         end = time.time()
         self.benchmark.add_phase({"name": "combine", "time_sec": end - start})

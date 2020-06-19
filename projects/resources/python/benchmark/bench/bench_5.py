@@ -84,7 +84,7 @@ class Benchmark5(Benchmark):
         self.cpu_result = None
 
     @time_phase("allocation")
-    def alloc(self, size: int):
+    def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
         self.num_blocks = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 

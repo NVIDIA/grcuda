@@ -4,7 +4,7 @@ import time
 import numpy as np
 from random import random, randint, seed, sample
 
-from benchmark import Benchmark, time_phase
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -100,15 +100,17 @@ class Benchmark7(Benchmark):
         self.gpu_result = None
 
         self.num_blocks_size = 32
+        self.block_size = None
 
         self.spmv_kernel = None
         self.sum_kernel = None
         self.divide_kernel = None
 
     @time_phase("allocation")
-    def alloc(self, size: int):
+    def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
         self.num_nnz = size * self.max_degree
+        self.block_size = block_size["block_size_1d"]
 
         self.gpu_result = np.zeros(self.size)
 
@@ -138,11 +140,7 @@ class Benchmark7(Benchmark):
     def init(self):
 
         def create_csr_from_coo(x_in, y_in, val_in, size, degree=None):
-            start = time.time()
             ptr_out = np.zeros(size + 1, dtype=np.int32)
-            end = time.time()
-            print("\tinit zeros=", end - start, "sec")
-            start = time.time()
 
             if degree:
                 ptr_out[1:] = degree
@@ -151,19 +149,13 @@ class Benchmark7(Benchmark):
                 for v, c in zip(values, count):
                     ptr_out[v + 1] = c
 
-            end = time.time()
-            print("\tinit ptr=", end - start, "sec")
-            start = time.time()
             ptr_out = np.cumsum(ptr_out, dtype=np.int32)
-            end = time.time()
-            print("\tinit cumsum=", end - start, "sec")
             return ptr_out, y_in, val_in
 
         self.random_seed = randint(0, 10000000)
         seed(self.random_seed)
 
         # Create a random COO graph;
-        start = time.time()
         x = [0] * self.size * self.max_degree
         y = [0] * self.size * self.max_degree
         val = [1] * self.size * self.max_degree
@@ -173,24 +165,12 @@ class Benchmark7(Benchmark):
             for j, e in enumerate(edges):
                 x[i * self.max_degree + j] = i
                 y[i * self.max_degree + j] = e
-        end = time.time()
-        print("init coo=", end - start, "sec")
 
         # Turn the COO into CSR and CSC representations;
-        start = time.time()
         self.ptr_cpu, self.idx_cpu, self.val_cpu = create_csr_from_coo(x, y, val, self.size, degree=self.max_degree)
-        end = time.time()
-        print("init csr=", end - start, "sec")
-        start = time.time()
         x2, y2 = zip(*sorted(zip(y, x)))
-        end = time.time()
-        print("init sort=", end - start, "sec")
-        start = time.time()
         self.ptr2_cpu, self.idx2_cpu, self.val2_cpu = create_csr_from_coo(x2, y2, val, self.size)
-        end = time.time()
-        print("init csr2=", end - start, "sec")
 
-        start = time.time()
         # Low-level copies from numpy array, they are faster but require slow casting to numpy arrays;
         # self.ptr.copyFrom(int(np.int64(self.ptr_cpu.ctypes.data)), len(self.ptr))
         # self.ptr2.copyFrom(int(np.int64(self.ptr2_cpu.ctypes.data)), len(self.ptr2))
@@ -207,9 +187,6 @@ class Benchmark7(Benchmark):
             self.val[i] = int(self.val_cpu[i])
             self.val2[i] = int(self.val2_cpu[i])
 
-        end = time.time()
-        print("init copy=", end - start, "sec")
-
     @time_phase("reset_result")
     def reset_result(self) -> None:
         for i in range(self.size):
@@ -225,35 +202,35 @@ class Benchmark7(Benchmark):
         for i in range(self.num_iterations):
             # Authorities;
             start = time.time()
-            self.spmv_kernel(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.ptr2, self.idx2, self.val2, self.hub1, self.auth2, self.size, self.num_nnz)
+            self.spmv_kernel(self.num_blocks_size, self.block_size)(self.ptr2, self.idx2, self.val2, self.hub1, self.auth2, self.size, self.num_nnz)
             end = time.time()
             self.benchmark.add_phase({"name": f"spmv_a_{i}", "time_sec": end - start})
 
             # Hubs;
             start = time.time()
-            self.spmv_kernel(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.ptr, self.idx, self.val, self.auth1, self.hub2, self.size, self.num_nnz)
+            self.spmv_kernel(self.num_blocks_size, self.block_size)(self.ptr, self.idx, self.val, self.auth1, self.hub2, self.size, self.num_nnz)
             end = time.time()
             self.benchmark.add_phase({"name": f"spmv_h_{i}", "time_sec": end - start})
 
             # Normalize authorities;
             start = time.time()
-            self.sum_kernel(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.auth2, self.auth_norm, self.size)
+            self.sum_kernel(self.num_blocks_size, self.block_size)(self.auth2, self.auth_norm, self.size)
             end = time.time()
             self.benchmark.add_phase({"name": f"sum_a_{i}", "time_sec": end - start})
 
             # Normalize hubs;
             start = time.time()
-            self.sum_kernel(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.hub2, self.hub_norm, self.size)
+            self.sum_kernel(self.num_blocks_size, self.block_size)(self.hub2, self.hub_norm, self.size)
             end = time.time()
             self.benchmark.add_phase({"name": f"sum_h_{i}", "time_sec": end - start})
 
             start = time.time()
-            self.divide_kernel(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.auth2, self.auth1, self.auth_norm, self.size)
+            self.divide_kernel(self.num_blocks_size, self.block_size)(self.auth2, self.auth1, self.auth_norm, self.size)
             end = time.time()
             self.benchmark.add_phase({"name": f"divide_a_{i}", "time_sec": end - start})
 
             start = time.time()
-            self.divide_kernel(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.hub2, self.hub1, self.hub_norm, self.size)
+            self.divide_kernel(self.num_blocks_size, self.block_size)(self.hub2, self.hub1, self.hub_norm, self.size)
             end = time.time()
             self.benchmark.add_phase({"name": f"divide_h_{i}", "time_sec": end - start})
 

@@ -41,13 +41,17 @@ class BenchmarkResult:
         if self.debug:
             BenchmarkResult.log_message(f"storing results in {self._output_path}")
 
+    @staticmethod
+    def create_block_size_key(block_size: dict) -> str:
+        return f"{block_size['block_size_1d']},{block_size['block_size_2d']}"
+
     def default_output_file_name(self) -> str:
         output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         file_name = f"{output_date}_{self.num_iterations}.json"
         return os.path.join(self.DEFAULT_RES_FOLDER, file_name)
 
     def start_new_benchmark(self, name: str, policy: str, size: int,
-                            realloc: bool, reinit: bool, iteration: int) -> None:
+                            realloc: bool, reinit: bool, block_size: dict, iteration: int) -> None:
         """
         Benchmark results are stored in a nested dictionary with the following structure.
         self.results["benchmarks"]->{benchmark_name}->{policy}->{size}->{realloc}->{reinit}->{actual result}
@@ -57,6 +61,7 @@ class BenchmarkResult:
         :param size: size of the input data
         :param realloc: if reallocation is performed
         :param reinit: if re-initialization is performed
+        :param block_size: dictionary that specifies the number of threads per block
         :param iteration: current iteration
         """
 
@@ -85,16 +90,22 @@ class BenchmarkResult:
             dict_reinit = {}
             dict_realloc[realloc] = dict_reinit
         # 5. Reinit options;
-        self._dict_current = {"phases": [], "iteration": iteration}
         if reinit in dict_reinit:
-            dict_reinit[reinit] += [self._dict_current]
+            dict_block = dict_reinit[reinit]
         else:
-            dict_reinit[reinit] = [self._dict_current]
+            dict_block = {}
+            dict_reinit[reinit] = dict_block
+        # 6. Block size options;
+        self._dict_current = {"phases": [], "iteration": iteration}
+        if tuple(block_size.values()) in dict_block:
+            dict_block[BenchmarkResult.create_block_size_key(block_size)] += [self._dict_current]
+        else:
+            dict_block[BenchmarkResult.create_block_size_key(block_size)] = [self._dict_current]
 
         if self.debug:
             BenchmarkResult.log_message(
                 f"starting benchmark={name}, iter={iteration + 1}/{self.num_iterations}, "
-                f"policy={policy}, size={size}, realloc={realloc}, reinit={reinit}")
+                f"policy={policy}, size={size}, realloc={realloc}, reinit={reinit}, block_size={BenchmarkResult.create_block_size_key(block_size)}")
 
     def add_to_benchmark(self, key: str, message: object) -> None:
         """
@@ -134,7 +145,7 @@ class BenchmarkResult:
         if self.debug and "name" in phase and "time_sec" in phase:
             BenchmarkResult.log_message(f"\t\t{phase['name']}: {phase['time_sec']:.4f} sec")
 
-    def print_current_summary(self, name: str, policy: str, size: int, realloc: bool, reinit, skip: int = 0) -> None:
+    def print_current_summary(self, name: str, policy: str, size: int, realloc: bool, reinit, block_size: dict, skip: int = 0) -> None:
         """
         Print a summary of the benchmark with the provided settings;
 
@@ -143,14 +154,15 @@ class BenchmarkResult:
         :param size: size of the input data
         :param realloc: if reallocation is performed
         :param reinit: if re-initialization is performed
+        :param block_size: dictionary that specifies the number of threads per block
         :param skip: skip the first N iterations when computing the summary statistics
         """
         try:
-            results_filtered = self._results["benchmarks"][name][policy][size][realloc][reinit]
+            results_filtered = self._results["benchmarks"][name][policy][size][realloc][reinit][BenchmarkResult.create_block_size_key(block_size)]
         except KeyError as e:
             results_filtered = []
             BenchmarkResult.log_message(f"WARNING: benchmark with signature"
-                                        f" [{name}][{policy}][{size}][{realloc}][{reinit}] not found, exception {e}")
+                                        f" [{name}][{policy}][{size}][{realloc}][{reinit}][{BenchmarkResult.create_block_size_key(block_size)}] not found, exception {e}")
         # Retrieve execution times;
         exec_times = [x["total_time_sec"] for x in results_filtered][skip:]
         mean_time = np.mean(exec_times) if exec_times else np.nan
@@ -161,7 +173,7 @@ class BenchmarkResult:
         comp_std_time = np.std(comp_exec_times) if comp_exec_times else np.nan
 
         BenchmarkResult.log_message(f"summary of benchmark={name}, policy={policy}, size={size}," +
-                                    f" realloc={realloc}, reinit={reinit};" +
+                                    f" realloc={realloc}, reinit={reinit}, block_size=({BenchmarkResult.create_block_size_key(block_size)});" +
                                     f" mean total time={mean_time:.4f}±{std_time:.4f} sec;" +
                                     f" mean computation time={comp_mean_time:.4f}±{comp_std_time:.4f} sec")
 

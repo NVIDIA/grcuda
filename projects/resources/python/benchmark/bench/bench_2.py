@@ -95,7 +95,7 @@ class Benchmark2(Benchmark):
         self.reduce_kernel = None
         self.cpu_result = 0
 
-    def alloc(self, size: int):
+    def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
         self.num_blocks = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
 

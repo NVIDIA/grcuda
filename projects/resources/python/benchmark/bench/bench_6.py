@@ -4,7 +4,7 @@ import time
 import numpy as np
 from random import random, randint, seed
 
-from benchmark import Benchmark, time_phase
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -185,6 +185,7 @@ class Benchmark6(Benchmark):
 
         self.num_blocks_size = 64
         self.num_blocks_feat = 64
+        self.block_size = DEFAULT_BLOCK_SIZE_1D
 
         self.x_cpu = None
         self.nb_feat_log_prob_cpu = None
@@ -195,9 +196,9 @@ class Benchmark6(Benchmark):
         self.r2_cpu = None
 
     @time_phase("allocation")
-    def alloc(self, size: int):
+    def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
-        self.num_blocks_size = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
+        self.block_size = block_size["block_size_1d"]
 
         # Allocate vectors;
         self.x = polyglot.eval(language="grcuda", string=f"int[{size * self.num_features}]")
@@ -269,43 +270,43 @@ class Benchmark6(Benchmark):
 
         # RR - 1.
         start = time.time()
-        self.rr_1(self.num_blocks_feat, NUM_THREADS_PER_BLOCK)(self.x, self.z, self.size, self.num_features)
+        self.rr_1(self.num_blocks_feat, self.block_size)(self.x, self.z, self.size, self.num_features)
         end = time.time()
         self.benchmark.add_phase({"name": "rr_1", "time_sec": end - start})
 
         # NB - 1.
         start = time.time()
-        self.nb_1(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.x, self.nb_feat_log_prob, self.r1, self.size, self.num_features, self.num_classes)
+        self.nb_1(self.num_blocks_size, self.block_size)(self.x, self.nb_feat_log_prob, self.r1, self.size, self.num_features, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "nb_1", "time_sec": end - start})
 
         # RR - 2.
         start = time.time()
-        self.rr_2(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.z, self.ridge_coeff, self.r2, self.size, self.num_features, self.num_classes)
+        self.rr_2(self.num_blocks_size, self.block_size)(self.z, self.ridge_coeff, self.r2, self.size, self.num_features, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "rr_2", "time_sec": end - start})
 
         # NB - 2.
         start = time.time()
-        self.nb_2(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.nb_amax, self.size, self.num_classes)
+        self.nb_2(self.num_blocks_size, self.block_size)(self.r1, self.nb_amax, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "nb_2", "time_sec": end - start})
 
         # NB - 3.
         start = time.time()
-        self.nb_3(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.nb_amax, self.nb_l, self.size, self.num_classes)
+        self.nb_3(self.num_blocks_size, self.block_size)(self.r1, self.nb_amax, self.nb_l, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "nb_3", "time_sec": end - start})
 
         # RR - 3.
         start = time.time()
-        self.rr_3(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r2, self.ridge_intercept, self.size, self.num_classes)
+        self.rr_3(self.num_blocks_size, self.block_size)(self.r2, self.ridge_intercept, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "rr_3", "time_sec": end - start})
 
         # NB - 4.
         start = time.time()
-        self.nb_4(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.nb_l, self.size, self.num_classes)
+        self.nb_4(self.num_blocks_size, self.block_size)(self.r1, self.nb_l, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "nb_4", "time_sec": end - start})
 
@@ -313,14 +314,14 @@ class Benchmark6(Benchmark):
 
         # Softmax normalization;
         start = time.time()
-        self.softmax(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.size, self.num_classes)
-        self.softmax(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r2, self.size, self.num_classes)
+        self.softmax(self.num_blocks_size, self.block_size)(self.r1, self.size, self.num_classes)
+        self.softmax(self.num_blocks_size, self.block_size)(self.r2, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "softmax", "time_sec": end - start})
 
         # Prediction;
         start = time.time()
-        self.argmax(self.num_blocks_size, NUM_THREADS_PER_BLOCK)(self.r1, self.r2, self.r, self.size, self.num_classes)
+        self.argmax(self.num_blocks_size, self.block_size)(self.r1, self.r2, self.r, self.size, self.num_classes)
         end = time.time()
         self.benchmark.add_phase({"name": "argmax", "time_sec": end - start})
 

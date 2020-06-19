@@ -51,6 +51,30 @@ policies = {
 ##############################
 ##############################
 
+
+def create_block_size_list(args) -> list:
+    block_size = None
+    block_size_1d = args.block_size_1d
+    block_size_2d = args.block_size_2d
+    if (not block_size_1d) and block_size_2d:  # Only 2D block size;
+        block_size = [{"block_size_2d": b} for b in block_size_2d]
+    elif (not block_size_2d) and block_size_1d:  # Only 1D block size;
+        block_size = [{"block_size_1d": b} for b in block_size_1d]
+    elif block_size_1d and block_size_2d:  # Both 1D and 2D size;
+        # Ensure they have the same size;
+        if len(block_size_2d) > len(block_size_1d):
+            block_size_1d = block_size_1d + [block_size_1d[-1]] * (len(block_size_2d) - len(block_size_1d))
+        elif len(block_size_1d) > len(block_size_2d):
+            block_size_2d = block_size_2d + [block_size_2d[-1]] * (len(block_size_1d) - len(block_size_2d))
+        block_size = [{"block_size_1d": x[0], "block_size_2d": x[1]} for x in zip(block_size_1d, block_size_2d)]
+    else:
+        block_size = [{}]
+    return block_size
+
+##############################
+##############################
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="measure GrCUDA execution time")
@@ -69,12 +93,16 @@ if __name__ == "__main__":
                         help="Validate the result of each benchmark using the CPU")
     parser.add_argument("--no_cpu_validation", action="store_false", dest="cpu_validation",
                         help="Validate the result of each benchmark using the CPU")
-    parser.add_argument("-b", "--benchmark",
+    parser.add_argument("-b", "--benchmark", nargs="*",
                         help="If present, run the benchmark only for the specified kernel")
     parser.add_argument("--policy",
                         help="If present, run the benchmark only with the selected policy")
-    parser.add_argument("-n", "--size", metavar="N", type=int,
+    parser.add_argument("-n", "--size", metavar="N", type=int, nargs="*",
                         help="Override the input data size used for the benchmarks")
+    parser.add_argument("--block_size_1d", metavar="N", type=int, nargs="*",
+                        help="Number of threads per block when using 1D kernels")
+    parser.add_argument("--block_size_2d", metavar="N", type=int, nargs="*",
+                        help="Number of threads per block when using 2D kernels")
     parser.add_argument("-r", "--random", action="store_true",
                         help="Initialize benchmarks randomly whenever possible")
     parser.set_defaults(cpu_validation=BenchmarkResult.DEFAULT_CPU_VALIDATION)
@@ -93,20 +121,28 @@ if __name__ == "__main__":
     # Create a new benchmark result instance;
     benchmark_res = BenchmarkResult(debug=debug, num_iterations=num_iter, output_path=output_path,
                                     cpu_validation=cpu_validation, random_init=random_init)
+    if benchmark_res.debug:
+        BenchmarkResult.log_message(f"using CPU validation: {cpu_validation}")
 
-    BenchmarkResult.log_message(f"using CPU validation: {cpu_validation}")
+    if args.benchmark:
+        if benchmark_res.debug:
+            BenchmarkResult.log_message(f"using only benchmark: {args.benchmark}")
+        benchmarks = {b: benchmarks[b] for b in args.benchmark}
 
-    if args.benchmark and benchmark_res.debug:
-        BenchmarkResult.log_message(f"using only benchmark: {args.benchmark}")
-        benchmarks = {args.benchmark: benchmarks[args.benchmark]}
-
-    if args.policy and benchmark_res.debug:
-        BenchmarkResult.log_message(f"using only type: {args.policy}")
+    if args.policy:
+        if benchmark_res.debug:
+            BenchmarkResult.log_message(f"using only type: {args.policy}")
         policies = {n: [args.policy] for n in policies.keys()}
 
-    if args.size and benchmark_res.debug:
-        BenchmarkResult.log_message(f"using only size: {args.size}")
-        num_elem = {n: [args.size] for n in num_elem.keys()}
+    if args.size:
+        if benchmark_res.debug:
+            BenchmarkResult.log_message(f"using only size: {args.size}")
+        num_elem = {n: args.size for n in num_elem.keys()}
+
+    # Setup the block size for each benchmark;
+    block_sizes = create_block_size_list(args)
+    if (args.block_size_1d or args.block_size_2d) and benchmark_res.debug:
+        BenchmarkResult.log_message(f"using block sizes: {block_sizes}")
 
     # Execute each test;
     for b_name, b in benchmarks.items():
@@ -115,9 +151,10 @@ if __name__ == "__main__":
             for n in num_elem[b_name]:
                 for re in realloc:
                     for ri in reinit:
-                        for i in range(num_iter):
-                            benchmark.run(policy=p, size=n, realloc=re, reinit=ri)
-                        # Print the summary of this block;
-                        if benchmark_res.debug:
-                            benchmark_res.print_current_summary(name=b_name, policy=p, size=n,
-                                                                realloc=re, reinit=ri, skip=3)
+                        for block_size in block_sizes:
+                            for i in range(num_iter):
+                                benchmark.run(num_iter=i, policy=p, size=n, realloc=re, reinit=ri, block_size=block_size)
+                            # Print the summary of this block;
+                            if benchmark_res.debug:
+                                benchmark_res.print_current_summary(name=b_name, policy=p, size=n,
+                                                                    realloc=re, reinit=ri, block_size=block_size, skip=3)
