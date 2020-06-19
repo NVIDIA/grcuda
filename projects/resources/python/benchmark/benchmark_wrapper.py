@@ -2,6 +2,7 @@ import argparse
 import subprocess
 import time
 import os
+from datetime import datetime
 from benchmark_result import BenchmarkResult
 from benchmark_main import create_block_size_list
 
@@ -29,7 +30,7 @@ new_stream_policies = ["fifo"]
 
 parent_stream_policies = ["disjoint"]
 
-dependency_policies = ["with_const"]
+dependency_policies = ["with-const"]
 
 block_sizes_1d = [32, 1024]
 block_sizes_2d = [8, 32]
@@ -40,7 +41,7 @@ block_sizes_2d = [8, 32]
 GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithThread " \
                   "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
-                  "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {}"
+                  "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} -o {}"
 
 
 def execute_benchmark(benchmark, size, block_size, exec_policy, new_stream_policy,
@@ -51,17 +52,22 @@ def execute_benchmark(benchmark, size, block_size, exec_policy, new_stream_polic
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message(f"Benchmark {i + 1}/{tot_benchmarks}")
         BenchmarkResult.log_message(f"benchmark={b}, size={n},"
-                                    f" block size={block_size},"
-                                    f" exec policy={exec_policy},"
-                                    f" new stream policy={new_stream_policy},"
-                                    f" parent stream policy={parent_stream_policy},"
+                                    f" block size={block_size}, "
+                                    f" exec policy={exec_policy}, "
+                                    f" new stream policy={new_stream_policy}, "
+                                    f" parent stream policy={parent_stream_policy}, "
                                     f" dependency policy={dependency_policy}")
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
+
+    output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    file_name = f"{output_date}_{benchmark}_{exec_policy}_{new_stream_policy}_{parent_stream_policy}_{dependency_policy}_{num_iter}.json"
+    output_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, file_name)
+
     benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, benchmark, block_size["block_size_1d"], block_size["block_size_2d"],
-                                           "-d" if debug else "")
+                                           "-d" if debug else "", output_path)
     start = time.time()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
@@ -84,15 +90,12 @@ if __name__ == "__main__":
                         help="If present, print debug messages")
     parser.add_argument("-i", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
                         help="Number of times each benchmark is executed")
-    parser.add_argument("-o", "--output_path", metavar="path/to/output.json",
-                        help="Path to the file where results will be stored")
 
     # Parse the input arguments;
     args = parser.parse_args()
 
     debug = args.debug if args.debug else BenchmarkResult.DEFAULT_DEBUG
     num_iter = args.num_iter if args.num_iter else BenchmarkResult.DEFAULT_NUM_ITER
-    output_path = args.output_path if args.output_path else ""
 
     # Setup the block size for each benchmark;
     block_sizes = create_block_size_list(block_sizes_1d, block_sizes_2d)

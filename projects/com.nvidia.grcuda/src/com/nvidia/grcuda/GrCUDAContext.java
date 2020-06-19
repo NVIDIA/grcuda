@@ -212,7 +212,7 @@ public final class GrCUDAContext {
     @TruffleBoundary
     private static DependencyPolicyEnum parseDependencyPolicy(String policyString) {
         switch(policyString) {
-            case "with_const":
+            case "with-const":
                 return DependencyPolicyEnum.WITH_CONST;
             case "default":
                 return DependencyPolicyEnum.DEFAULT;
@@ -226,7 +226,7 @@ public final class GrCUDAContext {
         switch(policyString) {
             case "fifo":
                 return RetrieveNewStreamPolicyEnum.FIFO;
-            case "always_new":
+            case "always-new":
                 return RetrieveNewStreamPolicyEnum.ALWAYS_NEW;
             default:
                 return GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY;

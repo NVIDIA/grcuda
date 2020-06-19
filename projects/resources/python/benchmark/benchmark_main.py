@@ -53,7 +53,6 @@ policies = {
 
 
 def create_block_size_list(block_size_1d, block_size_2d) -> list:
-    block_size = None
     if (not block_size_1d) and block_size_2d:  # Only 2D block size;
         block_size = [{"block_size_2d": b} for b in block_size_2d]
     elif (not block_size_2d) and block_size_1d:  # Only 1D block size;
