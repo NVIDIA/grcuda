@@ -18,10 +18,10 @@ benchmarks = [
 ]
 
 num_elem = {
-    "b1": [100],
-    "b6": [100],
-    "b7": [100],
-    "b8": [100],
+    "b1": [10000, 100000, 1000000],
+    "b6": [1000, 10000, 100000],
+    "b7": [1000, 10000, 100000],
+    "b8": [400, 800, 1200],
 }
 
 exec_policies = ["default", "sync"]
@@ -64,7 +64,7 @@ def execute_benchmark(benchmark, size, block_size, exec_policy, new_stream_polic
     if not output_date:
         output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     file_name = f"{output_date}_{benchmark}_{exec_policy}_{new_stream_policy}_{parent_stream_policy}_" \
-                f"{dependency_policy}_{block_size['block_size_1d']}_{block_size['block_size_2d']}_{num_iter}.json"
+                f"{dependency_policy}_{size}_{block_size['block_size_1d']}_{block_size['block_size_2d']}_{num_iter}.json"
     # Create a folder if it doesn't exist;
     output_folder_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, output_date)
     if not os.path.exists(output_folder_path):
