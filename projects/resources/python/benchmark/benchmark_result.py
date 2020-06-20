@@ -97,7 +97,7 @@ class BenchmarkResult:
             dict_reinit[reinit] = dict_block
         # 6. Block size options;
         self._dict_current = {"phases": [], "iteration": iteration}
-        if tuple(block_size.values()) in dict_block:
+        if BenchmarkResult.create_block_size_key(block_size) in dict_block:
             dict_block[BenchmarkResult.create_block_size_key(block_size)] += [self._dict_current]
         else:
             dict_block[BenchmarkResult.create_block_size_key(block_size)] = [self._dict_current]
