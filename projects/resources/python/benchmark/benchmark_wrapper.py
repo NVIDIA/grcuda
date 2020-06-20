@@ -45,7 +45,7 @@ GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithTh
 
 
 def execute_benchmark(benchmark, size, block_size, exec_policy, new_stream_policy,
-                      parent_stream_policy, dependency_policy, num_iter, debug):
+                      parent_stream_policy, dependency_policy, num_iter, debug, output_date=None):
     if debug:
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
@@ -61,9 +61,16 @@ def execute_benchmark(benchmark, size, block_size, exec_policy, new_stream_polic
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
 
-    output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    if not output_date:
+        output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     file_name = f"{output_date}_{benchmark}_{exec_policy}_{new_stream_policy}_{parent_stream_policy}_{dependency_policy}_{num_iter}.json"
-    output_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, file_name)
+    # Create a folder if it doesn't exist;
+    output_folder_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, output_date)
+    if not os.path.exists(output_folder_path):
+        if debug:
+            BenchmarkResult.log_message(f"creating result folder: {output_folder_path}")
+        os.mkdir(output_folder_path)
+    output_path = os.path.join(output_folder_path, file_name)
 
     benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, benchmark, block_size["block_size_1d"], block_size["block_size_2d"],
@@ -108,6 +115,8 @@ if __name__ == "__main__":
             tot += len(num_elem[b]) * len(block_sizes) * len(exec_policies) * len(new_stream_policies) * len(parent_stream_policies) * len(dependency_policies)
         return tot
 
+    output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
     # Execute each test;
     i = 0
     tot_benchmarks = tot_benchmark_count()
@@ -119,5 +128,5 @@ if __name__ == "__main__":
                         for parent_stream_policy in parent_stream_policies:
                             for dependency_policy in dependency_policies:
                                 execute_benchmark(b, n, block_size, exec_policy, new_stream_policy,
-                                                  parent_stream_policy, dependency_policy, num_iter, debug)
+                                                  parent_stream_policy, dependency_policy, num_iter, debug, output_date=output_date)
                                 i += 1
