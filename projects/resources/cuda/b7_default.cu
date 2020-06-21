@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     int nnz = degree * N;
 
     if (debug) {
-        std::cout << "running b7 sync" << std::endl;
+        std::cout << "running b7 default" << std::endl;
         std::cout << "N=" << N << std::endl;
         std::cout << "num executions=" << num_executions << std::endl;
         std::cout << "block size 1d=" << block_size << std::endl;
