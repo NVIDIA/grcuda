@@ -52,6 +52,8 @@ COLORS = dict(
     y2 = "#FF9642",
     y3 = "#FFAB69",
     
+    peach1 = "#FF9868",
+    
     bt1 = "#55819E",
     bt2 = "#538F6F",
     blue_klein = "#002fa7",
@@ -76,7 +78,7 @@ def get_exp_label(val) -> str:
         exp_val += 1
         remaining_val = remaining_val // 10
     if remaining_val > 1:
-        return r"$\mathdefault{" + str(remaining_val) + r"·{10}^" + str(exp_val) + r"}$"
+        return r"$\mathdefault{" + str(remaining_val) + r"\!·\!{10}^" + str(exp_val) + r"}$"
     else:
         return r"$\mathdefault{" + r"{10}^" + str(exp_val) + r"}$"
     
