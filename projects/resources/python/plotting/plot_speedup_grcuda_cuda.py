@@ -25,7 +25,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size
 
 
 INPUT_DATE_GRCUDA = "2020_06_20_20_26_03"
-INPUT_DATE_CUDA = "2020_06_21_17_02_20_cuda"
+INPUT_DATE_CUDA = "2020_06_21_19_28_58_cuda"
 OUTPUT_DATE = "2020_06_20"
 PLOT_DIR = "../../../../data/plots"
 
@@ -66,7 +66,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
         ax.add_collection(pc)         
 
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 3))
+    ax.set_ylim((0, 4))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -76,7 +76,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=45, ha="right", fontsize=9, rotation_mode="anchor")
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(4))
+    ax.yaxis.set_major_locator(plt.LinearLocator(5))
     if y == 0:
         ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
     else:
@@ -142,7 +142,7 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     labels_str = [str(x) for x in labels]
     
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 3))
+    ax.set_ylim((0, 4))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -152,7 +152,7 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(4))
+    ax.yaxis.set_major_locator(plt.LinearLocator(5))
     if y == 0:
         ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
     else:
@@ -197,7 +197,6 @@ if __name__ == "__main__":
     data_grcuda = load_data(INPUT_DATE_GRCUDA, skip_iter=3)
     data_cuda = load_data_cuda(INPUT_DATE_CUDA, skip_iter=3)
     data = join_tables(data_grcuda, data_cuda)
-    data = data[data["benchmark"].isin(["b1", "b6"])]
     
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
     plt.rcParams["font.family"] = ["Latin Modern Roman"]
@@ -207,7 +206,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) * 2
+    benchmark_list = sorted(data["benchmark"].unique()) 
     block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
     num_col = len(benchmark_list)
     num_row = len(block_size_list)
@@ -243,7 +242,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) * 2
+    benchmark_list = sorted(data["benchmark"].unique()) 
     policy_list = sorted(data["exec_policy"].unique())
     num_col = len(benchmark_list)
     num_row = len(policy_list)
