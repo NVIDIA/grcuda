@@ -45,3 +45,5 @@ mx.grcuda/eclipse-launches
 **.log
 /scratch
 **.nvvp
+projects/resources/cuda/bin
+data/results/*

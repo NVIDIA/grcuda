@@ -77,6 +77,52 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFrame:
     return data
 
 
+def load_data_cuda(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFrame:
+    """
+    Load the benchmark results located in the input sub-folder
+    :param input_date: name of the folder where results are located, as a subfolder of DEFAULT_RES_DIR
+    :param skip_iter: skip the first iterations for each benchmark, as they are considered warmup
+    :return: a DataFrame containing the results
+    """
+    input_path = os.path.join(DEFAULT_RES_DIR, input_date)
+
+    # Load results as pd.DataFrames;
+    data_tmp = []
+    for f in os.listdir(input_path):
+        # Parse filename;
+        benchmark, exec_policy, size, block_size_1d, block_size_2d, total_iterations = os.path.splitext(f)[0].split("_")[7:]
+        tmp_data = pd.read_csv(os.path.join(input_path, f))
+        
+        # Skip first lines;
+        tmp_data = tmp_data.iloc[skip_iter:, :]
+
+        # Add other information;
+        tmp_data["benchmark"] = benchmark
+        tmp_data["exec_policy"] = exec_policy
+        tmp_data["size"] = int(size)
+        tmp_data["block_size_1d"] = int(block_size_1d)
+        tmp_data["block_size_2d"] = int(block_size_2d)
+        tmp_data["block_size_str"] = block_size_1d + "," + block_size_2d
+        tmp_data["total_iterations"] = int(total_iterations)
+        data_tmp += [tmp_data]
+        
+    data = pd.concat(data_tmp).reset_index(drop=True)
+    data["num_iter"] -= skip_iter
+
+    # Reorder columns;
+    columns = ["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str",
+               "total_iterations", "size", "num_iter", "gpu_result", "total_time_sec", "overhead_sec", "computation_sec"]
+    data = data[columns]
+    
+    # Compute speedups;
+    compute_speedup(data, ["benchmark", "block_size_1d", "block_size_2d", "total_iterations", "size"])
+    # Clean columns with infinite speedup;
+    if remove_inf:
+        data = data[data["computation_speedup"] != np.inf]
+    
+    return data
+
+
 def compute_speedup(data, key, speedup_col_name="computation_speedup", time_column="computation_sec", baseline_filter_col="exec_policy", baseline_filter_val="sync", baseline_col_name="baseline_time_sec"):
     
     # Initialize speedup values;
@@ -90,8 +136,28 @@ def compute_speedup(data, key, speedup_col_name="computation_speedup", time_colu
         # Compute the speedup for this group;
         data.loc[group.index, speedup_col_name] = median_baseline / group[time_column]
         data.loc[group.index, baseline_col_name] = median_baseline
+        
+        
+def join_tables(t1, t2, key=["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str",
+               "total_iterations", "size", "num_iter"], keep_common_columns=True):
+    t1_tmp = t1.copy()
+    t2_tmp = t2.copy()
+    t1_tmp = t1_tmp.set_index(key)
+    t2_tmp = t2_tmp.set_index(key)
+    if keep_common_columns:
+        common_columns = [x for x in t1_tmp.columns if x in t2_tmp.columns]
+        t1_tmp = t1_tmp[common_columns]
+        t2_tmp = t2_tmp[common_columns]
+    merged = t1_tmp.merge(t2_tmp, suffixes=("_grcuda", "_cuda"), left_index=True, right_index=True, sort=True).reset_index()
+    merged["grcuda_cuda_speedup"] = merged["computation_sec_cuda"] / merged["computation_sec_grcuda"]
+    return merged
 
 
 if __name__ == "__main__":
-    input_date = "2020_06_20_11_56_48"
+    input_date = "2020_06_20_20_26_03"
     data = load_data(input_date, skip_iter=3)
+    
+    input_date2 = "2020_06_21_14_05_38_cuda"
+    data2 = load_data_cuda(input_date2, skip_iter=3)   
+    
+    data3 = join_tables(data[data["benchmark"] == "b1"], data2)
