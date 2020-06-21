@@ -74,7 +74,7 @@ class Benchmark7(Benchmark):
         super().__init__("b7", benchmark)
         self.size = 0
         self.num_nnz = 0
-        self.max_degree = 100  # Each vertex has 10 edges;
+        self.max_degree = 50  # Each vertex has 10 edges;
         self.num_iterations = 10
         self.ptr = None
         self.idx = None
