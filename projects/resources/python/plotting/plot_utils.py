@@ -111,6 +111,25 @@ def remove_outliers(data, sigmas: int=3):
     return data[st.zscore(data) < sigmas]
 
 
+def remove_outliers_df(data: pd.DataFrame, column: str, reset_index: bool = True, drop_index: bool = True, sigmas: int = 3) -> pd.DataFrame:
+    """
+    :param data: a pd.DataFrame
+    :param column: name of the column where data are filtered
+    :param reset_index: if True, reset the index after filtering
+    :param drop_index: if True, drop the index column after reset
+    :param sigmas: number of standard deviations outside which a value is consider to be an outlier
+    :return: data without outliers
+    
+    Filter a sequence of data by keeping only values within "sigma" standard deviations from the mean.
+    This is a simple way to filter outliers, it is more useful for visualizations than for sound statistical analyses;
+    """
+    col = data[column]
+    res = data.loc[remove_outliers(col, sigmas).index]
+    if reset_index:
+        res = res.reset_index(drop=drop_index)
+    return res
+
+
 def compute_speedup(X: pd.DataFrame, col_slow: str, col_fast: str, col_speedup: str) -> None:
     """
     Add a column to a dataframe that represents a speedup,

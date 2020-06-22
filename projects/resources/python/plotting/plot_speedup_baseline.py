@@ -21,8 +21,8 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size
 
 
-INPUT_DATE = "2020_06_20_20_26_03"
-OUTPUT_DATE = "2020_06_20"
+INPUT_DATE = "2020_06_22_10_13_05_grcuda"
+OUTPUT_DATE = "2020_06_22"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -99,8 +99,8 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     
     data["size_str"] = data["size"].astype(str)
     
-    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"]]
-    markers = ["o", "X", "D"]
+    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]]
+    markers = ["o", "X", "D", "P"]
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[0, y])
@@ -152,7 +152,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
             for i in range(len(legend_labels))]
         
         leg = fig.legend(custom_lines, legend_labels,
-                                 bbox_to_anchor=(0.95, 1), fontsize=12, ncol=len(legend_labels), handletextpad=0.1)
+                                 bbox_to_anchor=(0.95, 1), fontsize=12, ncol=len(legend_labels) // 2, handletextpad=0.1)
         leg.set_title("Block size:")
         leg._legend_box.align = "left"
     
@@ -212,9 +212,9 @@ if __name__ == "__main__":
     benchmark_list = sorted(data["benchmark"].unique())
     num_col = len(benchmark_list)
     num_row = 1
-    fig = plt.figure(figsize=(2.7 * num_col, 4 * num_row))
+    fig = plt.figure(figsize=(2.7 * num_col, 4.2 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.67,
+    plt.subplots_adjust(top=0.65,
                     bottom=0.18,
                     left=0.12,
                     right=0.95,
@@ -228,7 +228,7 @@ if __name__ == "__main__":
         
     plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     plt.annotate("Speedup over\nserial scheduling", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Execution time speedup\nover serial kernel scheduling", fontsize=20, x=.05, y=0.99, ha="left")
+    plt.suptitle("Execution time speedup\nover serial kernel scheduling", fontsize=20, x=.05, y=0.98, ha="left")
     
     plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_1_row_{OUTPUT_DATE}.pdf"), dpi=300)
     

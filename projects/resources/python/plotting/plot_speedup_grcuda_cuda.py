@@ -24,9 +24,9 @@ from plot_utils import COLORS, get_exp_label, get_ci_size
 ##############################
 
 
-INPUT_DATE_GRCUDA = "2020_06_20_20_26_03"
-INPUT_DATE_CUDA = "2020_06_21_19_28_58_cuda"
-OUTPUT_DATE = "2020_06_20"
+INPUT_DATE_GRCUDA = "2020_06_22_10_13_05_grcuda"
+INPUT_DATE_CUDA = "2020_06_22_14_37_09_cuda"
+OUTPUT_DATE = "2020_06_22"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -126,8 +126,8 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     
     legend_labels = ["DAG Scheduling", "Serial Scheduling"]
     
-    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"]]
-    markers = ["o", "X", "D"]
+    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]][:len(data["block_size_str"].unique())]
+    markers = ["o", "X", "D", "P"][:len(data["block_size_str"].unique())]
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[x, y])
@@ -183,7 +183,7 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
             for i in range(len(legend_labels))]
         
         leg = fig.legend(custom_lines, legend_labels,
-                                 bbox_to_anchor=(0.95, 1), fontsize=12, ncol=len(legend_labels), handletextpad=0.1)
+                                 bbox_to_anchor=(0.95, 1), fontsize=12, ncol=len(legend_labels) // 2, handletextpad=0.1)
         leg.set_title("Block size:")
         leg._legend_box.align = "left"
     
@@ -246,9 +246,9 @@ if __name__ == "__main__":
     policy_list = sorted(data["exec_policy"].unique())
     num_col = len(benchmark_list)
     num_row = len(policy_list)
-    fig = plt.figure(figsize=(2.7 * num_col, 3.8 * num_row))
+    fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.8,
+    plt.subplots_adjust(top=0.75,
                     bottom=0.1,
                     left=0.12,
                     right=0.95,
@@ -266,4 +266,36 @@ if __name__ == "__main__":
     plt.suptitle("Relative execution time \nof GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
     plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_grcuda_cuda_compact_{OUTPUT_DATE}.pdf"), dpi=300)
+    
+    #%%
+    # from plot_utils import remove_outliers_df
+    # data_grcuda = load_data(INPUT_DATE_GRCUDA, skip_iter=3)
+    # data_cuda = load_data_cuda(INPUT_DATE_CUDA, skip_iter=3)
+    # dg = remove_outliers_df(data_grcuda, "computation_sec")
+    
+    # df_list = []
+    # for k, v in data_grcuda.groupby(["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str", "size"], as_index=False):
+    #     tmp = remove_outliers_df(v, "computation_sec", reset_index=False)
+    #     df_list += [tmp.set_index(["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str", "size"])["computation_sec"]]
+
+    # a = pd.concat(df_list).to_frame()
+    
+    # df_list = []
+    # for k, v in data_cuda.groupby(["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str", "size"], as_index=False):
+    #     tmp = remove_outliers_df(v, "computation_sec", reset_index=False)
+    #     df_list += [tmp.set_index(["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str", "size"])["computation_sec"]]
+
+    # b = pd.concat(df_list).to_frame()
+    
+    # a = a.groupby(["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str", "size"], as_index=True).apply(np.median).to_frame()
+    # b = b.groupby(["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str", "size"], as_index=True).apply(np.median).to_frame()
+    
+    # c = a.merge(b, suffixes=("_grcuda", "_cuda"), left_index=True, right_index=True, sort=True).reset_index()
+    # c["grcuda_cuda_speedup"] = c["0_cuda"] / c["0_grcuda"]
+    
+    
+    
+    
+    
+    
     

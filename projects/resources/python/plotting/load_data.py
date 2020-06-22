@@ -139,7 +139,7 @@ def compute_speedup(data, key, speedup_col_name="computation_speedup", time_colu
         
         
 def join_tables(t1, t2, key=["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str",
-               "total_iterations", "size", "num_iter"], keep_common_columns=True):
+               "size", "num_iter"], keep_common_columns=True):
     t1_tmp = t1.copy()
     t2_tmp = t2.copy()
     t1_tmp = t1_tmp.set_index(key)
@@ -148,6 +148,7 @@ def join_tables(t1, t2, key=["benchmark", "exec_policy", "block_size_1d", "block
         common_columns = [x for x in t1_tmp.columns if x in t2_tmp.columns]
         t1_tmp = t1_tmp[common_columns]
         t2_tmp = t2_tmp[common_columns]
+
     merged = t1_tmp.merge(t2_tmp, suffixes=("_grcuda", "_cuda"), left_index=True, right_index=True, sort=True).reset_index()
     merged["grcuda_cuda_speedup"] = merged["computation_sec_cuda"] / merged["computation_sec_grcuda"]
     return merged
