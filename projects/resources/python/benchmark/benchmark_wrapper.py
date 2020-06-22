@@ -32,8 +32,8 @@ parent_stream_policies = ["disjoint"]
 
 dependency_policies = ["with-const"]
 
-block_sizes_1d = [32, 256, 1024]
-block_sizes_2d = [8, 16, 32]
+block_sizes_1d = [32, 128, 256, 1024]
+block_sizes_2d = [8, 8, 16, 32]
 
 ##############################
 ##############################

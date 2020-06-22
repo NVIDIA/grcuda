@@ -173,6 +173,7 @@ int main(int argc, char *argv[]) {
             err = cudaEventRecord(e1, s1);
             spmv<<<num_blocks, block_size, 0, s2>>>(ptr, idx, val, auth1, hub2, N, nnz);
             err = cudaEventRecord(e2, s2);
+           
             sum<<<num_blocks, block_size, 0, s1>>>(auth2, auth_norm, N);
 
             sum<<<num_blocks, block_size, 0, s2>>>(hub2, hub_norm, N);

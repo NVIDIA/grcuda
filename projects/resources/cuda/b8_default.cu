@@ -289,11 +289,11 @@ int main(int argc, char *argv[]) {
         auto reset_time = chrono::duration_cast<chrono::microseconds>(end_tmp - start_tmp).count();
         if (debug) std::cout << "  reset=" << (float) reset_time / 1000 << " ms" << std::endl;
         
-        start = clock_type::now();
-
         dim3 block_size_2d_dim(block_size_2d, block_size_2d);
         dim3 grid_size(num_blocks, num_blocks);
         dim3 grid_size_2(num_blocks / 2, num_blocks / 2);
+
+        start = clock_type::now();
 
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float), s1>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
 
