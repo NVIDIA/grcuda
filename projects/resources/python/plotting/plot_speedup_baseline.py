@@ -18,7 +18,7 @@ import matplotlib.lines as lines
 
 import os
 from load_data import load_data
-from plot_utils import COLORS, get_exp_label, get_ci_size
+from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
 INPUT_DATE = "2020_06_22_10_13_05_grcuda"
@@ -33,6 +33,8 @@ def build_exec_time_plot(data, gridspec, x, y):
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[x, y])
+    ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
+    
     ax = sns.lineplot(x="size_str", y="computation_speedup", data=data, color=COLORS["bb1"], ax=ax, estimator=gmean,
                       err_style="bars", linewidth=2, legend=False, sort=False, ci=None, zorder=2)
     
@@ -104,6 +106,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[0, y])
+    ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
     ax = sns.lineplot(x="size_str", y="computation_speedup", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
                       err_style="bars", linewidth=2, legend=None, sort=False, ci=None, zorder=2)
     data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["computation_speedup"].apply(gmean).reset_index()
@@ -196,7 +199,7 @@ if __name__ == "__main__":
     plt.annotate("Speedup over serial scheduling", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Execution time speedup\nover serial kernel scheduling", fontsize=25, x=.05, y=0.99, ha="left")
     
-    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_{OUTPUT_DATE}.png"), dpi=300)
+    save_plot(PLOT_DIR, "speedup_baseline_{}.{}", OUTPUT_DATE)
     
     #%% Similar plot, but all block sizes are on 1 row;
     
@@ -229,9 +232,7 @@ if __name__ == "__main__":
     plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     plt.annotate("Speedup over\nserial scheduling", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Execution time speedup\nover serial kernel scheduling", fontsize=20, x=.05, y=0.98, ha="left")
-    
-    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_1_row_{OUTPUT_DATE}.png"), dpi=300)
-    
-    
+
+    save_plot(PLOT_DIR, "speedup_baseline_1_row_{}.{}", OUTPUT_DATE)
     
     

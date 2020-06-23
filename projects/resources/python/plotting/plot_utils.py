@@ -9,6 +9,7 @@ import scipy.stats as st
 import pandas as pd
 import matplotlib.pyplot as plt 
 import numpy as np
+import os
 
 ##############################
 # Colors #####################
@@ -203,3 +204,20 @@ def update_width(ax: plt.Axes, width: float=1):
         patch.set_width(width)
         # Recenter the bar
         patch.set_x(patch.get_x() + 0.5 * diff)
+        
+        
+def save_plot(directory: str, filename: str, date: str, create_date_dir: bool = True, extension: list = ["pdf", "png"]):
+    """
+    :param directory: where the plot is stored
+    :param filename: should be of format 'myplot_{}.{}', where the first placeholder is used for the date and the second for the extension
+    :param date: date that should appear in the plot filename
+    :param create_date_dir: if True, create a sub-folder with the date
+    :param extension: list of extension used to store the plot
+    """
+    
+    output_folder = os.path.join(directory, date) if create_date_dir else directory
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+        
+    for e in extension:
+        plt.savefig(os.path.join(output_folder, filename.format(date, e)), dpi=300)
