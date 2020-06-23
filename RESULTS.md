@@ -135,3 +135,12 @@ SHARPEN(image,blur3) ─> UNSHARPEN(image,blur3,sharpened) ───────
 |     |   4000     |   0.179  |  0.169    |  1.05x   | 
 
 
+## Plots
+
+![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/speedup_baseline_1_row_2020_06_22.png)
+
+![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/speedup_baseline_2020_06_22.png)
+
+![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/speedup_baseline_grcuda_cuda_compact_2020_06_22.png)
+
+![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/speedup_baseline_grcuda_cuda_2020_06_22.png)
