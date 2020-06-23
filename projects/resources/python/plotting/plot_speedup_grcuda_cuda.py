@@ -229,7 +229,7 @@ if __name__ == "__main__":
     plt.annotate("Relative execution time", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Relative execution time \nof GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_grcuda_cuda_{OUTPUT_DATE}.pdf"), dpi=300)
+    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_grcuda_cuda_{OUTPUT_DATE}.png"), dpi=300)
     
     #%% Similar plot, but all block sizes are on 1 row;
     
@@ -265,7 +265,7 @@ if __name__ == "__main__":
     plt.annotate("Relative execution time", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Relative execution time \nof GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_grcuda_cuda_compact_{OUTPUT_DATE}.pdf"), dpi=300)
+    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_grcuda_cuda_compact_{OUTPUT_DATE}.png"), dpi=300)
     
     #%%
     # from plot_utils import remove_outliers_df
