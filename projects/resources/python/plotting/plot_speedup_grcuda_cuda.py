@@ -18,7 +18,7 @@ import matplotlib.lines as lines
 
 import os
 from load_data import load_data, load_data_cuda, join_tables
-from plot_utils import COLORS, get_exp_label, get_ci_size
+from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 ##############################
 ##############################
@@ -43,6 +43,8 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[x, y])
+    ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
+
     ax = sns.lineplot(x="size_str", y="grcuda_cuda_speedup", hue="exec_policy", data=data, palette=palette, ax=ax, estimator=gmean,
                       err_style="bars", linewidth=2, legend=None, ci=None, sort=False, zorder=2)
     
@@ -131,6 +133,8 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[x, y])
+    ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
+
     ax = sns.lineplot(x="size_str", y="grcuda_cuda_speedup", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
                       err_style="bars", linewidth=2, legend=None, sort=False, ci=None, zorder=2)
     data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["grcuda_cuda_speedup"].apply(gmean).reset_index()
@@ -229,7 +233,8 @@ if __name__ == "__main__":
     plt.annotate("Relative execution time", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Relative execution time \nof GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_grcuda_cuda_{OUTPUT_DATE}.png"), dpi=300)
+    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
+
     
     #%% Similar plot, but all block sizes are on 1 row;
     
@@ -265,7 +270,7 @@ if __name__ == "__main__":
     plt.annotate("Relative execution time", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Relative execution time \nof GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    plt.savefig(os.path.join(PLOT_DIR, f"speedup_baseline_grcuda_cuda_compact_{OUTPUT_DATE}.png"), dpi=300)
+    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
     
     #%%
     # from plot_utils import remove_outliers_df
