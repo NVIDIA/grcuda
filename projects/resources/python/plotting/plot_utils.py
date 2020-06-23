@@ -206,10 +206,11 @@ def update_width(ax: plt.Axes, width: float=1):
         patch.set_x(patch.get_x() + 0.5 * diff)
         
         
-def save_plot(directory: str, filename: str, date: str, create_date_dir: bool = True, extension: list = ["pdf", "png"]):
+def save_plot(directory: str, filename: str, date: str = "", create_date_dir: bool = True, extension: list = ["pdf", "png"]):
     """
     :param directory: where the plot is stored
-    :param filename: should be of format 'myplot_{}.{}', where the first placeholder is used for the date and the second for the extension
+    :param filename: should be of format 'myplot_{}.{}', where the first placeholder is used for the date and the second for the extension,
+        or 'myplot.{}', or 'myplot.extension'
     :param date: date that should appear in the plot filename
     :param create_date_dir: if True, create a sub-folder with the date
     :param extension: list of extension used to store the plot
@@ -220,4 +221,4 @@ def save_plot(directory: str, filename: str, date: str, create_date_dir: bool = 
         os.mkdir(output_folder)
         
     for e in extension:
-        plt.savefig(os.path.join(output_folder, filename.format(date, e)), dpi=300)
+        plt.savefig(os.path.join(output_folder, filename.format(date, e) if date else filename.format(e)), dpi=300)
