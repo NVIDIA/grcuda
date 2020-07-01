@@ -10,15 +10,20 @@ import pandas as pd
 import json
 import os
 import numpy as np
+from scipy.stats.mstats import gmean
 
 DEFAULT_RES_DIR = "../../../../data/results"
 
 
-def load_data(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFrame:
+def load_data(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=True, benchmark="", phases=None) -> pd.DataFrame:
     """
     Load the benchmark results located in the input sub-folder
     :param input_date: name of the folder where results are located, as a subfolder of DEFAULT_RES_DIR
     :param skip_iter: skip the first iterations for each benchmark, as they are considered warmup
+    :param remove_inf: remove rows with infinite speedup value, as they are not useful
+    :param remove_time_zero: if True, remove rows with 0 computation time;
+    :param benchmark: load data only for the specified benchmark
+    :param phases: list of benchmark phases to add as columns
     :return: a DataFrame containing the results
     """
     input_path = os.path.join(DEFAULT_RES_DIR, input_date)
@@ -27,7 +32,10 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFrame:
     data_dict = {}
     for res in os.listdir(input_path):
         with open(os.path.join(input_path, res)) as f:
-            data_dict[res] = json.load(f)
+            if not benchmark or res.split("_")[6] == benchmark:
+                data_dict[res] = json.load(f)
+                
+    phases_names = []
 
     # Turn results into a pd.DataFrame;
     rows = []
@@ -56,15 +64,27 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFrame:
                             total_time_sec = curr_iteration["total_time_sec"]
                             overhead_sec = curr_iteration["overhead_sec"]
                             computation_sec = curr_iteration["computation_sec"]
+                            
+                            # Process phases;
+                            phases_time = []
+                            if phases:
+                                phases_time = [p["time_sec"] for p in curr_iteration["phases"] if p["name"] in phases]
+                                if not phases_names:
+                                    phases_names = [p["name"] for p in curr_iteration["phases"] if p["name"] in phases]
+                            
                             # Add a new row;
                             if (num_iter >= skip_iter):
-                                rows += [row + [int(size), bool(realloc), bool(reinit), num_iter - skip_iter, gpu_result, total_time_sec, overhead_sec, computation_sec]]
+                                rows += [row + [int(size), bool(realloc), bool(reinit), num_iter - skip_iter, gpu_result, total_time_sec, overhead_sec, computation_sec] + phases_time]
 
     columns = ["benchmark", "exec_policy", "new_stream_policy", "parent_stream_policy",
                "dependency_policy", "block_size_1d", "block_size_2d", "block_size_str",
                "total_iterations", "cpu_validation", "random_init", "size", "realloc", "reinit",
-               "num_iter", "gpu_result", "total_time_sec", "overhead_sec", "computation_sec"]
+               "num_iter", "gpu_result", "total_time_sec", "overhead_sec", "computation_sec"] + (phases_names if phases else [])
     data = pd.DataFrame(rows, columns=columns).sort_values(by=columns[:14], ignore_index=True)
+    
+    # Clean columns with 0 computation time;
+    if remove_time_zero:
+        data = data[data["computation_sec"] > 0].reset_index(drop=True)
     
     # Compute speedups;
     compute_speedup(data, ["benchmark", "new_stream_policy", "parent_stream_policy",
@@ -72,16 +92,18 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFrame:
                "total_iterations", "cpu_validation", "random_init", "size", "realloc", "reinit"])
     # Clean columns with infinite speedup;
     if remove_inf:
-        data = data[data["computation_speedup"] != np.inf]
+        data = data[data["computation_speedup"] != np.inf].reset_index(drop=True)
     
     return data
 
 
-def load_data_cuda(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFrame:
+def load_data_cuda(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=True) -> pd.DataFrame:
     """
     Load the benchmark results located in the input sub-folder
     :param input_date: name of the folder where results are located, as a subfolder of DEFAULT_RES_DIR
     :param skip_iter: skip the first iterations for each benchmark, as they are considered warmup
+    :param remove_inf: if True, remove rows with infinite speedup
+    :param remove_time_zero: if True, remove rows with 0 computation time;
     :return: a DataFrame containing the results
     """
     input_path = os.path.join(DEFAULT_RES_DIR, input_date)
@@ -114,28 +136,42 @@ def load_data_cuda(input_date: str, skip_iter=0, remove_inf=True) -> pd.DataFram
                "total_iterations", "size", "num_iter", "gpu_result", "total_time_sec", "overhead_sec", "computation_sec"]
     data = data[columns]
     
+    # Clean columns with 0 computation time;
+    if remove_time_zero:
+        data = data[data["computation_sec"] > 0].reset_index(drop=True)
+    
     # Compute speedups;
-    compute_speedup(data, ["benchmark", "block_size_1d", "block_size_2d", "total_iterations", "size"])
+    compute_speedup(data, ["benchmark", "block_size_1d", "block_size_2d", "size"])
     # Clean columns with infinite speedup;
     if remove_inf:
-        data = data[data["computation_speedup"] != np.inf]
+        data = data[data["computation_speedup"] != np.inf].reset_index(drop=True)
     
     return data
 
 
-def compute_speedup(data, key, speedup_col_name="computation_speedup", time_column="computation_sec", baseline_filter_col="exec_policy", baseline_filter_val="sync", baseline_col_name="baseline_time_sec"):
+def compute_speedup(data, key, speedup_col_name="computation_speedup", time_column="computation_sec",
+                    baseline_filter_col="exec_policy", baseline_filter_val="sync", baseline_col_name="baseline_time_sec",
+                    correction=True, aggregation=np.median):
     
     # Initialize speedup values;
     data[speedup_col_name] = 1
     data[baseline_col_name] = 0
     
+    updated_groups = []
     grouped_data = data.groupby(key, as_index=False)
     for group_key, group in grouped_data:
         # Compute the median baseline computation time;
-        median_baseline = np.median(group.loc[group[baseline_filter_col] == baseline_filter_val, time_column])
+        median_baseline = aggregation(group.loc[group[baseline_filter_col] == baseline_filter_val, time_column])
         # Compute the speedup for this group;
-        data.loc[group.index, speedup_col_name] = median_baseline / group[time_column]
-        data.loc[group.index, baseline_col_name] = median_baseline
+        group.loc[:, speedup_col_name] = median_baseline / group[time_column]
+        group.loc[:, baseline_col_name] = median_baseline
+        data.loc[group.index, :] = group
+    
+        # Guarantee that the geometric mean of speedup referred to the baseline is 1, and adjust speedups accordingly;
+        if correction:
+            gmean_speedup = gmean(group.loc[group[baseline_filter_col] == baseline_filter_val, speedup_col_name])
+            group.loc[:, speedup_col_name] /= gmean_speedup
+            data.loc[group.index, :] = group
         
         
 def join_tables(t1, t2, key=["benchmark", "exec_policy", "block_size_1d", "block_size_2d", "block_size_str",

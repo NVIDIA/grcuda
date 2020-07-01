@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Jun 21 15:26:36 2020
+Created on Mon Jun 29 12:00:01 2020
 
 @author: alberto.parravicini
 """
 
+import json
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -17,26 +18,73 @@ from matplotlib.collections import PatchCollection, LineCollection
 import matplotlib.lines as lines
 
 import os
-from load_data import load_data, load_data_cuda, join_tables
+from load_data import load_data, load_data_cuda, join_tables, compute_speedup
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 import matplotlib.ticker as ticker
 
-
 ##############################
 ##############################
 
+DEFAULT_RES_DIR = "../../../../data/results"
 
 INPUT_DATE_GRCUDA = "2020_06_30_18_20_02_grcuda"
-INPUT_DATE_CUDA = "2020_06_22_14_37_09_cuda"
 OUTPUT_DATE = "2020_07_01"
 PLOT_DIR = "../../../../data/plots"
 
+B7_ITER = 10
+
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
+BENCHMARK_PHASES = {
+    "b1": ["square", "reduce"],
+    "b6": ["rr_1", "rr_2", "rr_3", "nb_1", "nb_2", "nb_3", "nb_4", "softmax", "argmax"],
+    "b7": [y for x in [[f"spmv_a_{i}", f"spmv_h_{i}", f"sum_a_{i}", f"sum_h_{i}", f"divide_a_{i}", f"divide_h_{i}", f"norm_reset_{i}"] for i in range(B7_ITER)] for y in x],
+    "b8": ["blur_small", "blur_large", "blur_unsharpen", "sobel_small", "sobel_large", "maximum", "minimum", "extend", "unsharpen", "combine", "combine_2"],
+    }
 
 ##############################
 ##############################
 
-def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
+def theoretical_speed(input_data, group_columns, benchmark):
+    data = input_data.copy()
+    
+    # Only relevant for "sync" policy;
+    data["theoretical_time_sec"] = THEORETICAL_SPEED_FUNCTIONS[benchmark](data)
+    
+    for key, group in data.groupby(group_columns):
+        # Get the median theoretical time;
+        median_theoretical_time = np.mean(group[group["exec_policy"] == "sync"]["theoretical_time_sec"])
+        data.loc[group.index, "speedup_wrt_theoretical"] = median_theoretical_time / group["computation_sec"]
+    return data
+
+def theoretical_speed_b1(data):
+    return data["square"] / 2 + data["reduce"]
+
+def theoretical_speed_b6(data):
+    return np.maximum(data["rr_1"] + data["rr_2"] + data["rr_3"], data["nb_1"] + data["nb_2"] + data["nb_3"] + data["nb_4"]) + data["softmax"] / 2 + data["argmax"]
+
+def theoretical_speed_b7(data):
+    total = np.zeros(len(data))
+    for i in range(B7_ITER):
+        total += data[f"norm_reset_{i}"] + np.maximum(data[f"divide_a_{i}"] + np.maximum(data[f"spmv_a_{i}"] + data[f"sum_a_{i}"], data[f"spmv_h_{i}"]),
+                                                      data[f"divide_h_{i}"] + np.maximum(data[f"spmv_h_{i}"] + data[f"sum_h_{i}"], data[f"spmv_a_{i}"]))
+    return total
+
+def theoretical_speed_b8(data):
+    extend = np.maximum(data["maximum"], data["minimum"]) + data["extend"]
+    combine = data["combine"] + np.maximum(data["blur_unsharpen"] + data["unsharpen"], data["blur_large"] + data["sobel_large"] + extend)
+    return data["combine_2"] + np.maximum(data["blur_small"] + data["sobel_small"], combine)
+
+THEORETICAL_SPEED_FUNCTIONS = {
+    "b1": theoretical_speed_b1,
+    "b6": theoretical_speed_b6,
+    "b7": theoretical_speed_b7,
+    "b8": theoretical_speed_b8,
+    }
+
+##############################
+##############################
+
+def build_theoretical_time_plot(data, gridspec, x, y):
     
     palette = [COLORS["peach1"], COLORS["bb1"]]
     markers = ["o"] * len(palette)
@@ -47,7 +95,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
     ax = fig.add_subplot(gridspec[x, y])
     ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
 
-    ax = sns.lineplot(x="size_str", y="grcuda_cuda_speedup", hue="exec_policy", data=data, palette=palette, ax=ax, estimator=gmean,
+    ax = sns.lineplot(x="size_str", y="speedup_wrt_theoretical", hue="exec_policy", data=data, palette=palette, ax=ax, estimator=gmean,
                       err_style="bars", linewidth=2, legend=None, ci=None, sort=False, zorder=2)
     
     labels = sorted(data["size"].unique())
@@ -58,7 +106,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
         rectangles = []
         for s_i, s in enumerate(labels):
             curr_data = data[(data["size"] == s) & (data["exec_policy"] == p)]
-            upper_ci_size, lower_ci_size, center = get_ci_size(curr_data["grcuda_cuda_speedup"], estimator=gmean, ci=0.90)
+            upper_ci_size, lower_ci_size, center = get_ci_size(curr_data["speedup_wrt_theoretical"], estimator=gmean, ci=0.90)
             bottom = center - lower_ci_size
             width = 0.1
             lower_left = [s_i - width / 2, bottom]
@@ -70,7 +118,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
         ax.add_collection(pc)         
 
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 4))
+    ax.set_ylim((0, 3))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -80,9 +128,9 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=45, ha="right", fontsize=9, rotation_mode="anchor")
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(5))
+    ax.yaxis.set_major_locator(plt.LinearLocator(7))
     if y == 0:
-        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
+        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=9)
     else:
         ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
         # Hide tick markers;
@@ -95,10 +143,10 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
     
     # Add benchmark name and baseline execution time annotations;
     ax.annotate(f"{BENCHMARK_NAMES[data['benchmark'].iloc[0]]}", xy=(0.50, 1.1), fontsize=14, ha="center", xycoords="axes fraction")
-    ax.annotate(f"GrCUDA serial time (ms):", xy=(0, -0.37), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+    ax.annotate(f"Min. theoretical time (ms):", xy=(0, -0.37), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
     
     for i, l in enumerate(labels):
-        baseline_median = np.median(data[data["size"] == int(l)]["baseline_time_sec_grcuda"])
+        baseline_median = np.median(data[(data["exec_policy"] == "sync") & (data["size"] == int(l))]["theoretical_time_sec"])
         ax.annotate(f"{int(1000 * baseline_median)}", xy=(i,  -0.47), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
     
     # Add block size annotation;
@@ -124,7 +172,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
     return ax
 
 
-def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
+def build_theoretical_time_plot_compact(data, gridspec, x, y):
     
     data["size_str"] = data["size"].astype(str)
     
@@ -137,18 +185,18 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     ax = fig.add_subplot(gridspec[x, y])
     ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
 
-    ax = sns.lineplot(x="size_str", y="grcuda_cuda_speedup", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
+    ax = sns.lineplot(x="size_str", y="speedup_wrt_theoretical", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
                       err_style="bars", linewidth=2, legend=None, sort=False, ci=None, zorder=2)
-    data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["grcuda_cuda_speedup"].apply(gmean).reset_index()
+    data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["speedup_wrt_theoretical"].apply(gmean).reset_index()
     order = data["block_size_str"].unique()
-    ax = sns.scatterplot(x="size_str", y="grcuda_cuda_speedup", hue="block_size_str", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",
+    ax = sns.scatterplot(x="size_str", y="speedup_wrt_theoretical", hue="block_size_str", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",
           size_norm=30, legend=False, zorder=3, ci=None, markers=markers, style="block_size_str", hue_order=order, style_order=order, linewidth=0.05)
     
     labels = sorted(data["size"].unique())
     labels_str = [str(x) for x in labels]
     
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 4))
+    ax.set_ylim((0, 3))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -158,9 +206,9 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(5))
+    ax.yaxis.set_major_locator(plt.LinearLocator(7))
     if y == 0:
-        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
+        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=9)
     else:
         ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
         # Hide tick markers;
@@ -195,106 +243,37 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     
     return ax
 
-
-def ridgeplot(data):
-    # Plotting setup;
-    sns.set(font_scale=1.4)
-    sns.set_style("whitegrid")
-    plt.rcParams["font.family"] = ["Latin Modern Roman"]
-    plt.rcParams['axes.titlepad'] = 20 
-    plt.rcParams['axes.labelpad'] = 10 
-    plt.rcParams['axes.titlesize'] = 22 
-    plt.rcParams['axes.labelsize'] = 14 
-    
-    sns.set(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
-    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
-    
-    # Plot only some data, for now;
-    data = data[(data["benchmark"] == "b8") & (data["exec_policy"] == "default")].copy()
-    
-    # Normalize execution times so that the CUDA baseline has median 1;
-    data["normalized_time_cuda"] = 1
-    data["normalized_time_grcuda"] = 1
-    
-    block_sizes = data["block_size_str"].unique()
-    sizes = data["size"].unique()
-    
-    grouped_data = data.groupby(["block_size_str", "size"], as_index=False)
-    for group_key, group in grouped_data:
-        # Compute the median baseline computation time;
-        median_baseline = np.median(group["computation_sec_cuda"])
-        # Compute the speedup for this group;
-        data.loc[group.index, "normalized_time_cuda"] = group["computation_sec_cuda"].values / median_baseline
-        data.loc[group.index, "normalized_time_grcuda"] = group["computation_sec_grcuda"].values / median_baseline
-            
-    # Initialize the plot;
-    g = sns.FacetGrid(data, row="size", aspect=5, height=1, sharey=False, col="block_size_str")
-
-    # Plot a vertical line corresponding to speedup = 1;
-    g.map(plt.axvline, x=1, lw=0.75, clip_on=True, zorder=0, linestyle="--", ymax=0.5)         
-    # Plot the densities. Plot them twice as the second time we plot just the white contour;     
-                                                                            
-    g.map(sns.kdeplot, "normalized_time_cuda", clip_on=False, shade=True, alpha=0.6, lw=1, color=COLORS["peach1"], zorder=2)  
-    g.map(sns.kdeplot, "normalized_time_grcuda", clip_on=False, shade=True, alpha=0.6, lw=1, color=COLORS["b8"], zorder=2)
-    g.map(sns.kdeplot, "normalized_time_cuda", clip_on=False, color="w", lw=1.1, zorder=2)
-    g.map(sns.kdeplot, "normalized_time_grcuda", clip_on=False, color="w", lw=1.1, zorder=2)
-    # Plot the horizontal line below the densities;
-    g.map(plt.axhline, y=0, lw=0.75, clip_on=False, zorder=5, color="0.6")
-    
-    # Fix the horizontal axes so that they are between 0.5 and 1.25;
-    def set_x_width(label="", color="#2f2f2f"):
-        ax = plt.gca()
-        ax.set_xlim(left=0, right=2)
-    g.map(set_x_width)
-    
-    # Titles and labels;
-    g.set_titles("")
-    g.set(xlabel=None)
-    
-    # Add block size labels;
-    for i, ax in enumerate(g.axes[-1]):
-        ax.annotate("1D={}, 2D={}".format(*block_sizes[i].split(",")), xy=(0.5, -0.8), xycoords="axes fraction", ha="center", color="#2f2f2f", fontsize=14)      
-    for i, ax in enumerate(g.axes[:, 0]):
-        ax.annotate(f"{get_exp_label(sizes[i])}", xy=(-0.1, 0.05), xycoords="axes fraction", ha="center", color="#2f2f2f", fontsize=14)      
-    
-    # Fix the borders. This must be done here as the previous operations update the default values;
-    g.fig.subplots_adjust(top=0.83,
-                      bottom=0.15,
-                      right=0.95,
-                      left=0.05,
-                      hspace=-0.20,
-                      wspace=0.1)
-    
-    # Write the x-axis tick labels using percentages;
-    @ticker.FuncFormatter
-    def major_formatter(x, pos):
-        return f"{x:.1f}x"
-    g.fig.get_axes()[-1].xaxis.set_major_formatter(major_formatter)
-    g.set(yticks=[])
-    g.despine(bottom=True, left=True)
-
-    # Add custom legend;
-    custom_lines = [Patch(facecolor=COLORS["peach1"], edgecolor="#2f2f2f", label="CUDA"),
-                    Patch(facecolor=COLORS["b8"], edgecolor="#2f2f2f", label="GrCUDA"),
-                    ]
-    leg = g.fig.legend(custom_lines, ["CUDA", "GrCUDA"], bbox_to_anchor=(0.97, 0.98), fontsize=15)
-    leg.set_title(None)
-    leg._legend_box.align = "left"
-    leg.get_frame().set_facecolor('white')
-    
-    # Main plot title;
-    g.fig.suptitle("Relative Exec. Time Distribution,\nCUDA vs GrCUDA", ha="left", x=0.05, y=0.95, fontsize=18)
-    
-    return g
-
 ##############################
 ##############################
+
+#%%
 
 if __name__ == "__main__":
-    data_grcuda = load_data(INPUT_DATE_GRCUDA, skip_iter=3)
-    data_cuda = load_data_cuda(INPUT_DATE_CUDA, skip_iter=3)
-    data = join_tables(data_grcuda, data_cuda)
     
+    # Columns that uniquely identify each benchmark setup;
+    index_columns = ["benchmark", "exec_policy",
+                     # "new_stream_policy", "parent_stream_policy", "dependency_policy",
+                     "block_size_1d", "block_size_2d",
+                     # "total_iterations", "cpu_validation", "random_init", 
+                     "size",
+                     # "realloc", "reinit"
+                     ]
+    
+    processed_data = []
+    processed_data_summary = []
+    for b in BENCHMARK_PHASES.keys():
+        data = load_data(INPUT_DATE_GRCUDA, skip_iter=3, benchmark=b, phases=BENCHMARK_PHASES[b])
+        tmp_cols = index_columns.copy()
+        tmp_cols.remove("exec_policy")
+        data = theoretical_speed(data, tmp_cols, b)
+        data_summary = data.groupby(index_columns)[["computation_speedup", "speedup_wrt_theoretical"]].aggregate(gmean).reset_index()
+        processed_data += [data[list(data.columns[:18]) + list(data.columns[-4:])]]
+        processed_data_summary += [data_summary]
+        
+    data = pd.concat(processed_data).reset_index(drop=True)
+    
+    #%%
+        
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
     plt.rcParams["font.family"] = ["Latin Modern Roman"]
     plt.rcParams['axes.titlepad'] = 20 
@@ -309,24 +288,24 @@ if __name__ == "__main__":
     num_row = len(block_size_list)
     fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.8,
+    plt.subplots_adjust(top=0.85,
                     bottom=0.15,
                     left=0.2,
                     right=0.90,
-                    hspace=1.1,
+                    hspace=1.2,
                     wspace=0.15)
         
     exec_time_axes = []
     for b_i, b in enumerate(benchmark_list):
         for block_size_i, block_size in enumerate(block_size_list): 
             curr_res = data[(data["benchmark"] == b) & (data["block_size_str"] == block_size)].reset_index(drop=True)  
-            exec_time_axes += [build_exec_time_plot_grcuda_cuda(curr_res, gs, block_size_i, b_i)]
+            exec_time_axes += [build_theoretical_time_plot(curr_res, gs, block_size_i, b_i)]
             
     plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=20, ha="center", va="center", xycoords="figure fraction")
     plt.annotate("Speedup", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    plt.suptitle("Speedup w.r.t\nminimum theoretical time", fontsize=25, x=.05, y=0.99, ha="left")
     
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "speedup_theoretical_time_{}.{}", OUTPUT_DATE)
 
     
     #%% Similar plot, but all block sizes are on 1 row;
@@ -356,15 +335,10 @@ if __name__ == "__main__":
     for b_i, b in enumerate(benchmark_list):
         for p_i, p in enumerate(policy_list): 
             curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
-            exec_time_axes += [build_exec_time_plot_grcuda_cuda_compact(curr_res, gs, p_i, b_i)]
+            exec_time_axes += [build_theoretical_time_plot_compact(curr_res, gs, p_i, b_i)]
         
     plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    plt.suptitle("Speedup w.r.t\nminimum theoretical time", fontsize=25, x=.05, y=0.99, ha="left")
     
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
-    
-    
-    #%% Ridge plot with distributions;
-    g = ridgeplot(data)
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_ridgeplot_{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "speedup_theoretical_time_compact_{}.{}", OUTPUT_DATE)

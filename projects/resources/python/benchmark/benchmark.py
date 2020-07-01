@@ -1,6 +1,6 @@
 from benchmark_result import BenchmarkResult
 from abc import ABC, abstractmethod
-import time
+from java.lang import System
 from typing import Callable
 
 DEFAULT_BLOCK_SIZE_1D = 32
@@ -14,10 +14,10 @@ def time_phase(phase_name: str) -> Callable:
     """
     def inner_func(func) -> Callable:
         def func_call(self, *args, **kwargs) -> object:
-            start = time.time()
+            start = System.nanoTime()
             result = func(self, *args, **kwargs)
-            end = time.time()
-            self.benchmark.add_phase({"name": phase_name, "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": phase_name, "time_sec": (end - start) / 1_000_000_000})
             return result
         return func_call
     return inner_func
@@ -96,7 +96,7 @@ class Benchmark(ABC):
         # TODO: set the execution policy;
 
         # Start a timer to monitor the total GPU execution time;
-        start = time.time()
+        start = System.nanoTime()
 
         # Allocate memory for the benchmark;
         if num_iter == 0 or realloc:
@@ -112,8 +112,8 @@ class Benchmark(ABC):
         gpu_result = self.execute()
 
         # Stop the timer;
-        end = time.time()
-        self.benchmark.add_total_time(end - start)
+        end = System.nanoTime()
+        self.benchmark.add_total_time((end - start) / 1_000_000_000)
 
         # Perform validation on CPU;
         if self.benchmark.cpu_validation:

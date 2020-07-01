@@ -1,6 +1,6 @@
 # coding=utf-8
 import polyglot
-import time
+from java.lang import System 
 import numpy as np
 from random import random, randint, seed, sample
 
@@ -336,69 +336,78 @@ class Benchmark8(Benchmark):
     def execute(self) -> object:
 
         # Blur - Small;
-        start = time.time()
+        start = System.nanoTime()
         a = 32
         self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_small_diameter**2)\
             (self.image, self.blurred_small, self.size, self.size, self.kernel_small, self.kernel_small_diameter)
-        end = time.time()
-        self.benchmark.add_phase({"name": "blur_small", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "blur_small", "time_sec": (end - start) / 1_000_000_000})
 
         # Blur - Large;
-        start = time.time()
+        start = System.nanoTime()
         self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_large_diameter**2)\
             (self.image, self.blurred_large, self.size, self.size, self.kernel_large, self.kernel_large_diameter)
-        end = time.time()
-        self.benchmark.add_phase({"name": "blur_large", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "blur_large", "time_sec": (end - start) / 1_000_000_000})
 
         # Blur - Unsharpen;
-        start = time.time()
+        start = System.nanoTime()
         self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_unsharpen_diameter**2)\
             (self.image, self.blurred_unsharpen, self.size, self.size, self.kernel_unsharpen, self.kernel_unsharpen_diameter)
-        end = time.time()
-        self.benchmark.add_phase({"name": "blur_unsharpen", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "blur_unsharpen", "time_sec": (end - start) / 1_000_000_000})
 
         # Sobel filter (edge detection);
-        start = time.time()
+        start = System.nanoTime()
         self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (self.block_size_2d, self.block_size_2d))\
             (self.blurred_small, self.mask_small, self.size, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "sobel_small", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "sobel_small", "time_sec": (end - start) / 1_000_000_000})
 
-        start = time.time()
+        start = System.nanoTime()
         self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (self.block_size_2d, self.block_size_2d))\
             (self.blurred_large, self.mask_large, self.size, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "sobel_large", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "sobel_large", "time_sec": (end - start) / 1_000_000_000})
 
         # Extend large edge detection mask;
-        start = time.time()
+        start = System.nanoTime()
         self.maximum_kernel(self.num_blocks_per_processor, self.block_size_1d)(self.mask_large, self.maximum, self.size**2)
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "maximum", "time_sec": (end - start) / 1_000_000_000})
+        start = System.nanoTime()
         self.minimum_kernel(self.num_blocks_per_processor, self.block_size_1d)(self.mask_large, self.minimum, self.size**2)
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "minimum", "time_sec": (end - start) / 1_000_000_000})
+        start = System.nanoTime()
         self.extend_kernel(self.num_blocks_per_processor, self.block_size_1d)(self.mask_large, self.minimum, self.maximum, self.size**2)
-        end = time.time()
-        self.benchmark.add_phase({"name": "extend", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "extend", "time_sec": (end - start) / 1_000_000_000})
 
         # Unsharpen;
-        start = time.time()
+        start = System.nanoTime()
         self.unsharpen_kernel(self.num_blocks_per_processor, self.block_size_1d)\
             (self.image, self.blurred_unsharpen, self.image_unsharpen, self.unsharpen_amount, self.size * self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "unsharpen", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "unsharpen", "time_sec": (end - start) / 1_000_000_000})
 
         # Combine results;
-        start = time.time()
+        start = System.nanoTime()
         self.combine_mask_kernel(self.num_blocks_per_processor, self.block_size_1d)\
             (self.image_unsharpen, self.blurred_large, self.mask_large, self.image2, self.size * self.size)
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "combine", "time_sec": (end - start) / 1_000_000_000})
+        start = System.nanoTime()
         self.combine_mask_kernel(self.num_blocks_per_processor, self.block_size_1d)\
             (self.image2, self.blurred_small, self.mask_small, self.image3, self.size * self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "combine", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "combine_2", "time_sec": (end - start) / 1_000_000_000})
 
         # Add a final sync step to measure the real computation time;
-        start = time.time()
+        start = System.nanoTime()
         tmp = self.image3[0][0]
-        end = time.time()
-        self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
 
         # Compute GPU result;
         # for i in range(self.size):
@@ -474,7 +483,7 @@ class Benchmark8(Benchmark):
             return out
 
         # Recompute the CPU result only if necessary;
-        start = time.time()
+        start = System.nanoTime()
         if self.current_iter == 0 or reinit:
             # Part 1: Small blur on medium frequencies;
             blurred_small = gaussian_blur(self.image_cpu, self.kernel_small_cpu)
@@ -498,7 +507,7 @@ class Benchmark8(Benchmark):
             # Part 5: Merge image and medium frequencies;
             self.cpu_result = image2 * edges_small + blurred_small * (1 - edges_small)
 
-        cpu_time = time.time() - start
+        cpu_time = System.nanoTime() - start
 
         # Compare GPU and CPU results;
         difference = 0

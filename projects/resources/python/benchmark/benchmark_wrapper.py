@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from benchmark_result import BenchmarkResult
 from benchmark_main import create_block_size_list
+from java.lang import System
 
 ##############################
 ##############################
@@ -12,6 +13,7 @@ from benchmark_main import create_block_size_list
 # Benchmark settings;
 benchmarks = [
     "b1",
+    # "b4",
     "b6",
     "b7",
     "b8",
@@ -19,6 +21,7 @@ benchmarks = [
 
 num_elem = {
     "b1": [2000000, 5000000, 10000000, 20000000, 40000000],
+    "b4": [2000000, 5000000, 10000000, 20000000, 40000000],
     "b6": [20000, 50000, 200000, 500000, 800000],
     "b7": [50000, 100000, 150000, 200000, 250000],
     "b8": [800, 1600, 2400, 4000, 4800],
@@ -67,15 +70,15 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 
     benchmark_cmd = CUDA_CMD.format(benchmark, exec_policy, size, block_size["block_size_1d"],
                                     block_size["block_size_2d"], num_iter, output_path)
-    start = time.time()
+    start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
                             stdout=subprocess.STDOUT,
                             cwd=f"{os.getenv('GRCUDA_HOME')}/projects/resources/cuda/bin")
     result.check_returncode()
-    end = time.time()
+    end = System.nanoTime()
     if debug:
-        BenchmarkResult.log_message(f"Benchmark total execution time: {end - start:.2f} seconds")
+        BenchmarkResult.log_message(f"Benchmark total execution time: {(end - start) / 1_000_000_000:.2f} seconds")
 
 
 ##############################
@@ -119,15 +122,15 @@ def execute_grcuda_benchmark(benchmark, size, block_size, exec_policy, new_strea
     benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, benchmark, block_size["block_size_1d"], block_size["block_size_2d"],
                                            "-d" if debug else "", output_path)
-    start = time.time()
+    start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
                             stdout=subprocess.STDOUT,
                             cwd=f"{os.getenv('GRCUDA_HOME')}/projects/resources/python/benchmark")
     result.check_returncode()
-    end = time.time()
+    end = System.nanoTime()
     if debug:
-        BenchmarkResult.log_message(f"Benchmark total execution time: {end - start:.2f} seconds")
+        BenchmarkResult.log_message(f"Benchmark total execution time: {(end - start) / 1_000_000_000:.2f} seconds")
 
 ##############################
 ##############################
