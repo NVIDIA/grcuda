@@ -1,6 +1,6 @@
 # coding=utf-8
 import polyglot
-import time
+from java.lang import System
 import numpy as np
 from random import random, randint, seed
 
@@ -117,23 +117,23 @@ class Benchmark1(Benchmark):
     def execute(self) -> object:
 
         # A, B. Call the kernel. The 2 computations are independent, and can be done in parallel;
-        start = time.time()
+        start = System.nanoTime()
         self.square_kernel(self.num_blocks, self.block_size)(self.x, self.x1, self.size)
         self.square_kernel(self.num_blocks, self.block_size)(self.y, self.y1, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "square", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "square", "time_sec": (end - start) / 1_000_000_000})
 
         # C. Compute the sum of the result;
-        start = time.time()
+        start = System.nanoTime()
         self.reduce_kernel(self.num_blocks, self.block_size)(self.x1, self.y1, self.res, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "reduce", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "reduce", "time_sec": (end - start) / 1_000_000_000})
 
         # Add a final sync step to measure the real computation time;
-        start = time.time()
+        start = System.nanoTime()
         result = self.res[0]
-        end = time.time()
-        self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
 
         self.benchmark.add_to_benchmark("gpu_result", result)
         if self.benchmark.debug:
@@ -143,7 +143,7 @@ class Benchmark1(Benchmark):
 
     def cpu_validation(self, gpu_result: object, reinit: bool) -> None:
         # Recompute the CPU result only if necessary;
-        start = time.time()
+        start = System.nanoTime()
         if self.current_iter == 0 or reinit:
             # Re-initialize the random number generator with the same seed as the GPU to generate the same values;
             seed(self.random_seed)
@@ -161,7 +161,7 @@ class Benchmark1(Benchmark):
             y_g = y_g ** 2
             x_g -= y_g
             self.cpu_result = np.sum(x_g)
-        cpu_time = time.time() - start
+        cpu_time = System.nanoTime() - start
         difference = np.abs(self.cpu_result - gpu_result)
         self.benchmark.add_to_benchmark("cpu_time_sec", cpu_time)
         self.benchmark.add_to_benchmark("cpu_gpu_res_difference", difference)

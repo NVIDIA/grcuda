@@ -1,6 +1,6 @@
 # coding=utf-8
 import polyglot
-import time
+from java.lang import System
 import numpy as np
 from random import random, randint, seed, sample
 
@@ -201,51 +201,51 @@ class Benchmark7(Benchmark):
 
         for i in range(self.num_iterations):
             # Authorities;
-            start = time.time()
+            start = System.nanoTime()
             self.spmv_kernel(self.num_blocks_size, self.block_size)(self.ptr2, self.idx2, self.val2, self.hub1, self.auth2, self.size, self.num_nnz)
-            end = time.time()
-            self.benchmark.add_phase({"name": f"spmv_a_{i}", "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"spmv_a_{i}", "time_sec": (end - start) / 1_000_000_000})
 
             # Hubs;
-            start = time.time()
+            start = System.nanoTime()
             self.spmv_kernel(self.num_blocks_size, self.block_size)(self.ptr, self.idx, self.val, self.auth1, self.hub2, self.size, self.num_nnz)
-            end = time.time()
-            self.benchmark.add_phase({"name": f"spmv_h_{i}", "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"spmv_h_{i}", "time_sec": (end - start) / 1_000_000_000})
 
             # Normalize authorities;
-            start = time.time()
+            start = System.nanoTime()
             self.sum_kernel(self.num_blocks_size, self.block_size)(self.auth2, self.auth_norm, self.size)
-            end = time.time()
-            self.benchmark.add_phase({"name": f"sum_a_{i}", "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"sum_a_{i}", "time_sec": (end - start) / 1_000_000_000})
 
             # Normalize hubs;
-            start = time.time()
+            start = System.nanoTime()
             self.sum_kernel(self.num_blocks_size, self.block_size)(self.hub2, self.hub_norm, self.size)
-            end = time.time()
-            self.benchmark.add_phase({"name": f"sum_h_{i}", "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"sum_h_{i}", "time_sec": (end - start) / 1_000_000_000})
 
-            start = time.time()
+            start = System.nanoTime()
             self.divide_kernel(self.num_blocks_size, self.block_size)(self.auth2, self.auth1, self.auth_norm, self.size)
-            end = time.time()
-            self.benchmark.add_phase({"name": f"divide_a_{i}", "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"divide_a_{i}", "time_sec": (end - start) / 1_000_000_000})
 
-            start = time.time()
+            start = System.nanoTime()
             self.divide_kernel(self.num_blocks_size, self.block_size)(self.hub2, self.hub1, self.hub_norm, self.size)
-            end = time.time()
-            self.benchmark.add_phase({"name": f"divide_h_{i}", "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"divide_h_{i}", "time_sec": (end - start) / 1_000_000_000})
 
-            start = time.time()
+            start = System.nanoTime()
             self.auth_norm[0] = 0.0
             self.hub_norm[0] = 0.0
-            end = time.time()
-            self.benchmark.add_phase({"name": f"norm_reset_{i}", "time_sec": end - start})
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"norm_reset_{i}", "time_sec": (end - start) / 1_000_000_000})
 
         # Add a final sync step to measure the real computation time;
-        start = time.time()
+        start = System.nanoTime()
         tmp1 = self.auth1[0]
         tmp2 = self.hub1[0]
-        end = time.time()
-        self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
 
         # Compute GPU result;
         for i in range(self.size):
@@ -271,7 +271,7 @@ class Benchmark7(Benchmark):
             return res
 
         # Recompute the CPU result only if necessary;
-        start = time.time()
+        start = System.nanoTime()
         if self.current_iter == 0 or reinit:
             # Re-initialize the random number generator with the same seed as the GPU to generate the same values;
             seed(self.random_seed)
@@ -294,7 +294,7 @@ class Benchmark7(Benchmark):
                 hub1 = hub2
             self.cpu_result = hub1 + auth1
 
-        cpu_time = time.time() - start
+        cpu_time = System.nanoTime() - start
 
         # Compare GPU and CPU results;
         difference = 0
