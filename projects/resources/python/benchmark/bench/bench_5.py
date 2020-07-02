@@ -4,55 +4,59 @@ import time
 import numpy as np
 from random import random, randint, seed
 
-from benchmark import Benchmark, time_phase
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
 from benchmark_result import BenchmarkResult
+from java.lang import System
+import math
 
 ##############################
 ##############################
 
-NUM_THREADS_PER_BLOCK = 128
+R = 0.08
+V = 0.3
+T = 1.0
+K = 60.0
 
-SQUARE_KERNEL = """
-    extern "C" __global__ void square(const float* x, float* y, int n) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            y[idx] = x[idx] * x[idx];
-        }
-    }
-    """
+BS_KERNEL = """
+__device__ inline float cndGPU(float d) {
+    const float       A1 = 0.31938153f;
+    const float       A2 = -0.356563782f;
+    const float       A3 = 1.781477937f;
+    const float       A4 = -1.821255978f;
+    const float       A5 = 1.330274429f;
+    const float RSQRT2PI = 0.39894228040143267793994605993438f;
 
-COMPUTE_KERNEL = """
-    extern "C" __global__ void compute(const float* x, float *y, int n) {
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n) {
-            y[i] = logf(1.0 + cosf(x[i]) * cosf(x[i]) + sinf(x[i]) * sinf(x[i]));
-        }
-    }
-    """
+    float
+    K = __fdividef(1.0f, (1.0f + 0.2316419f * fabsf(d)));
 
-REDUCE_KERNEL = """
-    extern "C" __global__ void reduce(const float *x, const float *y, float *res, int n) {
-        __shared__ float cache[%d];
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i < n) {
-            cache[threadIdx.x] = x[i] + y[i];
-        }
-        __syncthreads();
-    
-        // Perform tree reduction;
-        i = %d / 2;
-        while (i > 0) {
-            if (threadIdx.x < i) {
-                cache[threadIdx.x] += cache[threadIdx.x + i];
-            }
-            __syncthreads();
-            i /= 2;
-        }
-        if (threadIdx.x == 0) {
-            atomicAdd(res, cache[0]);
-        }
+    float
+    cnd = RSQRT2PI * __expf(- 0.5f * d * d) *
+          (K * (A1 + K * (A2 + K * (A3 + K * (A4 + K * A5)))));
+
+    if (d > 0)
+        cnd = 1.0f - cnd;
+
+    return cnd;
+}
+
+extern "C" __global__ void bs(const float *x, float *y, int N, float R, float V, float T, float K) {
+
+    float sqrtT = __fdividef(1.0F, rsqrtf(T));
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
+        float expRT;
+        float d1, d2, CNDD1, CNDD2;
+        d1 = __fdividef(__logf(x[i] / K) + (R + 0.5f * V * V) * T, V * sqrtT);
+        d2 = d1 - V * sqrtT;
+
+        CNDD1 = cndGPU(d1);
+        CNDD2 = cndGPU(d2);
+
+        //Calculate Call and Put simultaneously
+        expRT = __expf(-R * T);
+        y[i] = x[i] * CNDD1 - K * expRT * CNDD2;
     }
-    """ % (NUM_THREADS_PER_BLOCK, NUM_THREADS_PER_BLOCK)
+}
+"""
 
 ##############################
 ##############################
@@ -60,49 +64,37 @@ REDUCE_KERNEL = """
 
 class Benchmark5(Benchmark):
     """
-    Compute a complex pipeline of kernels, doing mock computations, and using read-only arguments;
-                         ┌─> B(const Y, R1) ───────────────────┐
-        A: (const X, Y) ─┤                                     ├─> E(const R1, const R2, R)
-                         └─> C(const Y, Z) ─> D(const Z, R2) ──┘
+    Black & Scholes equation benchmark, executed concurrently on different input vectors;
     """
 
     def __init__(self, benchmark: BenchmarkResult):
         super().__init__("b5", benchmark)
         self.size = 0
-        self.x = None
-        self.y = None
-        self.z = None
-        self.r1 = None
-        self.r2 = None
-        self.r = None
-        self.num_blocks = 0
-        self.kernel_a = None
-        self.kernel_b = None
-        self.kernel_c = None
-        self.kernel_d = None
-        self.kernel_e = None
-        self.cpu_result = None
+
+        self.num_blocks = 64
+        self.sum_kernel = None
+        self.cpu_result = 0
+        self.block_size = DEFAULT_BLOCK_SIZE_1D
+
+        self.K = 10
+        self.x = [[]] * self.K
+        self.x_tmp = None
+        self.y = [[]] * self.K
 
     @time_phase("allocation")
     def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
-        self.num_blocks = (size + NUM_THREADS_PER_BLOCK - 1) // NUM_THREADS_PER_BLOCK
+        self.block_size = block_size["block_size_1d"]
+        self.x_tmp = [0] * self.size
 
         # Allocate vectors;
-        self.x = polyglot.eval(language="grcuda", string=f"float[{size}]")
-        self.y = polyglot.eval(language="grcuda", string=f"float[{size}]")
-        self.z = polyglot.eval(language="grcuda", string=f"float[{size}]")
-        self.r1 = polyglot.eval(language="grcuda", string=f"float[{size}]")
-        self.r2 = polyglot.eval(language="grcuda", string=f"float[{size}]")
-        self.r = polyglot.eval(language="grcuda", string=f"float[1]")
+        for i in range(self.K):
+            self.x[i] = polyglot.eval(language="grcuda", string=f"float[{size}]")
+            self.y[i] = polyglot.eval(language="grcuda", string=f"float[{size}]")
 
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
-        self.kernel_a = build_kernel(SQUARE_KERNEL, "square", "const pointer, pointer, sint32")
-        self.kernel_b = build_kernel(COMPUTE_KERNEL, "compute", "const pointer, pointer, sint32")
-        self.kernel_c = build_kernel(SQUARE_KERNEL, "square", "const pointer, pointer, sint32")
-        self.kernel_d = build_kernel(COMPUTE_KERNEL, "compute", "const pointer, pointer, sint32")
-        self.kernel_e = build_kernel(REDUCE_KERNEL, "reduce", "const pointer, const pointer, pointer, sint32")
+        self.bs_kernel = build_kernel(BS_KERNEL, "bs", "const pointer, pointer, sint32, float, float, float, float")
 
     @time_phase("initialization")
     def init(self):
@@ -110,70 +102,76 @@ class Benchmark5(Benchmark):
         seed(self.random_seed)
         for i in range(self.size):
             if self.benchmark.random_init:
-                self.x[i] = random()
+                self.x_tmp[i] = random() + K - 0.5
             else:
-                self.x[i] = 1 / (i + 1)
+                self.x_tmp[i] = K
+
+    @time_phase("reset_result")
+    def reset_result(self) -> None:
+        for i in range(self.K):
+            for j in range(self.size):
+                self.x[i][j] = self.x_tmp[j]
 
     def execute(self) -> object:
-        # This must be reset at every execution;
-        self.r[0] = 0
 
-        # A.
-        start = time.time()
-        self.kernel_a(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.x, self.y, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "kernel_a", "time_sec": end - start})
+        result = []
 
-        # B.
-        start = time.time()
-        self.kernel_b(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.r1, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "kernel_b", "time_sec": end - start})
+        # Call the kernels.
+        for i in range(self.K):
+            start = System.nanoTime()
+            self.bs_kernel(self.num_blocks, self.block_size)(self.x[i], self.y[i], self.size, R, V, T, K)
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": f"bs_{i}", "time_sec": (end - start) / 1_000_000_000})
 
-        # C, D.
-        start = time.time()
-        self.kernel_c(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.y, self.z, self.size)
-        self.kernel_d(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.z, self.r2, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "kernel_c_d", "time_sec": end - start})
+        start = System.nanoTime()
+        for i in range(self.K):
+            result += [self.y[i][0]]
+        end = System.nanoTime()
+        self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
 
-        # E.
-        start = time.time()
-        self.kernel_e(self.num_blocks, NUM_THREADS_PER_BLOCK)(self.r1, self.r2, self.r, self.size)
-        end = time.time()
-        self.benchmark.add_phase({"name": "kernel_e", "time_sec": end - start})
-
-        # Read the result;
-        start = time.time()
-        result = self.r[0]
-        end = time.time()
-        self.benchmark.add_phase({"name": "read_result", "time_sec": end - start})
-
-        self.benchmark.add_to_benchmark("gpu_result", result)
+        self.benchmark.add_to_benchmark("gpu_result", result[0])
         if self.benchmark.debug:
-            BenchmarkResult.log_message(f"\tgpu result: {result:.4f}")
+            BenchmarkResult.log_message(f"\tgpu result: {result[0]}")
 
-        return result
+        return result[0]
 
     def cpu_validation(self, gpu_result: object, reinit: bool) -> None:
+
+        def CND(X):
+            """
+            Cumulative normal distribution.
+            Helper function used by BS(...).
+            """
+
+            (a1, a2, a3, a4, a5) = (0.31938153, -0.356563782, 1.781477937, -1.821255978, 1.330274429)
+            L = np.absolute(X)
+            K = np.float64(1.0) / (1.0 + 0.2316419 * L)
+            w = 1.0 - 1.0 / math.sqrt(2 * np.pi) * np.exp(-L * L / 2.) * \
+                (a1 * K +
+                 a2 * (K ** 2) +
+                 a3 * (K ** 3) +
+                 a4 * (K ** 4) +
+                 a5 * (K ** 5))
+
+            mask = X < 0
+            w = w * ~mask + (1.0 - w) * mask
+
+            return w
+
+        def BS(X, R, V, T, K):
+            """Black Scholes Function."""
+            d1_arr = (np.log(X / K) + (R + V * V / 2.) * T) / (V * math.sqrt(T))
+            d2_arr = d1_arr - V * math.sqrt(T)
+            w_arr = CND(d1_arr)
+            w2_arr = CND(d2_arr)
+            return X * w_arr - X * math.exp(-R * T) * w2_arr
+
         # Recompute the CPU result only if necessary;
-        start = time.time()
+        start = System.nanoTime()
         if self.current_iter == 0 or reinit:
-            # Re-initialize the random number generator with the same seed as the GPU to generate the same values;
-            seed(self.random_seed)
-            if self.benchmark.random_init:
-                x_g = np.zeros(self.size)
-                for i in range(self.size):
-                    x_g[i] = random()
-            else:
-                x_g = 1 / np.linspace(1, self.size, self.size)
-
-            x_g = x_g**2
-            r1 = np.log(1 + np.sin(x_g)**2 + np.cos(x_g)**2)
-            r2 = np.log(1 + np.sin(x_g**2) ** 2 + np.cos(x_g**2) ** 2)
-            self.cpu_result = np.sum(r1 + r2)
-
-        cpu_time = time.time() - start
+            res = BS(np.array(self.x_tmp), R, V, T, K)
+            self.cpu_result = res[0]
+        cpu_time = System.nanoTime() - start
         difference = np.abs(self.cpu_result - gpu_result)
         self.benchmark.add_to_benchmark("cpu_time_sec", cpu_time)
         self.benchmark.add_to_benchmark("cpu_gpu_res_difference", difference)

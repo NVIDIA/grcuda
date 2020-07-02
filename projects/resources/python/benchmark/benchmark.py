@@ -6,6 +6,7 @@ from typing import Callable
 DEFAULT_BLOCK_SIZE_1D = 32
 DEFAULT_BLOCK_SIZE_2D = 8
 
+
 def time_phase(phase_name: str) -> Callable:
     """
     Decorator that simplifies timing a function call and storing the result in the benchmark log;
@@ -32,6 +33,7 @@ class Benchmark(ABC):
         self.name = name
         self.benchmark = benchmark
         self.tot_iter = 0
+        self.current_iter = 0
         self.random_seed = 42  # Default random seed, it will be overwritten with a random one;
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
@@ -92,7 +94,7 @@ class Benchmark(ABC):
                                            reinit=reinit,
                                            block_size=block_size,
                                            iteration=num_iter)
-
+        self.current_iter = num_iter
         # TODO: set the execution policy;
 
         # Start a timer to monitor the total GPU execution time;
