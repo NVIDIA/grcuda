@@ -27,15 +27,17 @@ import matplotlib.ticker as ticker
 
 DEFAULT_RES_DIR = "../../../../data/results"
 
-INPUT_DATE_GRCUDA = "2020_06_30_18_20_02_grcuda"
-OUTPUT_DATE = "2020_07_01"
+INPUT_DATE_GRCUDA = "2020_07_01_20_19_24_grcuda"
+OUTPUT_DATE = "2020_07_02"
 PLOT_DIR = "../../../../data/plots"
 
+B5_ITER = 10
 B7_ITER = 10
 
-BENCHMARK_NAMES = {"b1": "Vector Squares", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
+BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
 BENCHMARK_PHASES = {
     "b1": ["square", "reduce"],
+    "b5": [y for x in [[f"bs_{i}"] for i in range(B5_ITER)] for y in x],
     "b6": ["rr_1", "rr_2", "rr_3", "nb_1", "nb_2", "nb_3", "nb_4", "softmax", "argmax"],
     "b7": [y for x in [[f"spmv_a_{i}", f"spmv_h_{i}", f"sum_a_{i}", f"sum_h_{i}", f"divide_a_{i}", f"divide_h_{i}", f"norm_reset_{i}"] for i in range(B7_ITER)] for y in x],
     "b8": ["blur_small", "blur_large", "blur_unsharpen", "sobel_small", "sobel_large", "maximum", "minimum", "extend", "unsharpen", "combine", "combine_2"],
@@ -59,6 +61,9 @@ def theoretical_speed(input_data, group_columns, benchmark):
 def theoretical_speed_b1(data):
     return data["square"] / 2 + data["reduce"]
 
+def theoretical_speed_b5(data):
+    return data[[f"bs_{i}" for i in range(B5_ITER)]].max(axis=1)
+
 def theoretical_speed_b6(data):
     return np.maximum(data["rr_1"] + data["rr_2"] + data["rr_3"], data["nb_1"] + data["nb_2"] + data["nb_3"] + data["nb_4"]) + data["softmax"] / 2 + data["argmax"]
 
@@ -76,6 +81,7 @@ def theoretical_speed_b8(data):
 
 THEORETICAL_SPEED_FUNCTIONS = {
     "b1": theoretical_speed_b1,
+    "b5": theoretical_speed_b5,
     "b6": theoretical_speed_b6,
     "b7": theoretical_speed_b7,
     "b8": theoretical_speed_b8,

@@ -81,11 +81,14 @@ class Benchmark5(Benchmark):
         self.x_tmp = None
         self.y = [[]] * self.K
 
+        self.bs_kernel = None
+
     @time_phase("allocation")
     def alloc(self, size: int, block_size: dict = None) -> None:
         self.size = size
         self.block_size = block_size["block_size_1d"]
-        self.x_tmp = [0] * self.size
+        self.x_tmp = None
+        # self.x_tmp = [0] * self.size
 
         # Allocate vectors;
         for i in range(self.K):
@@ -100,23 +103,30 @@ class Benchmark5(Benchmark):
     def init(self):
         self.random_seed = randint(0, 10000000)
         seed(self.random_seed)
-        for i in range(self.size):
-            if self.benchmark.random_init:
-                self.x_tmp[i] = random() + K - 0.5
-            else:
-                self.x_tmp[i] = K
+        if self.benchmark.random_init:
+            self.x_tmp = np.random.uniform(-0.5, 0.5, self.size).astype(np.float32) + K
+        else:
+            self.x_tmp = np.zeros(self.size, dtype=np.float32) + K
+
+        # for i in range(self.size):
+        #     if self.benchmark.random_init:
+        #         self.x_tmp[i] = random() + K - 0.5
+        #     else:
+        #         self.x_tmp[i] = K
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
         for i in range(self.K):
-            for j in range(self.size):
-                self.x[i][j] = self.x_tmp[j]
+            self.x[i].copyFrom(int(np.int64(self.x_tmp.ctypes.data)), self.size)
+            # for j in range(self.size):
+            #     self.x[i][j] = self.x_tmp[j]
 
     def execute(self) -> object:
 
         result = []
 
-        # Call the kernels.
+        # Call the kernels;
+        s = System.nanoTime()
         for i in range(self.K):
             start = System.nanoTime()
             self.bs_kernel(self.num_blocks, self.block_size)(self.x[i], self.y[i], self.size, R, V, T, K)
@@ -127,6 +137,7 @@ class Benchmark5(Benchmark):
         for i in range(self.K):
             result += [self.y[i][0]]
         end = System.nanoTime()
+        print("TIMETIME= ", (end - s) / 1_000_000_000)
         self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
 
         self.benchmark.add_to_benchmark("gpu_result", result[0])
