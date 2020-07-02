@@ -21,11 +21,11 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-INPUT_DATE = "2020_06_30_18_20_02_grcuda"
-OUTPUT_DATE = "2020_07_01"
+INPUT_DATE = "2020_07_01_20_19_24_grcuda"
+OUTPUT_DATE = "2020_07_02"
 PLOT_DIR = "../../../../data/plots"
 
-BENCHMARK_NAMES = {"b1": "Vector Squares", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
+BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
 
 def build_exec_time_plot(data, gridspec, x, y):
     

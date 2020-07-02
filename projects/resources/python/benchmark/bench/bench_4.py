@@ -67,7 +67,6 @@ class Benchmark4(Benchmark):
 
         # A. B. Call the kernels. The 2 computations are independent, and can be done in parallel;
         start = System.nanoTime()
-        s = System.nanoTime()
         self.sum_kernel(self.num_blocks, self.block_size)(self.x, self.size)
         end = System.nanoTime()
         self.benchmark.add_phase({"name": "sum_1", "time_sec": (end - start) / 1_000_000_000})
