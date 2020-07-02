@@ -237,6 +237,24 @@ public final class CUDARuntime {
     }
 
     @TruffleBoundary
+    public void cudaMemcpy(long destPointer, long fromPointer, long numBytesToCopy, CUDAStream stream) {
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_MEMCPYASYNC.getSymbol(this);
+            if (numBytesToCopy < 0) {
+                throw new IllegalArgumentException("requested negative number of bytes to copy " + numBytesToCopy);
+            }
+            // cudaMemcpyKind from driver_types.h (default: direction of transfer is inferred
+            // from the pointer values, uses virtual addressing)
+            final long cudaMemcpyDefault = 4;
+            Object result = INTEROP.execute(callable, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault, stream.getRawPointer());
+            cudaStreamSynchronize(stream);
+            checkCUDAReturnCode(result, "cudaMemcpyAsync");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    @TruffleBoundary
     public DeviceMemoryInfo cudaMemGetInfo() {
         final String symbol = "cudaMemGetInfo";
         final String nfiSignature = "(pointer, pointer): sint32";
@@ -680,6 +698,22 @@ public final class CUDARuntime {
                 // inferred from the pointer values, uses virtual addressing)
                 final long cudaMemcpyDefault = 4;
                 callSymbol(cudaRuntime, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault);
+                return NoneValue.get();
+            }
+        },
+        CUDA_MEMCPYASYNC("cudaMemcpyAsync", "(pointer, pointer, uint64, sint32, pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 3);
+                long destPointer = expectLong(args[0]);
+                long fromPointer = expectLong(args[1]);
+                long numBytesToCopy = expectPositiveLong(args[2]);
+                long streamPointer = expectLong(args[3]);
+                // cudaMemcpyKind from driver_types.h (default: direction of transfer is
+                // inferred from the pointer values, uses virtual addressing)
+                final long cudaMemcpyDefault = 4;
+                callSymbol(cudaRuntime, destPointer, fromPointer, numBytesToCopy, cudaMemcpyDefault, streamPointer);
                 return NoneValue.get();
             }
         },

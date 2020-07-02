@@ -76,11 +76,11 @@ void init(float **x, float **y, float* tmp_x, int N, int K) {
 void reset(float **x, float* y, int N, int K, cudaStream_t *s) {
     for (int i = 0; i < K; i++) {
         // memcpy(x[i], y, sizeof(int) * N);
-        // cudaMemcpy(x[i], y, sizeof(int) * N, cudaMemcpyDefault);
+        cudaMemcpy(x[i], y, sizeof(int) * N, cudaMemcpyDefault);
         // cudaMemcpyAsync(x[i], y, sizeof(int) * N, cudaMemcpyHostToDevice, s[i]);
-        for (int j = 0; j < N; j++) {
-            x[i][j] = y[j];
-        }
+        // for (int j = 0; j < N; j++) {
+        //     x[i][j] = y[j];
+        // }
     }
 }
 

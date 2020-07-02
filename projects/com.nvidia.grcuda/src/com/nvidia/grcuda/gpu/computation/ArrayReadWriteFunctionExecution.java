@@ -11,7 +11,6 @@ import java.util.Optional;
 
 /**
  * Computational elements that represents a low-level memory copy from/to a {@link AbstractArray}
- * @param <T> the type of {@link AbstractArray} used in the copy
  */
 public class ArrayReadWriteFunctionExecution extends GrCUDAComputationalElement {
 
@@ -60,7 +59,12 @@ public class ArrayReadWriteFunctionExecution extends GrCUDAComputationalElement 
             CompilerDirectives.transferToInterpreter();
             throw new IndexOutOfBoundsException();
         }
-        grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(array.getPointer(), pointer, numBytesToCopy);
+        // If the array visibility is restricted to a stream, provide the stream to memcpy;
+        if (array.getStreamMapping().isDefaultStream()) {
+            grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(array.getPointer(), pointer, numBytesToCopy);
+        } else {
+            grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(array.getPointer(), pointer, numBytesToCopy, array.getStreamMapping());
+        }
     }
 
     private void copyTo() throws IndexOutOfBoundsException {
@@ -69,7 +73,12 @@ public class ArrayReadWriteFunctionExecution extends GrCUDAComputationalElement 
             CompilerDirectives.transferToInterpreter();
             throw new IndexOutOfBoundsException();
         }
-        grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(pointer, array.getPointer(), numBytesToCopy);
+        // If the array visibility is restricted to a stream, provide the stream to memcpy; 
+        if (array.getStreamMapping().isDefaultStream()) {
+            grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(pointer, array.getPointer(), numBytesToCopy);
+        } else {
+            grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(pointer, array.getPointer(), numBytesToCopy, array.getStreamMapping());
+        }
     }
 
     @Override
