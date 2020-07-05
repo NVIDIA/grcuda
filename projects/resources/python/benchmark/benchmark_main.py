@@ -102,6 +102,9 @@ if __name__ == "__main__":
                         help="Number of threads per block when using 2D kernels")
     parser.add_argument("-r", "--random", action="store_true",
                         help="Initialize benchmarks randomly whenever possible")
+    parser.add_argument("-p", "--time_phases", action="store_true",
+                        help="Measure the execution time of each phase of the benchmark;"
+                             " note that this introduces overheads, and might influence the total execution time")
     parser.set_defaults(cpu_validation=BenchmarkResult.DEFAULT_CPU_VALIDATION)
 
     # Parse the input arguments;
@@ -114,6 +117,7 @@ if __name__ == "__main__":
     reinit = args.reinit if args.reinit else [BenchmarkResult.DEFAULT_REINIT]
     random_init = args.random if args.random else BenchmarkResult.DEFAULT_RANDOM_INIT
     cpu_validation = args.cpu_validation
+    time_phases = args.time_phases
 
     # Create a new benchmark result instance;
     benchmark_res = BenchmarkResult(debug=debug, num_iterations=num_iter, output_path=output_path,
@@ -150,7 +154,8 @@ if __name__ == "__main__":
                     for ri in reinit:
                         for block_size in block_sizes:
                             for i in range(num_iter):
-                                benchmark.run(num_iter=i, policy=p, size=n, realloc=re, reinit=ri, block_size=block_size)
+                                benchmark.run(num_iter=i, policy=p, size=n, realloc=re, reinit=ri,
+                                              block_size=block_size, time_phases=time_phases)
                             # Print the summary of this block;
                             if benchmark_res.debug:
                                 benchmark_res.print_current_summary(name=b_name, policy=p, size=n,

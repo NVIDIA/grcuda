@@ -127,7 +127,7 @@ public class GrCUDAStreamManager {
                     CUDAStream stream = additionalStream.get();
                     // If we require synchronization on the default stream, perform it in a specialized way;
                     if (stream.isDefaultStream()) {
-                        System.out.println("--\tsync stream " + stream + " by " + vertex.getComputation());
+//                        System.out.println("--\tsync stream " + stream + " by " + vertex.getComputation());
                         // Synchronize the device;
                         syncDevice();
                         // All computations are now finished;
@@ -169,9 +169,9 @@ public class GrCUDAStreamManager {
                     CUDAEvent event = parent.getEvent().get();
                     runtime.cudaStreamWaitEvent(vertex.getComputation().getStream(), event);
 
-                    System.out.println("\t* wait event on stream; stream to sync=" + stream.getStreamNumber()
-                            + "; stream that waits=" + vertex.getComputation().getStream().getStreamNumber()
-                            + "; event=" + event.getEventNumber());
+//                    System.out.println("\t* wait event on stream; stream to sync=" + stream.getStreamNumber()
+//                            + "; stream that waits=" + vertex.getComputation().getStream().getStreamNumber()
+//                            + "; event=" + event.getEventNumber());
                 } else {
                     System.out.println("\t* WARNING: missing event to sync child computation=" + vertex.getComputation() +
                             " and parent computation=" + parent);
@@ -193,7 +193,7 @@ public class GrCUDAStreamManager {
         Set<CUDAStream> streamsToSync = getParentStreams(vertex.getParentComputations());
         // Synchronize streams;
         streamsToSync.forEach(s -> {
-            System.out.println("--\tsync stream=" + s.getStreamNumber() + " by " + vertex.getComputation());
+//            System.out.println("--\tsync stream=" + s.getStreamNumber() + " by " + vertex.getComputation());
             syncStream(s);
         });
 

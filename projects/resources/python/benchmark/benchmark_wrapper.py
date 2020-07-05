@@ -12,21 +12,21 @@ from java.lang import System
 
 # Benchmark settings;
 benchmarks = [
-    # "b1",
+    "b1",
     # "b4",
-    "b5",
+    # "b5",
     # "b6",
     # "b7",
     # "b8",
 ]
 
 num_elem = {
-    "b1": [2000000, 5000000, 10000000, 20000000, 40000000],
-    "b4": [2000000, 5000000, 10000000, 20000000, 40000000],
-    "b5": [2000000, 5000000, 10000000, 15000000, 20000000],
-    "b6": [20000, 50000, 200000, 500000, 800000],
-    "b7": [50000, 100000, 150000, 200000, 250000],
-    "b8": [800, 1600, 2400, 4000, 4800],
+    "b1": [2000000],# , 5000000, 10000000, 20000000, 40000000],
+    "b4": [2000000],# , 5000000, 10000000, 20000000, 40000000],
+    "b5": [2000000],#, 5000000, 10000000, 15000000, 20000000],
+    "b6": [20000],#, 50000, 200000, 500000, 800000],
+    "b7": [50000],#, 100000, 150000, 200000, 250000],
+    "b8": [800],#, 1600, 2400, 4000, 4800],
 }
 
 exec_policies = ["default", "sync"]
@@ -37,8 +37,8 @@ parent_stream_policies = ["disjoint"]
 
 dependency_policies = ["with-const"]
 
-block_sizes_1d = [32, 128, 256, 1024]
-block_sizes_2d = [8, 8, 16, 32]
+block_sizes_1d = [32]#, 128, 256, 1024]
+block_sizes_2d = [8]#, 8, 16, 32]
 
 ##############################
 ##############################
@@ -89,22 +89,23 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithThread " \
                   "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
-                  "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} -o {}"
+                  "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
 
 
 def execute_grcuda_benchmark(benchmark, size, block_size, exec_policy, new_stream_policy,
-                      parent_stream_policy, dependency_policy, num_iter, debug, output_date=None):
+                      parent_stream_policy, dependency_policy, num_iter, debug, time_phases, output_date=None):
     if debug:
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message(f"Benchmark {i + 1}/{tot_benchmarks}")
         BenchmarkResult.log_message(f"benchmark={b}, size={n},"
-                                    f" block size={block_size}, "
-                                    f" exec policy={exec_policy}, "
-                                    f" new stream policy={new_stream_policy}, "
-                                    f" parent stream policy={parent_stream_policy}, "
-                                    f" dependency policy={dependency_policy}")
+                                    f"block size={block_size}, "
+                                    f"exec policy={exec_policy}, "
+                                    f"new stream policy={new_stream_policy}, "
+                                    f"parent stream policy={parent_stream_policy}, "
+                                    f"dependency policy={dependency_policy}, "
+                                    f"time_phases={time_phases}")
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
@@ -123,7 +124,7 @@ def execute_grcuda_benchmark(benchmark, size, block_size, exec_policy, new_strea
 
     benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, benchmark, block_size["block_size_1d"], block_size["block_size_2d"],
-                                           "-d" if debug else "", output_path)
+                                           "-d" if debug else "",  "-p" if time_phases else "", output_path)
     start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
@@ -148,6 +149,9 @@ if __name__ == "__main__":
                         help="If present, run performance tests using CUDA")
     parser.add_argument("-i", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
                         help="Number of times each benchmark is executed")
+    parser.add_argument("-p", "--time_phases", action="store_true",
+                        help="Measure the execution time of each phase of the benchmark;"
+                             " note that this introduces overheads, and might influence the total execution time")
 
     # Parse the input arguments;
     args = parser.parse_args()
@@ -155,6 +159,7 @@ if __name__ == "__main__":
     debug = args.debug if args.debug else BenchmarkResult.DEFAULT_DEBUG
     num_iter = args.num_iter if args.num_iter else BenchmarkResult.DEFAULT_NUM_ITER
     use_cuda = args.cuda_test
+    time_phases = args.time_phases
 
     # Setup the block size for each benchmark;
     block_sizes = create_block_size_list(block_sizes_1d, block_sizes_2d)
@@ -190,5 +195,6 @@ if __name__ == "__main__":
                             for parent_stream_policy in parent_stream_policies:
                                 for dependency_policy in dependency_policies:
                                     execute_grcuda_benchmark(b, n, block_size, exec_policy, new_stream_policy,
-                                                             parent_stream_policy, dependency_policy, num_iter, debug, output_date=output_date)
+                                                             parent_stream_policy, dependency_policy, num_iter,
+                                                             debug, time_phases, output_date=output_date)
                                     i += 1

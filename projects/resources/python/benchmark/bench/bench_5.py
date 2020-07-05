@@ -123,22 +123,22 @@ class Benchmark5(Benchmark):
 
     def execute(self) -> object:
 
-        result = []
+        result = [0] * self.K
 
         # Call the kernels;
-        s = System.nanoTime()
-        for i in range(self.K):
-            start = System.nanoTime()
-            self.bs_kernel(self.num_blocks, self.block_size)(self.x[i], self.y[i], self.size, R, V, T, K)
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"bs_{i}", "time_sec": (end - start) / 1_000_000_000})
-
+        start_comp = System.nanoTime()
         start = System.nanoTime()
         for i in range(self.K):
-            result += [self.y[i][0]]
+            self.execute_phase(f"bs_{i}", self.bs_kernel(self.num_blocks, self.block_size), self.x[i], self.y[i], self.size, R, V, T, K)
+
+        if self.time_phases:
+            start = System.nanoTime()
+        for i in range(self.K):
+            result[i] = self.y[i][0]
         end = System.nanoTime()
-        print("TIMETIME= ", (end - s) / 1_000_000_000)
-        self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
+        if self.time_phases:
+            self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
+        self.benchmark.add_computation_time((end - start_comp) / 1_000_000_000)
 
         self.benchmark.add_to_benchmark("gpu_result", result[0])
         if self.benchmark.debug:

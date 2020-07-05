@@ -199,54 +199,43 @@ class Benchmark7(Benchmark):
 
     def execute(self) -> object:
 
+        start_comp = System.nanoTime()
+        start = 0
+
         for i in range(self.num_iterations):
             # Authorities;
-            start = System.nanoTime()
-            self.spmv_kernel(self.num_blocks_size, self.block_size)(self.ptr2, self.idx2, self.val2, self.hub1, self.auth2, self.size, self.num_nnz)
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"spmv_a_{i}", "time_sec": (end - start) / 1_000_000_000})
+            self.execute_phase(f"spmv_a_{i}", self.spmv_kernel(self.num_blocks_size, self.block_size), self.ptr2, self.idx2, self.val2, self.hub1, self.auth2, self.size, self.num_nnz)
 
             # Hubs;
-            start = System.nanoTime()
-            self.spmv_kernel(self.num_blocks_size, self.block_size)(self.ptr, self.idx, self.val, self.auth1, self.hub2, self.size, self.num_nnz)
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"spmv_h_{i}", "time_sec": (end - start) / 1_000_000_000})
+            self.execute_phase(f"spmv_h_{i}", self.spmv_kernel(self.num_blocks_size, self.block_size), self.ptr, self.idx, self.val, self.auth1, self.hub2, self.size, self.num_nnz)
 
             # Normalize authorities;
-            start = System.nanoTime()
-            self.sum_kernel(self.num_blocks_size, self.block_size)(self.auth2, self.auth_norm, self.size)
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"sum_a_{i}", "time_sec": (end - start) / 1_000_000_000})
+            self.execute_phase(f"sum_a_{i}", self.sum_kernel(self.num_blocks_size, self.block_size), self.auth2, self.auth_norm, self.size)
 
             # Normalize hubs;
-            start = System.nanoTime()
-            self.sum_kernel(self.num_blocks_size, self.block_size)(self.hub2, self.hub_norm, self.size)
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"sum_h_{i}", "time_sec": (end - start) / 1_000_000_000})
+            self.execute_phase(f"sum_h_{i}", self.sum_kernel(self.num_blocks_size, self.block_size), self.hub2, self.hub_norm, self.size)
 
-            start = System.nanoTime()
-            self.divide_kernel(self.num_blocks_size, self.block_size)(self.auth2, self.auth1, self.auth_norm, self.size)
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"divide_a_{i}", "time_sec": (end - start) / 1_000_000_000})
+            self.execute_phase(f"divide_a_{i}", self.divide_kernel(self.num_blocks_size, self.block_size), self.auth2, self.auth1, self.auth_norm, self.size)
 
-            start = System.nanoTime()
-            self.divide_kernel(self.num_blocks_size, self.block_size)(self.hub2, self.hub1, self.hub_norm, self.size)
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"divide_h_{i}", "time_sec": (end - start) / 1_000_000_000})
+            self.execute_phase(f"divide_h_{i}", self.divide_kernel(self.num_blocks_size, self.block_size), self.hub2, self.hub1, self.hub_norm, self.size)
 
-            start = System.nanoTime()
+            if self.time_phases:
+                start = System.nanoTime()
             self.auth_norm[0] = 0.0
             self.hub_norm[0] = 0.0
-            end = System.nanoTime()
-            self.benchmark.add_phase({"name": f"norm_reset_{i}", "time_sec": (end - start) / 1_000_000_000})
+            if self.time_phases:
+                end = System.nanoTime()
+                self.benchmark.add_phase({"name": f"norm_reset_{i}", "time_sec": (end - start) / 1_000_000_000})
 
         # Add a final sync step to measure the real computation time;
-        start = System.nanoTime()
+        if self.time_phases:
+            start = System.nanoTime()
         tmp1 = self.auth1[0]
         tmp2 = self.hub1[0]
         end = System.nanoTime()
-        self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
-
+        if self.time_phases:
+            self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
+        self.benchmark.add_computation_time((end - start_comp) / 1_000_000_000)
         # Compute GPU result;
         for i in range(self.size):
             self.gpu_result[i] = self.auth1[i] + self.hub1[i]
