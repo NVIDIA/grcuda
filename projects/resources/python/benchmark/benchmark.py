@@ -32,6 +32,7 @@ class Benchmark(ABC):
     def __init__(self, name: str, benchmark: BenchmarkResult):
         self.name = name
         self.benchmark = benchmark
+        self.time_phases = False
         self.tot_iter = 0
         self.current_iter = 0
         self.random_seed = 42  # Default random seed, it will be overwritten with a random one;
@@ -79,7 +80,24 @@ class Benchmark(ABC):
         """
         pass
 
-    def run(self, num_iter: int, policy: str, size: int, realloc: bool, reinit: bool, block_size: dict = None) -> None:
+    def execute_phase(self, phase_name, function, *args) -> object:
+        """
+        Executes a single step of the benchmark, possibily measuring the time it takes
+        :param phase_name: name of this benchmark step
+        :param function: a function to execute
+        :param args: arguments of the function
+        :return: the result of the function
+        """
+        if self.time_phases:
+            start = System.nanoTime()
+            res = function(*args)
+            end = System.nanoTime()
+            self.benchmark.add_phase({"name": phase_name, "time_sec": (end - start) / 1_000_000_000})
+            return res
+        else:
+            return function(*args)
+
+    def run(self, num_iter: int, policy: str, size: int, realloc: bool, reinit: bool, time_phases: bool, block_size: dict = None) -> None:
 
         # Fix missing block size;
         if "block_size_1d" not in block_size:
@@ -93,8 +111,10 @@ class Benchmark(ABC):
                                            realloc=realloc,
                                            reinit=reinit,
                                            block_size=block_size,
-                                           iteration=num_iter)
+                                           iteration=num_iter,
+                                           time_phases=time_phases)
         self.current_iter = num_iter
+        self.time_phases = time_phases
         # TODO: set the execution policy;
 
         # Start a timer to monitor the total GPU execution time;

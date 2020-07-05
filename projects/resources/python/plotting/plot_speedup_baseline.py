@@ -21,8 +21,8 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-INPUT_DATE = "2020_07_01_20_19_24_grcuda"
-OUTPUT_DATE = "2020_07_02"
+INPUT_DATE = "2020_07_03_10_48_22_grcuda"
+OUTPUT_DATE = "2020_07_032"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -56,7 +56,7 @@ def build_exec_time_plot(data, gridspec, x, y):
     ax.add_collection(pc)         
 
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 4))
+    ax.set_ylim((0, 3))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -66,7 +66,7 @@ def build_exec_time_plot(data, gridspec, x, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=45, ha="right", fontsize=9, rotation_mode="anchor")
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(5))
+    ax.yaxis.set_major_locator(plt.LinearLocator(7))
     if y == 0:
         ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
     else:
@@ -118,7 +118,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     labels_str = [str(x) for x in labels]
     
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 4))
+    ax.set_ylim((0, 3))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -128,7 +128,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(5))
+    ax.yaxis.set_major_locator(plt.LinearLocator(7))
     if y == 0:
         ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
     else:

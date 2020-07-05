@@ -73,7 +73,7 @@ public class ArrayReadWriteFunctionExecution extends GrCUDAComputationalElement 
             CompilerDirectives.transferToInterpreter();
             throw new IndexOutOfBoundsException();
         }
-        // If the array visibility is restricted to a stream, provide the stream to memcpy; 
+        // If the array visibility is restricted to a stream, provide the stream to memcpy;
         if (array.getStreamMapping().isDefaultStream()) {
             grCUDAExecutionContext.getCudaRuntime().cudaMemcpy(pointer, array.getPointer(), numBytesToCopy);
         } else {

@@ -51,7 +51,8 @@ class BenchmarkResult:
         return os.path.join(self.DEFAULT_RES_FOLDER, file_name)
 
     def start_new_benchmark(self, name: str, policy: str, size: int,
-                            realloc: bool, reinit: bool, block_size: dict, iteration: int) -> None:
+                            realloc: bool, reinit: bool, block_size: dict,
+                            iteration: int, time_phases: bool) -> None:
         """
         Benchmark results are stored in a nested dictionary with the following structure.
         self.results["benchmarks"]->{benchmark_name}->{policy}->{size}->{realloc}->{reinit}->{actual result}
@@ -63,6 +64,8 @@ class BenchmarkResult:
         :param reinit: if re-initialization is performed
         :param block_size: dictionary that specifies the number of threads per block
         :param iteration: current iteration
+        :param time_phases: if True, measure the execution time of each phase of the benchmark.
+         Note that this introduces overheads, and might influence the total execution time
         """
 
         # 1. Benchmark name;
@@ -96,7 +99,7 @@ class BenchmarkResult:
             dict_block = {}
             dict_reinit[reinit] = dict_block
         # 6. Block size options;
-        self._dict_current = {"phases": [], "iteration": iteration}
+        self._dict_current = {"phases": [], "iteration": iteration, "time_phases": time_phases}
         if BenchmarkResult.create_block_size_key(block_size) in dict_block:
             dict_block[BenchmarkResult.create_block_size_key(block_size)] += [self._dict_current]
         else:
@@ -105,7 +108,8 @@ class BenchmarkResult:
         if self.debug:
             BenchmarkResult.log_message(
                 f"starting benchmark={name}, iter={iteration + 1}/{self.num_iterations}, "
-                f"policy={policy}, size={size}, realloc={realloc}, reinit={reinit}, block_size={BenchmarkResult.create_block_size_key(block_size)}")
+                f"policy={policy}, size={size}, realloc={realloc}, reinit={reinit}, block_size={BenchmarkResult.create_block_size_key(block_size)}, "
+                f"time_phases={time_phases}")
 
     def add_to_benchmark(self, key: str, message: object) -> None:
         """
@@ -129,11 +133,18 @@ class BenchmarkResult:
         filtered_phases = [x for x in self._dict_current["phases"] if x["name"] not in blacklisted_phases]
         tot_time_phases = sum([x["time_sec"] if "time_sec" in x else 0 for x in filtered_phases])
         self._dict_current["overhead_sec"] = total_time - tot_time_phases
-        self._dict_current["computation_sec"] = tot_time_phases
+        self._dict_current["computation_sum_phases_sec"] = tot_time_phases
         if self.debug:
             BenchmarkResult.log_message(f"\ttotal execution time: {total_time:.4f} sec," +
                                         f" overhead: {total_time - tot_time_phases:.4f} sec, " +
-                                        f" computation: {tot_time_phases:.4f} sec")
+                                        f" computation: {self._dict_current['computation_sec']:.4f} sec")
+
+    def add_computation_time(self, computation_time: float) -> None:
+        """
+        Add to the current benchmark entry the GPU computation time of the benchmark iteration
+        :param computation_time: execution time of the GPU computation in the benchmark iteration, in seconds
+        """
+        self._dict_current["computation_sec"] = computation_time
 
     def add_phase(self, phase: dict) -> None:
         """

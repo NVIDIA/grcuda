@@ -116,25 +116,24 @@ class Benchmark1(Benchmark):
 
     def execute(self) -> object:
 
+        start_comp = System.nanoTime()
+        start = 0
+
         # A, B. Call the kernel. The 2 computations are independent, and can be done in parallel;
-        start = System.nanoTime()
-        self.square_kernel(self.num_blocks, self.block_size)(self.x, self.x1, self.size)
-        self.square_kernel(self.num_blocks, self.block_size)(self.y, self.y1, self.size)
-        end = System.nanoTime()
-        self.benchmark.add_phase({"name": "square", "time_sec": (end - start) / 1_000_000_000})
+        self.execute_phase("square_1", self.square_kernel(self.num_blocks, self.block_size), self.x, self.x1, self.size)
+        self.execute_phase("square_2", self.square_kernel(self.num_blocks, self.block_size), self.y, self.y1, self.size)
 
         # C. Compute the sum of the result;
-        start = System.nanoTime()
-        self.reduce_kernel(self.num_blocks, self.block_size)(self.x1, self.y1, self.res, self.size)
-        end = System.nanoTime()
-        self.benchmark.add_phase({"name": "reduce", "time_sec": (end - start) / 1_000_000_000})
+        self.execute_phase("reduce", self.reduce_kernel(self.num_blocks, self.block_size), self.x1, self.y1, self.res, self.size)
 
         # Add a final sync step to measure the real computation time;
-        start = System.nanoTime()
+        if self.time_phases:
+            start = System.nanoTime()
         result = self.res[0]
         end = System.nanoTime()
-        self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
-
+        if self.time_phases:
+            self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
+        self.benchmark.add_computation_time((end - start_comp) / 1_000_000_000)
         self.benchmark.add_to_benchmark("gpu_result", result)
         if self.benchmark.debug:
             BenchmarkResult.log_message(f"\tgpu result: {result:.4f}")

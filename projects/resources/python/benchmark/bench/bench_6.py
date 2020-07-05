@@ -1,6 +1,7 @@
 # coding=utf-8
 import polyglot
 import time
+from java.lang import System
 import numpy as np
 from random import random, randint, seed
 
@@ -265,70 +266,47 @@ class Benchmark6(Benchmark):
     def execute(self) -> object:
 
         # Schedule the categorical Naive Bayes and Ridge Regression kernels
+        start_comp = System.nanoTime()
+        start = 0
 
         # RR - 1.
-        start = time.time()
-        self.rr_1(self.num_blocks_feat, self.block_size)(self.x, self.z, self.size, self.num_features)
-        end = time.time()
-        self.benchmark.add_phase({"name": "rr_1", "time_sec": end - start})
+        self.execute_phase("rr_1", self.rr_1(self.num_blocks_feat, self.block_size), self.x, self.z, self.size, self.num_features)
 
         # NB - 1.
-        start = time.time()
-        self.nb_1(self.num_blocks_size, self.block_size)(self.x, self.nb_feat_log_prob, self.r1, self.size, self.num_features, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "nb_1", "time_sec": end - start})
+        self.execute_phase("nb_1", self.nb_1(self.num_blocks_size, self.block_size), self.x, self.nb_feat_log_prob, self.r1, self.size, self.num_features, self.num_classes)
 
         # RR - 2.
-        start = time.time()
-        self.rr_2(self.num_blocks_size, self.block_size)(self.z, self.ridge_coeff, self.r2, self.size, self.num_features, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "rr_2", "time_sec": end - start})
+        self.execute_phase("rr_2", self.rr_2(self.num_blocks_size, self.block_size), self.z, self.ridge_coeff, self.r2, self.size, self.num_features, self.num_classes)
 
         # NB - 2.
-        start = time.time()
-        self.nb_2(self.num_blocks_size, self.block_size)(self.r1, self.nb_amax, self.size, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "nb_2", "time_sec": end - start})
+        self.execute_phase("nb_2", self.nb_2(self.num_blocks_size, self.block_size), self.r1, self.nb_amax, self.size, self.num_classes)
 
         # NB - 3.
-        start = time.time()
-        self.nb_3(self.num_blocks_size, self.block_size)(self.r1, self.nb_amax, self.nb_l, self.size, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "nb_3", "time_sec": end - start})
+        self.execute_phase("nb_3", self.nb_3(self.num_blocks_size, self.block_size), self.r1, self.nb_amax, self.nb_l, self.size, self.num_classes)
 
         # RR - 3.
-        start = time.time()
-        self.rr_3(self.num_blocks_size, self.block_size)(self.r2, self.ridge_intercept, self.size, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "rr_3", "time_sec": end - start})
+        self.execute_phase("rr_3", self.rr_3(self.num_blocks_size, self.block_size), self.r2, self.ridge_intercept, self.size, self.num_classes)
 
         # NB - 4.
-        start = time.time()
-        self.nb_4(self.num_blocks_size, self.block_size)(self.r1, self.nb_l, self.size, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "nb_4", "time_sec": end - start})
+        self.execute_phase("nb_4", self.nb_4(self.num_blocks_size, self.block_size), self.r1, self.nb_l, self.size, self.num_classes)
 
         # Ensemble results;
 
         # Softmax normalization;
-        start = time.time()
-        self.softmax(self.num_blocks_size, self.block_size)(self.r1, self.size, self.num_classes)
-        self.softmax(self.num_blocks_size, self.block_size)(self.r2, self.size, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "softmax", "time_sec": end - start})
+        self.execute_phase("softmax_1", self.softmax(self.num_blocks_size, self.block_size), self.r1, self.size, self.num_classes)
+        self.execute_phase("softmax_2", self.softmax(self.num_blocks_size, self.block_size), self.r2, self.size, self.num_classes)
 
         # Prediction;
-        start = time.time()
-        self.argmax(self.num_blocks_size, self.block_size)(self.r1, self.r2, self.r, self.size, self.num_classes)
-        end = time.time()
-        self.benchmark.add_phase({"name": "argmax", "time_sec": end - start})
+        self.execute_phase("argmax", self.argmax(self.num_blocks_size, self.block_size), self.r1, self.r2, self.r, self.size, self.num_classes)
 
         # Add a final sync step to measure the real computation time;
-        start = time.time()
+        if self.time_phases:
+            start = System.nanoTime()
         tmp = self.r[0]
-        end = time.time()
-        self.benchmark.add_phase({"name": "sync", "time_sec": end - start})
-
+        end = System.nanoTime()
+        if self.time_phases:
+            self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
+        self.benchmark.add_computation_time((end - start_comp) / 1_000_000_000)
         self.benchmark.add_to_benchmark("gpu_result", 0)
         if self.benchmark.debug:
             BenchmarkResult.log_message(f"\tgpu result: [" + ", ".join([f"{x:.4f}" for x in self.r[:10]]) + "...]")
@@ -357,7 +335,7 @@ class Benchmark6(Benchmark):
             return np.dot(X, coef.T) + intercept
 
         # Recompute the CPU result only if necessary;
-        start = time.time()
+        start = System.nanoTime()
         if self.current_iter == 0 or reinit:
             # Re-initialize the random number generator with the same seed as the GPU to generate the same values;
             seed(self.random_seed)
@@ -367,7 +345,7 @@ class Benchmark6(Benchmark):
             r_g = np.argmax(softmax(r1_g) + softmax(r2_g), axis=1)
             self.cpu_result = r_g
 
-        cpu_time = time.time() - start
+        cpu_time = System.nanoTime() - start
 
         # Compare GPU and CPU results;
         difference = 0

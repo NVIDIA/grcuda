@@ -26,9 +26,9 @@ import matplotlib.ticker as ticker
 ##############################
 
 
-INPUT_DATE_GRCUDA = "2020_07_01_20_19_24_grcuda"
-INPUT_DATE_CUDA = "2020_07_02_10_21_01_cuda"
-OUTPUT_DATE = "2020_07_02"
+INPUT_DATE_GRCUDA = "2020_07_03_10_48_22_grcuda"
+INPUT_DATE_CUDA = "2020_07_03_09_37_24_cuda"
+OUTPUT_DATE = "2020_07_032"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -70,7 +70,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
         ax.add_collection(pc)         
 
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 4))
+    ax.set_ylim((0, 2))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -132,15 +132,16 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     
     palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]][:len(data["block_size_str"].unique())]
     markers = ["o", "X", "D", "P"][:len(data["block_size_str"].unique())]
+    order = data["block_size_str"].unique()
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[x, y])
     ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
 
     ax = sns.lineplot(x="size_str", y="grcuda_cuda_speedup", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
-                      err_style="bars", linewidth=2, legend=None, sort=False, ci=None, zorder=2)
+                      err_style="bars", linewidth=2, legend=None, sort=False, ci=None, hue_order=order, zorder=2)
     data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["grcuda_cuda_speedup"].apply(gmean).reset_index()
-    order = data["block_size_str"].unique()
+    
     ax = sns.scatterplot(x="size_str", y="grcuda_cuda_speedup", hue="block_size_str", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",
           size_norm=30, legend=False, zorder=3, ci=None, markers=markers, style="block_size_str", hue_order=order, style_order=order, linewidth=0.05)
     
@@ -148,7 +149,7 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     labels_str = [str(x) for x in labels]
     
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 4))
+    ax.set_ylim((0, 2))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
