@@ -221,7 +221,8 @@ int main(int argc, char *argv[]) {
 
     int block_size_1d = options.block_size_1d;
     int block_size_2d = options.block_size_2d;
-    int num_blocks = 64;
+    int num_blocks = options.num_blocks;
+    int skip_iterations = options.skip_iterations;
     int err = 0;
 
     if (debug) {
@@ -230,6 +231,8 @@ int main(int argc, char *argv[]) {
         std::cout << "num executions=" << num_executions << std::endl;
         std::cout << "block size 1d=" << block_size_1d << std::endl;
         std::cout << "block size 2d=" << block_size_2d << std::endl;
+        std::cout << "num blocks=" << num_blocks << std::endl;
+        std::cout << "skip iteration time=" << skip_iterations << std::endl;
     }
     
     auto start = clock_type::now();

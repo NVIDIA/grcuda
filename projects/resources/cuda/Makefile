@@ -1,4 +1,4 @@
-FLAGS = -std=c++11 -O3
+FLAGS = -std=c++11 -O3 -arch=sm_50
 BIN_FOLDER=bin
 
 .PHONY: all b1 b5 b6 b7 b8
