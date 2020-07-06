@@ -26,9 +26,9 @@ import matplotlib.ticker as ticker
 ##############################
 
 
-INPUT_DATE_GRCUDA = "2020_07_03_10_48_22_grcuda"
-INPUT_DATE_CUDA = "2020_07_03_09_37_24_cuda"
-OUTPUT_DATE = "2020_07_032"
+INPUT_DATE_GRCUDA = "2020_07_06_13_21_07_grcuda"
+INPUT_DATE_CUDA = "2020_07_06_19_25_26_cuda"
+OUTPUT_DATE = "2020_07_06"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}

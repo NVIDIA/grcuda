@@ -180,7 +180,7 @@ class Benchmark6(Benchmark):
         self.nb_l = None
 
         self.num_features = 200  # self.nb_feat_log_prob_np.shape[1]
-        self.num_classes = 5  # self.nb_feat_log_prob_np.shape[0]
+        self.num_classes = 10  # self.nb_feat_log_prob_np.shape[0]
 
         self.num_blocks_size = 64
         self.num_blocks_feat = 64
