@@ -182,6 +182,12 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
      # Turn off tick lines;
     ax.xaxis.grid(False)
     
+    # Add baseline execution time annotations (median of execution time across blocks);
+    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.22), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+    for i, l in enumerate(labels):
+        baseline_median = np.median(data[data["size"] == int(l)]["baseline_time_sec_cuda"])
+        ax.annotate(f"{int(1000 * baseline_median)}", xy=(i,  -0.29), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
+    
     # Legend;   
     if x == 0 and y == 0:
         legend_labels = [f"1D={x.split(',')[0]}, 2D={x.split(',')[1]}" for x in data["block_size_str"].unique()]
@@ -245,7 +251,7 @@ def ridgeplot(data):
     # Fix the horizontal axes so that they are between 0.5 and 1.25;
     def set_x_width(label="", color="#2f2f2f"):
         ax = plt.gca()
-        ax.set_xlim(left=0, right=2)
+        ax.set_xlim(left=0.8, right=1.2)
     g.map(set_x_width)
     
     # Titles and labels;
@@ -346,11 +352,11 @@ if __name__ == "__main__":
     num_row = len(policy_list)
     fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.75,
-                    bottom=0.1,
-                    left=0.12,
+    plt.subplots_adjust(top=0.8,
+                    bottom=0.14,
+                    left=0.1,
                     right=0.95,
-                    hspace=0.7,
+                    hspace=0.8,
                     wspace=0.15)
         
     exec_time_axes = []

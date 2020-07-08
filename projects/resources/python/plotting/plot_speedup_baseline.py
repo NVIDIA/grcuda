@@ -147,6 +147,12 @@ def build_exec_time_plot_1_row(data, gridspec, y):
      # Turn off tick lines;
     ax.xaxis.grid(False)
     
+    # Add baseline execution time annotations (median of execution time across blocks);
+    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.2), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+    for i, l in enumerate(labels):
+        baseline_median = np.median(data[data["size"] == int(l)]["baseline_time_sec"])
+        ax.annotate(f"{int(1000 * baseline_median)}", xy=(i,  -0.27), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
+    
     # Legend;   
     if y == 0:
         legend_labels = [f"1D={x.split(',')[0]}, 2D={x.split(',')[1]}" for x in data["block_size_str"].unique()]
@@ -155,7 +161,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
             for i in range(len(legend_labels))]
         
         leg = fig.legend(custom_lines, legend_labels,
-                                 bbox_to_anchor=(0.95, 1), fontsize=12, ncol=len(legend_labels) // 2, handletextpad=0.1)
+                                 bbox_to_anchor=(0.955, 0.94), fontsize=12, ncol=len(legend_labels), handletextpad=0.1)
         leg.set_title("Block size:")
         leg._legend_box.align = "left"
     
@@ -215,11 +221,11 @@ if __name__ == "__main__":
     benchmark_list = sorted(data["benchmark"].unique())
     num_col = len(benchmark_list)
     num_row = 1
-    fig = plt.figure(figsize=(2.7 * num_col, 4.2 * num_row))
+    fig = plt.figure(figsize=(2.6 * num_col, 4.1 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
     plt.subplots_adjust(top=0.65,
-                    bottom=0.18,
-                    left=0.12,
+                    bottom=0.21,
+                    left=0.1,
                     right=0.95,
                     hspace=1.1,
                     wspace=0.15)
@@ -231,7 +237,7 @@ if __name__ == "__main__":
         
     plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     plt.annotate("Speedup over\nserial scheduling", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Execution time speedup\nover serial kernel scheduling", fontsize=20, x=.05, y=0.98, ha="left")
+    plt.suptitle("Execution time speedup\nover serial kernel scheduling", fontsize=20, x=.05, y=0.92, ha="left")
 
     save_plot(PLOT_DIR, "speedup_baseline_1_row_{}.{}", OUTPUT_DATE)
     

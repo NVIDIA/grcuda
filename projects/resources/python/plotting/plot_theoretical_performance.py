@@ -28,7 +28,7 @@ import matplotlib.ticker as ticker
 DEFAULT_RES_DIR = "../../../../data/results"
 
 INPUT_DATE_GRCUDA = "2020_07_02_19_13_55_grcuda"
-OUTPUT_DATE = "2020_07_03"
+OUTPUT_DATE = "2020_07_06"
 PLOT_DIR = "../../../../data/plots"
 
 B5_ITER = 10
@@ -178,7 +178,7 @@ def build_theoretical_time_plot(data, gridspec, x, y):
     return ax
 
 
-def build_theoretical_time_plot_compact(data, gridspec, x, y):
+def build_theoretical_time_plot_compact(data, gridspec, x, y, baseline_labels=None):
     
     data["size_str"] = data["size"].astype(str)
     
@@ -234,6 +234,13 @@ def build_theoretical_time_plot_compact(data, gridspec, x, y):
     
      # Turn off tick lines;
     ax.xaxis.grid(False)
+    
+    # Add baseline execution time annotations (median of execution time across blocks);
+    if baseline_labels:
+        ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.22), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+        for i, l in enumerate(labels):
+            baseline_median = baseline_labels[i]
+            ax.annotate(f"{int(1000 * baseline_median)}", xy=(i,  -0.29), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
     
     # Legend;   
     if x == 0 and y == 0:
@@ -330,18 +337,23 @@ if __name__ == "__main__":
     num_row = len(policy_list)
     fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.75,
-                    bottom=0.1,
-                    left=0.12,
+    plt.subplots_adjust(top=0.8,
+                    bottom=0.14,
+                    left=0.1,
                     right=0.95,
-                    hspace=0.7,
+                    hspace=0.8,
                     wspace=0.15)
         
     exec_time_axes = []
     for b_i, b in enumerate(benchmark_list):
+        baselines = []
+        tmp_data = data[(data["exec_policy"] == "sync") & (data["benchmark"] == b)]
+        labels = sorted(tmp_data["size"].unique())
+        for i, l in enumerate(labels):
+            baselines += [np.median(tmp_data[tmp_data["size"] == int(l)]["theoretical_time_sec"])]
         for p_i, p in enumerate(policy_list): 
             curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
-            exec_time_axes += [build_theoretical_time_plot_compact(curr_res, gs, p_i, b_i)]
+            exec_time_axes += [build_theoretical_time_plot_compact(curr_res, gs, p_i, b_i, baseline_labels=baselines)]
         
     plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
