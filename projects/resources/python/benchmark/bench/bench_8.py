@@ -226,7 +226,7 @@ class Benchmark8(Benchmark):
         self.blurred_unsharpen = None
         self.image_unsharpen = None
         self.kernel_unsharpen = None
-        self.kernel_unsharpen_diameter = 5
+        self.kernel_unsharpen_diameter = 3
         self.kernel_unsharpen_variance = 5
         self.unsharpen_amount = 0.5
 
@@ -238,7 +238,7 @@ class Benchmark8(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = 64  # i.e. 8 * number of SM on the GTX960
+        self.num_blocks_per_processor = 16  # i.e. 2 * number of SM on the GTX960
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
@@ -339,7 +339,7 @@ class Benchmark8(Benchmark):
         start = 0
 
         # Blur - Small;
-        a = 32
+        a = self.num_blocks_per_processor / 2
         self.execute_phase("blur_small",
                            self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_small_diameter**2),
                            self.image, self.blurred_small, self.size, self.size, self.kernel_small, self.kernel_small_diameter)
@@ -356,11 +356,11 @@ class Benchmark8(Benchmark):
 
         # Sobel filter (edge detection);
         self.execute_phase("sobel_small",
-                           self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (self.block_size_2d, self.block_size_2d)),
+                           self.sobel_kernel((a, a), (self.block_size_2d, self.block_size_2d)),
                            self.blurred_small, self.mask_small, self.size, self.size)
 
         self.execute_phase("sobel_large",
-                           self.sobel_kernel((self.num_blocks_per_processor, self.num_blocks_per_processor), (self.block_size_2d, self.block_size_2d)),
+                           self.sobel_kernel((a, a), (self.block_size_2d, self.block_size_2d)),
                            self.blurred_large, self.mask_large, self.size, self.size)
 
         # Extend large edge detection mask;

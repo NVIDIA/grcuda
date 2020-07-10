@@ -217,11 +217,11 @@ int main(int argc, char *argv[]) {
 
     int kernel_small_diameter = 3;
     int kernel_large_diameter = 5;
-    int kernel_unsharpen_diameter = 5;
+    int kernel_unsharpen_diameter = 3;
 
     int block_size_1d = options.block_size_1d;
     int block_size_2d = options.block_size_2d;
-    int num_blocks = options.num_blocks;
+    int num_blocks = 16; // options.num_blocks;
     int skip_iterations = options.skip_iterations;
     int err = 0;
 
@@ -294,7 +294,7 @@ int main(int argc, char *argv[]) {
         
         dim3 block_size_2d_dim(block_size_2d, block_size_2d);
         dim3 grid_size(num_blocks, num_blocks);
-        int nb = 32;
+        int nb = num_blocks / 2;
         dim3 grid_size_2(nb, nb);
 
         start = clock_type::now();
@@ -305,9 +305,9 @@ int main(int argc, char *argv[]) {
 
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_unsharpen_diameter * kernel_unsharpen_diameter * sizeof(float), s3>>>(image, blurred_unsharpen, N, N, kernel_unsharpen, kernel_unsharpen_diameter);
 
-        sobel<<<grid_size, block_size_2d_dim, 0, s1>>>(blurred_small, mask_small, N, N);
+        sobel<<<grid_size_2, block_size_2d_dim, 0, s1>>>(blurred_small, mask_small, N, N);
 
-        sobel<<<grid_size, block_size_2d_dim, 0, s2>>>(blurred_large, mask_large, N, N);
+        sobel<<<grid_size_2, block_size_2d_dim, 0, s2>>>(blurred_large, mask_large, N, N);
 
         cudaEvent_t e1, e2, e3, e4, e5;
         cudaEventCreate(&e1);
@@ -338,6 +338,14 @@ int main(int argc, char *argv[]) {
         cudaEventRecord(e4, s2);
         cudaStreamWaitEvent(s1, e4, 0);
         combine<<<num_blocks, block_size_1d, 0, s1>>>(image2, blurred_small, mask_small, image3, N * N);
+
+        // Extra
+        // cudaEventRecord(e1, s2);
+        // cudaEventRecord(e2, s3);
+        // cudaStreamWaitEvent(s1, e1, 0);
+        // cudaStreamWaitEvent(s1, e2, 0);
+        // combine<<<num_blocks, block_size_1d, 0, s1>>>(blurred_small, blurred_large, blurred_unsharpen, image3, N * N);
+
         cudaStreamSynchronize(s1);
         end = clock_type::now();
         auto tmp = chrono::duration_cast<chrono::microseconds>(end - start).count();
