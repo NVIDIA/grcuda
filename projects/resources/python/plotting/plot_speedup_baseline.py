@@ -21,8 +21,8 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-INPUT_DATE = "2020_07_06_13_21_07_grcuda"
-OUTPUT_DATE = "2020_07_06"
+INPUT_DATE = "2020_07_10_15_42_44_grcuda"
+OUTPUT_DATE = "2020_07_10"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -118,7 +118,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     labels_str = [str(x) for x in labels]
     
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 3))
+    ax.set_ylim((0.8, 1.5))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -128,7 +128,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(7))
+    ax.yaxis.set_major_locator(plt.LinearLocator(8))
     if y == 0:
         ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
     else:
@@ -184,6 +184,7 @@ if __name__ == "__main__":
     # Lists of benchmarks and block sizes;
     benchmark_list = sorted(data["benchmark"].unique())
     block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
+
     num_col = len(benchmark_list)
     num_row = len(block_size_list)
     fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))

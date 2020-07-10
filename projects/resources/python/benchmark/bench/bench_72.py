@@ -11,6 +11,8 @@ from benchmark_result import BenchmarkResult
 ##############################
 
 NUM_THREADS_PER_BLOCK = 32
+THREADS_PER_VECTOR = 4
+MAX_NUM_VECTORS_PER_BLOCK = 1024 / THREADS_PER_VECTOR
 
 SPMV_KERNEL = """
 extern "C" __global__ void spmv(const int *ptr, const int *idx, const int *val, const float *vec, float *res, int num_rows, int num_nnz) {
@@ -23,7 +25,77 @@ extern "C" __global__ void spmv(const int *ptr, const int *idx, const int *val, 
         res[n] = sum;
     }
 }
-"""
+
+extern "C" __global__ void spmv3(int* cudaRowCounter, int* d_ptr, int* d_cols, int* d_val, float* d_vector, float* d_out, int N) {
+    int i;
+    int thread_per_vector = %d;
+    float sum;
+    int row;
+    int rowStart, rowEnd;
+    int laneId = threadIdx.x %% thread_per_vector; //lane index in the vector
+    int vectorId = threadIdx.x / thread_per_vector; //vector index in the thread block
+    int warpLaneId = threadIdx.x & 31;	//lane index in the warp
+    int warpVectorId = warpLaneId / thread_per_vector;	//vector index in the warp
+    
+    __shared__ volatile int space[%d][2];
+    
+    // Get the row index
+    if (warpLaneId == 0) {
+        row = atomicAdd(cudaRowCounter, 32 / thread_per_vector);
+    }
+    // Broadcast the value to other threads in the same warp and compute the row index of each vector
+    row = __shfl_sync(0xffffffff, row, 0) + warpVectorId;
+    
+    while (row < N) {
+    
+        // Use two threads to fetch the row offset
+        if (laneId < 2) {
+            space[vectorId][laneId] = d_ptr[row + laneId];
+        }
+        rowStart = space[vectorId][0];
+        rowEnd = space[vectorId][1];
+    
+        sum = 0;
+        // Compute dot product
+        if (thread_per_vector == 32) {
+    
+            // Ensure aligned memory access
+            i = rowStart - (rowStart & (thread_per_vector - 1)) + laneId;
+    
+            // Process the unaligned part
+            if (i >= rowStart && i < rowEnd) {
+                sum += d_val[i] * d_vector[d_cols[i]];
+            }
+    
+                // Process the aligned part
+            for (i += thread_per_vector; i < rowEnd; i += thread_per_vector) {
+                sum += d_val[i] * d_vector[d_cols[i]];
+            }
+        } else {
+            for (i = rowStart + laneId; i < rowEnd; i += thread_per_vector) {
+                sum += d_val[i] * d_vector[d_cols[i]];
+            }
+        }
+        // Intra-vector reduction
+        for (i = thread_per_vector >> 1; i > 0; i >>= 1) {
+            sum += __shfl_down_sync(0xffffffff,sum, i);
+        }
+    
+        // Save the results
+        if (laneId == 0) {
+            d_out[row] = sum;
+        }
+    
+        // Get a new row index
+        if(warpLaneId == 0) {
+            row = atomicAdd(cudaRowCounter, 32 / thread_per_vector);
+        }
+        // Broadcast the row index to the other threads in the same warp and compute the row index of each vector
+        row = __shfl_sync(0xffffffff,row, 0) + warpVectorId;
+    }
+}
+""" % (THREADS_PER_VECTOR, MAX_NUM_VECTORS_PER_BLOCK)
+
 
 SUM_KERNEL = """
 __inline__ __device__ float warp_reduce(float val) {
@@ -52,6 +124,7 @@ extern "C" __global__ void divide(const float* x, float *y, float *val, int n) {
     }
 }
 """
+
 
 ##############################
 ##############################
@@ -88,6 +161,8 @@ class Benchmark7(Benchmark):
         self.hub2 = None
         self.auth_norm = None
         self.hub_norm = None
+        self.row_cnt_1 = None
+        self.row_cnt_2 = None
 
         self.ptr_cpu = None
         self.idx_cpu = None
@@ -130,9 +205,13 @@ class Benchmark7(Benchmark):
         self.auth_norm = polyglot.eval(language="grcuda", string=f"float[1]")
         self.hub_norm = polyglot.eval(language="grcuda", string=f"float[1]")
 
+        self.row_cnt_1 = polyglot.eval(language="grcuda", string=f"int[1]")
+        self.row_cnt_2 = polyglot.eval(language="grcuda", string=f"int[1]")
+
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
-        self.spmv_kernel = build_kernel(SPMV_KERNEL, "spmv", "const pointer, const pointer, const pointer, const pointer, pointer, sint32, sint32")
+        self.spmv_kernel = build_kernel(SPMV_KERNEL, "spmv3",
+                                        "pointer, const pointer, const pointer, const pointer, const pointer, pointer, sint32")
         self.sum_kernel = build_kernel(SUM_KERNEL, "sum", "const pointer, pointer, sint32")
         self.divide_kernel = build_kernel(DIVIDE_KERNEL, "divide", "const pointer, pointer, pointer, sint32")
 
@@ -197,33 +276,45 @@ class Benchmark7(Benchmark):
             self.hub2[i] = 1.0
         self.auth_norm[0] = 0.0
         self.hub_norm[0] = 0.0
+        self.row_cnt_1[0] = 0
+        self.row_cnt_2[0] = 0
 
     def execute(self) -> object:
+
+        num_blocks_spmv = int(np.ceil(self.size / self.block_size))
 
         start_comp = System.nanoTime()
         start = 0
 
         for i in range(self.num_iterations):
             # Authorities;
-            self.execute_phase(f"spmv_a_{i}", self.spmv_kernel(self.num_blocks_size, self.block_size), self.ptr2, self.idx2, self.val2, self.hub1, self.auth2, self.size, self.num_nnz)
+            self.execute_phase(f"spmv_a_{i}", self.spmv_kernel(num_blocks_spmv, self.block_size, 4 * self.block_size), self.row_cnt_1, self.ptr2,
+                               self.idx2, self.val2, self.hub1, self.auth2, self.size)
 
             # Hubs;
-            self.execute_phase(f"spmv_h_{i}", self.spmv_kernel(self.num_blocks_size, self.block_size), self.ptr, self.idx, self.val, self.auth1, self.hub2, self.size, self.num_nnz)
+            self.execute_phase(f"spmv_h_{i}", self.spmv_kernel(num_blocks_spmv, self.block_size, 4 * self.block_size), self.row_cnt_2, self.ptr,
+                               self.idx, self.val, self.auth1, self.hub2, self.size)
 
             # Normalize authorities;
-            self.execute_phase(f"sum_a_{i}", self.sum_kernel(self.num_blocks_size, self.block_size), self.auth2, self.auth_norm, self.size)
+            self.execute_phase(f"sum_a_{i}", self.sum_kernel(self.num_blocks_size, self.block_size), self.auth2,
+                               self.auth_norm, self.size)
 
             # Normalize hubs;
-            self.execute_phase(f"sum_h_{i}", self.sum_kernel(self.num_blocks_size, self.block_size), self.hub2, self.hub_norm, self.size)
+            self.execute_phase(f"sum_h_{i}", self.sum_kernel(self.num_blocks_size, self.block_size), self.hub2,
+                               self.hub_norm, self.size)
 
-            self.execute_phase(f"divide_a_{i}", self.divide_kernel(self.num_blocks_size, self.block_size), self.auth2, self.auth1, self.auth_norm, self.size)
+            self.execute_phase(f"divide_a_{i}", self.divide_kernel(self.num_blocks_size, self.block_size), self.auth2,
+                               self.auth1, self.auth_norm, self.size)
 
-            self.execute_phase(f"divide_h_{i}", self.divide_kernel(self.num_blocks_size, self.block_size), self.hub2, self.hub1, self.hub_norm, self.size)
+            self.execute_phase(f"divide_h_{i}", self.divide_kernel(self.num_blocks_size, self.block_size), self.hub2,
+                               self.hub1, self.hub_norm, self.size)
 
             if self.time_phases:
                 start = System.nanoTime()
             self.auth_norm[0] = 0.0
             self.hub_norm[0] = 0.0
+            self.row_cnt_1[0] = 0.0
+            self.row_cnt_2[0] = 0.0
             if self.time_phases:
                 end = System.nanoTime()
                 self.benchmark.add_phase({"name": f"norm_reset_{i}", "time_sec": (end - start) / 1_000_000_000})
@@ -243,7 +334,8 @@ class Benchmark7(Benchmark):
 
         self.benchmark.add_to_benchmark("gpu_result", 0)
         if self.benchmark.debug:
-            BenchmarkResult.log_message(f"\tgpu result: [" + ", ".join([f"{x:.4f}" for x in self.gpu_result[:10]]) + "...]")
+            BenchmarkResult.log_message(
+                f"\tgpu result: [" + ", ".join([f"{x:.4f}" for x in self.gpu_result[:10]]) + "...]")
 
         return self.gpu_result
 
@@ -297,5 +389,3 @@ class Benchmark7(Benchmark):
             BenchmarkResult.log_message(f"\tcpu result: [" + ", ".join([f"{x:.4f}" for x in self.cpu_result[:10]])
                                         + "...]; " +
                                         f"difference: {difference:.4f}, time: {cpu_time:.4f} sec")
-
-

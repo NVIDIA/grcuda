@@ -217,11 +217,11 @@ int main(int argc, char *argv[]) {
 
     int kernel_small_diameter = 3;
     int kernel_large_diameter = 5;
-    int kernel_unsharpen_diameter = 5;
+    int kernel_unsharpen_diameter = 3;
 
     int block_size_1d = options.block_size_1d;
     int block_size_2d = options.block_size_2d;
-    int num_blocks = options.num_blocks;
+    int num_blocks = 16; // options.num_blocks;
     int skip_iterations = options.skip_iterations;
     int err = 0;
 
@@ -298,10 +298,10 @@ int main(int argc, char *argv[]) {
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_unsharpen_diameter * kernel_unsharpen_diameter * sizeof(float)>>>(image, blurred_unsharpen, N, N, kernel_unsharpen, kernel_unsharpen_diameter);
         cudaDeviceSynchronize();
 
-        sobel<<<grid_size, block_size_2d_dim>>>(blurred_small, mask_small, N, N);
+        sobel<<<grid_size_2, block_size_2d_dim>>>(blurred_small, mask_small, N, N);
         cudaDeviceSynchronize();
 
-        sobel<<<grid_size, block_size_2d_dim>>>(blurred_large, mask_large, N, N);
+        sobel<<<grid_size_2, block_size_2d_dim>>>(blurred_large, mask_large, N, N);
         cudaDeviceSynchronize();
 
         maximum_kernel<<<num_blocks, block_size_1d>>>(mask_large, maximum, N * N);
@@ -320,6 +320,10 @@ int main(int argc, char *argv[]) {
         cudaDeviceSynchronize();
 
         combine<<<num_blocks, block_size_1d>>>(image2, blurred_small, mask_small, image3, N * N);
+        
+        // Extra
+        // combine<<<num_blocks, block_size_1d>>>(blurred_small, blurred_large, blurred_unsharpen, image3, N * N);
+
         cudaDeviceSynchronize();
 
         end = clock_type::now();

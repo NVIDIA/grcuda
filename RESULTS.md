@@ -34,12 +34,14 @@ A: x^2 ──┐
 B: x^2 ──┘
 ```
 
+<!---
 | Threads | Size | Sync time (s) | DAG (s) | DAG Speedup |
 |-----|-----|-----|-----|-----|
 |  32  |  2000000   |  0.0020 | 0.0016 |   1.25x  |  
 |      |  20000000   |  0.0125  |   0.0063  |  1.98x  |  
 |  1024  |   2000000  |  0.0013  | 0.0013   | 1x    | 
 |     |   20000000  |  0.0074 | 0.0037   |  2x | 
+-->
 
 ### Machine Learning Ensemble (bench_6)
 
@@ -69,12 +71,14 @@ NB-4: exponential, element-wise
        (...) -> NB-3(const R1,const AMAX,L) ─> NB-4(R1,const L) ─> SOFTMAX(R2) ──┘
 ```
 
+<!---
 | Threads | Size | Sync time (s) | DAG (s) | DAG Speedup |
 |-----|-----|-----|-----|-----|
 |  32  | 50000    |  0.100   |  0.068   |  1.47x  | 
 |      |  500000   | 1.160   |  0.91  |  1.27x   |  
 |  1024   | 50000    |   0.122  |  0.103   |   1.18x  | 
 |     |   500000  |  2.11  |  2.02   |   1.04x  | 
+-->
 
 ### HITS (bench_7)
 
@@ -98,7 +102,7 @@ Structure of the computation (read-only parameters that do not influence the DAG
  └─> SPMV(const A1,H2) ┴─> SUM(const H2,H_norm) ┴─> DIVIDE(H1,const H2,const H_norm) ─> CPU: H_norm=0 ─> (repeat)                       
 ```
 
-
+<!---
 | Threads | Vertices | Degree | Sync time (s) | DAG (s) | DAG Speedup |
 |-----|-----|-----|-----|-----|-----|
 |  32  | 100000  | 10       |  0.020   |  0.011   |  1.81x   | 
@@ -107,6 +111,7 @@ Structure of the computation (read-only parameters that do not influence the DAG
 |  1024   |  100000 | 10    |   0.016  |  0.012   |  1.33x   |
 |      |   | 100            | 0.191 |      0.174      |   1.09x |
 |     |   1000000   | 10    | 0.232  |  0.212  |  1.09x   | 
+-->
 
 ### Image Processing Pipeline (bench_8)
 
@@ -127,17 +132,18 @@ BLUR(image,blur2) ─> SOBEL(blur2,mask2) ┬─> MAX(mask2) ──┬─> EXTEN
 SHARPEN(image,blur3) ─> UNSHARPEN(image,blur3,sharpened) ────────────────────┴─> COMBINE(sharpened,blur2,mask2,image2) ┴─> COMBINE(image2,blur1,mask1,image3)
 ```
 
+<!---
 | Threads | Size | Sync time (s) | DAG (s) | DAG Speedup |
 |-----|-----|-----|-----|-----|
 |  32  |  2000     |  0.0241   |  0.0128   |  1.88x    | 
 |      |  4000     | 0.0890   | 0.0760   |  1.17x   |  
 |  1024  |   2000  |   0.056  |  0.040   |  1.4x  | 
 |     |   4000     |   0.179  |  0.169    |  1.05x   | 
-
+-->
 
 ## Plots
 
-![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_1_row_2020_07_06.png)
+![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_1_row_2020_07_10.png)
 
 In general, **DAG scheduling allows better GPU resource usage**: when the data-set size does not fill the GPU computational resources, DAG scheduling provides speedups close to the theoretical optimum. As expected, the speedup is less significant as the data-set size increases, as each kernel can fully use the GPU resources by itself.
 
@@ -147,7 +153,7 @@ In general, **DAG scheduling allows better GPU resource usage**: when the data-s
 
 As rule of thumb, **smaller blocks provide better speedup**: this is likely connected to the GPU architecture being better at parallelizing smaller blocks. In general, small blocks almost always provide better absolute performance, for similar reasons. Kernels in the benchmarks leverage grid-striding, meaning that the number of blocks is independent from the size of data to be processed and each thread becomes more computationally intensive as the data-size increases (instead of being constant). Currently, kernels do not use shared memory whose size depends on block size; if that was the case, bigger blocks might have an advantage.
 
-![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_2020_07_06.png)
+![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_2020_07_10.png)
 
 Performance of serial and DAG GrCUDA scheduling has been compared to the same benchmarks implemented directly in C++ and CUDA. The experimental setup and the kernels are exactly the same. In the case of CUDA asynchronous kernel execution, dependendencies and synchronization points have been computed by hand, instead of automatically. This provides a **comparison of how the overhead introduced by GrCUDA impacts the total execution time** compared to lower-level kernel scheduling.
 
@@ -155,6 +161,6 @@ In the case of serial execution, CUDA is sligthly faster than GrCUDA, as expecte
 
 As for asynchronous DAG scheduling, we see how GrCUDA is actually **faster** than CUDA in most cases. It is not clear how GrCUDA is actually faster than CUDA. The only difference is that GrCUDA uses `nvrtc` (Nvidia runtime compilation library), instead of `nvcc`. Whether this provides faster kernel launches, or generates faster code, is yet to be checked. It is likely that `nvrtc` uses the same routines as `nvcc` for compilation, although kernel launches might be faster. 
 
-![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_grcuda_cuda_compact_2020_07_06.png)
+![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_grcuda_cuda_compact_2020_07_10.png)
 
-![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_grcuda_cuda_2020_07_06.png)
+![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_06/speedup_baseline_grcuda_cuda_2020_07_10.png)

@@ -43,7 +43,8 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=Tr
         row = []
         # Parse filename;
         benchmark, exec_policy, new_stream_policy, parent_stream_policy, dependency_policy, _, block_size_1d, block_size_2d = k.split("_")[6:-1]
-        row += [benchmark, exec_policy, new_stream_policy, parent_stream_policy, dependency_policy, int(block_size_1d), int(block_size_2d), block_size_1d + "," + block_size_2d]
+        block_size_str = block_size_1d + ",8" # block_size_1d + "," + block_size_2d]
+        row += [benchmark, exec_policy, new_stream_policy, parent_stream_policy, dependency_policy, int(block_size_1d), int(block_size_2d), block_size_str]
 
         # Retrieve other information;
         total_iterations = v["num_iterations"]
@@ -124,7 +125,7 @@ def load_data_cuda(input_date: str, skip_iter=0, remove_inf=True, remove_time_ze
         tmp_data["size"] = int(size)
         tmp_data["block_size_1d"] = int(block_size_1d)
         tmp_data["block_size_2d"] = int(block_size_2d)
-        tmp_data["block_size_str"] = block_size_1d + "," + block_size_2d
+        tmp_data["block_size_str"] = block_size_1d + ",8" # block_size_1d + "," + block_size_2d
         tmp_data["total_iterations"] = int(total_iterations)
         data_tmp += [tmp_data]
         

@@ -7,7 +7,7 @@ from bench.bench_3 import Benchmark3
 from bench.bench_4 import Benchmark4
 from bench.bench_5 import Benchmark5
 from bench.bench_6 import Benchmark6
-from bench.bench_7 import Benchmark7
+from bench.bench_72 import Benchmark7
 from bench.bench_8 import Benchmark8
 from benchmark_result import BenchmarkResult
 
