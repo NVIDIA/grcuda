@@ -143,7 +143,7 @@ SHARPEN(image,blur3) ─> UNSHARPEN(image,blur3,sharpened) ───────
 
 ## Plots
 
-![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_1_row_2020_07_10.png)
+![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_1_row_2020_07_14.png)
 
 In general, **DAG scheduling allows better GPU resource usage**: when the data-set size does not fill the GPU computational resources, DAG scheduling provides speedups close to the theoretical optimum. As expected, the speedup is less significant as the data-set size increases, as each kernel can fully use the GPU resources by itself.
 
@@ -153,7 +153,7 @@ In general, **DAG scheduling allows better GPU resource usage**: when the data-s
 
 As rule of thumb, **smaller blocks provide better speedup**: this is likely connected to the GPU architecture being better at parallelizing smaller blocks. In general, small blocks almost always provide better absolute performance, for similar reasons. Kernels in the benchmarks leverage grid-striding, meaning that the number of blocks is independent from the size of data to be processed and each thread becomes more computationally intensive as the data-size increases (instead of being constant). Currently, kernels do not use shared memory whose size depends on block size; if that was the case, bigger blocks might have an advantage.
 
-![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_2020_07_10.png)
+![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_2020_07_14.png)
 
 Performance of serial and DAG GrCUDA scheduling has been compared to the same benchmarks implemented directly in C++ and CUDA. The experimental setup and the kernels are exactly the same. In the case of CUDA asynchronous kernel execution, dependendencies and synchronization points have been computed by hand, instead of automatically. This provides a **comparison of how the overhead introduced by GrCUDA impacts the total execution time** compared to lower-level kernel scheduling.
 
@@ -161,6 +161,7 @@ In the case of serial execution, CUDA is sligthly faster than GrCUDA, as expecte
 
 As for asynchronous DAG scheduling, we see how GrCUDA is actually **faster** than CUDA in most cases. It is not clear how GrCUDA is actually faster than CUDA. The only difference is that GrCUDA uses `nvrtc` (Nvidia runtime compilation library), instead of `nvcc`. Whether this provides faster kernel launches, or generates faster code, is yet to be checked. It is likely that `nvrtc` uses the same routines as `nvcc` for compilation, although kernel launches might be faster. 
 
-![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_grcuda_cuda_compact_2020_07_10.png)
+![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_grcuda_cuda_compact_2020_07_14.png)
 
-![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_grcuda_cuda_2020_07_10.png)
+![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_grcuda_cuda_2020_07_14.png)
+
