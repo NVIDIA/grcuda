@@ -278,7 +278,7 @@ graalpython --jvm --polyglot --WithThread benchmark_main.py -d -i 5 -n 1000
 
 Run a specific benchmark with custom settings
 ```
-graalpython --jvm --polyglot --WithThread --grcuda.RetrieveNewStreamPolicy=fifo --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with_const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 100 --no_cpu_validation --reinit false --realloc false -b b7
+graalpython --jvm --polyglot --WithThread --grcuda.RetrieveNewStreamPolicy=fifo --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 100 --no_cpu_validation --reinit false --realloc false -b b7
 ```
 
 * Benchmarks are defined in the `projects/resources/python/benchmark/bench` folder, 

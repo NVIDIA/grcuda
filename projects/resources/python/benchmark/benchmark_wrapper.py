@@ -10,18 +10,20 @@ from java.lang import System
 ##############################
 ##############################
 
+DEFAULT_NUM_BLOCKS = 64
+
 # Benchmark settings;
 benchmarks = [
-    # "b1",
+    "b1",
     # "b4",
     # "b5",
     # "b6",
     # "b7",
-    "b8",
+    # "b8",
 ]
 
 num_elem = {
-    "b1": [2000000, 5000000, 10000000, 20000000, 40000000],
+    "b1": [10_000_000, 20_000_000, 40_000_000, 60_000_000, 80_000_000],
     "b4": [2000000, 5000000, 10000000, 20000000, 40000000],
     "b5": [2000000, 5000000, 10000000, 15000000, 20000000],
     "b6": [20000, 50000, 200000, 500000, 800000],
@@ -31,7 +33,7 @@ num_elem = {
 
 exec_policies = ["default", "sync"]
 
-new_stream_policies = ["fifo"]
+new_stream_policies = ["always-new"]
 
 parent_stream_policies = ["disjoint"]
 
@@ -43,10 +45,10 @@ block_sizes_2d = [8, 8, 8, 8]
 ##############################
 ##############################
 
-CUDA_CMD = "./{}_{} -n {} -b {} -c {} -t {} | tee {}"
+CUDA_CMD = "./{}_{} -n {} -b {} -c {} -t {} -g {} | tee {}"
 
 
-def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, debug, output_date=None):
+def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, debug, num_blocks=DEFAULT_NUM_BLOCKS, output_date=None):
     if debug:
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
@@ -61,7 +63,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 
     if not output_date:
         output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    file_name = f"cuda_{output_date}_{benchmark}_{exec_policy}_{size}_{block_size['block_size_1d']}_{block_size['block_size_2d']}_{num_iter}.csv"
+    file_name = f"cuda_{output_date}_{benchmark}_{exec_policy}_{size}_{block_size['block_size_1d']}_{block_size['block_size_2d']}_{num_iter}_{num_blocks}.csv"
     # Create a folder if it doesn't exist;
     output_folder_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, output_date + "_cuda")
     if not os.path.exists(output_folder_path):
@@ -71,7 +73,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
     output_path = os.path.join(output_folder_path, file_name)
 
     benchmark_cmd = CUDA_CMD.format(benchmark, exec_policy, size, block_size["block_size_1d"],
-                                    block_size["block_size_2d"], num_iter, output_path)
+                                    block_size["block_size_2d"], num_iter, num_blocks, output_path)
     start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
@@ -149,6 +151,8 @@ if __name__ == "__main__":
                         help="If present, run performance tests using CUDA")
     parser.add_argument("-i", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
                         help="Number of times each benchmark is executed")
+    parser.add_argument("-g", "--num_blocks", metavar="N", type=int, default=DEFAULT_NUM_BLOCKS,
+                        help="Number of blocks in each kernel, when applicable")
     parser.add_argument("-p", "--time_phases", action="store_true",
                         help="Measure the execution time of each phase of the benchmark;"
                              " note that this introduces overheads, and might influence the total execution time")
@@ -160,6 +164,7 @@ if __name__ == "__main__":
     num_iter = args.num_iter if args.num_iter else BenchmarkResult.DEFAULT_NUM_ITER
     use_cuda = args.cuda_test
     time_phases = args.time_phases
+    num_blocks = args.num_blocks
 
     # Setup the block size for each benchmark;
     block_sizes = create_block_size_list(block_sizes_1d, block_sizes_2d)
@@ -187,7 +192,7 @@ if __name__ == "__main__":
                 for exec_policy in exec_policies:
                     # CUDA Benchmarks;
                     if use_cuda:
-                        execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, output_date=output_date)
+                        execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, num_blocks=num_blocks, output_date=output_date)
                         i += 1
                     # GrCUDA Benchmarks;
                     else:

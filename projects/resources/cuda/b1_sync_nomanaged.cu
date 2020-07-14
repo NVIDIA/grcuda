@@ -22,8 +22,7 @@ extern "C" __global__ void square(const float* x, float* y, int n) {
         // for (int j = 0; j < 4; j++) {
         //     sum += tmp + j;
         // }
-
-        y[i] = x[i] * x[i]; // tmp + tmp * tmp / 2 + tmp * tmp * tmp / 6;
+        y[i] = x[i]; // + tmp * tmp / 2 + tmp * tmp * tmp / 6;
     }
 }
 
@@ -65,11 +64,7 @@ void init(float *x, float *y, int N) {
     }
 }
 
-void reset(float *res, float *x, float *y, int N) {
-    for (int i = 0; i < N; i++) {
-        x[i] = 1.0 / (i + 1);
-        y[i] = 2.0 / (i + 1);
-    }
+void reset(float *res) {
     res[0] = 0.0;
 }
 
@@ -122,7 +117,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_executions; i++) {
         if (debug) std::cout << "\n-- iter=" << i << std::endl;
         auto start_tmp = clock_type::now();
-        reset(res, x, y, N);
+        reset(res);
         auto end_tmp = clock_type::now();
         auto reset_time = chrono::duration_cast<chrono::microseconds>(end_tmp - start_tmp).count();
         if (debug) std::cout << "  reset=" << (float) reset_time / 1000 << " ms" << std::endl;

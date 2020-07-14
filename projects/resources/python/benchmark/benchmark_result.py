@@ -11,7 +11,7 @@ class BenchmarkResult:
     DEFAULT_CPU_VALIDATION = True
     DEFAULT_REALLOC = False
     DEFAULT_REINIT = True
-    DEFAULT_RANDOM_INIT = True
+    DEFAULT_RANDOM_INIT = False
 
     def __init__(self,
                  num_iterations: int = DEFAULT_NUM_ITER,

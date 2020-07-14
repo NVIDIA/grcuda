@@ -62,27 +62,15 @@ extern "C" __global__ void bs(const float *x, float *y, int N, float R, float V,
 /////////////////////////////
 /////////////////////////////
 
-void init(float **x, float **y, float* tmp_x, int N, int K) {
+void init(float **y, float* tmp_x, int N, int K) {
     for (int j = 0; j < N; j++) {
         tmp_x[j] = 60 - 0.5 + (float) rand() / RAND_MAX;
-        for (int i = 0; i < K; i++) {
-            x[i][j] = tmp_x[j];
-            // y[i][j] = 0;
-        }
     }
 }
 
-void reset(float **x, float* y, int N, int K, cudaStream_t *s) {
-    for (int i = 0; i < K; i++) {
-        // memcpy(x[i], y, sizeof(int) * N);
-        cudaMemcpy(x[i], y, sizeof(float) * N, cudaMemcpyDefault);
-        
-        // cudaMemcpyAsync(x[i], y, sizeof(int) * N, cudaMemcpyHostToDevice, s[i]);
-        // for (int j = 0; j < N; j++) {
-        //     x[i][j] = y[j];
-        // }
-    }
-    // cudaMemPrefetchAsync(x[0], sizeof(float) * N, 0, s[0]);
+void reset(float *x, float** x_d, int N, int K) {
+    // Copy just the first vector;
+    cudaMemcpy(x_d[0], x, sizeof(float) * N, cudaMemcpyHostToDevice);
 }
 
 
@@ -116,26 +104,21 @@ int main(int argc, char *argv[]) {
     }
     
     auto start = clock_type::now();
-    float **x = (float **) malloc(sizeof(float*) * M);
     float **y = (float **) malloc(sizeof(float*) * M);
+    float **x_d = (float **) malloc(sizeof(float*) * M);
+    float **y_d = (float **) malloc(sizeof(float*) * M);
     float *tmp_x = (float *) malloc(sizeof(float) * N);
     // cudaHostRegister(tmp_x, sizeof(float) * N, 0);
 
     for (int i = 0; i < M; i++) {
-        cudaMallocManaged(&x[i], sizeof(float) * N);
-        cudaMallocManaged(&y[i], sizeof(float) * N);
-    }
-    if (debug && err) std::cout << err << std::endl;
-    
-    // Create streams;
-    cudaStream_t *s = (cudaStream_t *) malloc(sizeof(cudaStream_t) * M);
-    for (int i = 0; i < M; i++) {
-        err = cudaStreamCreate(&s[i]);
+        y[i] = (float *) malloc(sizeof(float) * N);
+        cudaMalloc(&x_d[i], sizeof(float) * N);
+        cudaMalloc(&y_d[i], sizeof(float) * N);
     }
     if (debug && err) std::cout << err << std::endl;
 
     // Initialze arrays;
-    init(x, y, tmp_x, N, M);
+    init(y, tmp_x, N, M);
 
     if (debug) std::cout << "x[0][0]=" << tmp_x[0] << std::endl;
 
@@ -149,7 +132,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_executions; i++) {
         if (debug) std::cout << "\n-- iter=" << i << std::endl;
         auto start_tmp = clock_type::now();
-        reset(x, tmp_x, N, M, s);
+        reset(tmp_x, x_d, N, M);
         auto end_tmp = clock_type::now();
         auto reset_time = chrono::duration_cast<chrono::microseconds>(end_tmp - start_tmp).count();
         if (debug) std::cout << "  reset=" << (float) reset_time / 1000 << " ms" << std::endl;
@@ -157,17 +140,13 @@ int main(int argc, char *argv[]) {
         start = clock_type::now();
 
         for (int j = 0; j < M; j++) {
-            // if (j > 0) cudaMemPrefetchAsync(y[j - 1], sizeof(float) * N, cudaCpuDeviceId, s[j - 1]);
-            bs<<<num_blocks, block_size, 0, s[j]>>>(x[j], y[j], N, R, V, T, K);
-            // if (j < M - 1) cudaMemPrefetchAsync(x[j + 1], sizeof(float) * N, 0, s[j + 1]);
+            if (j < M - 1) cudaMemcpy(x_d[j + 1], tmp_x, sizeof(float) * N, cudaMemcpyHostToDevice);
+            bs<<<num_blocks, block_size>>>(x_d[j], y_d[j], N, R, V, T, K);
+            if (j > 0) cudaMemcpy(y[j - 1], y_d[j - 1], sizeof(float) * N, cudaMemcpyDeviceToHost);
         }
 
-        // Last tile;
-        // cudaMemPrefetchAsync(y[M - 1], sizeof(float) * N, cudaCpuDeviceId, s[M - 1]);
-
-        for (int j = 0; j < M; j++) {
-            err = cudaStreamSynchronize(s[j]);
-        }
+        // Copy last piece;
+        cudaMemcpy(y[M - 1], y_d[M - 1], sizeof(float) * N, cudaMemcpyDeviceToHost);
 
         if (debug && err) std::cout << err << std::endl;
 
