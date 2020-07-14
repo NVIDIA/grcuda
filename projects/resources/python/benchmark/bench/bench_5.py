@@ -71,7 +71,7 @@ class Benchmark5(Benchmark):
         super().__init__("b5", benchmark)
         self.size = 0
 
-        self.num_blocks = 64
+        self.num_blocks = 32
         self.sum_kernel = None
         self.cpu_result = 0
         self.block_size = DEFAULT_BLOCK_SIZE_1D
@@ -107,12 +107,11 @@ class Benchmark5(Benchmark):
             self.x_tmp = np.random.uniform(-0.5, 0.5, self.size).astype(np.float32) + K
         else:
             self.x_tmp = np.zeros(self.size, dtype=np.float32) + K
-
-        # for i in range(self.size):
-        #     if self.benchmark.random_init:
-        #         self.x_tmp[i] = random() + K - 0.5
-        #     else:
-        #         self.x_tmp[i] = K
+        # seed(self.random_seed)
+        # self.x_tmp = [K] * self.size
+        # if self.benchmark.random_init:
+        #     for i in range(len(self.x_tmp)):
+        #         self.x_tmp[i] = random() - 0.5 + K
 
     @time_phase("reset_result")
     def reset_result(self) -> None:

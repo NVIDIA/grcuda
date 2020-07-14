@@ -21,8 +21,8 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-INPUT_DATE = "2020_07_10_15_42_44_grcuda"
-OUTPUT_DATE = "2020_07_10"
+INPUT_DATE = "2020_07_14_16_39_21_grcuda"
+OUTPUT_DATE = "2020_07_14"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -55,8 +55,11 @@ def build_exec_time_plot(data, gridspec, x, y):
     pc = PatchCollection(rectangles, facecolor="white", edgecolor="#2f2f2f", linewidth=0.5, zorder=3, clip_on=True, alpha=0.7)         
     ax.add_collection(pc)         
 
-    # Set the same y limits in each plot;
-    ax.set_ylim((0, 3))
+    # Top y-lim is depends on the benchmark, and is multiple of 1.5;
+    max_y_val = np.max(data.groupby(["block_size_str", "size_str"])["computation_speedup"].median())
+    fixed_max_y_val = np.ceil(max_y_val / 1.5) * 1.5
+    
+    ax.set_ylim((0.8, fixed_max_y_val))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -66,15 +69,17 @@ def build_exec_time_plot(data, gridspec, x, y):
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=45, ha="right", fontsize=9, rotation_mode="anchor")
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(7))
-    if y == 0:
-        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
-    else:
-        ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
-        # Hide tick markers;
-        for tic in ax.yaxis.get_major_ticks():
-            tic.tick1line.set_visible(False) 
-            tic.tick2line.set_visible(False) 
+    ax.yaxis.set_major_locator(plt.LinearLocator(8))
+    ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=9)
+
+    # if y == 0:
+    #     ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
+    # else:
+    #     ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
+    #     # Hide tick markers;
+    #     for tic in ax.yaxis.get_major_ticks():
+    #         tic.tick1line.set_visible(False) 
+    #         tic.tick2line.set_visible(False) 
     
     ax.set_ylabel(None)     
     ax.set_xlabel(None) 
@@ -117,8 +122,11 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     labels = sorted(data["size"].unique())
     labels_str = [str(x) for x in labels]
     
-    # Set the same y limits in each plot;
-    ax.set_ylim((0.8, 1.5))
+    # Top y-lim is depends on the benchmark, and is multiple of 1.5;
+    max_y_val = np.max(data.groupby(["block_size_str", "size_str"])["computation_speedup"].median())
+    fixed_max_y_val = np.ceil(max_y_val / 1.5) * 1.5
+    
+    ax.set_ylim((0.8, fixed_max_y_val))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -129,14 +137,16 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
     ax.yaxis.set_major_locator(plt.LinearLocator(8))
-    if y == 0:
-        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
-    else:
-        ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
-        # Hide tick markers;
-        for tic in ax.yaxis.get_major_ticks():
-            tic.tick1line.set_visible(False) 
-            tic.tick2line.set_visible(False) 
+    ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=9)
+
+    # if y == 0:
+    #     ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=12)
+    # else:
+    #     ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
+    #     # Hide tick markers;
+    #     for tic in ax.yaxis.get_major_ticks():
+    #         tic.tick1line.set_visible(False) 
+    #         tic.tick2line.set_visible(False) 
     
     ax.set_ylabel(None)     
     ax.set_xlabel(None) 
@@ -194,7 +204,7 @@ if __name__ == "__main__":
                     left=0.2,
                     right=0.90,
                     hspace=1.1,
-                    wspace=0.15)
+                    wspace=0.3)
         
     exec_time_axes = []
     for b_i, b in enumerate(benchmark_list):
@@ -229,7 +239,7 @@ if __name__ == "__main__":
                     left=0.1,
                     right=0.95,
                     hspace=1.1,
-                    wspace=0.15)
+                    wspace=0.3)
         
     exec_time_axes = []
     for b_i, b in enumerate(benchmark_list):

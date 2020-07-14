@@ -20,8 +20,7 @@ float V = 0.3;
 float T = 1.0;
 float K = 60.0;
 
-__device__ inline float cndGPU(float d)
-{
+__device__ inline float cndGPU(float d) {
     const float       A1 = 0.31938153f;
     const float       A2 = -0.356563782f;
     const float       A3 = 1.781477937f;
@@ -42,7 +41,7 @@ __device__ inline float cndGPU(float d)
     return cnd;
 }
 
-extern "C" __global__ void bs(float *x, float *y, int N, float R, float V, float T, float K) {
+extern "C" __global__ void bs(const float *x, float *y, int N, float R, float V, float T, float K) {
 
     float sqrtT = __fdividef(1.0F, rsqrtf(T));
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
@@ -68,7 +67,7 @@ void init(float **x, float **y, float* tmp_x, int N, int K) {
         tmp_x[j] = 60 - 0.5 + (float) rand() / RAND_MAX;
         for (int i = 0; i < K; i++) {
             x[i][j] = tmp_x[j];
-            y[i][j] = 0;
+            // y[i][j] = 0;
         }
     }
 }
@@ -76,10 +75,10 @@ void init(float **x, float **y, float* tmp_x, int N, int K) {
 void reset(float **x, float* y, int N, int K) {
     for (int i = 0; i < K; i++) {
         // memcpy(x[i], y, sizeof(int) * N);
-        cudaMemcpy(x[i], y, sizeof(int) * N, cudaMemcpyDefault);
+        cudaMemcpy(x[i], y, sizeof(float) * N, cudaMemcpyDefault);
         // cudaMemcpyAsync(x[i], y, sizeof(int) * N, cudaMemcpyHostToDevice, s[i]);
         // for (int j = 0; j < N; j++) {
-        //     x[i][j] = y[j];
+            // x[i][j] = y[j];
         // }
     }
 }
@@ -116,7 +115,7 @@ int main(int argc, char *argv[]) {
     float **x = (float **) malloc(sizeof(float*) * M);
     float **y = (float **) malloc(sizeof(float*) * M);
     float *tmp_x = (float *) malloc(sizeof(float) * N);
-    // cudaHostRegister(tmp_x, sizeof(float) * N, 0);
+    cudaHostRegister(tmp_x, sizeof(float) * N, 0);
 
     for (int i = 0; i < M; i++) {
         cudaMallocManaged(&x[i], sizeof(float) * N);

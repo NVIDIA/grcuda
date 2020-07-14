@@ -113,7 +113,10 @@ def load_data_cuda(input_date: str, skip_iter=0, remove_inf=True, remove_time_ze
     data_tmp = []
     for f in os.listdir(input_path):
         # Parse filename;
-        benchmark, exec_policy, size, block_size_1d, block_size_2d, total_iterations = os.path.splitext(f)[0].split("_")[7:]
+        try:
+            benchmark, exec_policy, size, block_size_1d, block_size_2d, total_iterations, num_blocks = os.path.splitext(f)[0].split("_")[7:]
+        except ValueError:
+            benchmark, exec_policy, size, block_size_1d, block_size_2d, total_iterations, num_blocks = os.path.splitext(f)[0].split("_")[7:] + [64]
         tmp_data = pd.read_csv(os.path.join(input_path, f))
         
         # Skip first lines;

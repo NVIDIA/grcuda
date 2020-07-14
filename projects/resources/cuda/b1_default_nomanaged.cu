@@ -23,7 +23,7 @@ extern "C" __global__ void square(const float* x, float* y, int n) {
         //     sum += tmp + j;
         // }
 
-        y[i] = x[i] * x[i]; // tmp + tmp * tmp / 2 + tmp * tmp * tmp / 6;
+        y[i] = x[i]; // tmp + tmp * tmp / 2 + tmp * tmp * tmp / 6;
     }
 }
 
@@ -65,12 +65,9 @@ void init(float *x, float *y, int N) {
     }
 }
 
-void reset(float *res, float *x, float *y, int N) {
-    for (int i = 0; i < N; i++) {
-        x[i] = 1.0 / (i + 1);
-        y[i] = 2.0 / (i + 1);
-    }
+void reset(float *res, float *res_d) {
     res[0] = 0.0;
+    cudaMemcpy(res_d, res, sizeof(float), cudaMemcpyHostToDevice);
 }
 
 /////////////////////////////
@@ -92,7 +89,7 @@ int main(int argc, char *argv[]) {
     int err = 0;
 
     if (debug) {
-        std::cout << "running b1 sync" << std::endl;
+        std::cout << "running b1 dag" << std::endl;
         std::cout << "N=" << N << std::endl;
         std::cout << "num executions=" << num_executions << std::endl;
         std::cout << "block size 1d=" << block_size << std::endl;
@@ -101,12 +98,25 @@ int main(int argc, char *argv[]) {
     }
     
     auto start = clock_type::now();
-	float *x, *y, *x1, *y1, *res;
-    err = cudaMallocManaged(&x, sizeof(float) * N);
-    err = cudaMallocManaged(&y, sizeof(float) * N);
-    err = cudaMallocManaged(&x1, sizeof(float) * N);
-    err = cudaMallocManaged(&y1, sizeof(float) * N);
-    err = cudaMallocManaged(&res, sizeof(float));
+    float *x_d, *y_d, *x1_d, *y1_d, *res_d, *x, *y, *res;
+    x = (float*) malloc(sizeof(float) * N);
+    y = (float*) malloc(sizeof(float) * N);
+    res = (float*) malloc(sizeof(float));
+    err = cudaMalloc(&x_d, sizeof(float) * N);
+    err = cudaMalloc(&y_d, sizeof(float) * N);
+    err = cudaMalloc(&x1_d, sizeof(float) * N);
+    err = cudaMalloc(&y1_d, sizeof(float) * N);
+    err = cudaMalloc(&res_d, sizeof(float));
+    if (debug && err) std::cout << err << std::endl;
+
+    cudaHostRegister(x, sizeof(float) * N, 0);
+    cudaHostRegister(y, sizeof(float) * N, 0);
+    cudaHostRegister(res, sizeof(float), 0);
+
+    // Create streams;
+    cudaStream_t s1, s2;
+    err = cudaStreamCreate(&s1);
+    err = cudaStreamCreate(&s2);
     if (debug && err) std::cout << err << std::endl;
 
     // Initialze arrays;
@@ -122,19 +132,29 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_executions; i++) {
         if (debug) std::cout << "\n-- iter=" << i << std::endl;
         auto start_tmp = clock_type::now();
-        reset(res, x, y, N);
+        reset(res, res_d);
         auto end_tmp = clock_type::now();
         auto reset_time = chrono::duration_cast<chrono::microseconds>(end_tmp - start_tmp).count();
         if (debug) std::cout << "  reset=" << (float) reset_time / 1000 << " ms" << std::endl;
         
         start = clock_type::now();
 
-        square<<<num_blocks, block_size>>>(x, x1, N);
-        err = cudaDeviceSynchronize();
-        square<<<num_blocks, block_size>>>(y, y1, N);
-        err = cudaDeviceSynchronize();
-        reduce<<<num_blocks, block_size>>>(x1, y1, res, N);        
-        err = cudaDeviceSynchronize();
+        cudaMemcpyAsync(x_d, x, sizeof(float) * N, cudaMemcpyHostToDevice, s1);
+        cudaMemcpyAsync(y_d, y, sizeof(float) * N, cudaMemcpyHostToDevice, s2);
+
+        square<<<num_blocks, block_size, 0, s1>>>(x_d, x1_d, N);
+        square<<<num_blocks, block_size, 0, s2>>>(y_d, y1_d, N);
+
+        // Stream 1 waits stream 2;
+        cudaEvent_t e1;
+        cudaEventCreate(&e1);
+        cudaEventRecord(e1, s2);
+        cudaStreamWaitEvent(s1, e1, 0);
+
+        reduce<<<num_blocks, block_size, 0, s1>>>(x1_d, y1_d, res_d, N);       
+        cudaMemcpyAsync(res, res_d, sizeof(float), cudaMemcpyDeviceToHost, s1);
+        cudaStreamSynchronize(s1); 
+
         if (debug && err) std::cout << err << std::endl;
 
         end = clock_type::now();

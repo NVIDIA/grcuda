@@ -11,7 +11,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 
 SQUARE_KERNEL = """
-extern "C" __global__ void square(const float* x, float* y, int n) {
+extern "C" __global__ void square(float* x, float* y, int n) {
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         y[i] = x[i] * x[i];
     }
@@ -37,7 +37,7 @@ __inline__ __device__ float warp_reduce(float val) {
     return val;
 }
 
-__global__ void reduce(const float *x, const float *y, float* z, int N) {
+__global__ void reduce(float *x, float *y, float* z, int N) {
     int warp_size = 32;
     float sum = float(0);
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
@@ -95,7 +95,7 @@ class Benchmark1(Benchmark):
 
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
-        self.square_kernel = build_kernel(SQUARE_KERNEL, "square", "const pointer, pointer, sint32")
+        self.square_kernel = build_kernel(SQUARE_KERNEL, "square", "pointer, pointer, sint32")
         self.reduce_kernel = build_kernel(REDUCE_KERNEL, "reduce", "const pointer, const pointer, pointer, sint32")
 
     @time_phase("initialization")
@@ -112,6 +112,15 @@ class Benchmark1(Benchmark):
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
+        if self.benchmark.random_init:
+            seed(self.random_seed)
+            for i in range(self.size):
+                self.x[i] = random()
+                self.y[i] = 2 * random()
+        else:
+            for i in range(self.size):
+                self.x[i] = 1 / (i + 1)
+                self.y[i] = 2 / (i + 1)
         self.res[0] = 0.0
 
     def execute(self) -> object:

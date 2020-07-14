@@ -17,13 +17,13 @@ using clock_type = chrono::high_resolution_clock;
 
 extern "C" __global__ void square(const float* x, float* y, int n) {
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
-        float tmp = x[i];
-        float sum = 0;
+        // float tmp = x[i];
+        // float sum = 0;
         // for (int j = 0; j < 4; j++) {
         //     sum += tmp + j;
         // }
 
-        y[i] = tmp + tmp * tmp / 2 + tmp * tmp * tmp / 6;
+        y[i] = x[i] * x[i]; // tmp + tmp * tmp / 2 + tmp * tmp * tmp / 6;
     }
 }
 
@@ -65,7 +65,11 @@ void init(float *x, float *y, int N) {
     }
 }
 
-void reset(float *res) {
+void reset(float *res, float *x, float *y, int N) {
+    for (int i = 0; i < N; i++) {
+        x[i] = 1.0 / (i + 1);
+        y[i] = 2.0 / (i + 1);
+    }
     res[0] = 0.0;
 }
 
@@ -114,6 +118,8 @@ int main(int argc, char *argv[]) {
     // Initialze arrays;
     init(x, y, N);
 
+    
+
     auto end = clock_type::now();
     if (debug) std::cout << "init=" << (float) chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000 << " ms" << std::endl;
 
@@ -124,12 +130,20 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_executions; i++) {
         if (debug) std::cout << "\n-- iter=" << i << std::endl;
         auto start_tmp = clock_type::now();
-        reset(res);
+        reset(res, x, y, N);
         auto end_tmp = clock_type::now();
         auto reset_time = chrono::duration_cast<chrono::microseconds>(end_tmp - start_tmp).count();
         if (debug) std::cout << "  reset=" << (float) reset_time / 1000 << " ms" << std::endl;
         
         start = clock_type::now();
+
+        cudaStreamAttachMemAsync(s1, x, sizeof(float) * N);
+        cudaStreamAttachMemAsync(s1, x1, sizeof(float) * N);
+        cudaStreamAttachMemAsync(s2, y, sizeof(float) * N);
+        cudaStreamAttachMemAsync(s2, y1, sizeof(float) * N);
+
+        // cudaMemPrefetchAsync(x, sizeof(float) * N, 0, s1);
+        // cudaMemPrefetchAsync(y, sizeof(float) * N, 0, s2);
 
         square<<<num_blocks, block_size, 0, s1>>>(x, x1, N);
         square<<<num_blocks, block_size, 0, s2>>>(y, y1, N);

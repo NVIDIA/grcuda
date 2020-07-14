@@ -67,7 +67,7 @@ public class GrCUDAExecutionContextWithConstDependencyTest {
     @Test
     public void dependencyPipelineSimpleTest() {
 
-        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with_const").allowAllAccess(true).build()) {
+        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with-const").allowAllAccess(true).build()) {
 
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
@@ -101,7 +101,7 @@ public class GrCUDAExecutionContextWithConstDependencyTest {
     @Test
     public void dependencyPipelineReadXTest() {
 
-        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with_const").allowAllAccess(true).build()) {
+        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with-const").allowAllAccess(true).build()) {
 
             final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
@@ -141,7 +141,7 @@ public class GrCUDAExecutionContextWithConstDependencyTest {
     public void dependencyPipelineSplitComputationTest() {
         // Test a computation of form A(1) --> B(1r, 2)
         //                                 \-> C(1r, 3)
-        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with_const").allowAllAccess(true).build()) {
+        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with-const").allowAllAccess(true).build()) {
 
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
@@ -182,7 +182,7 @@ public class GrCUDAExecutionContextWithConstDependencyTest {
     public void dependencyPipelineDiamondTest() {
         // Test a computation of form A(1) --> B(1r, 2) -> D(1)
         //                                 \-> C(1r, 3) -/
-        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with_const").allowAllAccess(true).build()) {
+        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with-const").allowAllAccess(true).build()) {
 
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
@@ -224,7 +224,7 @@ public class GrCUDAExecutionContextWithConstDependencyTest {
     @Test
     public void dependencyPipelineSimple2Test() {
 
-        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with_const").allowAllAccess(true).build()) {
+        try (Context context = Context.newBuilder().option("grcuda.DependencyPolicy", "with-const").allowAllAccess(true).build()) {
 
             final int numElements = 10000;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;

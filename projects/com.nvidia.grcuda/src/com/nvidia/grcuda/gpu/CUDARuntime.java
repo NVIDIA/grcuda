@@ -385,18 +385,18 @@ public final class CUDARuntime {
     @TruffleBoundary
     public void cudaStreamAttachMemAsync(CUDAStream stream, AbstractArray array) {
 
-//        System.out.println("\t* attach array=" + System.identityHashCode(array) + " to " + stream);
 
         final int MEM_ATTACH_SINGLE = 0x04;
         final int MEM_ATTACH_GLOBAL = 0x01;
         try {
             Object callable = CUDARuntimeFunction.CUDA_STREAMATTACHMEMASYNC.getSymbol(this);
             int flag = stream.isDefaultStream() ? MEM_ATTACH_GLOBAL : MEM_ATTACH_SINGLE;
+//            System.out.println("\t* attach array=" + System.identityHashCode(array) + " to " + stream + "; flag=" + flag);
 
             // Book-keeping of the stream attachment within the array;
             array.setStreamMapping(stream);
 
-            Object result = INTEROP.execute(callable, stream.getRawPointer(), array.getPointer(), 0, flag);
+            Object result = INTEROP.execute(callable, stream.getRawPointer(), array.getPointer(), array.getSizeBytes(), flag);
             checkCUDAReturnCode(result, "cudaStreamAttachMemAsync");
         } catch (InteropException e) {
             throw new GrCUDAException(e);

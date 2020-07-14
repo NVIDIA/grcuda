@@ -205,6 +205,7 @@ public final class GrCUDAContext {
             case "default":
                 return ExecutionPolicyEnum.DEFAULT;
             default:
+                System.out.println("Warning: unknown execution policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_EXECUTION_POLICY);
                 return GrCUDAContext.DEFAULT_EXECUTION_POLICY;
         }
     }
@@ -217,6 +218,7 @@ public final class GrCUDAContext {
             case "default":
                 return DependencyPolicyEnum.DEFAULT;
             default:
+                System.out.println("Warning: unknown dependency policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_DEPENDENCY_POLICY);
                 return GrCUDAContext.DEFAULT_DEPENDENCY_POLICY;
         }
     }
@@ -229,6 +231,7 @@ public final class GrCUDAContext {
             case "always-new":
                 return RetrieveNewStreamPolicyEnum.ALWAYS_NEW;
             default:
+                System.out.println("Warning: unknown new stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY);
                 return GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY;
         }
     }
@@ -240,6 +243,7 @@ public final class GrCUDAContext {
             case "default":
                 return RetrieveParentStreamPolicyEnum.DEFAULT;
             default:
+                System.out.println("Warning: unknown parent stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY);
                 return GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY;
         }
     }
