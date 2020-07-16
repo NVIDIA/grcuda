@@ -190,4 +190,14 @@ These results are further reaffirmed by looking at the execution time distributi
 
 ![Relative exec. time w.r.t. CUDA, distribution](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_ridgeplot_2020_07_15.png)
 
+By measuring the execution time of each phase of a benchmark, it is possible to estimate the fastest theoretical time of the benchmark.
+ This theoretical time assumes a *GPU* with infinite resources and infinite host-device capacity, so that it's always possible to transfer data without having to wait for the current transfer to end 
+ (transfer bandwidth is still limited by PCIe 3.0 speed, at 16 GB/s bidirectional). We compute theoretical speed for each benchmark by looking at the dependencies between computations, 
+ and understanding which computations, given infinite resources, could be scheduled in parallel without any slow-down.
+
+DAG scheduling always provides execution times closer to the theoretical optimum than serial scheduling, as expected.
+ In many benchmarks we are very close to the theoretical optimum, showing how DAG scheduling provides better GPU resource utilization and transfer-computation overlap.
+  Not surprisingly, the only case where results are significantly lower than the optimum is `bench_5`, as it is composed of many independent computations that could in principle run in parallel: this is clearly not possible in practice, although DAG scheduling proves once again to be better than serial execution.
+
+![Relative exec. time w.r.t. theoretical minimum time](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_16/speedup_theoretical_time_compact_2020_07_16.png)
 
