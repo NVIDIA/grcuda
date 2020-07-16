@@ -105,7 +105,7 @@ __inline__ __device__ float warp_reduce(float val) {
     return val;
 }
 
-extern "C" __global__ void sum(const float *x, float* z, int N) {
+extern "C" __global__ void sum(float *x, float* z, int N) {
     int warp_size = 32;
     float sum = float(0);
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
@@ -118,7 +118,7 @@ extern "C" __global__ void sum(const float *x, float* z, int N) {
 """
 
 DIVIDE_KERNEL = """
-extern "C" __global__ void divide(const float* x, float *y, float *val, int n) {
+extern "C" __global__ void divide(float* x, float *y, float *val, int n) {
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         y[i] = x[i] / val[0];
     }
@@ -148,7 +148,7 @@ class Benchmark7(Benchmark):
         self.size = 0
         self.num_nnz = 0
         self.max_degree = 3  # Each vertex has 3 edges;
-        self.num_iterations = 10
+        self.num_iterations = 5
         self.ptr = None
         self.idx = None
         self.val = None
@@ -211,9 +211,9 @@ class Benchmark7(Benchmark):
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
         self.spmv_kernel = build_kernel(SPMV_KERNEL, "spmv3",
-                                        "pointer, const pointer, const pointer, const pointer, const pointer, pointer, sint32")
-        self.sum_kernel = build_kernel(SUM_KERNEL, "sum", "const pointer, pointer, sint32")
-        self.divide_kernel = build_kernel(DIVIDE_KERNEL, "divide", "const pointer, pointer, pointer, sint32")
+                                        "pointer, pointer, pointer, pointer, pointer, pointer, sint32")
+        self.sum_kernel = build_kernel(SUM_KERNEL, "sum", "pointer, pointer, sint32")
+        self.divide_kernel = build_kernel(DIVIDE_KERNEL, "divide", "pointer, pointer, pointer, sint32")
 
     @time_phase("initialization")
     def init(self):
@@ -258,6 +258,18 @@ class Benchmark7(Benchmark):
         # self.idx2.copyFrom(int(np.int64(self.idx2_cpu.ctypes.data)), len(self.idx2))
         # self.val.copyFrom(int(np.int64(self.val_cpu.ctypes.data)), len(self.val))
         # self.val2.copyFrom(int(np.int64(self.val2_cpu.ctypes.data)), len(self.val2))
+
+        # for i in range(len(self.ptr_cpu)):
+        #     self.ptr[i] = self.ptr_cpu[i]
+        #     self.ptr2[i] = self.ptr2_cpu[i]
+        # for i in range(len(self.idx_cpu)):
+        #     self.idx[i] = self.idx_cpu[i]
+        #     self.idx2[i] = self.idx2_cpu[i]
+        #     self.val[i] = self.val_cpu[i]
+        #     self.val2[i] = self.val2_cpu[i]
+
+    @time_phase("reset_result")
+    def reset_result(self) -> None:
         for i in range(len(self.ptr_cpu)):
             self.ptr[i] = self.ptr_cpu[i]
             self.ptr2[i] = self.ptr2_cpu[i]
@@ -266,9 +278,6 @@ class Benchmark7(Benchmark):
             self.idx2[i] = self.idx2_cpu[i]
             self.val[i] = self.val_cpu[i]
             self.val2[i] = self.val2_cpu[i]
-
-    @time_phase("reset_result")
-    def reset_result(self) -> None:
         for i in range(self.size):
             self.auth1[i] = 1.0
             self.auth2[i] = 1.0

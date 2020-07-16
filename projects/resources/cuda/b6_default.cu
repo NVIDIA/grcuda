@@ -223,6 +223,15 @@ int main(int argc, char *argv[]) {
         
         start = clock_type::now();
 
+        cudaStreamAttachMemAsync(s1, z, 0);
+        cudaStreamAttachMemAsync(s2, nb_feat_log_prob, 0);
+        cudaStreamAttachMemAsync(s2, r1, 0);
+        cudaStreamAttachMemAsync(s1, ridge_coeff, 0);
+        cudaStreamAttachMemAsync(s1, r2, 0);
+        cudaStreamAttachMemAsync(s2, nb_amax, 0);
+        cudaStreamAttachMemAsync(s2, nb_l, 0);
+        cudaStreamAttachMemAsync(s1, ridge_intercept, 0);
+
         rr_1<<<num_blocks, block_size, 0, s1>>>(x, z, N, num_features);
        
         nb_1<<<num_blocks, block_size, 0, s2>>>(x, nb_feat_log_prob, r1, N, num_features, num_classes);

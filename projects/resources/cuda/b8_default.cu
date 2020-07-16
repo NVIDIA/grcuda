@@ -299,6 +299,15 @@ int main(int argc, char *argv[]) {
 
         start = clock_type::now();
 
+        cudaStreamAttachMemAsync(s1, blurred_small, 0);
+        cudaStreamAttachMemAsync(s1, mask_small, 0);
+        cudaStreamAttachMemAsync(s2, blurred_large, 0);
+        cudaStreamAttachMemAsync(s2, mask_large, 0);
+        cudaStreamAttachMemAsync(s3, blurred_unsharpen, 0);
+        cudaStreamAttachMemAsync(s3, image_unsharpen, 0);
+        cudaStreamAttachMemAsync(s2, image2, 0);
+        cudaStreamAttachMemAsync(s3, image3, 0);
+
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float), s1>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
 
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_large_diameter * kernel_large_diameter * sizeof(float), s2>>>(image, blurred_large, N, N, kernel_large, kernel_large_diameter);
@@ -337,6 +346,8 @@ int main(int argc, char *argv[]) {
         combine<<<num_blocks, block_size_1d, 0, s2>>>(image_unsharpen, blurred_large, mask_large, image2, N * N);
         cudaEventRecord(e4, s2);
         cudaStreamWaitEvent(s1, e4, 0);
+        cudaStreamAttachMemAsync(s1, image2, 0);
+
         combine<<<num_blocks, block_size_1d, 0, s1>>>(image2, blurred_small, mask_small, image3, N * N);
 
         // Extra
