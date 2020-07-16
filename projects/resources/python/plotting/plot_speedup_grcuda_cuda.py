@@ -26,9 +26,9 @@ import matplotlib.ticker as ticker
 ##############################
 
 
-INPUT_DATE_GRCUDA = "2020_07_14_16_39_21_grcuda"
-INPUT_DATE_CUDA = "2020_07_14_17_17_57_cuda"
-OUTPUT_DATE = "2020_07_14"
+INPUT_DATE_GRCUDA = "2020_07_15_15_13_52_grcuda"
+INPUT_DATE_CUDA = "2020_07_15_22_29_46_cuda"
+OUTPUT_DATE = "2020_07_15"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -217,30 +217,39 @@ def ridgeplot(data):
     plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     
     # Plot only some data, for now;
-    data = data[(data["benchmark"] == "b8") & (data["exec_policy"] == "default")].copy()
+    data = data[(data["block_size_1d"] == 256) & (data["exec_policy"] == "default")].copy()
+    # data = data[(data["exec_policy"] == "default")].copy()
+
+    # For each benchmark, keep the data relative to the largest data size;
+    biggest_sizes = data.groupby(["benchmark"])["size"].max().to_dict()
+    data_filtered = []
+    for k, v in biggest_sizes.items():
+        data_filtered += [data[(data["benchmark"] == k) & (data["size"] == v)]]
+    data = pd.concat(data_filtered).reset_index(drop=True)
     
     # Normalize execution times so that the CUDA baseline has median 1;
     data["normalized_time_cuda"] = 1
     data["normalized_time_grcuda"] = 1
     
-    block_sizes = data["block_size_str"].unique()
-    sizes = data["size"].unique()
-    
-    grouped_data = data.groupby(["block_size_str", "size"], as_index=False)
+    # grouped_data = data.groupby(["benchmark", "size", "block_size_str"], as_index=False)
+    grouped_data = data.groupby(["benchmark"], as_index=False)
     for group_key, group in grouped_data:
         # Compute the median baseline computation time;
         median_baseline = np.median(group["computation_sec_cuda"])
         # Compute the speedup for this group;
         data.loc[group.index, "normalized_time_cuda"] = group["computation_sec_cuda"].values / median_baseline
         data.loc[group.index, "normalized_time_grcuda"] = group["computation_sec_grcuda"].values / median_baseline
+        
+    benchmarks = data["benchmark"].unique()
+    block_sizes = data["block_size_str"].unique()
+    sizes = data["size"].unique()
             
     # Initialize the plot;
-    g = sns.FacetGrid(data, row="size", aspect=5, height=1, sharey=False, col="block_size_str")
+    g = sns.FacetGrid(data, row="benchmark", aspect=5, height=1.2, sharey=False, sharex=False,)
 
     # Plot a vertical line corresponding to speedup = 1;
     g.map(plt.axvline, x=1, lw=0.75, clip_on=True, zorder=0, linestyle="--", ymax=0.5)         
     # Plot the densities. Plot them twice as the second time we plot just the white contour;     
-                                                                            
     g.map(sns.kdeplot, "normalized_time_cuda", clip_on=False, shade=True, alpha=0.6, lw=1, color=COLORS["peach1"], zorder=2)  
     g.map(sns.kdeplot, "normalized_time_grcuda", clip_on=False, shade=True, alpha=0.6, lw=1, color=COLORS["b8"], zorder=2)
     g.map(sns.kdeplot, "normalized_time_cuda", clip_on=False, color="w", lw=1.1, zorder=2)
@@ -248,11 +257,33 @@ def ridgeplot(data):
     # Plot the horizontal line below the densities;
     g.map(plt.axhline, y=0, lw=0.75, clip_on=False, zorder=5, color="0.6")
     
-    # Fix the horizontal axes so that they are between 0.5 and 1.25;
-    def set_x_width(label="", color="#2f2f2f"):
-        ax = plt.gca()
-        ax.set_xlim(left=0.8, right=1.2)
-    g.map(set_x_width)
+    # Write the x-axis tick labels using percentages;
+    @ticker.FuncFormatter
+    def major_formatter(x, pos):
+        return f"{x:.2f}x"
+    # Fix the horizontal axes.
+    # For each benchmark, find the smallest and largest values;    
+    offsets = {
+        "b1": [0.95, 1.02],
+        "b5": [0.95, 1.05],
+        "b6": [0.95, 1.05],
+        "b7": [0.99, 0.99],
+        "b8": [0.87, 1.13]}
+    # offsets = {
+    #     "b1": [0.85, 1.15],
+    #     "b5": [0.95, 1.05],
+    #     "b6": [0.95, 1.05],
+    #     "b7": [0.98, 1.02],
+    #     "b8": [0.87, 1.13]}
+    
+    for i, ax in enumerate(g.axes[:, 0]):
+        b = benchmarks[i]
+        d = data[data["benchmark"] == b]
+        max_v = offsets[b][1] * max(d["normalized_time_grcuda"].max(), d["normalized_time_cuda"].max())
+        min_v = offsets[b][0] * min(d["normalized_time_grcuda"].min(), d["normalized_time_cuda"].min()) 
+        print(min_v, max_v)
+        ax.set_xlim(left=min_v, right=max_v)
+        ax.xaxis.set_major_formatter(major_formatter)
     
     # Titles and labels;
     g.set_titles("")
@@ -260,23 +291,19 @@ def ridgeplot(data):
     
     # Add block size labels;
     for i, ax in enumerate(g.axes[-1]):
-        ax.annotate("1D={}, 2D={}".format(*block_sizes[i].split(",")), xy=(0.5, -0.8), xycoords="axes fraction", ha="center", color="#2f2f2f", fontsize=14)      
+        ax.annotate("1D={}, 2D={}".format(*block_sizes[i].split(",")), xy=(0.5, -0.8), xycoords="axes fraction", ha="center", color="#2f2f2f", fontsize=14)    
     for i, ax in enumerate(g.axes[:, 0]):
-        ax.annotate(f"{get_exp_label(sizes[i])}", xy=(-0.1, 0.05), xycoords="axes fraction", ha="center", color="#2f2f2f", fontsize=14)      
-    
+        # ax.annotate(f"{get_exp_label(sizes[i])}", xy=(-0.1, 0.05), xycoords="axes fraction", ha="center", color="#2f2f2f", fontsize=14)      
+        ax.annotate(f"{BENCHMARK_NAMES[benchmarks[i]]}", xy=(0.0, 0.09), xycoords="axes fraction", ha="left", color="#2f2f2f", fontsize=12)    
+
     # Fix the borders. This must be done here as the previous operations update the default values;
     g.fig.subplots_adjust(top=0.83,
                       bottom=0.15,
                       right=0.95,
                       left=0.05,
-                      hspace=-0.20,
+                      hspace=0.4,
                       wspace=0.1)
     
-    # Write the x-axis tick labels using percentages;
-    @ticker.FuncFormatter
-    def major_formatter(x, pos):
-        return f"{x:.1f}x"
-    g.fig.get_axes()[-1].xaxis.set_major_formatter(major_formatter)
     g.set(yticks=[])
     g.despine(bottom=True, left=True)
 
@@ -284,13 +311,13 @@ def ridgeplot(data):
     custom_lines = [Patch(facecolor=COLORS["peach1"], edgecolor="#2f2f2f", label="CUDA"),
                     Patch(facecolor=COLORS["b8"], edgecolor="#2f2f2f", label="GrCUDA"),
                     ]
-    leg = g.fig.legend(custom_lines, ["CUDA", "GrCUDA"], bbox_to_anchor=(0.97, 0.98), fontsize=15)
+    leg = g.fig.legend(custom_lines, ["CUDA", "GrCUDA"], bbox_to_anchor=(0.97, 0.98), fontsize=12)
     leg.set_title(None)
     leg._legend_box.align = "left"
     leg.get_frame().set_facecolor('white')
     
     # Main plot title;
-    g.fig.suptitle("Relative Exec. Time Distribution,\nCUDA vs GrCUDA", ha="left", x=0.05, y=0.95, fontsize=18)
+    g.fig.suptitle("Exec. Time Distribution,\nCUDA vs GrCUDA", ha="left", x=0.05, y=0.95, fontsize=18)
     
     return g
 
@@ -302,74 +329,74 @@ if __name__ == "__main__":
     data_cuda = load_data_cuda(INPUT_DATE_CUDA, skip_iter=3)
     data = join_tables(data_grcuda, data_cuda)
     
-    sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    plt.rcParams["font.family"] = ["Latin Modern Roman"]
-    plt.rcParams['axes.titlepad'] = 20 
-    plt.rcParams['axes.labelpad'] = 10 
-    plt.rcParams['axes.titlesize'] = 22 
-    plt.rcParams['axes.labelsize'] = 14 
+    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    # plt.rcParams["font.family"] = ["Latin Modern Roman"]
+    # plt.rcParams['axes.titlepad'] = 20 
+    # plt.rcParams['axes.labelpad'] = 10 
+    # plt.rcParams['axes.titlesize'] = 22 
+    # plt.rcParams['axes.labelsize'] = 14 
     
-    # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) 
-    block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
-    num_col = len(benchmark_list)
-    num_row = len(block_size_list)
-    fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))
-    gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.8,
-                    bottom=0.15,
-                    left=0.2,
-                    right=0.90,
-                    hspace=1.1,
-                    wspace=0.15)
+    # # Lists of benchmarks and block sizes;
+    # benchmark_list = sorted(data["benchmark"].unique()) 
+    # block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
+    # num_col = len(benchmark_list)
+    # num_row = len(block_size_list)
+    # fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))
+    # gs = gridspec.GridSpec(num_row, num_col)
+    # plt.subplots_adjust(top=0.8,
+    #                 bottom=0.15,
+    #                 left=0.2,
+    #                 right=0.90,
+    #                 hspace=1.1,
+    #                 wspace=0.15)
         
-    exec_time_axes = []
-    for b_i, b in enumerate(benchmark_list):
-        for block_size_i, block_size in enumerate(block_size_list): 
-            curr_res = data[(data["benchmark"] == b) & (data["block_size_str"] == block_size)].reset_index(drop=True)  
-            exec_time_axes += [build_exec_time_plot_grcuda_cuda(curr_res, gs, block_size_i, b_i)]
+    # exec_time_axes = []
+    # for b_i, b in enumerate(benchmark_list):
+    #     for block_size_i, block_size in enumerate(block_size_list): 
+    #         curr_res = data[(data["benchmark"] == b) & (data["block_size_str"] == block_size)].reset_index(drop=True)  
+    #         exec_time_axes += [build_exec_time_plot_grcuda_cuda(curr_res, gs, block_size_i, b_i)]
             
-    plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=20, ha="center", va="center", xycoords="figure fraction")
-    plt.annotate("Speedup", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    # plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=20, ha="center", va="center", xycoords="figure fraction")
+    # plt.annotate("Speedup", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
+    # plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
+    # save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
 
     
-    #%% Similar plot, but all block sizes are on 1 row;
+    # #%% Similar plot, but all block sizes are on 1 row;
     
-    sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    plt.rcParams["font.family"] = ["Latin Modern Roman"] 
-    plt.rcParams['axes.titlepad'] = 20 
-    plt.rcParams['axes.labelpad'] = 10 
-    plt.rcParams['axes.titlesize'] = 22 
-    plt.rcParams['axes.labelsize'] = 14 
+    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    # plt.rcParams["font.family"] = ["Latin Modern Roman"] 
+    # plt.rcParams['axes.titlepad'] = 20 
+    # plt.rcParams['axes.labelpad'] = 10 
+    # plt.rcParams['axes.titlesize'] = 22 
+    # plt.rcParams['axes.labelsize'] = 14 
     
-    # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) 
-    policy_list = sorted(data["exec_policy"].unique())
-    num_col = len(benchmark_list)
-    num_row = len(policy_list)
-    fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
-    gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.8,
-                    bottom=0.14,
-                    left=0.1,
-                    right=0.95,
-                    hspace=0.8,
-                    wspace=0.15)
+    # # Lists of benchmarks and block sizes;
+    # benchmark_list = sorted(data["benchmark"].unique()) 
+    # policy_list = sorted(data["exec_policy"].unique())
+    # num_col = len(benchmark_list)
+    # num_row = len(policy_list)
+    # fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
+    # gs = gridspec.GridSpec(num_row, num_col)
+    # plt.subplots_adjust(top=0.8,
+    #                 bottom=0.14,
+    #                 left=0.1,
+    #                 right=0.95,
+    #                 hspace=0.8,
+    #                 wspace=0.15)
         
-    exec_time_axes = []
-    for b_i, b in enumerate(benchmark_list):
-        for p_i, p in enumerate(policy_list): 
-            curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
-            exec_time_axes += [build_exec_time_plot_grcuda_cuda_compact(curr_res, gs, p_i, b_i)]
+    # exec_time_axes = []
+    # for b_i, b in enumerate(benchmark_list):
+    #     for p_i, p in enumerate(policy_list): 
+    #         curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
+    #         exec_time_axes += [build_exec_time_plot_grcuda_cuda_compact(curr_res, gs, p_i, b_i)]
         
-    plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
-    plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    # plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    # plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
+    # plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
+    # save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
     
     
     #%% Ridge plot with distributions;

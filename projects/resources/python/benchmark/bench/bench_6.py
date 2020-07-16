@@ -12,7 +12,7 @@ from benchmark_result import BenchmarkResult
 ##############################
 
 NB_KERNEL = """   
-    extern "C" __global__ void nb_1(const int* x, const float* y, float* z, int size, int n_feat, int n_classes) {
+    extern "C" __global__ void nb_1(const int* x, float* y, float* z, int size, int n_feat, int n_classes) {
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < size; i += blockDim.x * gridDim.x) {
             for (int j = 0; j < n_classes; j++) {
                 for (int q = 0; q < n_feat; q++) {
@@ -22,7 +22,7 @@ NB_KERNEL = """
         }
     }
     
-    extern "C" __global__ void nb_2(const float* x, float* y, int n_row_x, int n_col_x) {
+    extern "C" __global__ void nb_2(float* x, float* y, int n_row_x, int n_col_x) {
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             float curr_max = x[i * n_col_x];
             for (int j = 0; j < n_col_x; j++) {
@@ -32,7 +32,7 @@ NB_KERNEL = """
         }
     }
     
-    extern "C" __global__ void nb_3(const float* x, const float* y, float* z, int n_row_x, int n_col_x) {
+    extern "C" __global__ void nb_3(float* x, float* y, float* z, int n_row_x, int n_col_x) {
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             float sum = 0;
             for (int j = 0; j < n_col_x; j++) {
@@ -71,7 +71,7 @@ RR_KERNEL = """
         }
     }
     
-    extern "C" __global__ void rr_2(const float* x, const float* y, float* z, int size, int n_feat, int n_classes) {
+    extern "C" __global__ void rr_2(float* x, float* y, float* z, int size, int n_feat, int n_classes) {
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < size; i += blockDim.x * gridDim.x) {
             for (int j = 0; j < n_classes; j++) {
                 for (int q = 0; q < n_feat; q++) {
@@ -81,7 +81,7 @@ RR_KERNEL = """
         }
     }
 
-    extern "C" __global__ void rr_3(float* x, const float *y, int n_row_x, int n_col_x) {
+    extern "C" __global__ void rr_3(float* x, float *y, int n_row_x, int n_col_x) {
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             for (int j = 0; j < n_col_x; j++) {
                 x[i * n_col_x + j] += y[j];
@@ -103,7 +103,7 @@ ENSEMBLE_KERNEL = """
         }
     }
     
-    extern "C" __global__ void argmax(const float *x, const float *y, int *z, int n_row_x, int n_col_x) {
+    extern "C" __global__ void argmax(float *x, float *y, int *z, int n_row_x, int n_col_x) {
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
             int curr_best_index = 0;
             float curr_best = x[i * n_col_x] + y[i * n_col_x];
@@ -217,17 +217,17 @@ class Benchmark6(Benchmark):
 
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
-        self.nb_1 = build_kernel(NB_KERNEL, "nb_1", "const pointer, const pointer, pointer, sint32, sint32, sint32")
-        self.nb_2 = build_kernel(NB_KERNEL, "nb_2", "const pointer, pointer, sint32, sint32")
-        self.nb_3 = build_kernel(NB_KERNEL, "nb_3", "const pointer, const pointer, pointer, sint32, sint32")
-        self.nb_4 = build_kernel(NB_KERNEL, "nb_4", "pointer, const pointer, sint32, sint32")
+        self.nb_1 = build_kernel(NB_KERNEL, "nb_1", "const pointer, pointer, pointer, sint32, sint32, sint32")
+        self.nb_2 = build_kernel(NB_KERNEL, "nb_2", "pointer, pointer, sint32, sint32")
+        self.nb_3 = build_kernel(NB_KERNEL, "nb_3", "pointer, pointer, pointer, sint32, sint32")
+        self.nb_4 = build_kernel(NB_KERNEL, "nb_4", "pointer, pointer, sint32, sint32")
 
         self.rr_1 = build_kernel(RR_KERNEL, "rr_1", "const pointer, pointer, sint32, sint32")
-        self.rr_2 = build_kernel(RR_KERNEL, "rr_2", "const pointer, const pointer, pointer, sint32, sint32, sint32")
-        self.rr_3 = build_kernel(RR_KERNEL, "rr_3", "pointer, const pointer, sint32, sint32")
+        self.rr_2 = build_kernel(RR_KERNEL, "rr_2", "pointer, pointer, pointer, sint32, sint32, sint32")
+        self.rr_3 = build_kernel(RR_KERNEL, "rr_3", "pointer, pointer, sint32, sint32")
 
         self.softmax = build_kernel(ENSEMBLE_KERNEL, "softmax", "pointer, sint32, sint32")
-        self.argmax = build_kernel(ENSEMBLE_KERNEL, "argmax", "const pointer, const pointer, pointer, sint32, sint32")
+        self.argmax = build_kernel(ENSEMBLE_KERNEL, "argmax", "pointer, pointer, pointer, sint32, sint32")
 
     @time_phase("initialization")
     def init(self):
@@ -270,25 +270,32 @@ class Benchmark6(Benchmark):
         start = 0
 
         # RR - 1.
-        self.execute_phase("rr_1", self.rr_1(self.num_blocks_feat, self.block_size), self.x, self.z, self.size, self.num_features)
+        self.execute_phase("rr_1", self.rr_1(self.num_blocks_feat, self.block_size),
+                           self.x, self.z, self.size, self.num_features)
 
         # NB - 1.
-        self.execute_phase("nb_1", self.nb_1(self.num_blocks_size, self.block_size), self.x, self.nb_feat_log_prob, self.r1, self.size, self.num_features, self.num_classes)
+        self.execute_phase("nb_1", self.nb_1(self.num_blocks_size, self.block_size),
+                           self.x, self.nb_feat_log_prob, self.r1, self.size, self.num_features, self.num_classes)
 
         # RR - 2.
-        self.execute_phase("rr_2", self.rr_2(self.num_blocks_size, self.block_size), self.z, self.ridge_coeff, self.r2, self.size, self.num_features, self.num_classes)
+        self.execute_phase("rr_2", self.rr_2(self.num_blocks_size, self.block_size),
+                           self.z, self.ridge_coeff, self.r2, self.size, self.num_features, self.num_classes)
 
         # NB - 2.
-        self.execute_phase("nb_2", self.nb_2(self.num_blocks_size, self.block_size), self.r1, self.nb_amax, self.size, self.num_classes)
+        self.execute_phase("nb_2", self.nb_2(self.num_blocks_size, self.block_size),
+                           self.r1, self.nb_amax, self.size, self.num_classes)
 
         # NB - 3.
-        self.execute_phase("nb_3", self.nb_3(self.num_blocks_size, self.block_size), self.r1, self.nb_amax, self.nb_l, self.size, self.num_classes)
+        self.execute_phase("nb_3", self.nb_3(self.num_blocks_size, self.block_size),
+                           self.r1, self.nb_amax, self.nb_l, self.size, self.num_classes)
 
         # RR - 3.
-        self.execute_phase("rr_3", self.rr_3(self.num_blocks_size, self.block_size), self.r2, self.ridge_intercept, self.size, self.num_classes)
+        self.execute_phase("rr_3", self.rr_3(self.num_blocks_size, self.block_size),
+                           self.r2, self.ridge_intercept, self.size, self.num_classes)
 
         # NB - 4.
-        self.execute_phase("nb_4", self.nb_4(self.num_blocks_size, self.block_size), self.r1, self.nb_l, self.size, self.num_classes)
+        self.execute_phase("nb_4", self.nb_4(self.num_blocks_size, self.block_size),
+                           self.r1, self.nb_l, self.size, self.num_classes)
 
         # Ensemble results;
 

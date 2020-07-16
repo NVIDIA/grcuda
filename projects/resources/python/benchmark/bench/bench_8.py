@@ -46,7 +46,7 @@ extern "C" __global__ void gaussian_blur(const float *image, float *result, int 
 
 SOBEL = """
 
-extern "C" __global__ void sobel(const float *image, float *result, int rows, int cols) {
+extern "C" __global__ void sobel(float *image, float *result, int rows, int cols) {
     // int SOBEL_X[3][3] = {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}};
     // int SOBEL_Y[3][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
     __shared__ int SOBEL_X[9];
@@ -135,7 +135,7 @@ __inline__ __device__ float warp_reduce_min(float val) {
     return val;
 }
 
-extern "C" __global__ void maximum(const float *in, float* out, int N) {
+extern "C" __global__ void maximum(float *in, float* out, int N) {
     int warp_size = 32;
     float maximum = -1000;
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) { 
@@ -146,7 +146,7 @@ extern "C" __global__ void maximum(const float *in, float* out, int N) {
         atomicMaxf(out, maximum); // The first thread in the warp updates the output;
 }
 
-extern "C" __global__ void minimum(const float *in, float* out, int N) {
+extern "C" __global__ void minimum(float *in, float* out, int N) {
     int warp_size = 32;
     float minimum = 1000;
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) { 
@@ -166,7 +166,7 @@ extern "C" __global__ void extend(float *x, const float *minimum, const float *m
 """
 
 UNSHARPEN = """
-extern "C" __global__ void unsharpen(const float *x, const float *y, float *res, float amount, int n) {
+extern "C" __global__ void unsharpen(float *x, float *y, float *res, float amount, int n) {
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) { 
         float res_tmp = x[i] * (1 + amount) - y[i] * amount;
         res_tmp = res_tmp > 1 ? 1 : res_tmp;
@@ -281,11 +281,11 @@ class Benchmark8(Benchmark):
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
         self.gaussian_blur_kernel = build_kernel(GAUSSIAN_BLUR, "gaussian_blur", "const pointer, pointer, sint32, sint32, const pointer, sint32")
-        self.sobel_kernel = build_kernel(SOBEL, "sobel", "const pointer, pointer, sint32, sint32")
+        self.sobel_kernel = build_kernel(SOBEL, "sobel", "pointer, pointer, sint32, sint32")
         self.extend_kernel = build_kernel(EXTEND_MASK, "extend", "pointer, const pointer, const pointer, sint32")
-        self.maximum_kernel = build_kernel(EXTEND_MASK, "maximum", "const pointer, pointer, sint32")
-        self.minimum_kernel = build_kernel(EXTEND_MASK, "minimum", "const pointer, pointer, sint32")
-        self.unsharpen_kernel = build_kernel(UNSHARPEN, "unsharpen", "const pointer, const pointer, pointer, float, sint32")
+        self.maximum_kernel = build_kernel(EXTEND_MASK, "maximum", "pointer, pointer, sint32")
+        self.minimum_kernel = build_kernel(EXTEND_MASK, "minimum", "pointer, pointer, sint32")
+        self.unsharpen_kernel = build_kernel(UNSHARPEN, "unsharpen", "pointer, pointer, pointer, float, sint32")
         self.combine_mask_kernel = build_kernel(COMBINE, "combine", "const pointer, const pointer, const pointer, pointer, sint32")
 
     @time_phase("initialization")

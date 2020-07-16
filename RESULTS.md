@@ -10,21 +10,25 @@ This document contains some performance results obtained running Graalpython ben
 * **DRAM**: 32 GB, DDR4
 * Execution time measures the total amount of time spent by GPU execution, from the first kernel scheduling until all GPU kernels have finished executing
 * Each benchmark is executed for **30 iterations**, and the average time skips the first 3 to allow the performance of GraalVM to stabilize 
+* Parameters that have been kept fixed (such as the number of blocks for kernels whose number of blocks is not a function of data-size) have been optimized to provide the best performance for synchronous execution,
+and provide a more realistic performance comparison.
 
 ## Results
 
 * **Sync time** is the baseline, it measures synchronous GPU kernel scheduling. In this case, dependencies between kernels are not computed, making GrCUDA overheads even smaller.
 * **DAG** is the computation time when using GrCUDA DAG kernel scheduling, performing transparent GPU resource-sharing.
 
-* The field **Threads** is the number of threads for each block, in CUDA; this number ranges from 32 to 1024. A higher number implies bigger blocks, and possibly less GPU occupation
+* The field **Threads** is the number of threads for each block, in CUDA; this number ranges from 32 to 1024. A higher number implies bigger blocks, and possibly fewer concurrent blocks running in parallel.
+ Blocks can also be 2-dimensional: we left 2D blocks with size 8x8 as bigger blocks always resulted in strictly longer execution times, for all scheduling policies.
 * The field **Size** is the number of elements in the input. 
 Depending on the benchmark it could be the size of a vector, the number of rows in a square matrix, the number of vertices of a graph; more information are provided for each benchmark 
 
 
-### Benchmark 1 (bench_1)
+### Vector Squares (bench_1)
 
 Compute the sum of difference of squares of 2 vectors, using multiple GrCUDA kernels. It's a fairly artificial benchmark that measures a simple case of parallelism.
 Most of the execution time is spent in the reduction computation, limiting the amount of parallelism available, especially on large input data.
+Speedups are achievable by overlapping data-transfer and computations, although the data-transfer takes about 4x-5x longer than the square computation, limiting the maximum achievable speedup.
 
 Structure of the computation:
 
@@ -43,6 +47,21 @@ B: x^2 ──┘
 |     |   20000000  |  0.0074 | 0.0037   |  2x | 
 -->
 
+### Black & Scholes (bench_5)
+
+Compute the Black & Scholes equation for European call options, for 10 different underlying types of stocks, and for each stock a vector of prices at time 0. 
+The main computation is taken from Nvidia's CUDA code samples ([link](http://mercury.pr.erau.edu/~siewerts/extra/code/digital-media/CUDA/cuda_work/samples/4_Finance/BlackScholes/BlackScholes_kernel.cuh)), 
+and adapted to use double precision arithmetic to create a more computationally intensive kernel.
+The idea of this benchmark is to simulate a streaming computation in which data-transfer and computation of multiple kernels can be overlapped efficiently,
+without data-dependencies between kernels.
+To the contrary of `bench_1`, computation, and not data transfer, is the main limiting factor for parallel execution.
+
+Structure of the computation:
+
+```
+BS(x[1]) -> ... -> BS(x[10])
+```
+
 ### Machine Learning Ensemble (bench_6)
 
 Compute an ensemble of Categorical Naive Bayes and Ridge Regression classifiers.
@@ -52,7 +71,6 @@ In the DAG below, input arguments that are not involved in the computation of de
 
 The size of the benchmark is the number of rows in the matrix (each representing a document with 1000 features). Predictions are done by choosing among 5 classes.
 The Ridge Regression classifier takes about 2x the time of the Categorical Naive Bayes classifier.
-Speedups are especially noticeable for small input size, as for larger data the Ridge-Regression classifiers bottlenecks the overall computation and results in high GPU occupation.
 
 Structure of the computation:
 
@@ -86,11 +104,10 @@ Compute the HITS algorithm on a graph. The algorithm is composed of repeated spa
 on a matrix and its transpose (outgoing and ingoing edges of a graph). The 2 matrix multiplications,
 for each iteration, can be computed in parallel, and take most of the total computation time.
 
-The input graph has **size** vertices, degree 10 and uniform distribution. Each execution of this algorithm is composed of 10 iterations.
-Kernel computations are very fast, and the speedup increases for larger input graphs: most likely, this is the effect of having 2 SpMV running concurrently, 
-which makes better use of the available memory bandwidth. The number of blocks is kept constant at 32, as higher block count resulted in worse overall performance.
+The input graph has **size** vertices, degree 3 and uniform distribution. Each execution of this algorithm is composed of 5 iterations.
+The number of blocks is kept constant at 32, as higher block count resulted in worse overall performance.
 
-As the benchmark is composed of 2 independent branches, the **maximum theoretical speedup is 2x**.
+As the benchmark is composed of 2 independent branches, the **maximum theoretical speedup is 2x**, although realistic speedup will be lower and mostly achieved through transfer-computation overlapping.
 
 Structure of the computation (read-only parameters that do not influence the DAG are omitted):
 
@@ -143,25 +160,34 @@ SHARPEN(image,blur3) ─> UNSHARPEN(image,blur3,sharpened) ───────
 
 ## Plots
 
-![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_1_row_2020_07_14.png)
+![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_1_row_2020_07_15.png)
 
-In general, **DAG scheduling allows better GPU resource usage**: when the data-set size does not fill the GPU computational resources, DAG scheduling provides speedups close to the theoretical optimum. As expected, the speedup is less significant as the data-set size increases, as each kernel can fully use the GPU resources by itself.
+In general, **DAG scheduling allows better GPU resource usage**: in many benchmarks (such as `bench_1` and `bench_5`) we observe how overlapping data-transfer and computation enables faster total execution time.
+ In other cases (`bench_6` and `bench_7`) speedups are also provided by computation overlap. DAG schedling provides **speedups from 10% to 50%**, while being completely transparent to the programmer.
 
-**Even for large data-sets** (enough to saturate the GPU memory), **the DAG scheduling speedup stays above 1**: even if kernels fill the GPU resources, it is still possible to achieve a small degree of parallelism by overlapping data transfer with execution of different kernels, or possibly by overlapping execution of kernels with different bottlenecks.
+**Speedup stays constant with data-set size. even for large data-sets** (enough to saturate the GPU memory): even if kernels fill the GPU resources,
+ it is still possible to achieve a large degree of parallelism by overlapping data transfer with execution of different kernels, or possibly by overlapping execution of kernels with different bottlenecks.
 
 **DAG scheduling is never worse than serial scheduling**, meaning that users do not have to think about which scheduling policy would be better for them, but can always leverage DAG scheduling.
 
-As rule of thumb, **smaller blocks provide better speedup**: this is likely connected to the GPU architecture being better at parallelizing smaller blocks. In general, small blocks almost always provide better absolute performance, for similar reasons. Kernels in the benchmarks leverage grid-striding, meaning that the number of blocks is independent from the size of data to be processed and each thread becomes more computationally intensive as the data-size increases (instead of being constant). Currently, kernels do not use shared memory whose size depends on block size; if that was the case, bigger blocks might have an advantage.
+As rule of thumb, **DAG scheduling is more robust to kernel configuration**: in many cases, using `block_size=32` results in higher speedup, but similar absolute execution time compared to larger block size.
+ In the case of serial synchronous scheduling, using small blocks results in underutilization of the GPU resources, while using DAG scheduling provides better resource utilization by scheduling multiple kernels in parallel.
+ This is an extremely useful advantage of DAG scheduling, as it means that programmers have to spend less time profiling their code to find the optimal kernel configuration.
 
-![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_2020_07_14.png)
+![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_2020_07_15.png)
 
-Performance of serial and DAG GrCUDA scheduling has been compared to the same benchmarks implemented directly in C++ and CUDA. The experimental setup and the kernels are exactly the same. In the case of CUDA asynchronous kernel execution, dependendencies and synchronization points have been computed by hand, instead of automatically. This provides a **comparison of how the overhead introduced by GrCUDA impacts the total execution time** compared to lower-level kernel scheduling.
+Performance of serial and DAG GrCUDA scheduling has been compared to the same benchmarks implemented directly in C++ and CUDA. The experimental setup and the kernels are exactly the same. In the case of CUDA asynchronous kernel execution, dependencies and synchronization points have been computed by hand, instead of automatically. This provides a **comparison of how the overhead introduced by GrCUDA impacts the total execution time** compared to lower-level kernel scheduling.
 
-In the case of serial execution, CUDA is sligthly faster than GrCUDA, as expected; however, the performance difference is negligible and converges to 0 as the data-set size increases. It can be safely stated that in any realistic computation using serial GrCUDA scheduling will not decrease performance.
+In all cases, the gap between CUDA and GrCUDA is minimal, and converges to 0 as the data-set size increases. It can be safely stated that in any realistic computation using serial GrCUDA scheduling will not decrease performance. 
+The only situation with a visible difference is `bench_8`, when processing very small images (`800x800` pixels), as the computation lasts only for a couple of milliseconds.
 
-As for asynchronous DAG scheduling, we see how GrCUDA is actually **faster** than CUDA in most cases. It is not clear how GrCUDA is actually faster than CUDA. The only difference is that GrCUDA uses `nvrtc` (Nvidia runtime compilation library), instead of `nvcc`. Whether this provides faster kernel launches, or generates faster code, is yet to be checked. It is likely that `nvrtc` uses the same routines as `nvcc` for compilation, although kernel launches might be faster. 
+![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_compact_2020_07_15.png)
 
-![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_grcuda_cuda_compact_2020_07_14.png)
+![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_2020_07_15.png)
 
-![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_14/speedup_baseline_grcuda_cuda_2020_07_14.png)
+These results are further reaffirmed by looking at the execution time distributions (for example, using the largest data-sets and `block_size=256`, to evaluate an average case).
+ In a couple of cases (e.g `bench_1`) it can be seen how the CUDA implementation might be sligthly faster (around 5%), although the same is true for GrCUDA in `bench_8`, while other benchmarks show very similar distributions.
+
+![Relative exec. time w.r.t. CUDA, distribution](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_ridgeplot_2020_07_15.png)
+
 

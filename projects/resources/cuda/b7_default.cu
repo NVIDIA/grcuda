@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
     int N = options.N;
 
     int degree = 3;
-    int iterations = 10;
+    int iterations = 5;
 
     int block_size = options.block_size_1d;
     int num_blocks = 32; //options.num_blocks;
@@ -238,7 +238,18 @@ int main(int argc, char *argv[]) {
     
     auto start = clock_type::now();
     int *ptr, *idx, *val, *ptr2, *idx2, *val2, *rowCounter1, *rowCounter2;
+
+    int *ptr_tmp, *idx_tmp, *val_tmp, *ptr2_tmp, *idx2_tmp, *val2_tmp;
+
     float *auth1, *auth2, *hub1, *hub2, *auth_norm, *hub_norm;
+
+    // Use temporary CPU vectors to simplify reinitialization at each benchmark execution;
+    ptr_tmp = (int *) malloc(sizeof(int) * (N + 1));
+    ptr2_tmp = (int *) malloc(sizeof(int) * (N + 1));
+    idx_tmp = (int *) malloc(sizeof(int) * nnz);
+    idx2_tmp = (int *) malloc(sizeof(int) * nnz);
+    val_tmp = (int *) malloc(sizeof(int) * nnz);
+    val2_tmp = (int *) malloc(sizeof(int) * nnz);
 
     err = cudaMallocManaged(&ptr, sizeof(int) * (N + 1));
     err = cudaMallocManaged(&ptr2, sizeof(int) * (N + 1));
@@ -273,8 +284,8 @@ int main(int argc, char *argv[]) {
     random_coo(x, y, v, N, degree);
 
     // Create a CSR;
-    coo2csr(ptr, idx, val, x, y, v, N, N, nnz);
-    coo2csr(ptr2, idx2, val2, y, x, v, N, N, nnz);
+    coo2csr(ptr_tmp, idx_tmp, val_tmp, x, y, v, N, N, nnz);
+    coo2csr(ptr2_tmp, idx2_tmp, val2_tmp, y, x, v, N, N, nnz);
 
     auto end = clock_type::now();
     if (debug) std::cout << "init=" << (float) chrono::duration_cast<chrono::microseconds>(end - start).count() / 1000 << " ms" << std::endl;
@@ -284,8 +295,19 @@ int main(int argc, char *argv[]) {
 	
     float tot = 0;
     for (int i = 0; i < num_executions; i++) {
+
         if (debug) std::cout << "\n-- iter=" << i << std::endl;
         auto start_tmp = clock_type::now();
+        for (int j = 0; j < nnz; j++) {
+            idx[j] = idx_tmp[j];
+            idx2[j] = idx2_tmp[j];
+            val[j] = val_tmp[j];
+            val2[j] = val2_tmp[j];
+        }
+        for (int j = 0; j < N + 1; j++) {
+            ptr[j] = ptr_tmp[j];
+            ptr2[j] = ptr2_tmp[j];
+        }
         reset(auth1, auth2, hub1, hub2, auth_norm, hub_norm, N, s1, s2);
         rowCounter1[0] = 0;
         rowCounter2[0] = 0;
@@ -303,6 +325,18 @@ int main(int argc, char *argv[]) {
             // cudaMemPrefetchAsync(hub2, N * sizeof(float), 0, s2);
             // cudaMemPrefetchAsync(auth_norm, sizeof(float), 0, s1);
             // cudaMemPrefetchAsync(hub_norm, sizeof(float), 0, s2);
+
+            cudaStreamAttachMemAsync(s1, ptr2, 0);
+            cudaStreamAttachMemAsync(s1, idx2, 0);
+            cudaStreamAttachMemAsync(s1, val2, 0);
+            cudaStreamAttachMemAsync(s1, hub1, 0);
+            cudaStreamAttachMemAsync(s1, auth2, 0);
+
+            cudaStreamAttachMemAsync(s2, ptr, 0);
+            cudaStreamAttachMemAsync(s2, idx, 0);
+            cudaStreamAttachMemAsync(s2, val, 0);
+            cudaStreamAttachMemAsync(s2, auth1, 0);
+            cudaStreamAttachMemAsync(s2, hub2, 0);
 
             cudaEvent_t e1, e2;
             cudaEventCreate(&e1);
@@ -323,9 +357,11 @@ int main(int argc, char *argv[]) {
 
             // Stream 1 waits stream 2;
             err = cudaStreamWaitEvent(s1, e2, 0);
+            cudaStreamAttachMemAsync(s1, auth1, 0);
             divide<<<num_blocks, block_size, 0, s1>>>(auth2, auth1, auth_norm, N);
             // Stream 2 waits stream 1;
             err = cudaStreamWaitEvent(s2, e1, 0);
+            cudaStreamAttachMemAsync(s2, hub1, 0);
             divide<<<num_blocks, block_size, 0, s2>>>(hub2, hub1, hub_norm, N);
 
             err = cudaStreamSynchronize(s1);

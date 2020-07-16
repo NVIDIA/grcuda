@@ -18,41 +18,41 @@ T = 1.0
 K = 60.0
 
 BS_KERNEL = """
-__device__ inline float cndGPU(float d) {
-    const float       A1 = 0.31938153f;
-    const float       A2 = -0.356563782f;
-    const float       A3 = 1.781477937f;
-    const float       A4 = -1.821255978f;
-    const float       A5 = 1.330274429f;
-    const float RSQRT2PI = 0.39894228040143267793994605993438f;
+__device__ inline double cndGPU(double d) {
+    const double       A1 = 0.31938153f;
+    const double       A2 = -0.356563782f;
+    const double       A3 = 1.781477937f;
+    const double       A4 = -1.821255978f;
+    const double       A5 = 1.330274429f;
+    const double RSQRT2PI = 0.39894228040143267793994605993438f;
 
-    float
-    K = __fdividef(1.0f, (1.0f + 0.2316419f * fabsf(d)));
+    double
+    K = 1.0 / (1.0 + 0.2316419 * fabs(d));
 
-    float
-    cnd = RSQRT2PI * __expf(- 0.5f * d * d) *
+    double
+    cnd = RSQRT2PI * exp(- 0.5f * d * d) *
           (K * (A1 + K * (A2 + K * (A3 + K * (A4 + K * A5)))));
 
     if (d > 0)
-        cnd = 1.0f - cnd;
+        cnd = 1.0 - cnd;
 
     return cnd;
 }
 
-extern "C" __global__ void bs(const float *x, float *y, int N, float R, float V, float T, float K) {
+extern "C" __global__ void bs(double *x, double *y, int N, double R, double V, double T, double K) {
 
-    float sqrtT = __fdividef(1.0F, rsqrtf(T));
+    double sqrtT = 1.0 / rsqrt(T);
     for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
-        float expRT;
-        float d1, d2, CNDD1, CNDD2;
-        d1 = __fdividef(__logf(x[i] / K) + (R + 0.5f * V * V) * T, V * sqrtT);
+        double expRT;
+        double d1, d2, CNDD1, CNDD2;
+        d1 = (log(x[i] / K) + (R + 0.5 * V * V) * T) / (V * sqrtT);
         d2 = d1 - V * sqrtT;
 
         CNDD1 = cndGPU(d1);
         CNDD2 = cndGPU(d2);
 
         //Calculate Call and Put simultaneously
-        expRT = __expf(-R * T);
+        expRT = exp(-R * T);
         y[i] = x[i] * CNDD1 - K * expRT * CNDD2;
     }
 }
@@ -71,7 +71,7 @@ class Benchmark5(Benchmark):
         super().__init__("b5", benchmark)
         self.size = 0
 
-        self.num_blocks = 32
+        self.num_blocks = 64
         self.sum_kernel = None
         self.cpu_result = 0
         self.block_size = DEFAULT_BLOCK_SIZE_1D
@@ -92,33 +92,33 @@ class Benchmark5(Benchmark):
 
         # Allocate vectors;
         for i in range(self.K):
-            self.x[i] = polyglot.eval(language="grcuda", string=f"float[{size}]")
-            self.y[i] = polyglot.eval(language="grcuda", string=f"float[{size}]")
+            self.x[i] = polyglot.eval(language="grcuda", string=f"double[{size}]")
+            self.y[i] = polyglot.eval(language="grcuda", string=f"double[{size}]")
 
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
-        self.bs_kernel = build_kernel(BS_KERNEL, "bs", "const pointer, pointer, sint32, float, float, float, float")
+        self.bs_kernel = build_kernel(BS_KERNEL, "bs", "pointer, pointer, sint32, double, double, double, double")
 
     @time_phase("initialization")
     def init(self):
         self.random_seed = randint(0, 10000000)
-        seed(self.random_seed)
-        if self.benchmark.random_init:
-            self.x_tmp = np.random.uniform(-0.5, 0.5, self.size).astype(np.float32) + K
-        else:
-            self.x_tmp = np.zeros(self.size, dtype=np.float32) + K
         # seed(self.random_seed)
-        # self.x_tmp = [K] * self.size
         # if self.benchmark.random_init:
-        #     for i in range(len(self.x_tmp)):
-        #         self.x_tmp[i] = random() - 0.5 + K
+        #     self.x_tmp = np.random.uniform(-0.5, 0.5, self.size).astype(np.float64) + K
+        # else:
+        #     self.x_tmp = np.zeros(self.size, dtype=np.float64) + K
+        seed(self.random_seed)
+        self.x_tmp = [K] * self.size
+        if self.benchmark.random_init:
+            for i in range(len(self.x_tmp)):
+                self.x_tmp[i] = random() - 0.5 + K
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
         for i in range(self.K):
-            self.x[i].copyFrom(int(np.int64(self.x_tmp.ctypes.data)), self.size)
-            # for j in range(self.size):
-            #     self.x[i][j] = self.x_tmp[j]
+            # self.x[i].copyFrom(int(np.int64(self.x_tmp.ctypes.data)), self.size)
+            for j in range(self.size):
+                self.x[i][j] = self.x_tmp[j]
 
     def execute(self) -> object:
 
