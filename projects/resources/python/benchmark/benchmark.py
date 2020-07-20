@@ -2,6 +2,7 @@ from benchmark_result import BenchmarkResult
 from abc import ABC, abstractmethod
 from java.lang import System
 from typing import Callable
+import polyglot
 
 DEFAULT_BLOCK_SIZE_1D = 32
 DEFAULT_BLOCK_SIZE_2D = 8
@@ -27,11 +28,15 @@ def time_phase(phase_name: str) -> Callable:
 class Benchmark(ABC):
     """
     Base class for all benchmarks, it provides the general control flow of the benchmark execution;
+    :param name: name of the benchmark
+    :param benchmark: instance of BenchmarkResult, used to store results
+    :param nvprof_profile: if present activate profiling for nvprof when running the benchmark
     """
 
-    def __init__(self, name: str, benchmark: BenchmarkResult):
+    def __init__(self, name: str, benchmark: BenchmarkResult, nvprof_profile: bool = False):
         self.name = name
         self.benchmark = benchmark
+        self.nvprof_profile = nvprof_profile
         self.time_phases = False
         self.tot_iter = 0
         self.current_iter = 0
@@ -130,8 +135,16 @@ class Benchmark(ABC):
         # Reset the result;
         self.reset_result()
 
+        # Start nvprof profiling if required;
+        if self.nvprof_profile:
+            polyglot.eval(language="grcuda", string="cudaProfilerStart")()
+
         # Execute the benchmark;
         gpu_result = self.execute()
+
+        # Stop nvprof profiling if required;
+        if self.nvprof_profile:
+            polyglot.eval(language="grcuda", string="cudaProfilerStop")()
 
         # Stop the timer;
         end = System.nanoTime()

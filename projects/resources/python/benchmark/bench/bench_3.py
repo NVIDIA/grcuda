@@ -60,8 +60,8 @@ class Benchmark3(Benchmark):
        B: x^2 ─ [5 times] ─┘
     """
 
-    def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b3", benchmark)
+    def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):
+        super().__init__("b3", benchmark, nvprof_profile)
         self.size = 0
         self.x = None
         self.y = None

@@ -67,8 +67,8 @@ class Benchmark5(Benchmark):
     Black & Scholes equation benchmark, executed concurrently on different input vectors;
     """
 
-    def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b5", benchmark)
+    def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):
+        super().__init__("b5", benchmark, nvprof_profile)
         self.size = 0
 
         self.num_blocks = 64

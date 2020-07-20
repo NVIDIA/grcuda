@@ -79,8 +79,8 @@ class Benchmark2(Benchmark):
        D: a^2 ────> E: b=a+2  ──┘
     """
 
-    def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b2", benchmark)
+    def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):
+        super().__init__("b2", benchmark, nvprof_profile)
         self.size = 0
         self.x = None
         self.y = None

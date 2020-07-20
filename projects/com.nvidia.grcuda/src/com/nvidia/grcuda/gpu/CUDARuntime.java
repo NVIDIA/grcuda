@@ -890,6 +890,22 @@ public final class CUDARuntime {
                 callSymbol(cudaRuntime, streamAddr, eventAddr, FLAGS);
                 return NoneValue.get();
             }
+        },
+        CUDA_PROFILERSTART("cudaProfilerStart", "(): sint32") {
+            @Override
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, InteropException, UnsupportedMessageException {
+                checkArgumentLength(args, 0);
+                callSymbol(cudaRuntime);
+                return NoneValue.get();
+            }
+        },
+        CUDA_PROFILERSTOP("cudaProfilerStop", "(): sint32") {
+            @Override
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, InteropException, UnsupportedMessageException {
+                checkArgumentLength(args, 0);
+                callSymbol(cudaRuntime);
+                return NoneValue.get();
+            }
         };
 
         private final String name;
