@@ -201,8 +201,8 @@ class Benchmark8(Benchmark):
     SHARPEN(image,blur3) ─> UNSHARPEN(image,blur3,sharpened) ────────────────────┴─> COMBINE(sharpened,blur2,mask2,image2) ┴─> COMBINE(image2,blur1,mask1,image3)
     """
 
-    def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b8", benchmark)
+    def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):
+        super().__init__("b8", benchmark, nvprof_profile)
         self.size = 0
 
         self.image = None

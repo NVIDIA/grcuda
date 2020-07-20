@@ -281,6 +281,14 @@ Run a specific benchmark with custom settings
 graalpython --jvm --polyglot --WithThread --grcuda.RetrieveNewStreamPolicy=fifo --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 100 --no_cpu_validation --reinit false --realloc false -b b7
 ```
 
+Profile a specific benchmark using `nvprof`. Running `nvprof` as `sudo` might not be required, see [here](https://developer.nvidia.com/nvidia-development-tools-solutions-ERR_NVGPUCTRPERM-permission-issue-performance-counters).
+ Note that the `graalpython` benchmark has the `--nvprof` flag, so that only the real computation is profiled (and not the benchmark initialization). 
+ Additionally, provide `nvprof` with flags `--csv` to get a CSV output, and `--log-file bench-name_%p.csv"` to store the result.
+  Not using the flag `--print-gpu-trace` will print aggregated results. Additional metrics can be collected by `nvprof` with e.g. `--metrics "achieved_occupancy,sm_efficiency"` ([full list](https://docs.nvidia.com/cuda/profiler-users-guide/index.html#metrics-reference))
+```
+sudo /usr/local/cuda/bin/nvprof --profile-from-start off --print-gpu-trace --profile-child-processes  /path/to/graalpython --jvm --polyglot --WithThread --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py  -i 10 -n 1000000  --reinit false --realloc false  -b b1 --no_cpu_validation -d --block_size_1d 256 --block_size_2d 16 --nvprof
+```
+
 * Benchmarks are defined in the `projects/resources/python/benchmark/bench` folder, 
 and you can create more benchmarks by inheriting from the `Benchmark` class
 * The output of benchmarks is stored in a JSON (by default, located in `data/results`)

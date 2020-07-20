@@ -143,8 +143,8 @@ class Benchmark7(Benchmark):
      └─> SPMV(const A1,H2) ┴─> SUM(const H2,H_norm) ┴─> DIVIDE(H1,const H2,const H_norm) ─> CPU: H_norm=0 ─> (repeat)
     """
 
-    def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b7", benchmark)
+    def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):
+        super().__init__("b7", benchmark, nvprof_profile)
         self.size = 0
         self.num_nnz = 0
         self.max_degree = 3  # Each vertex has 3 edges;

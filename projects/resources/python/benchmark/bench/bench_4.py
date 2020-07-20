@@ -28,8 +28,8 @@ class Benchmark4(Benchmark):
     A benchmark with 2 very simple independent computations, used to measure overheads and the impact of data transfer;
     """
 
-    def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b4", benchmark)
+    def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):
+        super().__init__("b4", benchmark, nvprof_profile)
         self.size = 0
         self.x = None
         self.y = None

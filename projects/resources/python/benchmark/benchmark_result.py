@@ -18,7 +18,7 @@ class BenchmarkResult:
                  cpu_validation: bool = DEFAULT_CPU_VALIDATION,
                  debug: bool = DEFAULT_DEBUG,
                  random_init: bool = DEFAULT_RANDOM_INIT,
-                 output_path: str = ""
+                 output_path: str = "",
                  ):
         self.debug = debug
         self.random_init = random_init

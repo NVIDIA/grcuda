@@ -144,8 +144,8 @@ class Benchmark6(Benchmark):
                (...) -> NB-3(const R1,const AMAX,L) ─> NB-4(R1,const L) ─> SOFTMAX(R2) ──┘
     """
 
-    def __init__(self, benchmark: BenchmarkResult):
-        super().__init__("b6", benchmark)
+    def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):
+        super().__init__("b6", benchmark, nvprof_profile)
         self.size = 0
         self.x = None
         self.z = None

@@ -105,6 +105,9 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--time_phases", action="store_true",
                         help="Measure the execution time of each phase of the benchmark;"
                              " note that this introduces overheads, and might influence the total execution time")
+    parser.add_argument("--nvprof", action="store_true",
+                        help="If present, enable profiling when using nvprof."
+                             " For this option to have effect, run graalpython using nvprof, with flag '--profile-from-start off'")
     parser.set_defaults(cpu_validation=BenchmarkResult.DEFAULT_CPU_VALIDATION)
 
     # Parse the input arguments;
@@ -118,6 +121,7 @@ if __name__ == "__main__":
     random_init = args.random if args.random else BenchmarkResult.DEFAULT_RANDOM_INIT
     cpu_validation = args.cpu_validation
     time_phases = args.time_phases
+    nvprof_profile = args.nvprof
 
     # Create a new benchmark result instance;
     benchmark_res = BenchmarkResult(debug=debug, num_iterations=num_iter, output_path=output_path,
@@ -147,7 +151,7 @@ if __name__ == "__main__":
 
     # Execute each test;
     for b_name, b in benchmarks.items():
-        benchmark = b(benchmark_res)
+        benchmark = b(benchmark_res, nvprof_profile=nvprof_profile)
         for p in policies[b_name]:
             for n in num_elem[b_name]:
                 for re in realloc:
