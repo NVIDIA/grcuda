@@ -114,6 +114,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
     ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
     ax = sns.lineplot(x="size_str", y="computation_speedup", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
                       err_style="bars", linewidth=2, legend=None, sort=False, ci=None, zorder=2)
+    print(data.groupby(["size_str", "block_size_str"])["computation_speedup"].apply(gmean))
     data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["computation_speedup"].apply(gmean).reset_index()
     order = data["block_size_str"].unique()
     ax = sns.scatterplot(x="size_str", y="computation_speedup", hue="block_size_str", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",

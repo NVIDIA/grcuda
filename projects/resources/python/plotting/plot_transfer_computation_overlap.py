@@ -34,6 +34,13 @@ LABEL_LEGEND_DICT = {"ct_overlap_perc": "CT, computation w.r.t transfer",
                      "total_overlap_perc": "TOT, any type of overlap"
                      }
 
+SPEEDUPS = {
+    "b1": 1.17,
+    "b5": 1.34,
+    "b6": 1.25,
+    "b7": 1.14,
+    "b8": 1.30,
+    }
 
 if __name__ == "__main__":
     data = pd.read_csv(os.path.join(DEFAULT_RES_DIR, INPUT_DATE, "summary.csv"))
@@ -69,19 +76,15 @@ if __name__ == "__main__":
     # fig = plt.figure(figsize=(1.2 * num_col, 3))
     # gs = gridspec.GridSpec(1, num_col)
     
-    fig = plt.figure(figsize=(1.2 * num_col, 2.2)) 
+    fig = plt.figure(figsize=(1.2 * num_col, 2.5)) 
     ax = fig.add_subplot()
     plt.subplots_adjust(top=0.75,
-                    bottom=0.15,
+                    bottom=0.25,
                     left=0.08,
                     right=.99,
                     hspace=0.9,
                     wspace=0.0)
 
-# b3 = CEF0E4
-# b8 = 7bd490
-# y3= FFAB69
-# r5 = F07B71
     palette = (["#FFA728", "#FF9642", "#FFAB69", "#F07B71"] + ["#ffffff"]) * num_col
     palette = ([COLORS["b3"], COLORS["b8"], COLORS["y3"], COLORS["r5"], COLORS["bb4"], COLORS["bb5"]][:len(LABEL_DICT) - 1] + ["#ffffff"]) * num_col
     palette = palette[:len(x)]
@@ -114,7 +117,9 @@ if __name__ == "__main__":
         else:
             return base_pos
     for i, b in enumerate(BENCHMARK_NAMES):
-        ax.annotate(f"{BENCHMARK_NAMES[b]}", xy=(get_x_label_pos(i), -0.22), fontsize=10, ha="center", xycoords="axes fraction")
+        ax.annotate(f"{BENCHMARK_NAMES[b]}", xy=(get_x_label_pos(i), -0.25), fontsize=10, ha="center", xycoords="axes fraction")
+        ax.annotate(f"Speedup: ", xy=(get_x_label_pos(i) - 0.02, -0.4), fontsize=8, ha="center", xycoords="axes fraction")
+        ax.annotate(f"{SPEEDUPS[b]:.2f}x", xy=(get_x_label_pos(i) + 0.045, -0.4), fontsize=8, ha="center", xycoords="axes fraction", color=COLORS["r1"])
         
     # Legend;  
     labels = [LABEL_LEGEND_DICT[l] for l in list(LABEL_DICT.keys())[:-1]]
