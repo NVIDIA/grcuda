@@ -30,7 +30,7 @@ BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7
 LABEL_DICT = {"ct_overlap_perc": "CT", "tc_overlap_perc": "TC", "cc_overlap_perc": "CC", "total_overlap_perc": "TOT", "fake_perc": ""}
 LABEL_LEGEND_DICT = {"ct_overlap_perc": "CT, computation w.r.t transfer",
                      "tc_overlap_perc": "TC, transfer w.r.t computation",                 
-                     "cc_overlap_perc": "CC, computation w.r.t transfer",
+                     "cc_overlap_perc": "CC, computation w.r.t computation",
                      "total_overlap_perc": "TOT, any type of overlap"
                      }
 
