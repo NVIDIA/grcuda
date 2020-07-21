@@ -201,3 +201,23 @@ DAG scheduling always provides execution times closer to the theoretical optimum
 
 ![Relative exec. time w.r.t. theoretical minimum time](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_16/speedup_theoretical_time_compact_2020_07_16.png)
 
+### Performance analysis
+
+![Overlap amount](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_20/overlap_2020_07_20.png)
+
+For each benchmark, we can measure how much **overlap** is present in the computation. We measure 4 different types of overlap:
+
+1. **CT, computation w.r.t transfer**: percentage of GPU kernel computation that overlaps with any data transfer (host-to-device or viceversa)
+2. **TC, transfer w.r.t computation**: percentage of data transfer that overlaps with (one or more) GPU kernel computation(s)
+3. **CC, computation w.r.t computation**: percentage of GPU kernel computation that overlaps with any other GPU kernel computation
+4. **TOT, any type of overlap**: here we consider any type of overlap between data-transfer and/or computations.
+ Note that if a computation/data-transfer overlaps more than one computation/data-transfer, the overlap is counted only once (we consider the union of the overlap intervals)
+ 
+Measures are taken for the largest data-size in the evaluation (for each benchmark), for the block size that results in higher speedup,
+ to obtain a clearer understanding of what type of overlap is providing the speedup.
+ In general, the **TOT** overlap is a good proxy of the achieved speedup, although it is sometimes inflated by high **CC** overlap: 
+ in fact, overlapping computations does not always translates to faster execution, especially if kernels are large enough (in terms of threads/blocks) to fill the GPU processors on their own.
+ We observe how in `b1` the speedup comes exclusively from the overlap of transfer and computation, while in `b8` the speedup is caused by the overlap of kernels which,
+  if executed serially, do not fill the GPU resources. Very different values of **CT** and **TC** (as in `b5`) indicate that, although the data-transfer is completely overlapped to GPU computations, 
+  the computation lasts much longer than the data-transfer, and part of the computation cannot be overlapped. 
+  In all likelihood, a more optimized kernel computation would result in higher **CT** overlap, and better speedup.

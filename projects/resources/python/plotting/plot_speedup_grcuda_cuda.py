@@ -329,74 +329,74 @@ if __name__ == "__main__":
     data_cuda = load_data_cuda(INPUT_DATE_CUDA, skip_iter=3)
     data = join_tables(data_grcuda, data_cuda)
     
-    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    # plt.rcParams["font.family"] = ["Latin Modern Roman"]
-    # plt.rcParams['axes.titlepad'] = 20 
-    # plt.rcParams['axes.labelpad'] = 10 
-    # plt.rcParams['axes.titlesize'] = 22 
-    # plt.rcParams['axes.labelsize'] = 14 
+    sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    plt.rcParams["font.family"] = ["Latin Modern Roman"]
+    plt.rcParams['axes.titlepad'] = 20 
+    plt.rcParams['axes.labelpad'] = 10 
+    plt.rcParams['axes.titlesize'] = 22 
+    plt.rcParams['axes.labelsize'] = 14 
     
-    # # Lists of benchmarks and block sizes;
-    # benchmark_list = sorted(data["benchmark"].unique()) 
-    # block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
-    # num_col = len(benchmark_list)
-    # num_row = len(block_size_list)
-    # fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))
-    # gs = gridspec.GridSpec(num_row, num_col)
-    # plt.subplots_adjust(top=0.8,
-    #                 bottom=0.15,
-    #                 left=0.2,
-    #                 right=0.90,
-    #                 hspace=1.1,
-    #                 wspace=0.15)
+    # Lists of benchmarks and block sizes;
+    benchmark_list = sorted(data["benchmark"].unique()) 
+    block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
+    num_col = len(benchmark_list)
+    num_row = len(block_size_list)
+    fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))
+    gs = gridspec.GridSpec(num_row, num_col)
+    plt.subplots_adjust(top=0.8,
+                    bottom=0.15,
+                    left=0.2,
+                    right=0.90,
+                    hspace=1.1,
+                    wspace=0.15)
         
-    # exec_time_axes = []
-    # for b_i, b in enumerate(benchmark_list):
-    #     for block_size_i, block_size in enumerate(block_size_list): 
-    #         curr_res = data[(data["benchmark"] == b) & (data["block_size_str"] == block_size)].reset_index(drop=True)  
-    #         exec_time_axes += [build_exec_time_plot_grcuda_cuda(curr_res, gs, block_size_i, b_i)]
+    exec_time_axes = []
+    for b_i, b in enumerate(benchmark_list):
+        for block_size_i, block_size in enumerate(block_size_list): 
+            curr_res = data[(data["benchmark"] == b) & (data["block_size_str"] == block_size)].reset_index(drop=True)  
+            exec_time_axes += [build_exec_time_plot_grcuda_cuda(curr_res, gs, block_size_i, b_i)]
             
-    # plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=20, ha="center", va="center", xycoords="figure fraction")
-    # plt.annotate("Speedup", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
-    # plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=20, ha="center", va="center", xycoords="figure fraction")
+    plt.annotate("Speedup", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
+    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    # save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
 
     
-    # #%% Similar plot, but all block sizes are on 1 row;
+    #%% Similar plot, but all block sizes are on 1 row;
     
-    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    # plt.rcParams["font.family"] = ["Latin Modern Roman"] 
-    # plt.rcParams['axes.titlepad'] = 20 
-    # plt.rcParams['axes.labelpad'] = 10 
-    # plt.rcParams['axes.titlesize'] = 22 
-    # plt.rcParams['axes.labelsize'] = 14 
+    sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    plt.rcParams["font.family"] = ["Latin Modern Roman"] 
+    plt.rcParams['axes.titlepad'] = 20 
+    plt.rcParams['axes.labelpad'] = 10 
+    plt.rcParams['axes.titlesize'] = 22 
+    plt.rcParams['axes.labelsize'] = 14 
     
-    # # Lists of benchmarks and block sizes;
-    # benchmark_list = sorted(data["benchmark"].unique()) 
-    # policy_list = sorted(data["exec_policy"].unique())
-    # num_col = len(benchmark_list)
-    # num_row = len(policy_list)
-    # fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
-    # gs = gridspec.GridSpec(num_row, num_col)
-    # plt.subplots_adjust(top=0.8,
-    #                 bottom=0.14,
-    #                 left=0.1,
-    #                 right=0.95,
-    #                 hspace=0.8,
-    #                 wspace=0.15)
+    # Lists of benchmarks and block sizes;
+    benchmark_list = sorted(data["benchmark"].unique()) 
+    policy_list = sorted(data["exec_policy"].unique())
+    num_col = len(benchmark_list)
+    num_row = len(policy_list)
+    fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
+    gs = gridspec.GridSpec(num_row, num_col)
+    plt.subplots_adjust(top=0.8,
+                    bottom=0.14,
+                    left=0.1,
+                    right=0.95,
+                    hspace=0.8,
+                    wspace=0.15)
         
-    # exec_time_axes = []
-    # for b_i, b in enumerate(benchmark_list):
-    #     for p_i, p in enumerate(policy_list): 
-    #         curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
-    #         exec_time_axes += [build_exec_time_plot_grcuda_cuda_compact(curr_res, gs, p_i, b_i)]
+    exec_time_axes = []
+    for b_i, b in enumerate(benchmark_list):
+        for p_i, p in enumerate(policy_list): 
+            curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
+            exec_time_axes += [build_exec_time_plot_grcuda_cuda_compact(curr_res, gs, p_i, b_i)]
         
-    # plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
-    # plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
-    # plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
+    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    # save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
     
     
     #%% Ridge plot with distributions;
