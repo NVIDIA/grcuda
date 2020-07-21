@@ -84,9 +84,10 @@ if __name__ == "__main__":
                     right=.99,
                     hspace=0.9,
                     wspace=0.0)
-
-    palette = (["#FFA728", "#FF9642", "#FFAB69", "#F07B71"] + ["#ffffff"]) * num_col
-    palette = ([COLORS["b3"], COLORS["b8"], COLORS["y3"], COLORS["r5"], COLORS["bb4"], COLORS["bb5"]][:len(LABEL_DICT) - 1] + ["#ffffff"]) * num_col
+    p = [COLORS["b3"], COLORS["b8"], COLORS["y3"], COLORS["r5"], COLORS["bb4"], COLORS["bb5"]]
+    # p = ["#FFEDAB", "#FFDB8C", "#FFC773", "#FFAF66"]
+    p = ["#C8FCB6", "#96DE9B", "#66B784", "#469E7B"]
+    palette = (p[:len(LABEL_DICT) - 1] + ["#ffffff"]) * num_col
     palette = palette[:len(x)]
     edgecolor = ["#ffffff" if (p == "#ffffff" or y[i] <= 0) else "#2f2f2f" for i, p in enumerate(palette)]
     
@@ -119,7 +120,7 @@ if __name__ == "__main__":
     for i, b in enumerate(BENCHMARK_NAMES):
         ax.annotate(f"{BENCHMARK_NAMES[b]}", xy=(get_x_label_pos(i), -0.25), fontsize=10, ha="center", xycoords="axes fraction")
         ax.annotate(f"Speedup: ", xy=(get_x_label_pos(i) - 0.02, -0.4), fontsize=8, ha="center", xycoords="axes fraction")
-        ax.annotate(f"{SPEEDUPS[b]:.2f}x", xy=(get_x_label_pos(i) + 0.045, -0.4), fontsize=8, ha="center", xycoords="axes fraction", color=COLORS["r1"])
+        ax.annotate(f"{SPEEDUPS[b]:.2f}x", xy=(get_x_label_pos(i) + 0.045, -0.4), fontsize=8, ha="center", xycoords="axes fraction", color="#469E7B")
         
     # Legend;  
     labels = [LABEL_LEGEND_DICT[l] for l in list(LABEL_DICT.keys())[:-1]]
