@@ -259,5 +259,5 @@ if __name__ == "__main__":
     leg._legend_box.align = "left"
     leg.get_frame().set_facecolor('white')
     
-    save_plot(PLOT_DIR, "memory_throuhput_{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "memory_throughput_{}.{}", OUTPUT_DATE)
     
