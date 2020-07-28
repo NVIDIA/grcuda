@@ -25,16 +25,16 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
-INPUT_DATE = "2020_07_22"
-OUTPUT_DATE = "2020_07_28"
+INPUT_DATE = "2020_07_28"
+OUTPUT_DATE = "2020_07_282"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {
-    "b1": "Vector\nSquares",
+    "b1": "VEC",
     "b5": "B&S", 
-    "b6": "ML\nEnsemble",
+    "b6": "ML",
     "b7": "HITS", 
-    "b8": "Images"
+    "b8": "IMG"
     }
 POLICIES = ["sync", "default"]
 POLICIES_DICT = {"default": "DAG Scheduling", "sync": "Serial Scheduling"}
@@ -44,9 +44,11 @@ NVPROF_HEADER_NOMETRIC = ["start_ms", "duration_ms", "Grid X", "Grid Y", "Grid Z
                  "transferred_data_byte", "Virtual Address", "name", "Correlation_ID"]
 NVPROF_HEADER_NOMETRIC_FILTERED = NVPROF_HEADER_NOMETRIC[:2] + [NVPROF_HEADER_NOMETRIC[-2]]
 
-NVPROF_HEADER_METRIC = ["Device", "Context", "Stream", "name", "Correlation_ID", "dram_read_throughput",
-                        "dram_read_transactions", "dram_read_bytes", "dram_write_bytes"]
-NVPROF_HEADER_METRIC_FILTERED = [NVPROF_HEADER_METRIC[3]] + [NVPROF_HEADER_METRIC[5]] + NVPROF_HEADER_METRIC[7:]
+NVPROF_HEADER_METRIC = ["Device", "Context", "Stream", "name", "Correlation_ID",
+                        "dram_read_throughput", "dram_write_throughput", "dram_read_bytes", "dram_write_bytes", 
+                        "l2_global_atomic_store_bytes", "l2_global_load_bytes", "l2_global_reduction_bytes", "l2_local_global_store_bytes", "l2_local_load_bytes", "l2_read_throughput", "l2_write_throughput", 
+                        "inst_executed", "ipc"]
+NVPROF_HEADER_METRIC_FILTERED = [NVPROF_HEADER_METRIC[3]] + NVPROF_HEADER_METRIC[5:]
 
 OPERATIONS_TO_MERGE = set(["htod", "dtoh"])
 
@@ -54,6 +56,9 @@ NUM_ITER = 30
 
 # Maximum memory bandiwth, in GB/s. of the GPU (currently: GTX 960);
 MAX_GPU_BANDWIDTH = 112
+MAX_L2_GPU_BANDWIDTH = 450  # Not publicly known, estimated using nvvp;
+GPU_CLOCK_HZ = 1_177_000_000
+GPU_NUM_SM = 8
 
 
 def load_data(b, p, files):
@@ -109,6 +114,14 @@ def load_data(b, p, files):
     # Turn bytes into GB;
     data_metric["dram_read_bytes"] /= 2**30
     data_metric["dram_write_bytes"] /= 2**30
+    data_metric["l2_global_atomic_store_bytes"] /= 2**30
+    data_metric["l2_global_load_bytes"] /= 2**30
+    data_metric["l2_global_reduction_bytes"] /= 2**30
+    data_metric["l2_local_global_store_bytes"] /= 2**30
+    data_metric["l2_local_load_bytes"] /= 2**30
+    
+    data_metric["total_l2_read_bytes"] = data_metric["l2_global_load_bytes"] + data_metric["l2_local_load_bytes"]
+    data_metric["total_l2_write_bytes"] = data_metric["l2_global_atomic_store_bytes"] + data_metric["l2_global_reduction_bytes"] + data_metric["l2_local_global_store_bytes"]
     
     # Concatenate the 2 tables;
     data = pd.concat([data_nometric, data_metric], axis=1)
@@ -119,9 +132,13 @@ def load_data(b, p, files):
     # It doesn't matter for the memory throughput computation, as we consider the total execution time;
     # assert((data["name"] == data["name_metric"]).all())  
 
-    # Check if read throughput is close to the one computed by nvprof, for debugging.
+    # Check if throughput is close to the one computed by nvprof, for debugging.
     # This is relevant only for "sync" policies, as the execution times for the 2 tables are consistent;
     data["estimated_read_througput"] = data["dram_read_bytes"] / (data["duration_ms"] / 1000)
+    data["estimated_l2_read_througput"] = data["total_l2_read_bytes"] / (data["duration_ms"] / 1000)
+    data["estimated_l2_write_througput"] = data["total_l2_write_bytes"] / (data["duration_ms"] / 1000)
+    
+    data["estimated_ipc"] = data["inst_executed"] / (GPU_CLOCK_HZ * (data["duration_ms"] / 1000)) / GPU_NUM_SM
     
     # Add index columns;
     data["benchmark"] = b
@@ -152,6 +169,70 @@ def get_computation_time_with_overlap(data):
     return total_duration
 
 
+def autolabel(ax, rects1, rects2):
+    """Attach a text label above each bar in *rects*, displaying its height."""
+    for i, rect in enumerate(rects2):
+        height1 = rects1[i].get_height()
+        height2 = rect.get_height()
+        ax.annotate('{:.2f}x'.format(height2 / height1),
+                    xy=(rect.get_x(), height2),
+                    xytext=(0, 2),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom',
+                    fontsize=7)
+        
+def barplot(data, ax, title, y_column, y_limit, annotation_title, y_ticks=6, y_tick_format=lambda l: f"{l:.2f}", baseline_annotation_format=lambda l: f"{l:.2f}"):
+    
+    # Obtain x values for the plot;
+    x = np.arange(len(data["benchmark"].unique()))
+
+    # Obtain labels;
+    x_labels = [BENCHMARK_NAMES[l] for l in data["benchmark"].unique()]
+
+    palette = [COLORS["peach1"], COLORS["b8"]]
+    edgecolor = "#2f2f2f"
+    
+    bar_width = 0.35
+    
+    # Obtain y;
+    y_sync = data[data["policy"] == "sync"][y_column]
+    y_default = data[data["policy"] == "default"][y_column]
+
+    rects1 = ax.bar(x - bar_width / 2, y_sync, bar_width, label="sync", color=palette[0], edgecolor=edgecolor)
+    rects2 = ax.bar(x + bar_width / 2, y_default, bar_width, label="default", color=palette[1], edgecolor=edgecolor)
+    
+    ax.set_xticks(x)
+    ax.set_xticklabels(x_labels, fontsize=7, va="center")
+    
+    # ax.set_ylim((0, 1.1 * summary["memory_throughput"].max()))
+    ax.set_ylim(y_limit)
+    # Set the y ticks;
+    ax.yaxis.set_major_locator(plt.LinearLocator(y_ticks))
+    ax.set_yticklabels(labels=[y_tick_format(l) for l in ax.get_yticks()], ha="right", fontsize=6)
+    ax.grid(True, axis="y")
+    
+    # ax.annotate(title, fontsize=9, x=.02, y=0.95, ha="left")
+    plt.suptitle("Hardware metrics\nfor each benchmark and execution policy", fontsize=9, x=.01, y=0.97, ha="left")
+    ax.annotate(title, xy=(0, 1.05), fontsize=7, ha="left", xycoords="axes fraction")#, xycoords="data", xytext=(0, 100), textcoords="offset points")
+    autolabel(ax, rects1, rects2)
+    
+    # Add baseline annotations;
+    for i, b in enumerate(BENCHMARK_NAMES):
+        position = x[i]
+        serial_throughput = summary[(summary["benchmark"] == b) & (summary["policy"] == "sync")][y_column].iloc[0]
+        if i == 0: 
+            ax.annotate(annotation_title, xy=(0, 0), fontsize=6, ha="right", va="center", xycoords="data", xytext=(-12, -22), textcoords="offset points")
+        ax.annotate(baseline_annotation_format(serial_throughput), xy=(position - bar_width, 0), fontsize=6, ha="left", va="center", xycoords="data", color=palette[0], xytext=(0, -22), textcoords="offset points")
+    
+    # Legend;  
+    labels = [POLICIES_DICT[p] for p in POLICIES]
+    custom_lines = [Patch(facecolor=palette[i], edgecolor="#2f2f2f", label=l)
+                    for i, l in enumerate(labels)]
+    leg = fig.legend(custom_lines, labels, bbox_to_anchor=(1, 0.99), fontsize=7, ncol=1)
+    leg._legend_box.align = "left"
+    leg.get_frame().set_facecolor('white')        
+
+
 if __name__ == "__main__":
     
     files = os.listdir(os.path.join(DEFAULT_RES_DIR, INPUT_DATE))
@@ -167,28 +248,30 @@ if __name__ == "__main__":
     # Create a single table;
     res = pd.concat(output_res, ignore_index=True)
     # Sort columns;
-    res = res[list(res.columns[-2:]) + [res.columns[2]] + [res.columns[0]] + [res.columns[3]] + [res.columns[1]] + list(res.columns[5:9])]
+    res = res[list(res.columns[-2:]) + [res.columns[2]] + [res.columns[0]] + [res.columns[3]] + [res.columns[1]] + list(res.columns[5:-2])]
     
     # For each benchmark and policy, compute the total computation time;
     summary_list = []
     for (b, p), group in res.groupby(by=["benchmark", "policy"]):
         overlap_computation_time = get_computation_time_with_overlap(group)
+        
+        # Device memory;
         total_memory_accessed = group["dram_read_bytes"].sum() + group["dram_write_bytes"].sum()
         memory_throughput = total_memory_accessed / (overlap_computation_time / 1000)
-        summary_list += [[b, p, overlap_computation_time, total_memory_accessed, memory_throughput, memory_throughput / MAX_GPU_BANDWIDTH]]
         
-    summary = pd.DataFrame(summary_list, columns=["benchmark", "policy", "duration_ms", "dram_accessed_GB", "memory_throughput", "max_memory_throughput_perc"])
+        # L2 cache;
+        total_l2_accessed = group["total_l2_read_bytes"].sum() + group["total_l2_write_bytes"].sum()
+        l2_throughput = total_l2_accessed / (overlap_computation_time / 1000)
+        
+        # IPC;
+        total_instructions = group["inst_executed"].sum() 
+        ipc = total_instructions / (GPU_CLOCK_HZ * (overlap_computation_time / 1000)) / GPU_NUM_SM
+        
+        summary_list += [[b, p, overlap_computation_time, total_memory_accessed, memory_throughput, memory_throughput / MAX_GPU_BANDWIDTH, l2_throughput, l2_throughput / MAX_L2_GPU_BANDWIDTH,  ipc]]
+        
+    summary = pd.DataFrame(summary_list, columns=["benchmark", "policy", "duration_ms", "dram_accessed_GB", "memory_throughput", "max_memory_throughput_perc", "l2_throughput", "max_l2_throughput_perc", "ipc"])
     
-    #%% Create barplot with memory throughput;
-    
-    # Obtain x values for the plot;
-    x = np.arange(len(summary["benchmark"].unique()))
-
-    # Obtain labels;
-    x_labels = [BENCHMARK_NAMES[l] for l in summary["benchmark"].unique()]
-    # Obtain y;
-    y_sync = summary[summary["policy"] == "sync"]["memory_throughput"]
-    y_default = summary[summary["policy"] == "default"]["memory_throughput"]
+    #%% Create barplot with memory throughput;   
     
     sns.set_style("white", {"ytick.left": True})
     plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
@@ -196,68 +279,30 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelpad'] = 9 
     plt.rcParams['axes.titlesize'] = 22 
     plt.rcParams['axes.labelsize'] = 14 
-    plt.rcParams['xtick.major.pad'] = 10
+    plt.rcParams['xtick.major.pad'] = 5
     
-    num_col = 1
+    num_col = 3
     
-    fig = plt.figure(figsize=(3 * num_col, 2.5)) 
-    ax = fig.add_subplot()
+    fig, axes = plt.subplots(1, num_col, figsize=(1.9 * num_col, 2.3)) 
     plt.subplots_adjust(top=0.75,
-                    bottom=0.25,
-                    left=0.15,
+                    bottom=0.19,
+                    left=0.1,
                     right=.99,
                     hspace=0.9,
-                    wspace=0.0)
-    palette = [COLORS["peach1"], COLORS["b8"]]
-    edgecolor = "#2f2f2f"
-    # p = ["#FFEDAB", "#FFDB8C", "#FFC773", "#FFAF66"]
-    # p = ["#C8FCB6", "#96DE9B", "#66B784", "#469E7B"]
-    
-    bar_width = 0.35
-    
-    rects1 = ax.bar(x - bar_width / 2, y_sync, bar_width, label="sync", color=palette[0], edgecolor=edgecolor)
-    rects2 = ax.bar(x + bar_width / 2, y_default, bar_width, label="default", color=palette[1], edgecolor=edgecolor)
-    
-    ax.set_xticks(x)
-    ax.set_xticklabels(x_labels, fontsize=8, va="center")
-    
-    # ax.set_ylim((0, 1.1 * summary["memory_throughput"].max()))
-    ax.set_ylim((0, 50))
-    # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(6))
-    ax.set_yticklabels(labels=[f"{int(l)} GB/s" for l in ax.get_yticks()], ha="right", fontsize=6)
-    ax.grid(True, axis="y")
-    
-    plt.suptitle("Device memory throughput\nfor each benchmark\nand execution policy", fontsize=9, x=.02, y=0.95, ha="left")
-    
-    def autolabel(rects1, rects2):
-        """Attach a text label above each bar in *rects*, displaying its height."""
-        for i, rect in enumerate(rects2):
-            height1 = rects1[i].get_height()
-            height2 = rect.get_height()
-            ax.annotate('{:.2f}x'.format(height2 / height1),
-                        xy=(rect.get_x() + rect.get_width() / 2, height2),
-                        xytext=(0, 2),  # 3 points vertical offset
-                        textcoords="offset points",
-                        ha='center', va='bottom',
-                        fontsize=8)
-
-    autolabel(rects1, rects2)
-    
-    # Add baseline annotations;
-    for i, b in enumerate(BENCHMARK_NAMES):
-        position = x[i]
-        serial_throughput = summary[(summary["benchmark"] == b) & (summary["policy"] == "sync")]["memory_throughput"].iloc[0]
-        ax.annotate(f"Serial\nthroughput: ", xy=(position, 0), fontsize=6, ha="center", xycoords="data", xytext=(0, -36), textcoords="offset points")
-        ax.annotate(f"{int(serial_throughput)} GB/s", xy=(position, 0), fontsize=6, ha="center", xycoords="data", color="#469E7B", xytext=(0, -43.5), textcoords="offset points")
-    
-    # Legend;  
-    labels = [POLICIES_DICT[p] for p in POLICIES]
-    custom_lines = [Patch(facecolor=palette[i], edgecolor="#2f2f2f", label=l)
-                    for i, l in enumerate(labels)]
-    leg = fig.legend(custom_lines, labels, bbox_to_anchor=(1, 0.96), fontsize=8, ncol=1)
-    leg._legend_box.align = "left"
-    leg.get_frame().set_facecolor('white')
+                    wspace=0.4)
+   
+    barplot(summary, axes[0], "Device memory throughput",
+            "memory_throughput", (0, 50), "Serial\nthroughput:", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}\nGB/s")
+    barplot(summary, axes[1], "L2 cache throughput",
+            "l2_throughput", (0, 250), "Serial\nthroughput:", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}\nGB/s")
+    barplot(summary, axes[2], "IPC",
+            "ipc", (0, 1.5), "Serial\nIPC:", y_ticks=7, y_tick_format=lambda l: f"{l:.2f}", baseline_annotation_format=lambda l: f"{l:.2f}")
     
     save_plot(PLOT_DIR, "memory_throughput_{}.{}", OUTPUT_DATE)
     
+    #%%
+    tmp = res[res["policy"] == "sync"].groupby(by=["benchmark", "policy", "name"]).mean()
+    tmp["ipc_fix"] = tmp["estimated_ipc"] / 8
+    tmp["ipc_perc"] = ( tmp["ipc_fix"] -  tmp["ipc"]) /  tmp["ipc"]
+    
+    print(np.median(tmp["ipc_perc"]))
