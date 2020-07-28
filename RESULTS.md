@@ -188,7 +188,7 @@ The only situation with a visible difference is `bench_8`, when processing very 
 These results are further reaffirmed by looking at the execution time distributions (for example, using the largest data-sets and `block_size=256`, to evaluate an average case).
  In a couple of cases (e.g `bench_1`) it can be seen how the CUDA implementation might be sligthly faster (around 5%), although the same is true for GrCUDA in `bench_8`, while other benchmarks show very similar distributions.
 
-![Relative exec. time w.r.t. CUDA, distribution](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_ridgeplot_2020_07_15.png)
+<img src="https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_ridgeplot_2020_07_15.png" width="600">
 
 By measuring the execution time of each phase of a benchmark, it is possible to estimate the fastest theoretical time of the benchmark.
  This theoretical time assumes a *GPU* with infinite resources and infinite host-device capacity, so that it's always possible to transfer data without having to wait for the current transfer to end 
@@ -222,7 +222,7 @@ Measures are taken for the largest data-size in the evaluation (for each benchma
   the computation lasts much longer than the data-transfer, and part of the computation cannot be overlapped. 
   In all likelihood, a more optimized kernel computation would result in higher **CT** overlap, and better speedup.
   
-![Memory throughput](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_28/memory_throughput_2020_07_28.png)
+<img src="https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_28/memory_throughput_2020_07_28.png" width="600">
 
 Using `nvprof` we measure the total amount of bytes read/written by each kernel, and analyse how the GPU memory throughput is affected by space-sharing. 
 Note that `nvprof` affects the kernel execution and limits the execution of concurrent kernels due to the high overhead introduced by collecting memory access metrics for each kernel.
