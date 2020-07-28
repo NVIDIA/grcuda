@@ -221,3 +221,14 @@ Measures are taken for the largest data-size in the evaluation (for each benchma
   if executed serially, do not fill the GPU resources. Very different values of **CT** and **TC** (as in `b5`) indicate that, although the data-transfer is completely overlapped to GPU computations, 
   the computation lasts much longer than the data-transfer, and part of the computation cannot be overlapped. 
   In all likelihood, a more optimized kernel computation would result in higher **CT** overlap, and better speedup.
+  
+![Memory throughput](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_28/memory_throughput_2020_07_28.png)
+
+Using `nvprof` we measure the total amount of bytes read/written by each kernel, and analyse how the GPU memory throughput is affected by space-sharing. 
+Note that `nvprof` affects the kernel execution and limits the execution of concurrent kernels due to the high overhead introduced by collecting memory access metrics for each kernel.
+Instead, we measure the execution times obtained without metric collection (so that `nvprof` influence over the execution times is minimal) 
+and combine them with memory access metrics collected in a separate run. 
+The assumption here is the total amount of memory accesses is not significantly impacted by space sharing, and this evaluation is still useful to obtain performance insights.
+Indeed, we see that for kernels that contain computation overlap (e.g. `b6` and `b8`) the increase in memory throughput is significant, and in-line with the total speedup observed for these benchmarks.
+As expected, `b1` does not have any increase in memory throughput, as its speedup comes exclusively from transfer overlap.
+ Similarly, `b5` shows a small memory throughput increase, as the benchmark main bottleneck by the arithmetic intensity, and a significant part of the speedup comes from transfer overlapping.

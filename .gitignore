@@ -47,3 +47,4 @@ mx.grcuda/eclipse-launches
 **.nvvp
 projects/resources/cuda/bin
 data/results/*
+data/nvprof_log/*
