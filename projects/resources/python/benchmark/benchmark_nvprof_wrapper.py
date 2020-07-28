@@ -61,7 +61,7 @@ block_sizes_2d_dict = {
 ##############################
 
 LOG_FOLDER = "../../../../data/nvprof_log"
-METRICS = "--metrics 'dram_read_throughput,dram_write_throughput,dram_read_bytes,dram_write_bytes,l2_global_atomic_store_bytes,l2_global_load_bytes,l2_global_reduction_bytes,l2_local_global_store_bytes,l2_local_load_bytes,l2_read_throughput,l2_write_throughput,inst_issued,ipc'"
+METRICS = "--metrics 'dram_read_throughput,dram_write_throughput,dram_read_bytes,dram_write_bytes,l2_global_atomic_store_bytes,l2_global_load_bytes,l2_global_reduction_bytes,l2_local_global_store_bytes,l2_local_load_bytes,l2_read_throughput,l2_write_throughput,inst_executed,ipc'"
 
 # This path is hard-coded because nvprof is executed as root,
 # and the superuser doesn't have Graalpython in its environment;
