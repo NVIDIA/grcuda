@@ -25,8 +25,8 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
-INPUT_DATE = "2020_07_28"
-OUTPUT_DATE = "2020_07_282"
+INPUT_DATE = "2020_08_05"
+OUTPUT_DATE = "2020_08_05"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {
@@ -34,7 +34,8 @@ BENCHMARK_NAMES = {
     "b5": "B&S", 
     "b6": "ML",
     "b7": "HITS", 
-    "b8": "IMG"
+    "b8": "IMG",
+    "b10": "DL"
     }
 POLICIES = ["sync", "default"]
 POLICIES_DICT = {"default": "DAG Scheduling", "sync": "Serial Scheduling"}
@@ -252,7 +253,7 @@ if __name__ == "__main__":
     
     # For each benchmark and policy, compute the total computation time;
     summary_list = []
-    for (b, p), group in res.groupby(by=["benchmark", "policy"]):
+    for (b, p), group in res.groupby(by=["benchmark", "policy"], sort=False):
         overlap_computation_time = get_computation_time_with_overlap(group)
         
         # Device memory;
@@ -283,7 +284,7 @@ if __name__ == "__main__":
     
     num_col = 3
     
-    fig, axes = plt.subplots(1, num_col, figsize=(1.9 * num_col, 2.3)) 
+    fig, axes = plt.subplots(1, num_col, figsize=(2.2 * num_col, 2.5)) 
     plt.subplots_adjust(top=0.75,
                     bottom=0.19,
                     left=0.1,

@@ -26,12 +26,12 @@ import matplotlib.ticker as ticker
 ##############################
 
 
-INPUT_DATE_GRCUDA = "2020_07_15_15_13_52_grcuda"
-INPUT_DATE_CUDA = "2020_07_15_22_29_46_cuda"
-OUTPUT_DATE = "2020_07_15"
+INPUT_DATE_GRCUDA = "2020_08_04_21_03_21_grcuda"
+INPUT_DATE_CUDA = "2020_08_05_14_04_56_cuda"
+OUTPUT_DATE = "2020_08_05"
 PLOT_DIR = "../../../../data/plots"
 
-BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
+BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
 
 ##############################
 ##############################
@@ -240,7 +240,7 @@ def ridgeplot(data):
         data.loc[group.index, "normalized_time_cuda"] = group["computation_sec_cuda"].values / median_baseline
         data.loc[group.index, "normalized_time_grcuda"] = group["computation_sec_grcuda"].values / median_baseline
         
-    benchmarks = data["benchmark"].unique()
+    benchmarks = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     block_sizes = data["block_size_str"].unique()
     sizes = data["size"].unique()
             
@@ -268,7 +268,9 @@ def ridgeplot(data):
         "b5": [0.95, 1.05],
         "b6": [0.95, 1.05],
         "b7": [0.99, 0.99],
-        "b8": [0.87, 1.13]}
+        "b8": [0.87, 1.13],
+        "b10": [0.87, 1.13],
+        }
     # offsets = {
     #     "b1": [0.85, 1.15],
     #     "b5": [0.95, 1.05],
@@ -337,7 +339,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) 
+    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
     num_col = len(benchmark_list)
     num_row = len(block_size_list)
@@ -373,7 +375,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) 
+    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     policy_list = sorted(data["exec_policy"].unique())
     num_col = len(benchmark_list)
     num_row = len(policy_list)
