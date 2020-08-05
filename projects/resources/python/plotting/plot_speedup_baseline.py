@@ -21,8 +21,8 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-INPUT_DATE = "2020_08_04_21_03_21_grcuda"
-OUTPUT_DATE = "2020_08_05"
+INPUT_DATE = "2020_08_05_21_02_55_grcuda"
+OUTPUT_DATE = "2020_08_052"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}

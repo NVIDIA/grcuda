@@ -4,7 +4,7 @@
 #define NUM_THREADS_PER_BLOCK_2D 8
 #define NUM_THREADS_PER_BLOCK 32
 #define WARP_SIZE 32
-
+#define NUM_BLOCKS 16
 
 extern "C" __global__ void conv2d(float *out, float *x, float *kernels, int N, int M, int L, int K, int k_out, int stride) {
     extern __shared__ float kernel_local[];
@@ -21,10 +21,12 @@ extern "C" __global__ void conv2d(float *out, float *x, float *kernels, int N, i
     }
     __syncthreads();
     
-    for (int m = 0; m < k_out; m++) {
-        for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (int) ceilf((float) N / stride) - radius; i += blockDim.x * gridDim.x) {
-            int out_index = M * i / stride;
-            for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < (int) ceilf((float) M / stride) - radius; j += blockDim.y * gridDim.y) {
+   
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (int) ceilf((float) N / stride) - radius; i += blockDim.x * gridDim.x) {
+        int out_index = M * i / stride;
+        for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < (int) ceilf((float) M / stride) - radius; j += blockDim.y * gridDim.y) {
+            for (int m = 0; m < k_out; m++) {
+            // for (int m = blockIdx.z * blockDim.z + threadIdx.z; m < k_out; m += blockDim.z * gridDim.z) {
                 float res = 0;
                 int i_f = i * stride + radius;
                 int j_f = j * stride + radius;
@@ -40,6 +42,29 @@ extern "C" __global__ void conv2d(float *out, float *x, float *kernels, int N, i
                 }
                 // Apply ReLU operator;
                 out[m + k_out * (j + out_index)] = max(res, 0.0);
+            }
+        }
+    }
+}
+
+extern "C" __global__ void mean_pooling(float *out, float *x, int N, int M, int L, int K, int stride) {
+    int radius = K / 2;   
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (int) ceilf((float) N / stride) - radius; i += blockDim.x * gridDim.x) {
+        int out_index = M * i / stride;
+        int i_f = i * stride + radius;
+        for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < (int) ceilf((float) M / stride) - radius; j += blockDim.y * gridDim.y) {
+            int j_f = j * stride + radius;
+            for (int l = blockIdx.z * blockDim.z + threadIdx.z; l < L; l += blockDim.z * gridDim.z) {
+                float res = 0;
+                for (int k_i = -radius; k_i <= radius; k_i++) {
+                    int ni = i_f + k_i;
+                    for (int k_j = -radius; k_j <= radius; k_j++) {
+                        int nj = j_f + k_j;
+                        res += x[((ni * M) + nj) * L + l];
+                    }
+                }
+                // Apply mean operator;
+                out[l + L * (j + out_index)] = res / (K * K);
             }
         }
     }

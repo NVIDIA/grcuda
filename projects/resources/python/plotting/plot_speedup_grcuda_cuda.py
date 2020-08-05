@@ -26,9 +26,9 @@ import matplotlib.ticker as ticker
 ##############################
 
 
-INPUT_DATE_GRCUDA = "2020_08_04_21_03_21_grcuda"
-INPUT_DATE_CUDA = "2020_08_05_14_04_56_cuda"
-OUTPUT_DATE = "2020_08_05"
+INPUT_DATE_GRCUDA = "2020_08_05_21_02_55_grcuda"
+INPUT_DATE_CUDA = "2020_08_05_20_13_22_cuda"
+OUTPUT_DATE = "2020_08_052"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -232,7 +232,7 @@ def ridgeplot(data):
     data["normalized_time_grcuda"] = 1
     
     # grouped_data = data.groupby(["benchmark", "size", "block_size_str"], as_index=False)
-    grouped_data = data.groupby(["benchmark"], as_index=False)
+    grouped_data = data.groupby(["benchmark"], as_index=False, sort=False)
     for group_key, group in grouped_data:
         # Compute the median baseline computation time;
         median_baseline = np.median(group["computation_sec_cuda"])

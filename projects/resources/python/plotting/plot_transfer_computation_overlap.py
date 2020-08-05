@@ -22,7 +22,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
 INPUT_DATE = "2020_07_20"
-OUTPUT_DATE = "2020_08_05"
+OUTPUT_DATE = "2020_08_052"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -40,7 +40,7 @@ SPEEDUPS = {
     "b6": 1.25,
     "b7": 1.14,
     "b8": 1.30,
-    "b10": 1.40,
+    "b10": 1.34,
     }
 
 if __name__ == "__main__":
