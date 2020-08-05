@@ -14,12 +14,12 @@ DEFAULT_NUM_BLOCKS = 64
 
 # Benchmark settings;
 benchmarks = [
-    "b1",
-    # "b4",
-    "b5",
-    "b6",
-    "b7",
-    "b8",
+    # "b1",
+    # "b5",
+    # "b6",
+    # "b7",
+    # "b8",
+    "b10",
 ]
 
 num_elem = {
@@ -29,6 +29,7 @@ num_elem = {
     "b6": [800000],
     "b7": [15_000_000],
     "b8": [4800],
+    "b10": [2500],
 }
 
 exec_policies = ["default", "sync"]
@@ -46,6 +47,7 @@ block_sizes_1d_dict = {
     "b6": 32,
     "b7": 32,
     "b8": 128,
+    "b10": 1024,
 }
 
 block_sizes_2d_dict = {
@@ -55,6 +57,7 @@ block_sizes_2d_dict = {
     "b6": 8,
     "b7": 8,
     "b8": 8,
+    "b10": 8,
 }
 
 ##############################
@@ -78,7 +81,7 @@ GRAALPYTHON_CMD = """/usr/local/cuda/bin/nvprof --csv --log-file "{}" --print-gp
 def execute_grcuda_benchmark(benchmark, size, exec_policy, new_stream_policy,
                       parent_stream_policy, dependency_policy, num_iter, debug, time_phases):
     block_size = (block_sizes_1d_dict[b], block_sizes_2d_dict[b])
-    for m in [True]: #[True, False]:
+    for m in [True, False]:
         if debug:
             BenchmarkResult.log_message("")
             BenchmarkResult.log_message("")

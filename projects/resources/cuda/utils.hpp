@@ -48,7 +48,7 @@ inline void customSort(I *row_indices, I *col_indices, T *values, I nnz) {
 
 template<typename I, typename T>
 inline void coo2csr(I *csrRowPtr, I *csrColInd, T *csrVal, I *row_indices,
-		I* col_indices, I* values, I nrows, I ncols, I nnz) {
+		I* col_indices, T* values, I nrows, I ncols, I nnz) {
 
 	I temp, row, col, dest, cumsum = 0;
 

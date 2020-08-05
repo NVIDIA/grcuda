@@ -14,7 +14,7 @@ import numpy as np
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
 INPUT_DATE = "2020_07_20"
-OUTPUT_DATE = "2020_07_20"
+OUTPUT_DATE = "2020_08_05"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -24,6 +24,7 @@ DATA_DICT = {
     "b6": "b6_1989.csv",
     "b7": "b7_2663.csv",
     "b8": "b8_10958.csv",
+    "b10": "b10_6538.csv",
     }
 
 SKIP_SUMMARY_ROWS = {
@@ -32,6 +33,7 @@ SKIP_SUMMARY_ROWS = {
     "b6": 0,
     "b7": 0,
     "b8": 0,
+    "b10": 0,
     }
 
 NVPROF_HEADER = ["start_ms", "duration_ms", "Grid X", "Grid Y", "Grid Z", "Block X", "Block Y", "Block Z",

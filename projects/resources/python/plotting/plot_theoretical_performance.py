@@ -27,20 +27,21 @@ import matplotlib.ticker as ticker
 
 DEFAULT_RES_DIR = "../../../../data/results"
 
-INPUT_DATE_GRCUDA = "2020_07_16_10_59_36_grcuda"
-OUTPUT_DATE = "2020_07_16"
+INPUT_DATE_GRCUDA = "2020_08_04_21_30_43_grcuda"
+OUTPUT_DATE = "2020_08_05"
 PLOT_DIR = "../../../../data/plots"
 
 B5_ITER = 10
 B7_ITER = 5
 
-BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
+BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
 BENCHMARK_PHASES = {
     "b1": ["square_1", "square_2", "reduce"],
     "b5": [y for x in [[f"bs_{i}"] for i in range(B5_ITER)] for y in x],
     "b6": ["rr_1", "rr_2", "rr_3", "nb_1", "nb_2", "nb_3", "nb_4", "softmax_1", "softmax_2", "argmax"],
     "b7": [y for x in [[f"spmv_a_{i}", f"spmv_h_{i}", f"sum_a_{i}", f"sum_h_{i}", f"divide_a_{i}", f"divide_h_{i}", f"norm_reset_{i}"] for i in range(B7_ITER)] for y in x],
     "b8": ["blur_small", "blur_large", "blur_unsharpen", "sobel_small", "sobel_large", "maximum", "minimum", "extend", "unsharpen", "combine", "combine_2"],
+    "b10": ["conv_x1", "conv_x2", "conv_y1", "conv_y2", "concat", "dot_product"],
     }
 
 ##############################
@@ -79,12 +80,16 @@ def theoretical_speed_b8(data):
     combine = data["combine"] + np.maximum(data["blur_unsharpen"] + data["unsharpen"], data["blur_large"] + data["sobel_large"] + extend)
     return data["combine_2"] + np.maximum(data["blur_small"] + data["sobel_small"], combine)
 
+def theoretical_speed_b10(data):
+    return np.maximum(data["conv_x1"] + data["conv_x2"], data["conv_y1"] + data["conv_y2"]) + data["concat"] + data["dot_product"]
+
 THEORETICAL_SPEED_FUNCTIONS = {
     "b1": theoretical_speed_b1,
     "b5": theoretical_speed_b5,
     "b6": theoretical_speed_b6,
     "b7": theoretical_speed_b7,
     "b8": theoretical_speed_b8,
+    "b10": theoretical_speed_b10,
     }
 
 ##############################
@@ -295,7 +300,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) 
+    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
     num_col = len(benchmark_list)
     num_row = len(block_size_list)
@@ -331,7 +336,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique()) 
+    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     policy_list = sorted(data["exec_policy"].unique())
     num_col = len(benchmark_list)
     num_row = len(policy_list)

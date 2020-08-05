@@ -21,11 +21,11 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-INPUT_DATE = "2020_07_15_15_13_52_grcuda"
-OUTPUT_DATE = "2020_07_15"
+INPUT_DATE = "2020_08_04_21_03_21_grcuda"
+OUTPUT_DATE = "2020_08_05"
 PLOT_DIR = "../../../../data/plots"
 
-BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
+BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
 
 def build_exec_time_plot(data, gridspec, x, y):
     
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique())
+    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
 
     num_col = len(benchmark_list)
@@ -230,7 +230,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     
     # Lists of benchmarks and block sizes;
-    benchmark_list = sorted(data["benchmark"].unique())
+    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     num_col = len(benchmark_list)
     num_row = 1
     fig = plt.figure(figsize=(2.6 * num_col, 4.1 * num_row))
