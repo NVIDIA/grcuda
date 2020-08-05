@@ -28,14 +28,15 @@ int main(int argc, char *argv[]) {
     int N = options.N;
 
     int K = 3;
-    int channels = 3;
+    int channels = 1;
     int stride = 2;
     int kn1 = 8;
     int kn2 = 16;
+    int pooling_diameter = 5;
 
     int block_size_1d = options.block_size_1d;
     int block_size_2d = options.block_size_2d;
-    int num_blocks = 8; // options.num_blocks;
+    int num_blocks = NUM_BLOCKS; // options.num_blocks;
     int skip_iterations = options.skip_iterations;
     int err = 0;
 
@@ -51,11 +52,14 @@ int main(int argc, char *argv[]) {
     
     auto start = clock_type::now();
     float *x, *x1, *x2, *x3, *y, *y1, *y2, *y3, *kernel_1, *kernel_2, *kernel_3, *kernel_4, *z, *dense_weights, *res;
+    float *x11, *y11;
     float *x_cpu = (float *) malloc(sizeof(float) * N * N * channels);
     float *y_cpu = (float *) malloc(sizeof(float) * N * N * channels);
     int x_len = N * N * channels;
     int x1_len = (N / stride) * (N / stride) * kn1;
-    int x2_len = (N / (stride * stride)) * (N / (stride * stride)) * kn2;
+    int pooled_len = x1_len / (pooling_diameter * pooling_diameter);
+    int x2_len = ((N / stride) / pooling_diameter / stride) * ((N / stride) / pooling_diameter / stride) * kn2;
+    // int x2_len = (N / (stride * stride)) * (N / (stride * stride)) * kn2;
     int x3_len = kn2;
     err = cudaMallocManaged(&x, sizeof(float) * x_len);
     err = cudaMallocManaged(&x1, sizeof(float) * x1_len);
@@ -78,6 +82,10 @@ int main(int argc, char *argv[]) {
     err = cudaMallocManaged(&z, sizeof(float) * z_len);
     err = cudaMallocManaged(&dense_weights, sizeof(float) * z_len);
     err = cudaMallocManaged(&res, sizeof(float));   
+
+    
+    err = cudaMallocManaged(&x11, sizeof(float) * pooled_len);
+    err = cudaMallocManaged(&y11, sizeof(float) * pooled_len);
    
     if (debug && err) std::cout << err << std::endl;
 
@@ -121,15 +129,28 @@ int main(int argc, char *argv[]) {
         dim3 grid_size(num_blocks, num_blocks);
         dim3 grid_size_2(num_blocks / 2, num_blocks / 2);
 
+        dim3 block_size_3d_dim(block_size_2d / 2, block_size_2d / 2, block_size_2d / 2);
+        dim3 grid_size_3(num_blocks / 2, num_blocks / 2, num_blocks / 2);
+
         conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float)>>>(x1, x, kernel_1, N, N, channels, K, kn1, stride);
         cudaDeviceSynchronize();
         conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float)>>>(y1, y, kernel_3, N, N, channels, K, kn1, stride);
         cudaDeviceSynchronize();
 
-        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float)>>>(x2, x1, kernel_2, N / stride, N / stride, kn1, K, kn2, stride);
+        mean_pooling<<<grid_size_3, block_size_3d_dim>>>(x11, x1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
         cudaDeviceSynchronize();
-        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float)>>>(y2, y1, kernel_4, N / stride, N / stride, kn1, K, kn2, stride);
+        mean_pooling<<<grid_size_3, block_size_3d_dim>>>(y11, y1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
         cudaDeviceSynchronize();
+
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float)>>>(x2, x11, kernel_2, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+        cudaDeviceSynchronize();
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float)>>>(y2, y11, kernel_4, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+        cudaDeviceSynchronize();
+
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float)>>>(x2, x1, kernel_2, N / stride, N / stride, kn1, K, kn2, stride);
+        // cudaDeviceSynchronize();
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float)>>>(y2, y1, kernel_4, N / stride, N / stride, kn1, K, kn2, stride);
+        // cudaDeviceSynchronize();
 
         // gap<<<grid_size_2, block_size_2d_dim, kn2 * sizeof(float)>>>(x3, x2, N / (stride * stride), N / (stride * stride), kn2);
         // cudaDeviceSynchronize();

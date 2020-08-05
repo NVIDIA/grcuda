@@ -30,10 +30,12 @@ extern "C" __global__ void conv2d(float *out, float *x, float *kernels, int N, i
     }
     __syncthreads();
     
-    for (int m = 0; m < k_out; m++) {
-        for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (int) ceilf((float) N / stride) - radius; i += blockDim.x * gridDim.x) {
-            int out_index = M * i / stride;
-            for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < (int) ceilf((float) M / stride) - radius; j += blockDim.y * gridDim.y) {
+   
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (int) ceilf((float) N / stride) - radius; i += blockDim.x * gridDim.x) {
+        int out_index = M * i / stride;
+        for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < (int) ceilf((float) M / stride) - radius; j += blockDim.y * gridDim.y) {
+            for (int m = 0; m < k_out; m++) {
+            // for (int m = blockIdx.z * blockDim.z + threadIdx.z; m < k_out; m += blockDim.z * gridDim.z) {
                 float res = 0;
                 int i_f = i * stride + radius;
                 int j_f = j * stride + radius;
@@ -49,6 +51,31 @@ extern "C" __global__ void conv2d(float *out, float *x, float *kernels, int N, i
                 }
                 // Apply ReLU operator;
                 out[m + k_out * (j + out_index)] = max(res, 0.0);
+            }
+        }
+    }
+}
+"""
+
+POOLING = """
+extern "C" __global__ void mean_pooling(float *out, float *x, int N, int M, int L, int K, int stride) {
+    int radius = K / 2;   
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (int) ceilf((float) N / stride) - radius; i += blockDim.x * gridDim.x) {
+        int out_index = M * i / stride;
+        int i_f = i * stride + radius;
+        for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < (int) ceilf((float) M / stride) - radius; j += blockDim.y * gridDim.y) {
+            int j_f = j * stride + radius;
+            for (int l = blockIdx.z * blockDim.z + threadIdx.z; l < L; l += blockDim.z * gridDim.z) {
+                float res = 0;
+                for (int k_i = -radius; k_i <= radius; k_i++) {
+                    int ni = i_f + k_i;
+                    for (int k_j = -radius; k_j <= radius; k_j++) {
+                        int nj = j_f + k_j;
+                        res += x[((ni * M) + nj) * L + l];
+                    }
+                }
+                // Apply mean operator;
+                out[l + L * (j + out_index)] = res / (K * K);
             }
         }
     }
@@ -135,14 +162,17 @@ class Benchmark10(Benchmark):
         self.kernel_2 = None
         self.kernel_3 = None
         self.kernel_4 = None
-        self.channels = 3
+        self.channels = 1
         self.K = 3
         self.kn1 = 8
-        self.kn2 = 16 # 8
-        self.stride = 2 # 4
+        self.kn2 = 16
+        self.stride = 2
+        self.pooling = 5
 
         self.x1 = None
         self.x2 = None
+        self.x11 = None
+        self.y11 = None
         self.x3 = None
         self.y1 = None
         self.y2 = None
@@ -154,7 +184,7 @@ class Benchmark10(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = 8 # i.e. K * number of SM on the GTX960
+        self.num_blocks_per_processor = 16 # i.e. 2 * number of SM on the GTX960
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
@@ -163,6 +193,7 @@ class Benchmark10(Benchmark):
         self.gap_kernel = None
         self.concat_kernel = None
         self.dp_kernel = None
+        self.pooling_kernel = None
 
     @time_phase("allocation")
     def alloc(self, size: int, block_size: dict = None) -> None:
@@ -175,11 +206,13 @@ class Benchmark10(Benchmark):
         # Allocate vectors;
         self.x = polyglot.eval(language="grcuda", string=f"float[{size * size * self.channels}]")
         self.x1 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride) * (size // self.stride) * self.kn1}]")
-        self.x2 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride**2)  * (size // self.stride**2) * self.kn2}]")
+        self.x11 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride // self.pooling) * (size // self.stride // self.pooling) * self.kn1}]")
+        self.x2 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride // self.pooling // self.stride) * (size // self.stride // self.pooling // self.stride) * self.kn2}]")
         self.x3 = polyglot.eval(language="grcuda", string=f"float[{self.kn2}]")
         self.y = polyglot.eval(language="grcuda", string=f"float[{size * size * self.channels}]")
         self.y1 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride) * (size // self.stride) * self.kn1}]")
-        self.y2 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride**2) * (size // self.stride**2) * self.kn2}]")
+        self.y11 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride // self.pooling) * (size // self.stride // self.pooling) * self.kn1}]")
+        self.y2 = polyglot.eval(language="grcuda", string=f"float[{(size // self.stride // self.pooling // self.stride) * (size // self.stride // self.pooling // self.stride) * self.kn2}]")
         self.y3 = polyglot.eval(language="grcuda", string=f"float[{self.kn2}]")
         self.kernel_1 = polyglot.eval(language="grcuda", string=f"float[{self.kn1 * self.K * self.K * self.channels}]")
         self.kernel_2 = polyglot.eval(language="grcuda", string=f"float[{self.kn1 * self.K * self.K * self.kn2}]")
@@ -193,6 +226,7 @@ class Benchmark10(Benchmark):
         # Build the kernels;
         build_kernel = polyglot.eval(language="grcuda", string="buildkernel")
         self.conv2d_kernel = build_kernel(CONV2D, "conv2d", "pointer, pointer, const pointer, sint32, sint32, sint32, sint32, sint32, sint32")
+        self.pooling_kernel = build_kernel(POOLING, "mean_pooling", "pointer, const pointer, sint32, sint32, sint32, sint32, sint32")
         self.gap_kernel = build_kernel(GAP, "gap", "pointer, pointer, sint32, sint32, sint32")
         self.concat_kernel = build_kernel(CONCAT, "concat", "pointer, const pointer, const pointer, sint32")
         self.dp_kernel = build_kernel(DOT_PRODUCT, "dot_product", "const pointer, const pointer, pointer, sint32")
@@ -242,12 +276,20 @@ class Benchmark10(Benchmark):
         self.execute_phase("conv_y1",
                            self.conv2d_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * (self.K ** 2) * self.kn1 * self.channels),
                            self.y1, self.y, self.kernel_3, self.size, self.size, self.channels, self.K, self.kn1, self.stride)
+        # Pooling;
+        self.execute_phase("pool_x1",
+                           self.pooling_kernel((a / 2, a / 2, a / 2), (self.block_size_2d / 2, self.block_size_2d / 2, self.block_size_2d / 2)),
+                           self.x11, self.x1, self.size // self.stride, self.size // self.stride, self.kn1, self.pooling, self.pooling)
+        self.execute_phase("pool_y1",
+                           self.pooling_kernel((a / 2, a / 2, a / 2), (self.block_size_2d / 2, self.block_size_2d / 2, self.block_size_2d / 2)),
+                           self.y11, self.y1, self.size // self.stride, self.size // self.stride, self.kn1, self.pooling, self.pooling)
+        # Other convolutions;
         self.execute_phase("conv_x2",
                            self.conv2d_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * (self.K ** 2) * self.kn1 * self.kn2),
-                           self.x2, self.x1, self.kernel_2, self.size // self.stride, self.size // self.stride, self.kn1, self.K, self.kn2, self.stride)
+                           self.x2, self.x11, self.kernel_2, self.size // self.stride // self.pooling, self.size // self.stride // self.pooling, self.kn1, self.K, self.kn2, self.stride)
         self.execute_phase("conv_y2",
                            self.conv2d_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * (self.K ** 2) * self.kn1 * self.kn2),
-                           self.y2, self.y1, self.kernel_4, self.size // self.stride, self.size // self.stride, self.kn1, self.K, self.kn2, self.stride)
+                           self.y2, self.y11, self.kernel_4, self.size // self.stride // self.pooling, self.size // self.stride // self.pooling, self.kn1, self.K, self.kn2, self.stride)
 
         # Global average pooling;
         # self.execute_phase("gap_x",
@@ -309,6 +351,24 @@ class Benchmark10(Benchmark):
                         out[m + k_out * (j + M * i // stride)] = operator(res)
             return out
 
+        def pooling(x, shape, K, stride):
+            N, M, L = shape
+            out = np.zeros((N // pooling, M // pooling, L))
+            radius = K // 2
+            for i in range(0, int(np.ceil(N / stride)) - radius):
+                for j in range(0, int(np.ceil(M / stride)) - radius):
+                    for l in range(L):
+                        res = 0
+                        i_f = i * stride + radius
+                        j_f = j * stride + radius
+                        for k_i in range(-radius, radius + 1):
+                            for k_j in range(-radius, radius + 1):
+                                    ni = i_f + k_i
+                                    nj = j_f + k_j
+                                    res += x[((ni * M) + nj) * L + l]
+                        out[l + L * (j + M * i // stride)] = res / K**2
+            return out
+
         def gap2(x, shape):
             N, M, L = shape
             out = np.zeros(L)
@@ -350,13 +410,15 @@ class Benchmark10(Benchmark):
 
             # First convolution (N,N,1) -> (N/stride,N/stride,kn1)
             x_1 = conv3d2(np.array(self.x_cpu), kernel_1, (N, N, self.channels), self.K, self.kn1, stride=self.stride)
+            x_11 = pooling(x_1, (N // self.stride, N // self.stride, self.kn1), self.pooling, self.pooling)
             # Second convolution (N/stride,N/stride,kn1) -> (N/stride^2,N/stride^2,kn2)
-            x_2 = conv3d2(x_1, kernel_2, (N // self.stride, N // self.stride, self.kn1), self.K, self.kn2, stride=self.stride)
+            x_2 = conv3d2(x_11, kernel_2, (N // self.stride // self.pooling, N // self.stride // self.pooling, self.kn1), self.K, self.kn2, stride=self.stride)
 
             # First convolution (N,N,1) -> (N/stride,N/stride,kn1)
             y_1 = conv3d2(np.array(self.y_cpu), kernel_3, (N, N, self.channels), self.K, self.kn1, stride=self.stride)
+            y_11 = pooling(y_1, (N // self.stride, N // self.stride, self.kn1), self.pooling, self.pooling)
             # Second convolution (N/stride,N/stride,kn1) -> (N/stride^2,N/stride^2,kn2)
-            y_2 = conv3d2(y_1, kernel_4, (N // self.stride, N // self.stride, self.kn1), self.K, self.kn2, stride=self.stride)
+            y_2 = conv3d2(y_11, kernel_4, (N // self.stride // self.pooling, N // self.stride // self.pooling, self.kn1), self.K, self.kn2, stride=self.stride)
 
             # Global average pooling 2D;
             # x_3 = gap2(x_2, (N // (self.stride * self.stride), N // (self.stride * self.stride), self.kn2))

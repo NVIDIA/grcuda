@@ -26,7 +26,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
 INPUT_DATE = "2020_08_05"
-OUTPUT_DATE = "2020_08_05"
+OUTPUT_DATE = "2020_08_052"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     barplot(summary, axes[1], "L2 cache throughput",
             "l2_throughput", (0, 250), "Serial\nthroughput:", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}\nGB/s")
     barplot(summary, axes[2], "IPC",
-            "ipc", (0, 1.5), "Serial\nIPC:", y_ticks=7, y_tick_format=lambda l: f"{l:.2f}", baseline_annotation_format=lambda l: f"{l:.2f}")
+            "ipc", (0, 1.75), "Serial\nIPC:", y_ticks=8, y_tick_format=lambda l: f"{l:.2f}", baseline_annotation_format=lambda l: f"{l:.2f}")
     
     save_plot(PLOT_DIR, "memory_throughput_{}.{}", OUTPUT_DATE)
     

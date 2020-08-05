@@ -160,7 +160,7 @@ SHARPEN(image,blur3) ─> UNSHARPEN(image,blur3,sharpened) ───────
 
 ## Plots
 
-![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_1_row_2020_07_15.png)
+![Speedup w.r.t. serial, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_08_052/speedup_baseline_1_row_2020_08_052.png)
 
 In general, **DAG scheduling allows better GPU resource usage**: in many benchmarks (such as `bench_1` and `bench_5`) we observe how overlapping data-transfer and computation enables faster total execution time.
  In other cases (`bench_6` and `bench_7`) speedups are also provided by computation overlap. DAG schedling provides **speedups from 10% to 50%**, while being completely transparent to the programmer.
@@ -174,16 +174,16 @@ As rule of thumb, **DAG scheduling is more robust to kernel configuration**: in 
  In the case of serial synchronous scheduling, using small blocks results in underutilization of the GPU resources, while using DAG scheduling provides better resource utilization by scheduling multiple kernels in parallel.
  This is an extremely useful advantage of DAG scheduling, as it means that programmers have to spend less time profiling their code to find the optimal kernel configuration.
 
-![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_2020_07_15.png)
+![Speedup w.r.t. serial, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_08_052/speedup_baseline_2020_08_052.png)
 
 Performance of serial and DAG GrCUDA scheduling has been compared to the same benchmarks implemented directly in C++ and CUDA. The experimental setup and the kernels are exactly the same. In the case of CUDA asynchronous kernel execution, dependencies and synchronization points have been computed by hand, instead of automatically. This provides a **comparison of how the overhead introduced by GrCUDA impacts the total execution time** compared to lower-level kernel scheduling.
 
 In all cases, the gap between CUDA and GrCUDA is minimal, and converges to 0 as the data-set size increases. It can be safely stated that in any realistic computation using serial GrCUDA scheduling will not decrease performance. 
 The only situation with a visible difference is `bench_8`, when processing very small images (`800x800` pixels), as the computation lasts only for a couple of milliseconds.
 
-![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_compact_2020_07_15.png)
+![Relative exec. time w.r.t. CUDA, summary](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_08_052/speedup_baseline_grcuda_cuda_compact_2020_08_052.png)
 
-![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_15/speedup_baseline_grcuda_cuda_2020_07_15.png)
+![Relative exec. time w.r.t. CUDA, extended](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_08_052/speedup_baseline_grcuda_cuda_2020_08_052.png)
 
 These results are further reaffirmed by looking at the execution time distributions (for example, using the largest data-sets and `block_size=256`, to evaluate an average case).
  In a couple of cases (e.g `bench_1`) it can be seen how the CUDA implementation might be sligthly faster (around 5%), although the same is true for GrCUDA in `bench_8`, while other benchmarks show very similar distributions.
@@ -199,11 +199,11 @@ DAG scheduling always provides execution times closer to the theoretical optimum
  In many benchmarks we are very close to the theoretical optimum, showing how DAG scheduling provides better GPU resource utilization and transfer-computation overlap.
   Not surprisingly, the only case where results are significantly lower than the optimum is `bench_5`, as it is composed of many independent computations that could in principle run in parallel: this is clearly not possible in practice, although DAG scheduling proves once again to be better than serial execution.
 
-![Relative exec. time w.r.t. theoretical minimum time](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_16/speedup_theoretical_time_compact_2020_07_16.png)
+![Relative exec. time w.r.t. theoretical minimum time](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_08_052/speedup_theoretical_time_compact_2020_08_052.png)
 
 ### Performance analysis
 
-![Overlap amount](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_20/overlap_2020_07_20.png)
+![Overlap amount](https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_08_052/overlap_2020_08_052.png)
 
 For each benchmark, we can measure how much **overlap** is present in the computation. We measure 4 different types of overlap:
 
@@ -222,7 +222,7 @@ Measures are taken for the largest data-size in the evaluation (for each benchma
   the computation lasts much longer than the data-transfer, and part of the computation cannot be overlapped. 
   In all likelihood, a more optimized kernel computation would result in higher **CT** overlap, and better speedup.
   
-<img src="https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_07_282/memory_throughput_2020_07_282.png">
+<img src="https://github.com/AlbertoParravicini/grcuda/blob/execution-model-sync/data/plots/2020_08_052/memory_throughput_2020_08_052.png">
 
 Using `nvprof` we measure the total amount of bytes read/written by each kernel, and analyse how the GPU memory throughput is affected by space-sharing. 
 Note that `nvprof` affects the kernel execution and limits the execution of concurrent kernels due to the high overhead introduced by collecting memory access metrics for each kernel.
