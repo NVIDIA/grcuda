@@ -18,7 +18,7 @@ import matplotlib.lines as lines
 
 import os
 from load_data import load_data, load_data_cuda, join_tables
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
+from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, update_width, add_labels, get_upper_ci_size
 import matplotlib.ticker as ticker
 
 
@@ -28,7 +28,7 @@ import matplotlib.ticker as ticker
 
 INPUT_DATE_GRCUDA = "2020_08_05_21_02_55_grcuda"
 INPUT_DATE_CUDA = "2020_08_05_20_13_22_cuda"
-OUTPUT_DATE = "2020_08_052"
+OUTPUT_DATE = "2020_08_11"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -110,7 +110,7 @@ def build_exec_time_plot_grcuda_cuda(data, gridspec, x, y):
     
     # Legend;
     if y == 0 and x == 0:
-        legend_labels = ["DAG Scheduling", "Serial Scheduling"]
+        legend_labels = ["Paraller Scheduler", "Serial Scheduler"]
         custom_lines = [
             lines.Line2D([], [], color="white", marker=markers[i], markersize=10, label=legend_labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") 
             for i in range(len(legend_labels))]
@@ -128,7 +128,7 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
     
     data["size_str"] = data["size"].astype(str)
     
-    legend_labels = ["DAG Scheduling", "Serial Scheduling"]
+    legend_labels = ["Paraller Scheduler", "Serial Scheduler"]
     
     palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]][:len(data["block_size_str"].unique())]
     markers = ["o", "X", "D", "P"][:len(data["block_size_str"].unique())]
@@ -171,7 +171,7 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
             
     # Add policy annotation;
     if y == 0:
-        ax.annotate(f"{legend_labels[x]}", xy=(-0.15, 1.25), fontsize=14, ha="left", xycoords="axes fraction") 
+        ax.annotate(f"{legend_labels[x % 2]}", xy=(-0.15, 1.25), fontsize=14, ha="left", xycoords="axes fraction") 
     
     ax.set_ylabel(None)     
     ax.set_xlabel(None) 
@@ -201,6 +201,85 @@ def build_exec_time_plot_grcuda_cuda_compact(data, gridspec, x, y):
         leg._legend_box.align = "left"
     
     return ax
+
+
+def build_exec_time_plot_grcuda_cuda_2rows(data, gridspec, x, y):
+    
+    data["size_str"] = data["size"].astype(str)
+    
+    legend_labels = ["Paraller Scheduler", "Serial Scheduler"]
+    
+    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]][:len(data["block_size_str"].unique())]
+    markers = ["o", "X", "D", "P"][:len(data["block_size_str"].unique())]
+    order = data["block_size_str"].unique()
+    
+    # Add a lineplot with the exec times;
+    ax = fig.add_subplot(gridspec[x, y])
+    ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
+
+    ax = sns.lineplot(x="size_str", y="grcuda_cuda_speedup", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
+                      err_style="bars", linewidth=2, legend=None, sort=False, ci=None, hue_order=order, zorder=2)
+    data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["grcuda_cuda_speedup"].apply(gmean).reset_index()
+    
+    ax = sns.scatterplot(x="size_str", y="grcuda_cuda_speedup", hue="block_size_str", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",
+          size_norm=30, legend=False, zorder=3, ci=None, markers=markers, style="block_size_str", hue_order=order, style_order=order, linewidth=0.05)
+    
+    labels = sorted(data["size"].unique())
+    labels_str = [str(x) for x in labels]
+    
+    # Set the same y limits in each plot;
+    ax.set_ylim((0.0, 1.5))
+
+    # Add a horizontal line to denote speedup = 1x;
+    ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
+                
+    # Set the x ticks;
+    ax.set_xticks(labels_str)
+    ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
+    ax.tick_params(labelcolor="black")
+    # Set the y ticks;
+    ax.yaxis.set_major_locator(plt.LinearLocator(4))
+    if y == 0:
+        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=8)
+    else:
+        ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
+        # Hide tick markers;
+        for tic in ax.yaxis.get_major_ticks():
+            tic.tick1line.set_visible(False) 
+            tic.tick2line.set_visible(False) 
+            
+    # Add policy annotation;
+    if y == 0 and x % 2 == 0:
+        ax.annotate(f"{legend_labels[x // 2]}", xy=(-0.3, -1.4), fontsize=14, ha="center", xycoords="axes fraction", rotation=90) 
+    
+    ax.set_ylabel(None)     
+    ax.set_xlabel(None) 
+    
+    # Add benchmark name and baseline execution time annotations;
+    ax.annotate(f"{BENCHMARK_NAMES[data['benchmark'].iloc[0]]}", xy=(0.50, 1.1), fontsize=10, ha="center", xycoords="axes fraction")
+    
+     # Turn off tick lines;
+    ax.xaxis.grid(False)
+    
+    # Add baseline execution time annotations (median of execution time across blocks);
+    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.48), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+    for i, l in enumerate(labels):
+        baseline_median = np.median(data[data["size"] == int(l)]["baseline_time_sec_cuda"])
+        ax.annotate(f"{int(1000 * baseline_median)}", xy=(i,  -0.69), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
+    
+    # Legend; 
+    if x == 0 and y== 0:
+        legend_labels = [f"1D={x.split(',')[0]}" for x in data["block_size_str"].unique()]
+        custom_lines = [
+            lines.Line2D([], [], color="white", marker=markers[i], markersize=10, label=legend_labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") 
+            for i in range(len(legend_labels))]        
+        leg = fig.legend(custom_lines, legend_labels, 
+                                 bbox_to_anchor=(0.99, 1), fontsize=10, ncol=2, handletextpad=0.1, columnspacing=0.2)
+        leg.set_title("Block size:\n2D=8x8, 3D=4x4x4", prop={"size": 10})
+        leg._legend_box.align = "left"
+    
+    return ax
+
 
 
 def ridgeplot(data):
@@ -321,7 +400,7 @@ def ridgeplot(data):
     # Main plot title;
     g.fig.suptitle("Exec. Time Distribution,\nCUDA vs GrCUDA", ha="left", x=0.05, y=0.95, fontsize=18)
     
-    return g
+    return g    
 
 ##############################
 ##############################
@@ -331,76 +410,182 @@ if __name__ == "__main__":
     data_cuda = load_data_cuda(INPUT_DATE_CUDA, skip_iter=3)
     data = join_tables(data_grcuda, data_cuda)
     
-    sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    plt.rcParams["font.family"] = ["Latin Modern Roman"]
-    plt.rcParams['axes.titlepad'] = 20 
-    plt.rcParams['axes.labelpad'] = 10 
-    plt.rcParams['axes.titlesize'] = 22 
-    plt.rcParams['axes.labelsize'] = 14 
+    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    # plt.rcParams["font.family"] = ["Latin Modern Roman"]
+    # plt.rcParams['axes.titlepad'] = 20 
+    # plt.rcParams['axes.labelpad'] = 10 
+    # plt.rcParams['axes.titlesize'] = 22 
+    # plt.rcParams['axes.labelsize'] = 14 
     
-    # Lists of benchmarks and block sizes;
-    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
-    block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
-    num_col = len(benchmark_list)
-    num_row = len(block_size_list)
-    fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))
-    gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.8,
-                    bottom=0.15,
-                    left=0.2,
-                    right=0.90,
-                    hspace=1.1,
-                    wspace=0.15)
+    # # Lists of benchmarks and block sizes;
+    # benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
+    # block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
+    # num_col = len(benchmark_list)
+    # num_row = len(block_size_list)
+    # fig = plt.figure(figsize=(2.5 * num_col, 4 * num_row))
+    # gs = gridspec.GridSpec(num_row, num_col)
+    # plt.subplots_adjust(top=0.8,
+    #                 bottom=0.15,
+    #                 left=0.2,
+    #                 right=0.90,
+    #                 hspace=1.1,
+    #                 wspace=0.15)
         
-    exec_time_axes = []
-    for b_i, b in enumerate(benchmark_list):
-        for block_size_i, block_size in enumerate(block_size_list): 
-            curr_res = data[(data["benchmark"] == b) & (data["block_size_str"] == block_size)].reset_index(drop=True)  
-            exec_time_axes += [build_exec_time_plot_grcuda_cuda(curr_res, gs, block_size_i, b_i)]
+    # exec_time_axes = []
+    # for b_i, b in enumerate(benchmark_list):
+    #     for block_size_i, block_size in enumerate(block_size_list): 
+    #         curr_res = data[(data["benchmark"] == b) & (data["block_size_str"] == block_size)].reset_index(drop=True)  
+    #         exec_time_axes += [build_exec_time_plot_grcuda_cuda(curr_res, gs, block_size_i, b_i)]
             
-    plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=20, ha="center", va="center", xycoords="figure fraction")
-    plt.annotate("Speedup", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    # plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=20, ha="center", va="center", xycoords="figure fraction")
+    # plt.annotate("Speedup", xy=(0.02, 0.5), fontsize=20, ha="center", va="center", rotation=90, xycoords="figure fraction")    
+    # plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
     
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
+    # save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_{}.{}", OUTPUT_DATE)
 
     
     #%% Similar plot, but all block sizes are on 1 row;
     
+    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    # plt.rcParams["font.family"] = ["Latin Modern Roman"] 
+    # plt.rcParams['axes.titlepad'] = 20 
+    # plt.rcParams['axes.labelpad'] = 10 
+    # plt.rcParams['axes.titlesize'] = 22 
+    # plt.rcParams['axes.labelsize'] = 14 
+    
+    # # Lists of benchmarks and block sizes;
+    # benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
+    # policy_list = sorted(data["exec_policy"].unique())
+    # num_col = len(benchmark_list)
+    # num_row = len(policy_list)
+    # fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
+    # gs = gridspec.GridSpec(num_row, num_col)
+    # plt.subplots_adjust(top=0.8,
+    #                 bottom=0.14,
+    #                 left=0.1,
+    #                 right=0.95,
+    #                 hspace=0.8,
+    #                 wspace=0.15)
+        
+    # exec_time_axes = []
+    # for b_i, b in enumerate(benchmark_list):
+    #     for p_i, p in enumerate(policy_list): 
+    #         curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
+    #         exec_time_axes += [build_exec_time_plot_grcuda_cuda_compact(curr_res, gs, p_i, b_i)]
+        
+    # plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    # plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
+    # plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    
+    # save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
+    
+    
+    #%% Similar plot, but the plot fits on 1 row of a paper;
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
     plt.rcParams["font.family"] = ["Latin Modern Roman"] 
     plt.rcParams['axes.titlepad'] = 20 
     plt.rcParams['axes.labelpad'] = 10 
     plt.rcParams['axes.titlesize'] = 22 
     plt.rcParams['axes.labelsize'] = 14 
+    plt.rcParams['xtick.major.pad'] = 4
     
     # Lists of benchmarks and block sizes;
     benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
-    policy_list = sorted(data["exec_policy"].unique())
-    num_col = len(benchmark_list)
-    num_row = len(policy_list)
-    fig = plt.figure(figsize=(2.7 * num_col, 3.9 * num_row))
+    policy_list = list(reversed(sorted(data["exec_policy"].unique())))
+    num_col = len(benchmark_list) // 2
+    num_row = len(policy_list) * 2
+    fig = plt.figure(figsize=(2.2 * num_col, 1.8 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.8,
-                    bottom=0.14,
-                    left=0.1,
-                    right=0.95,
-                    hspace=0.8,
+    plt.subplots_adjust(top=0.84,
+                    bottom=0.12,
+                    left=0.10,
+                    right=0.98,
+                    hspace=1.1,
                     wspace=0.15)
         
     exec_time_axes = []
-    for b_i, b in enumerate(benchmark_list):
-        for p_i, p in enumerate(policy_list): 
+    for p_i, p in enumerate(policy_list): 
+        for b_i, b in enumerate(benchmark_list):
+            index_tot = (len(benchmark_list) * p_i + b_i)
+            j = index_tot % num_col
+            i = index_tot // num_col
             curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
-            exec_time_axes += [build_exec_time_plot_grcuda_cuda_compact(curr_res, gs, p_i, b_i)]
+            exec_time_axes += [build_exec_time_plot_grcuda_cuda_2rows(curr_res, gs, i, j)]
         
-    plt.annotate("Input number of elements", xy=(0.5, 0.03), fontsize=14, ha="center", va="center", xycoords="figure fraction")
-    plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Speedup of GrCUDA w.r.t. CUDA", fontsize=25, x=.05, y=0.99, ha="left")
+    plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    # plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
+    plt.suptitle("Speedup of GrCUDA scheduling w.r.t.\nhand-optimized CUDA scheduling", fontsize=16, x=.05, y=0.99, ha="left")
     
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_compact_{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_2rows_{}.{}", OUTPUT_DATE)
     
     
     #%% Ridge plot with distributions;
-    g = ridgeplot(data)
-    save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_ridgeplot_{}.{}", OUTPUT_DATE)
+    # g = ridgeplot(data)
+    # save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_ridgeplot_{}.{}", OUTPUT_DATE)
+    
+    
+    #%% Summary plot with CUDA speedups;
+   
+    # BENCHMARK_NAMES = {"mean": "Geomean", "b1": "Vector\nSquares", "b5": "B&S", "b6": "ML\nEnsemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
+
+    # sns.set_style("white", {"ytick.left": True})
+    # plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
+    # plt.rcParams['axes.titlepad'] = 25 
+    # plt.rcParams['axes.labelpad'] = 5 
+    # plt.rcParams['axes.titlesize'] = 22 
+    # plt.rcParams['axes.labelsize'] = 14 
+    # plt.rcParams['xtick.major.pad'] = 8
+    
+    # cuda_summary = data_cuda[data_cuda["exec_policy"] == "default"].groupby(["benchmark", "block_size_str", "size"], sort=False)["computation_speedup"].apply(gmean).reset_index(drop=False)
+    # cuda_summary = cuda_summary.sort_values(by=["benchmark"], key=lambda x: x.apply(lambda y: int(y[1:])))
+    
+    # num_col = 1
+    # fig = plt.figure(figsize=(3.8 * num_col, 2))
+    # gs = gridspec.GridSpec(1, 1)
+    # plt.subplots_adjust(top=0.78,
+    #                 bottom=0.15,
+    #                 left=0.14,
+    #                 right=.99,
+    #                 hspace=0.9,
+    #                 wspace=0.05)
+    
+    # palettes = ["#C8FCB6"] * len(cuda_summary["benchmark"].unique()) + ["#96DE9B"]
+    
+    # # Add geomean;
+    # gmean_res = pd.DataFrame(cuda_summary.groupby(["benchmark"], as_index=False).agg(gmean))
+    # gmean_res["benchmark"] = "mean"
+    # res = pd.concat([cuda_summary, gmean_res])
+    
+    # ax = fig.add_subplot(gs[0, 0])
+    # ax0 = ax
+    
+    # ax = sns.barplot(x="benchmark", y="computation_speedup", data=res, palette=palettes, capsize=.05, errwidth=0.8, ax=ax, edgecolor="#2f2f2f", estimator=gmean)
+       
+    # ax.set_ylabel("Speedup", fontsize=11)
+    # ax.set_xlabel("")
+    # ax.set_ylim((0.8, 1.6))
+    # labels = ax.get_xticklabels()
+    # for j, l in enumerate(labels):
+    #     l.set_text(BENCHMARK_NAMES[l._text])
+    # ax.set_xticklabels(labels, ha="center", va="center")
+    # ax.tick_params(axis='x', which='major', labelsize=8, rotation=0)
+    
+    # ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}x"))
+    # ax.yaxis.set_major_locator(plt.LinearLocator(6))
+    # ax.tick_params(axis='y', which='major', labelsize=8)
+    # ax.grid(True, axis="y")
+    
+    # update_width(ax, 0.5)
+    
+    # # Speedup labels;
+    # offsets = []
+    # for b in res["benchmark"].unique():
+    #     offsets += [get_upper_ci_size(res.loc[res["benchmark"] == b, "computation_speedup"], ci=0.6)]
+    # offsets = [o + 0.02 if not np.isnan(o) else 0.2 for o in offsets]
+    # # offsets[1] = 0.12
+    # offsets[-1] = 0.1
+    # add_labels(ax, vertical_offsets=offsets, rotation=0, fontsize=8, skip_zero=False)
+    
+    # plt.suptitle("Achievable speedup in CUDA with hand-tuned\nGPU data transfer and execution overlap", fontsize=11, x=.01, y=0.99, ha="left")
+        
+    # save_plot(PLOT_DIR, "cuda_speedup__{}.{}", OUTPUT_DATE)

@@ -22,7 +22,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
 INPUT_DATE = "2020_08_05_21_02_55_grcuda"
-OUTPUT_DATE = "2020_08_052"
+OUTPUT_DATE = "2020_08_11"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -177,6 +177,87 @@ def build_exec_time_plot_1_row(data, gridspec, y):
         leg._legend_box.align = "left"
     
     return ax
+
+
+def build_exec_time_plot_2_row(data, gridspec, i, j):
+    
+    data["size_str"] = data["size"].astype(str)
+    
+    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]]
+    markers = ["o", "X", "D", "P"]
+    
+    # Add a lineplot with the exec times;
+    ax = fig.add_subplot(gridspec[i, j])
+    ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
+    ax = sns.lineplot(x="size_str", y="computation_speedup", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
+                      err_style="bars", linewidth=2, legend=None, sort=False, ci=None, zorder=2)
+    print(data.groupby(["size_str", "block_size_str"])["computation_speedup"].apply(gmean))
+    data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["computation_speedup"].apply(gmean).reset_index()
+    order = data["block_size_str"].unique()
+    ax = sns.scatterplot(x="size_str", y="computation_speedup", hue="block_size_str", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",
+          size_norm=30, legend=False, zorder=3, ci=None, markers=markers, style="block_size_str", hue_order=order, style_order=order, linewidth=0.05)
+    
+    labels = sorted(data["size"].unique())
+    labels_str = [str(x) for x in labels]
+    
+    # Top y-lim is depends on the benchmark, and is multiple of 1.5;
+    max_y_val = np.max(data.groupby(["block_size_str", "size_str"])["computation_speedup"].median())
+    fixed_max_y_val = np.ceil(max_y_val / 1.5) * 1.5
+    
+    ax.set_ylim((0.9, fixed_max_y_val))
+
+    # Add a horizontal line to denote speedup = 1x;
+    ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
+                
+    # Set the x ticks;
+    ax.set_xticks(labels_str)
+    ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
+    ax.tick_params(labelcolor="black")
+    # Set the y ticks;
+    ax.yaxis.set_major_locator(plt.LinearLocator(7))
+    if j == 0:
+        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=10)
+    else:
+        ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
+        # Hide tick markers;
+        for tic in ax.yaxis.get_major_ticks():
+            tic.tick1line.set_visible(False) 
+            tic.tick2line.set_visible(False) 
+    
+    ax.set_ylabel(None)     
+    ax.set_xlabel(None) 
+    
+    # Add benchmark name and baseline execution time annotations;
+    ax.annotate(f"{BENCHMARK_NAMES[data['benchmark'].iloc[0]]}", xy=(0.50, 1.05), fontsize=12, ha="center", xycoords="axes fraction")
+    
+     # Turn off tick lines;
+    ax.xaxis.grid(False)
+    
+    # Add baseline execution time annotations (median of execution time across blocks);
+    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.27), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+    for l_i, l in enumerate(labels):
+        baseline_median = np.median(data[data["size"] == int(l)]["baseline_time_sec"])
+        ax.annotate(f"{int(1000 * baseline_median)}", xy=(l_i,  -0.37), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
+    
+    # Legend; 
+    if i == 0 and j == 0:
+        legend_labels = [f"1D={x.split(',')[0]}" for x in data["block_size_str"].unique()]
+        custom_lines = [
+            lines.Line2D([], [], color="white", marker=markers[i], markersize=10, label=legend_labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") 
+            for i in range(len(legend_labels))]
+        # Add fake entries to have a comment about 2d and 3d sizes;
+        # custom_lines += [Rectangle((0, 0), 1, 1, fc="w", fill=False, edgecolor='none', linewidth=0)] * 2
+        # legend_labels += ["", ""]
+        # # Re-sort labels by transposing them;
+        # custom_lines = np.array(custom_lines).reshape((-1, 2)).T.reshape(-1)
+        # legend_labels = np.array(legend_labels).reshape((-1, 2)).T.reshape(-1)
+        
+        leg = fig.legend(custom_lines, legend_labels, 
+                                 bbox_to_anchor=(0.99, 1), fontsize=10, ncol=len(legend_labels), handletextpad=0.1, columnspacing=0.2)
+        leg.set_title("Block size:\n2D=8x8, 3D=4x4x4", prop={"size": 10})
+        leg._legend_box.align = "left"
+    
+    return ax
     
 
 if __name__ == "__main__":
@@ -253,4 +334,41 @@ if __name__ == "__main__":
 
     save_plot(PLOT_DIR, "speedup_baseline_1_row_{}.{}", OUTPUT_DATE)
     
+    
+    #%% Similar plot, but formatted for 1-column on a paper;
+    
+    sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    plt.rcParams["font.family"] = ["Latin Modern Roman"]
+    plt.rcParams['axes.titlepad'] = 20 
+    plt.rcParams['axes.labelpad'] = 10 
+    plt.rcParams['axes.titlesize'] = 22 
+    plt.rcParams['axes.labelsize'] = 14 
+    
+    # Lists of benchmarks and block sizes;
+    benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
+    num_row = 2
+    num_col = len(benchmark_list) // num_row
+    fig = plt.figure(figsize=(2.2 * num_col, 2.7 * num_row))
+    gs = gridspec.GridSpec(num_row, num_col)
+    plt.subplots_adjust(top=0.82,
+                    bottom=0.15,
+                    left=0.08,
+                    right=0.98,
+                    hspace=0.55,
+                    wspace=0.15)
+        
+    exec_time_axes = []
+    speedups = []
+    for b_i, b in enumerate(benchmark_list):
+        i = b_i // num_col
+        j = b_i % num_col
+        curr_res = data[data["benchmark"] == b].reset_index(drop=True)  
+        speedups += [curr_res.groupby(["size", "block_size_str"])["computation_speedup"].apply(gmean)]
+        exec_time_axes += [build_exec_time_plot_2_row(curr_res, gs, i, j)]
+        
+    plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    # plt.annotate("Speedup over\nserial scheduling", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
+    plt.suptitle("Parallel scheduler speedup\nover serial scheduler", fontsize=16, x=.02, y=0.99, ha="left")
+
+    save_plot(PLOT_DIR, "speedup_baseline_2_row_{}.{}", OUTPUT_DATE)
     
