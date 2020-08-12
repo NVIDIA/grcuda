@@ -26,7 +26,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
 INPUT_DATE = "2020_08_05"
-OUTPUT_DATE = "2020_08_052"
+OUTPUT_DATE = "2020_08_11"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {
@@ -203,18 +203,18 @@ def barplot(data, ax, title, y_column, y_limit, annotation_title, y_ticks=6, y_t
     rects2 = ax.bar(x + bar_width / 2, y_default, bar_width, label="default", color=palette[1], edgecolor=edgecolor)
     
     ax.set_xticks(x)
-    ax.set_xticklabels(x_labels, fontsize=7, va="center")
+    ax.set_xticklabels(x_labels, fontsize=8, va="center")
     
     # ax.set_ylim((0, 1.1 * summary["memory_throughput"].max()))
     ax.set_ylim(y_limit)
     # Set the y ticks;
     ax.yaxis.set_major_locator(plt.LinearLocator(y_ticks))
-    ax.set_yticklabels(labels=[y_tick_format(l) for l in ax.get_yticks()], ha="right", fontsize=6)
+    ax.set_yticklabels(labels=[y_tick_format(l) for l in ax.get_yticks()], ha="right", fontsize=8)
     ax.grid(True, axis="y")
     
     # ax.annotate(title, fontsize=9, x=.02, y=0.95, ha="left")
-    plt.suptitle("Hardware metrics\nfor each benchmark and execution policy", fontsize=9, x=.01, y=0.97, ha="left")
-    ax.annotate(title, xy=(0, 1.05), fontsize=7, ha="left", xycoords="axes fraction")#, xycoords="data", xytext=(0, 100), textcoords="offset points")
+    plt.suptitle("Hardware metrics\nfor each benchmark and execution policy", fontsize=14, x=.01, y=0.97, ha="left")
+    ax.annotate(title, xy=(0, 1.08), fontsize=10, ha="left", xycoords="axes fraction")#, xycoords="data", xytext=(0, 100), textcoords="offset points")
     autolabel(ax, rects1, rects2)
     
     # Add baseline annotations;
@@ -222,14 +222,15 @@ def barplot(data, ax, title, y_column, y_limit, annotation_title, y_ticks=6, y_t
         position = x[i]
         serial_throughput = summary[(summary["benchmark"] == b) & (summary["policy"] == "sync")][y_column].iloc[0]
         if i == 0: 
-            ax.annotate(annotation_title, xy=(0, 0), fontsize=6, ha="right", va="center", xycoords="data", xytext=(-12, -22), textcoords="offset points")
-        ax.annotate(baseline_annotation_format(serial_throughput), xy=(position - bar_width, 0), fontsize=6, ha="left", va="center", xycoords="data", color=palette[0], xytext=(0, -22), textcoords="offset points")
+            ax.annotate(annotation_title, xy=(0, 0), fontsize=9, ha="left", va="center", xycoords="data", xytext=(-32, -20), textcoords="offset points")
+        print((position - bar_width, -0.1))
+        ax.annotate(baseline_annotation_format(serial_throughput), xy=(position - bar_width, 0), fontsize=9, ha="center", va="center", xycoords="data", color=palette[0], xytext=(7, -30), textcoords="offset points")
     
     # Legend;  
     labels = [POLICIES_DICT[p] for p in POLICIES]
     custom_lines = [Patch(facecolor=palette[i], edgecolor="#2f2f2f", label=l)
                     for i, l in enumerate(labels)]
-    leg = fig.legend(custom_lines, labels, bbox_to_anchor=(1, 0.99), fontsize=7, ncol=1)
+    leg = fig.legend(custom_lines, labels, bbox_to_anchor=(1, 1), fontsize=10, ncol=1)
     leg._legend_box.align = "left"
     leg.get_frame().set_facecolor('white')        
 
@@ -284,20 +285,20 @@ if __name__ == "__main__":
     
     num_col = 3
     
-    fig, axes = plt.subplots(1, num_col, figsize=(2.2 * num_col, 2.5)) 
-    plt.subplots_adjust(top=0.75,
+    fig, axes = plt.subplots(1, num_col, figsize=(2.4 * num_col, 2.8)) 
+    plt.subplots_adjust(top=0.70,
                     bottom=0.19,
-                    left=0.1,
+                    left=0.09,
                     right=.99,
                     hspace=0.9,
                     wspace=0.4)
    
     barplot(summary, axes[0], "Device memory throughput",
-            "memory_throughput", (0, 50), "Serial\nthroughput:", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}\nGB/s")
+            "memory_throughput", (0, 50), "Serial throughput (GB/s):", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}")
     barplot(summary, axes[1], "L2 cache throughput",
-            "l2_throughput", (0, 250), "Serial\nthroughput:", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}\nGB/s")
+            "l2_throughput", (0, 250), "Serial throughput (GB/s):", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}")
     barplot(summary, axes[2], "IPC",
-            "ipc", (0, 1.75), "Serial\nIPC:", y_ticks=8, y_tick_format=lambda l: f"{l:.2f}", baseline_annotation_format=lambda l: f"{l:.2f}")
+            "ipc", (0, 1.75), "Serial IPC:", y_ticks=8, y_tick_format=lambda l: f"{l:.2f}", baseline_annotation_format=lambda l: f"{l:.2f}")
     
     save_plot(PLOT_DIR, "memory_throughput_{}.{}", OUTPUT_DATE)
     

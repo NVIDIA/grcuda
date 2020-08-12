@@ -22,7 +22,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
 INPUT_DATE = "2020_07_20"
-OUTPUT_DATE = "2020_08_052"
+OUTPUT_DATE = "2020_08_11"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -77,9 +77,9 @@ if __name__ == "__main__":
     # fig = plt.figure(figsize=(1.2 * num_col, 3))
     # gs = gridspec.GridSpec(1, num_col)
     
-    fig = plt.figure(figsize=(1.2 * num_col, 2.5)) 
+    fig = plt.figure(figsize=(1.2 * num_col, 2.8)) 
     ax = fig.add_subplot()
-    plt.subplots_adjust(top=0.75,
+    plt.subplots_adjust(top=0.72,
                     bottom=0.25,
                     left=0.08,
                     right=.99,
@@ -99,13 +99,13 @@ if __name__ == "__main__":
     ax.bar(x, white_bars, bar_width, color="0.8", edgecolor=edgecolor_white_bars, alpha=0.5)
     ax.bar(x, y, bar_width, color=palette, edgecolor=edgecolor)
     ax.set_xticks(x)
-    ax.set_xticklabels(x_labels, fontsize=8)
+    ax.set_xticklabels(x_labels, fontsize=9)
     
     ax.set_xlim((0 - bar_width / 2 - 0.2, len(x) - 1 + bar_width / 2 + 0.2))
     ax.set_ylim((0, 1))
     # Set the y ticks;
     ax.yaxis.set_major_locator(plt.LinearLocator(6))
-    ax.set_yticklabels(labels=[f"{int(l * 100)}%" for l in ax.get_yticks()], ha="right", fontsize=9)
+    ax.set_yticklabels(labels=[f"{int(l * 100)}%" for l in ax.get_yticks()], ha="right", fontsize=11)
     ax.grid(True, axis="y")
     
     # Add benchmark name;
@@ -119,19 +119,19 @@ if __name__ == "__main__":
         else:
             return base_pos
     for i, b in enumerate(BENCHMARK_NAMES):
-        ax.annotate(f"{BENCHMARK_NAMES[b]}", xy=(get_x_label_pos(i), -0.28), fontsize=10, ha="center", xycoords="axes fraction")
-        ax.annotate(f"Speedup: ", xy=(get_x_label_pos(i) - 0.02, -0.4), fontsize=8, ha="center", xycoords="axes fraction")
-        ax.annotate(f"{SPEEDUPS[b]:.2f}x", xy=(get_x_label_pos(i) + 0.045, -0.4), fontsize=8, ha="center", xycoords="axes fraction", color="#469E7B")
+        ax.annotate(f"{BENCHMARK_NAMES[b]}", xy=(get_x_label_pos(i), -0.28), fontsize=12, ha="center", xycoords="axes fraction")
+        ax.annotate(f"Speedup: ", xy=(get_x_label_pos(i) - 0.02, -0.43), fontsize=10, ha="center", xycoords="axes fraction")
+        ax.annotate(f"{SPEEDUPS[b]:.2f}x", xy=(get_x_label_pos(i) + 0.045, -0.43), fontsize=10, ha="center", xycoords="axes fraction", color="#469E7B")
         
     # Legend;  
     labels = [LABEL_LEGEND_DICT[l] for l in list(LABEL_DICT.keys())[:-1]]
     custom_lines = [Patch(facecolor=palette[i], edgecolor="#2f2f2f", label=l)
                     for i, l in enumerate(labels)]
-    leg = fig.legend(custom_lines, labels, bbox_to_anchor=(0.98, 1), fontsize=8, ncol=1)
+    leg = fig.legend(custom_lines, labels, bbox_to_anchor=(1, 1), fontsize=10, ncol=1)
     leg.set_title("Type of overlap")
     leg._legend_box.align = "left"
     leg.get_frame().set_facecolor('white')
     
-    plt.suptitle("Amount of overlap for each benchmark", fontsize=12, x=.05, y=0.95, ha="left")
+    plt.suptitle("Amount of transfer and computaton\noverlap for each benchmark", fontsize=16, x=.05, y=0.95, ha="left")
 
     save_plot(PLOT_DIR, "overlap_{}.{}", OUTPUT_DATE)

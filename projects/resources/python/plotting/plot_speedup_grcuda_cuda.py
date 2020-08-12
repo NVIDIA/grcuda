@@ -235,12 +235,12 @@ def build_exec_time_plot_grcuda_cuda_2rows(data, gridspec, x, y):
                 
     # Set the x ticks;
     ax.set_xticks(labels_str)
-    ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
+    ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=8)
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
     ax.yaxis.set_major_locator(plt.LinearLocator(4))
     if y == 0:
-        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=8)
+        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=9)
     else:
         ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
         # Hide tick markers;
@@ -262,10 +262,10 @@ def build_exec_time_plot_grcuda_cuda_2rows(data, gridspec, x, y):
     ax.xaxis.grid(False)
     
     # Add baseline execution time annotations (median of execution time across blocks);
-    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.48), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.42), fontsize=8, ha="left", xycoords="axes fraction", color=COLORS["peach1"])
     for i, l in enumerate(labels):
         baseline_median = np.median(data[data["size"] == int(l)]["baseline_time_sec_cuda"])
-        ax.annotate(f"{int(1000 * baseline_median)}", xy=(i,  -0.69), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
+        ax.annotate(f"{int(1000 * baseline_median)}", xy=(i,  -0.57), fontsize=8, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
     
     # Legend; 
     if x == 0 and y== 0:
@@ -515,6 +515,9 @@ if __name__ == "__main__":
     plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     # plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Speedup of GrCUDA scheduling w.r.t.\nhand-optimized CUDA scheduling", fontsize=16, x=.05, y=0.99, ha="left")
+    
+    l1 = lines.Line2D([0.01, 0.99], [0.465, 0.465], transform=fig.transFigure, figure=fig, color="#2f2f2f", linestyle="--", linewidth=1)
+    fig.lines.extend([l1])
     
     save_plot(PLOT_DIR, "speedup_baseline_grcuda_cuda_2rows_{}.{}", OUTPUT_DATE)
     

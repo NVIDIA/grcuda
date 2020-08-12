@@ -134,7 +134,7 @@ def build_exec_time_plot_1_row(data, gridspec, y):
                 
     # Set the x ticks;
     ax.set_xticks(labels_str)
-    ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=9)
+    ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=8)
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
     ax.yaxis.set_major_locator(plt.LinearLocator(8))
@@ -234,7 +234,7 @@ def build_exec_time_plot_2_row(data, gridspec, i, j):
     ax.xaxis.grid(False)
     
     # Add baseline execution time annotations (median of execution time across blocks);
-    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.27), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["r4"])
+    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.27), fontsize=9, ha="left", xycoords="axes fraction", color=COLORS["peach1"])
     for l_i, l in enumerate(labels):
         baseline_median = np.median(data[data["size"] == int(l)]["baseline_time_sec"])
         ax.annotate(f"{int(1000 * baseline_median)}", xy=(l_i,  -0.37), fontsize=9, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
