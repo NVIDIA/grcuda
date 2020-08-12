@@ -266,7 +266,7 @@ def build_theoretical_time_plot_2rows(data, gridspec, x, y, baseline_labels=None
     
     data["size_str"] = data["size"].astype(str)
     
-    legend_labels = ["DAG Scheduling", "Serial Scheduling"]
+    legend_labels = ["Serial Scheduler", "Parallel Scheduler"]
     
     palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]][:len(data["block_size_str"].unique())]
     markers = ["o", "X", "D", "P"][:len(data["block_size_str"].unique())]

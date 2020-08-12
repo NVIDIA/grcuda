@@ -38,7 +38,7 @@ BENCHMARK_NAMES = {
     "b10": "DL"
     }
 POLICIES = ["sync", "default"]
-POLICIES_DICT = {"default": "DAG Scheduling", "sync": "Serial Scheduling"}
+POLICIES_DICT = {"default": "Parallel Scheduler", "sync": "Serial Scheduler"}
 
 NVPROF_HEADER_NOMETRIC = ["start_ms", "duration_ms", "Grid X", "Grid Y", "Grid Z", "Block X", "Block Y", "Block Z",
                  "Registers Per Thread"," Static SMem", "Dynamic SMem", "Device", "Context", "Stream",
