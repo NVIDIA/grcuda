@@ -218,7 +218,6 @@ class Benchmark10(Benchmark):
         self.kernel_2 = polyglot.eval(language="grcuda", string=f"float[{self.kn1 * self.K * self.K * self.kn2}]")
         self.kernel_3 = polyglot.eval(language="grcuda", string=f"float[{self.kn1 * self.K * self.K * self.channels}]")
         self.kernel_4 = polyglot.eval(language="grcuda", string=f"float[{self.kn1 * self.K * self.K * self.kn2}]")
-
         self.z = polyglot.eval(language="grcuda", string=f"float[{len(self.y2) * 2}]")
         self.dense_weights = polyglot.eval(language="grcuda", string=f"float[{len(self.z)}]")
         self.res = polyglot.eval(language="grcuda", string=f"float[1]")
