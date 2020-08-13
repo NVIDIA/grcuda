@@ -18,11 +18,11 @@ import matplotlib.lines as lines
 
 import os
 from load_data import load_data
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
+from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
 
 
-INPUT_DATE = "2020_08_05_21_02_55_grcuda"
-OUTPUT_DATE = "2020_08_11"
+INPUT_DATE = "2020_08_13_16_41_16_grcuda"
+OUTPUT_DATE = "2020_08_12"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     data = data[data["exec_policy"] != "sync"]
     
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    plt.rcParams["font.family"] = ["Latin Modern Roman"]
+    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     plt.rcParams['axes.titlepad'] = 20 
     plt.rcParams['axes.labelpad'] = 10 
     plt.rcParams['axes.titlesize'] = 22 
@@ -304,7 +304,7 @@ if __name__ == "__main__":
     
     
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    plt.rcParams["font.family"] = ["Latin Modern Roman"]
+    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     plt.rcParams['axes.titlepad'] = 20 
     plt.rcParams['axes.labelpad'] = 10 
     plt.rcParams['axes.titlesize'] = 22 
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     #%% Similar plot, but formatted for 1-column on a paper;
     
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    plt.rcParams["font.family"] = ["Latin Modern Roman"]
+    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     plt.rcParams['axes.titlepad'] = 20 
     plt.rcParams['axes.labelpad'] = 10 
     plt.rcParams['axes.titlesize'] = 22 
@@ -363,6 +363,7 @@ if __name__ == "__main__":
         i = b_i // num_col
         j = b_i % num_col
         curr_res = data[data["benchmark"] == b].reset_index(drop=True)  
+        curr_res = remove_outliers_df_grouped(curr_res, column="computation_speedup", group=["block_size_str", "size"])
         speedups += [curr_res.groupby(["size", "block_size_str"])["computation_speedup"].apply(gmean)]
         exec_time_axes += [build_exec_time_plot_2_row(curr_res, gs, i, j)]
         

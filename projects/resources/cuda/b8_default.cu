@@ -249,9 +249,9 @@ int main(int argc, char *argv[]) {
     err = cudaMallocManaged(&blurred_large, sizeof(float) * N * N);
     err = cudaMallocManaged(&blurred_unsharpen, sizeof(float) * N * N);
 
-    err = cudaMallocManaged(&kernel_small, sizeof(float) * N * N);
-    err = cudaMallocManaged(&kernel_large, sizeof(float) * N * N);
-    err = cudaMallocManaged(&kernel_unsharpen, sizeof(float) * N * N);
+    err = cudaMallocManaged(&kernel_small, sizeof(float) * kernel_small_diameter * kernel_small_diameter);
+    err = cudaMallocManaged(&kernel_large, sizeof(float) * kernel_large_diameter * kernel_large_diameter);
+    err = cudaMallocManaged(&kernel_unsharpen, sizeof(float) * kernel_unsharpen_diameter * kernel_unsharpen_diameter);
     err = cudaMallocManaged(&maximum, sizeof(float));
     err = cudaMallocManaged(&minimum, sizeof(float));
    

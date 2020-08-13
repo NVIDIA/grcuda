@@ -110,7 +110,7 @@ def remove_outliers(data, sigmas: int=3):
     Filter a sequence of data by keeping only values within "sigma" standard deviations from the mean.
     This is a simple way to filter outliers, it is more useful for visualizations than for sound statistical analyses;
     """
-    return data[st.zscore(data) < sigmas]
+    return data[np.abs(st.zscore(data)) < sigmas]
 
 
 def remove_outliers_df(data: pd.DataFrame, column: str, reset_index: bool = True, drop_index: bool = True, sigmas: int = 3) -> pd.DataFrame:
@@ -130,6 +130,16 @@ def remove_outliers_df(data: pd.DataFrame, column: str, reset_index: bool = True
     if reset_index:
         res = res.reset_index(drop=drop_index)
     return res
+
+
+def remove_outliers_df_grouped(data: pd.DataFrame, column: str, group: list, reset_index: bool = True, drop_index: bool = True, sigmas: int = 3) -> pd.DataFrame:
+    """
+    Same as "remove_outliers_df", but also filter values after divided by group;
+    """
+    filtered = []
+    for i, g in data.groupby(group, sort=False):
+        filtered += [remove_outliers_df(g, column, reset_index, drop_index, sigmas)]
+    return pd.concat(filtered)
 
 
 def compute_speedup(X: pd.DataFrame, col_slow: str, col_fast: str, col_speedup: str) -> None:
