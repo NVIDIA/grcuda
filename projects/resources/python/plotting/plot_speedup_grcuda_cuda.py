@@ -482,7 +482,7 @@ if __name__ == "__main__":
     
     #%% Similar plot, but the plot fits on 1 row of a paper;
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
-    plt.rcParams["font.family"] = ["Latin Modern Roman"] 
+    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     plt.rcParams['axes.titlepad'] = 20 
     plt.rcParams['axes.labelpad'] = 10 
     plt.rcParams['axes.titlesize'] = 22 
