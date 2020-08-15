@@ -22,7 +22,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
 INPUT_DATE = "2020_07_20"
-OUTPUT_DATE = "2020_08_11"
+OUTPUT_DATE = "2020_08_12"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -36,10 +36,10 @@ LABEL_LEGEND_DICT = {"ct_overlap_perc": "CT, computation w.r.t transfer",
 
 SPEEDUPS = {
     "b1": 1.17,
-    "b5": 1.34,
-    "b6": 1.25,
-    "b7": 1.14,
-    "b8": 1.30,
+    "b5": 1.33,
+    "b6": 1.22,
+    "b7": 1.13,
+    "b8": 1.32,
     "b10": 1.34,
     }
 

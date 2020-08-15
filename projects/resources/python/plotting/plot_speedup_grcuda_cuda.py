@@ -18,7 +18,7 @@ import matplotlib.lines as lines
 
 import os
 from load_data import load_data, load_data_cuda, join_tables
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, update_width, add_labels, get_upper_ci_size
+from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, update_width, add_labels, get_upper_ci_size, remove_outliers_df_grouped
 import matplotlib.ticker as ticker
 
 
@@ -26,9 +26,9 @@ import matplotlib.ticker as ticker
 ##############################
 
 
-INPUT_DATE_GRCUDA = "2020_08_05_21_02_55_grcuda"
-INPUT_DATE_CUDA = "2020_08_05_20_13_22_cuda"
-OUTPUT_DATE = "2020_08_11"
+INPUT_DATE_GRCUDA = "2020_08_13_16_41_16_grcuda"
+INPUT_DATE_CUDA = "2020_08_13_17_37_35_cuda"
+OUTPUT_DATE = "2020_08_12"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -510,6 +510,7 @@ if __name__ == "__main__":
             j = index_tot % num_col
             i = index_tot // num_col
             curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
+            curr_res = remove_outliers_df_grouped(curr_res, column="grcuda_cuda_speedup", group=["block_size_str", "size"])
             exec_time_axes += [build_exec_time_plot_grcuda_cuda_2rows(curr_res, gs, i, j)]
         
     plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
@@ -529,66 +530,68 @@ if __name__ == "__main__":
     
     #%% Summary plot with CUDA speedups;
    
-    # BENCHMARK_NAMES = {"mean": "Geomean", "b1": "Vector\nSquares", "b5": "B&S", "b6": "ML\nEnsemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
+    BENCHMARK_NAMES = {"mean": "Geomean", "b1": "Vector\nSquares", "b5": "B&S", "b6": "ML\nEnsemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
 
-    # sns.set_style("white", {"ytick.left": True})
-    # plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
-    # plt.rcParams['axes.titlepad'] = 25 
-    # plt.rcParams['axes.labelpad'] = 5 
-    # plt.rcParams['axes.titlesize'] = 22 
-    # plt.rcParams['axes.labelsize'] = 14 
-    # plt.rcParams['xtick.major.pad'] = 8
+    sns.set_style("white", {"ytick.left": True})
+    plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
+    plt.rcParams['axes.titlepad'] = 25 
+    plt.rcParams['axes.labelpad'] = 5 
+    plt.rcParams['axes.titlesize'] = 22 
+    plt.rcParams['axes.labelsize'] = 14 
+    plt.rcParams['xtick.major.pad'] = 8
     
-    # cuda_summary = data_cuda[data_cuda["exec_policy"] == "default"].groupby(["benchmark", "block_size_str", "size"], sort=False)["computation_speedup"].apply(gmean).reset_index(drop=False)
-    # cuda_summary = cuda_summary.sort_values(by=["benchmark"], key=lambda x: x.apply(lambda y: int(y[1:])))
     
-    # num_col = 1
-    # fig = plt.figure(figsize=(3.8 * num_col, 2))
-    # gs = gridspec.GridSpec(1, 1)
-    # plt.subplots_adjust(top=0.78,
-    #                 bottom=0.15,
-    #                 left=0.14,
-    #                 right=.99,
-    #                 hspace=0.9,
-    #                 wspace=0.05)
+    data_cuda_2 = remove_outliers_df_grouped(data_cuda, column="computation_speedup", group=["benchmark", "exec_policy", "block_size_str", "size"])
+    cuda_summary = data_cuda_2[data_cuda_2["exec_policy"] == "default"].groupby(["benchmark", "block_size_str", "size"], sort=False)["computation_speedup"].apply(gmean).reset_index(drop=False)
+    cuda_summary = cuda_summary.sort_values(by=["benchmark"], key=lambda x: x.apply(lambda y: int(y[1:])))
     
-    # palettes = ["#C8FCB6"] * len(cuda_summary["benchmark"].unique()) + ["#96DE9B"]
+    num_col = 1
+    fig = plt.figure(figsize=(3.8 * num_col, 2))
+    gs = gridspec.GridSpec(1, 1)
+    plt.subplots_adjust(top=0.78,
+                    bottom=0.15,
+                    left=0.14,
+                    right=.99,
+                    hspace=0.9,
+                    wspace=0.05)
     
-    # # Add geomean;
-    # gmean_res = pd.DataFrame(cuda_summary.groupby(["benchmark"], as_index=False).agg(gmean))
-    # gmean_res["benchmark"] = "mean"
-    # res = pd.concat([cuda_summary, gmean_res])
+    palettes = ["#C8FCB6"] * len(cuda_summary["benchmark"].unique()) + ["#96DE9B"]
     
-    # ax = fig.add_subplot(gs[0, 0])
-    # ax0 = ax
+    # Add geomean;
+    gmean_res = pd.DataFrame(cuda_summary.groupby(["benchmark"], as_index=False).agg(gmean))
+    gmean_res["benchmark"] = "mean"
+    res = pd.concat([cuda_summary, gmean_res])
     
-    # ax = sns.barplot(x="benchmark", y="computation_speedup", data=res, palette=palettes, capsize=.05, errwidth=0.8, ax=ax, edgecolor="#2f2f2f", estimator=gmean)
+    ax = fig.add_subplot(gs[0, 0])
+    ax0 = ax
+    
+    ax = sns.barplot(x="benchmark", y="computation_speedup", data=res, palette=palettes, capsize=.05, errwidth=0.8, ax=ax, edgecolor="#2f2f2f", estimator=gmean)
        
-    # ax.set_ylabel("Speedup", fontsize=11)
-    # ax.set_xlabel("")
-    # ax.set_ylim((0.8, 1.6))
-    # labels = ax.get_xticklabels()
-    # for j, l in enumerate(labels):
-    #     l.set_text(BENCHMARK_NAMES[l._text])
-    # ax.set_xticklabels(labels, ha="center", va="center")
-    # ax.tick_params(axis='x', which='major', labelsize=8, rotation=0)
+    ax.set_ylabel("Speedup", fontsize=11)
+    ax.set_xlabel("")
+    ax.set_ylim((0.8, 1.6))
+    labels = ax.get_xticklabels()
+    for j, l in enumerate(labels):
+        l.set_text(BENCHMARK_NAMES[l._text])
+    ax.set_xticklabels(labels, ha="center", va="center")
+    ax.tick_params(axis='x', which='major', labelsize=8, rotation=0)
     
-    # ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}x"))
-    # ax.yaxis.set_major_locator(plt.LinearLocator(6))
-    # ax.tick_params(axis='y', which='major', labelsize=8)
-    # ax.grid(True, axis="y")
+    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}x"))
+    ax.yaxis.set_major_locator(plt.LinearLocator(6))
+    ax.tick_params(axis='y', which='major', labelsize=8)
+    ax.grid(True, axis="y")
     
-    # update_width(ax, 0.5)
+    update_width(ax, 0.5)
     
-    # # Speedup labels;
-    # offsets = []
-    # for b in res["benchmark"].unique():
-    #     offsets += [get_upper_ci_size(res.loc[res["benchmark"] == b, "computation_speedup"], ci=0.6)]
-    # offsets = [o + 0.02 if not np.isnan(o) else 0.2 for o in offsets]
-    # # offsets[1] = 0.12
-    # offsets[-1] = 0.1
-    # add_labels(ax, vertical_offsets=offsets, rotation=0, fontsize=8, skip_zero=False)
+    # Speedup labels;
+    offsets = []
+    for b in res["benchmark"].unique():
+        offsets += [get_upper_ci_size(res.loc[res["benchmark"] == b, "computation_speedup"], ci=0.6)]
+    offsets = [o + 0.02 if not np.isnan(o) else 0.2 for o in offsets]
+    # offsets[1] = 0.12
+    offsets[-1] = 0.1
+    add_labels(ax, vertical_offsets=offsets, rotation=0, fontsize=8, skip_zero=False)
     
-    # plt.suptitle("Achievable speedup in CUDA with hand-tuned\nGPU data transfer and execution overlap", fontsize=11, x=.01, y=0.99, ha="left")
+    plt.suptitle("Achievable speedup in CUDA with hand-tuned\nGPU data transfer and execution overlap", fontsize=11, x=.01, y=0.99, ha="left")
         
-    # save_plot(PLOT_DIR, "cuda_speedup__{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "cuda_speedup__{}.{}", OUTPUT_DATE)
