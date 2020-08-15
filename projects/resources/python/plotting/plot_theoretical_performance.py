@@ -19,7 +19,7 @@ import matplotlib.lines as lines
 
 import os
 from load_data import load_data, load_data_cuda, join_tables, compute_speedup
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
+from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
 import matplotlib.ticker as ticker
 
 ##############################
@@ -27,8 +27,8 @@ import matplotlib.ticker as ticker
 
 DEFAULT_RES_DIR = "../../../../data/results"
 
-INPUT_DATE_GRCUDA = "2020_08_05_21_36_01_grcuda"
-OUTPUT_DATE = "2020_08_11"
+INPUT_DATE_GRCUDA = "2020_08_14_17_36_06_grcuda"
+OUTPUT_DATE = "2020_08_12"
 PLOT_DIR = "../../../../data/plots"
 
 B5_ITER = 10
@@ -358,12 +358,13 @@ if __name__ == "__main__":
     processed_data = []
     processed_data_summary = []
     for b in BENCHMARK_PHASES.keys():
-        data = load_data(INPUT_DATE_GRCUDA, skip_iter=3, benchmark=b, phases=BENCHMARK_PHASES[b])
+        data_b = load_data(INPUT_DATE_GRCUDA, skip_iter=3, benchmark=b, phases=BENCHMARK_PHASES[b])
+        data_b = remove_outliers_df_grouped(data_b, column="computation_speedup", group=["exec_policy", "benchmark", "block_size_1d", "block_size_2d", "size"]).reset_index(drop=True)
         tmp_cols = index_columns.copy()
         tmp_cols.remove("exec_policy")
-        data = theoretical_speed(data, tmp_cols, b)
-        data_summary = data.groupby(index_columns)[["computation_speedup", "speedup_wrt_theoretical"]].aggregate(gmean).reset_index()
-        processed_data += [data[list(data.columns[:18]) + list(data.columns[-4:])]]
+        data_b = theoretical_speed(data_b, tmp_cols, b)
+        data_summary = data_b.groupby(index_columns)[["computation_speedup", "speedup_wrt_theoretical"]].aggregate(gmean).reset_index()
+        processed_data += [data_b[list(data_b.columns[:18]) + list(data_b.columns[-4:])]]
         processed_data_summary += [data_summary]
         
     data = pd.concat(processed_data).reset_index(drop=True)
