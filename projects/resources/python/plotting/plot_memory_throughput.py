@@ -25,8 +25,8 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
-INPUT_DATE = "2020_08_05"
-OUTPUT_DATE = "2020_08_12"
+INPUT_DATE = "2020_08_16"
+OUTPUT_DATE = "2020_08_16"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {
@@ -48,7 +48,7 @@ NVPROF_HEADER_NOMETRIC_FILTERED = NVPROF_HEADER_NOMETRIC[:2] + [NVPROF_HEADER_NO
 NVPROF_HEADER_METRIC = ["Device", "Context", "Stream", "name", "Correlation_ID",
                         "dram_read_throughput", "dram_write_throughput", "dram_read_bytes", "dram_write_bytes", 
                         "l2_global_atomic_store_bytes", "l2_global_load_bytes", "l2_global_reduction_bytes", "l2_local_global_store_bytes", "l2_local_load_bytes", "l2_read_throughput", "l2_write_throughput", 
-                        "inst_executed", "ipc"]
+                        "inst_executed", "ipc", "flop_count_dp", "flop_count_sp"]
 NVPROF_HEADER_METRIC_FILTERED = [NVPROF_HEADER_METRIC[3]] + NVPROF_HEADER_METRIC[5:]
 
 OPERATIONS_TO_MERGE = set(["htod", "dtoh"])
@@ -120,6 +120,7 @@ def load_data(b, p, files):
     data_metric["l2_global_reduction_bytes"] /= 2**30
     data_metric["l2_local_global_store_bytes"] /= 2**30
     data_metric["l2_local_load_bytes"] /= 2**30
+    data_metric["total_flop"] = data_metric["flop_count_dp"] + data_metric["flop_count_sp"]
     
     data_metric["total_l2_read_bytes"] = data_metric["l2_global_load_bytes"] + data_metric["l2_local_load_bytes"]
     data_metric["total_l2_write_bytes"] = data_metric["l2_global_atomic_store_bytes"] + data_metric["l2_global_reduction_bytes"] + data_metric["l2_local_global_store_bytes"]
@@ -138,6 +139,7 @@ def load_data(b, p, files):
     data["estimated_read_througput"] = data["dram_read_bytes"] / (data["duration_ms"] / 1000)
     data["estimated_l2_read_througput"] = data["total_l2_read_bytes"] / (data["duration_ms"] / 1000)
     data["estimated_l2_write_througput"] = data["total_l2_write_bytes"] / (data["duration_ms"] / 1000)
+    data["gigaflops"] = (data["total_flop"] / 10**9) / (data["duration_ms"] / 1000)
     
     data["estimated_ipc"] = data["inst_executed"] / (GPU_CLOCK_HZ * (data["duration_ms"] / 1000)) / GPU_NUM_SM
     
@@ -213,7 +215,7 @@ def barplot(data, ax, title, y_column, y_limit, annotation_title, y_ticks=6, y_t
     ax.grid(True, axis="y")
     
     # ax.annotate(title, fontsize=9, x=.02, y=0.95, ha="left")
-    plt.suptitle("Hardware metrics\nfor each benchmark and execution policy", fontsize=14, x=.01, y=0.97, ha="left")
+    plt.suptitle("Hardware metrics for each\nbenchmark and execution policy", fontsize=14, x=.01, y=0.97, ha="left")
     ax.annotate(title, xy=(0, 1.08), fontsize=10, ha="left", xycoords="axes fraction")#, xycoords="data", xytext=(0, 100), textcoords="offset points")
     autolabel(ax, rects1, rects2)
     
@@ -269,9 +271,13 @@ if __name__ == "__main__":
         total_instructions = group["inst_executed"].sum() 
         ipc = total_instructions / (GPU_CLOCK_HZ * (overlap_computation_time / 1000)) / GPU_NUM_SM
         
-        summary_list += [[b, p, overlap_computation_time, total_memory_accessed, memory_throughput, memory_throughput / MAX_GPU_BANDWIDTH, l2_throughput, l2_throughput / MAX_L2_GPU_BANDWIDTH,  ipc]]
+        # GigaFLOPS;
+        total_flop = group["total_flop"].sum() 
+        gigaflops = (total_flop / 10**9) / (overlap_computation_time / 1000)
         
-    summary = pd.DataFrame(summary_list, columns=["benchmark", "policy", "duration_ms", "dram_accessed_GB", "memory_throughput", "max_memory_throughput_perc", "l2_throughput", "max_l2_throughput_perc", "ipc"])
+        summary_list += [[b, p, overlap_computation_time, total_memory_accessed, memory_throughput, memory_throughput / MAX_GPU_BANDWIDTH, l2_throughput, l2_throughput / MAX_L2_GPU_BANDWIDTH,  ipc, gigaflops]]
+        
+    summary = pd.DataFrame(summary_list, columns=["benchmark", "policy", "duration_ms", "dram_accessed_GB", "memory_throughput", "max_memory_throughput_perc", "l2_throughput", "max_l2_throughput_perc", "ipc", "gigaflops"])
     
     #%% Create barplot with memory throughput;   
     
@@ -283,22 +289,25 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelsize'] = 14 
     plt.rcParams['xtick.major.pad'] = 5
     
-    num_col = 3
+    num_col = 2
+    num_rows = 2
     
-    fig, axes = plt.subplots(1, num_col, figsize=(2.4 * num_col, 2.8)) 
-    plt.subplots_adjust(top=0.70,
-                    bottom=0.19,
-                    left=0.09,
+    fig, axes = plt.subplots(num_rows, num_col, figsize=(2.4 * num_col, 2.4 * num_rows)) 
+    plt.subplots_adjust(top=0.80,
+                    bottom=0.10,
+                    left=0.13,
                     right=.99,
-                    hspace=0.9,
+                    hspace=0.6,
                     wspace=0.4)
    
-    barplot(summary, axes[0], "Device memory throughput",
+    barplot(summary, axes[0, 0], "Device memory throughput",
             "memory_throughput", (0, 50), "Serial throughput (GB/s):", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}")
-    barplot(summary, axes[1], "L2 cache throughput",
+    barplot(summary, axes[0, 1], "L2 cache throughput",
             "l2_throughput", (0, 250), "Serial throughput (GB/s):", y_ticks=6, y_tick_format=lambda l: f"{int(l)} GB/s", baseline_annotation_format=lambda l: f"{int(l)}")
-    barplot(summary, axes[2], "IPC",
+    barplot(summary, axes[1, 0], "IPC",
             "ipc", (0, 1.75), "Serial IPC:", y_ticks=8, y_tick_format=lambda l: f"{l:.2f}", baseline_annotation_format=lambda l: f"{l:.2f}")
+    barplot(summary, axes[1, 1], "GFLOPS32/64",
+            "gigaflops", (0, 90), "GFLOPS32/64:", y_ticks=6, y_tick_format=lambda l: f"{int(l)}", baseline_annotation_format=lambda l: f"{int(l)}")
     
     save_plot(PLOT_DIR, "memory_throughput_{}.{}", OUTPUT_DATE)
     

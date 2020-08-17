@@ -26,8 +26,8 @@ num_elem = {
     "b1": [120_000_000],
     "b4": [40000000],
     "b5": [12_000_000],
-    "b6": [1_000_000],
-    "b7": [20_000_000],
+    "b6": [800_000],
+    "b7": [15_000_000],
     "b8": [4800],
     "b10": [7000],
 }
@@ -64,7 +64,7 @@ block_sizes_2d_dict = {
 ##############################
 
 LOG_FOLDER = "../../../../data/nvprof_log"
-METRICS = "--metrics 'dram_read_throughput,dram_write_throughput,dram_read_bytes,dram_write_bytes,l2_global_atomic_store_bytes,l2_global_load_bytes,l2_global_reduction_bytes,l2_local_global_store_bytes,l2_local_load_bytes,l2_read_throughput,l2_write_throughput,inst_executed,ipc'"
+METRICS = "--metrics 'dram_read_throughput,dram_write_throughput,dram_read_bytes,dram_write_bytes,l2_global_atomic_store_bytes,l2_global_load_bytes,l2_global_reduction_bytes,l2_local_global_store_bytes,l2_local_load_bytes,l2_read_throughput,l2_write_throughput,inst_executed,ipc,flop_count_dp,flop_count_sp'"
 
 # This path is hard-coded because nvprof is executed as root,
 # and the superuser doesn't have Graalpython in its environment;
