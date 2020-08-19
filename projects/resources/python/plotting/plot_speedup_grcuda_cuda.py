@@ -28,7 +28,7 @@ import matplotlib.ticker as ticker
 
 INPUT_DATE_GRCUDA = "2020_08_13_16_41_16_grcuda"
 INPUT_DATE_CUDA = "2020_08_13_17_37_35_cuda"
-OUTPUT_DATE = "2020_08_12"
+OUTPUT_DATE = "2020_08_16"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -515,7 +515,7 @@ if __name__ == "__main__":
         
     plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     # plt.annotate("Speedup", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
-    plt.suptitle("Speedup of GrCUDA scheduling w.r.t.\nhand-optimized CUDA scheduling", fontsize=16, x=.05, y=0.99, ha="left")
+    plt.suptitle("Speedup of GrCUDA scheduling w.r.t.\nhand-optimized C++ CUDA scheduling", fontsize=16, x=.05, y=0.99, ha="left")
     
     l1 = lines.Line2D([0.01, 0.99], [0.465, 0.465], transform=fig.transFigure, figure=fig, color="#2f2f2f", linestyle="--", linewidth=1)
     fig.lines.extend([l1])
@@ -592,6 +592,6 @@ if __name__ == "__main__":
     offsets[-1] = 0.1
     add_labels(ax, vertical_offsets=offsets, rotation=0, fontsize=8, skip_zero=False)
     
-    plt.suptitle("Achievable speedup in CUDA with hand-tuned\nGPU data transfer and execution overlap", fontsize=11, x=.01, y=0.99, ha="left")
+    plt.suptitle("Achievable speedup in C++ CUDA with hand-tuned\nGPU data transfer and execution overlap", fontsize=11, x=.01, y=0.99, ha="left")
         
     save_plot(PLOT_DIR, "cuda_speedup__{}.{}", OUTPUT_DATE)
