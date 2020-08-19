@@ -22,7 +22,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_out
 
 
 INPUT_DATE = "2020_08_13_16_41_16_grcuda"
-OUTPUT_DATE = "2020_08_12"
+OUTPUT_DATE = "2020_08_16"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
@@ -343,6 +343,8 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelpad'] = 10 
     plt.rcParams['axes.titlesize'] = 22 
     plt.rcParams['axes.labelsize'] = 14 
+    
+    data = data[~((data["benchmark"] == "b5") & (data["size"] == 3000000))]
     
     # Lists of benchmarks and block sizes;
     benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
