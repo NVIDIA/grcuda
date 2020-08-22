@@ -530,7 +530,7 @@ if __name__ == "__main__":
     
     #%% Summary plot with CUDA speedups;
    
-    BENCHMARK_NAMES = {"mean": "Geomean", "b1": "Vector\nSquares", "b5": "B&S", "b6": "ML\nEnsemble", "b7": "HITS", "b8": "Images", "b10": "DL"}
+    BENCHMARK_NAMES = {"mean": "", "mean2": "", "b1": "VEC", "b5": "B&S", "b6": "ML", "b7": "HITS", "b8": "Images", "b10": "DL"}
 
     sns.set_style("white", {"ytick.left": True})
     plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
@@ -538,7 +538,7 @@ if __name__ == "__main__":
     plt.rcParams['axes.labelpad'] = 5 
     plt.rcParams['axes.titlesize'] = 22 
     plt.rcParams['axes.labelsize'] = 14 
-    plt.rcParams['xtick.major.pad'] = 8
+    plt.rcParams['xtick.major.pad'] = 2
     
     
     data_cuda_2 = remove_outliers_df_grouped(data_cuda, column="computation_speedup", group=["benchmark", "exec_policy", "block_size_str", "size"])
@@ -555,29 +555,44 @@ if __name__ == "__main__":
                     hspace=0.9,
                     wspace=0.05)
     
-    palettes = ["#C8FCB6"] * len(cuda_summary["benchmark"].unique()) + ["#96DE9B"]
+    palettes = ["#9AE6A8"] * len(cuda_summary["benchmark"].unique()) + ["#96DE9B"]
     
     # Add geomean;
     gmean_res = pd.DataFrame(cuda_summary.groupby(["benchmark"], as_index=False).agg(gmean))
     gmean_res["benchmark"] = "mean"
+    gmean_horizontal_value = gmean(gmean_res["computation_speedup"])
+    gmean_res["computation_speedup"] = 0
     res = pd.concat([cuda_summary, gmean_res])
+    
+    # Do it again, workaround to have another fake column;
+    gmean_res = pd.DataFrame(cuda_summary.groupby(["benchmark"], as_index=False).agg(gmean))
+    gmean_res["benchmark"] = "mean2"
+    gmean_horizontal_value = gmean(gmean_res["computation_speedup"])
+    gmean_res["computation_speedup"] = 0
+    res = pd.concat([res, gmean_res])
+
     
     ax = fig.add_subplot(gs[0, 0])
     ax0 = ax
     
-    ax = sns.barplot(x="benchmark", y="computation_speedup", data=res, palette=palettes, capsize=.05, errwidth=0.8, ax=ax, edgecolor="#2f2f2f", estimator=gmean)
-       
+    ax = sns.barplot(x="benchmark", y="computation_speedup", data=res, palette=palettes, capsize=.05, errwidth=0.8, ax=ax, edgecolor="#2f2f2f", estimator=gmean, zorder=2, saturation=1)
+    
+    ax.axhline(y=float(f"{gmean_horizontal_value:.2}"), color=COLORS["peach1"], linestyle="-", zorder=1, linewidth=1, alpha=1)
+    ax.annotate(f"Geomean\nspeedup: {gmean_horizontal_value:.2f}x", xy=(0.75, 0.55), xycoords="axes fraction", ha="left", color=COLORS["peach1"], fontsize=8)   
+    ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
+    ax.annotate(f"Serial execution", xy=(0.75, 0.28), xycoords="axes fraction", ha="left", color="#2f2f2f", fontsize=8, alpha=0.5)   
+    
     ax.set_ylabel("Speedup", fontsize=11)
     ax.set_xlabel("")
     ax.set_ylim((0.8, 1.6))
     labels = ax.get_xticklabels()
     for j, l in enumerate(labels):
         l.set_text(BENCHMARK_NAMES[l._text])
-    ax.set_xticklabels(labels, ha="center", va="center")
+    ax.set_xticklabels(labels, ha="center", va="top")
     ax.tick_params(axis='x', which='major', labelsize=8, rotation=0)
     
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}x"))
-    ax.yaxis.set_major_locator(plt.LinearLocator(6))
+    ax.yaxis.set_major_locator(plt.LinearLocator(5))
     ax.tick_params(axis='y', which='major', labelsize=8)
     ax.grid(True, axis="y")
     
@@ -589,6 +604,8 @@ if __name__ == "__main__":
         offsets += [get_upper_ci_size(res.loc[res["benchmark"] == b, "computation_speedup"], ci=0.6)]
     offsets = [o + 0.02 if not np.isnan(o) else 0.2 for o in offsets]
     # offsets[1] = 0.12
+    offsets[0] = 0.06
+    offsets[2] = 0.1
     offsets[-1] = 0.1
     add_labels(ax, vertical_offsets=offsets, rotation=0, fontsize=8, skip_zero=False)
     
