@@ -488,9 +488,20 @@ if __name__ == "__main__":
             exec_time_axes += [build_theoretical_time_plot_2rows(curr_res, gs, i, j, baseline_labels=baselines_dict[b])]
         
     plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
-    plt.suptitle("Speedup of scheduling policies w.r.t\nminimum theoretical time", fontsize=16, x=.02, y=0.99, ha="left")
+    plt.suptitle("Slowdown w.r.t. execution\nwithout resource contention", fontsize=16, x=.02, y=0.99, ha="left")
     
     l1 = lines.Line2D([0.01, 0.99], [0.46, 0.46], transform=fig.transFigure, figure=fig, color="#2f2f2f", linestyle="--", linewidth=1)
     fig.lines.extend([l1])
 
     save_plot(PLOT_DIR, "speedup_theoretical_time_2rows_{}.{}", OUTPUT_DATE)
+    
+    #%%
+    
+    # slowdown = gmean(data["grcuda_cuda_speedup"])
+    # print(slowdown)
+    
+    # slowdown_dict = {"sync": [], "default": []}
+    # for i, g in data.groupby(["benchmark", "exec_policy"]):
+    #     max_size = g["size"].max()
+    #     slowdown_dict[i[1]] += [gmean(g[g["size"] == max_size]["grcuda_cuda_speedup"])]
+    # print(gmean(slowdown_dict["sync"]), gmean(slowdown_dict["default"]))
