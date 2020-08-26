@@ -339,6 +339,84 @@ def build_theoretical_time_plot_2rows(data, gridspec, x, y, baseline_labels=None
     
     return ax
 
+
+def build_theoretical_time_plot_2rows_default(data, gridspec, x, y, baseline_labels=None):
+    
+    data["size_str"] = data["size"].astype(str)
+    
+    legend_labels = ["Parallel Scheduler"]
+    
+    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b4"]][:len(data["block_size_str"].unique())]
+    markers = ["o", "X", "D", "P"][:len(data["block_size_str"].unique())]
+    
+    # Add a lineplot with the exec times;
+    ax = fig.add_subplot(gridspec[x, y])
+    ax.axhspan(0, 1, facecolor='0.8', alpha=0.1)
+
+    ax = sns.lineplot(x="size_str", y="speedup_wrt_theoretical", hue="block_size_str", data=data, palette=palette, ax=ax, estimator=gmean,
+                      err_style="bars", linewidth=2, legend=None, sort=False, ci=None, zorder=2)
+    data_averaged = data.groupby(["size_str", "block_size_str"], as_index=True)["speedup_wrt_theoretical"].apply(gmean).reset_index()
+    order = data["block_size_str"].unique()
+    ax = sns.scatterplot(x="size_str", y="speedup_wrt_theoretical", hue="block_size_str", data=data_averaged, palette=palette, ax=ax, edgecolor="#0f0f0f",
+          size_norm=30, legend=False, zorder=3, ci=None, markers=markers, style="block_size_str", hue_order=order, style_order=order, linewidth=0.05)
+    
+    labels = sorted(data["size"].unique())
+    labels_str = [str(x) for x in labels]
+    
+    # Set the same y limits in each plot;
+    ax.set_ylim((0, 1))
+
+    # Add a horizontal line to denote speedup = 1x;
+    # ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
+                
+    # Set the x ticks;
+    ax.set_xticks(labels_str)
+    ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=8)
+    ax.tick_params(labelcolor="black")
+    # Set the y ticks;
+    ax.yaxis.set_major_locator(plt.LinearLocator(5))
+    if y == 0:
+        ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=9)
+    else:
+        ax.set_yticklabels(labels=["" for l in ax.get_yticks()])
+        # Hide tick markers;
+        for tic in ax.yaxis.get_major_ticks():
+            tic.tick1line.set_visible(False) 
+            tic.tick2line.set_visible(False) 
+            
+    # Add policy annotation;
+    if y == 0 and x % 2 == 0:
+        ax.annotate(f"{legend_labels[x // 2]}", xy=(-0.3, -1.4), fontsize=14, ha="center", xycoords="axes fraction", rotation=90) 
+    
+    ax.set_ylabel(None)     
+    ax.set_xlabel(None) 
+    
+    # Add benchmark name and baseline execution time annotations;
+    ax.annotate(f"{BENCHMARK_NAMES[data['benchmark'].iloc[0]]}", xy=(0.50, 1.1), fontsize=10, ha="center", xycoords="axes fraction")
+    
+     # Turn off tick lines;
+    ax.xaxis.grid(False)
+    
+    # Add baseline execution time annotations (median of execution time across blocks);
+    if baseline_labels:
+        ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.34), fontsize=8, ha="left", xycoords="axes fraction", color=COLORS["peach1"])
+        for i, l in enumerate(labels):
+            baseline_median = baseline_labels[i]
+            ax.annotate(f"{int(1000 * baseline_median)}", xy=(i, -0.48), fontsize=8, color="#2f2f2f", ha="center", xycoords=("data", "axes fraction"))
+    
+    # Legend; 
+    if x == 0 and y== 0:
+        legend_labels = [f"1D={x.split(',')[0]}" for x in data["block_size_str"].unique()]
+        custom_lines = [
+            lines.Line2D([], [], color="white", marker=markers[i], markersize=10, label=legend_labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") 
+            for i in range(len(legend_labels))]        
+        leg = fig.legend(custom_lines, legend_labels, 
+                                 bbox_to_anchor=(0.99, 1), fontsize=10, ncol=2, handletextpad=0.1, columnspacing=0.2)
+        leg.set_title("Block size:\n2D=8x8, 3D=4x4x4", prop={"size": 10})
+        leg._legend_box.align = "left"
+    
+    return ax
+
 ##############################
 ##############################
 
@@ -447,6 +525,56 @@ if __name__ == "__main__":
     
     #%% Similar plot, but formatted for 1-column on a paper;
     
+    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    # plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
+    # plt.rcParams['axes.titlepad'] = 20 
+    # plt.rcParams['axes.labelpad'] = 10 
+    # plt.rcParams['axes.titlesize'] = 22 
+    # plt.rcParams['axes.labelsize'] = 14 
+    # plt.rcParams['xtick.major.pad'] = 4
+    
+    # # Lists of benchmarks and block sizes;
+    # benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
+    # policy_list = list(reversed(sorted(data["exec_policy"].unique())))
+    # num_col = len(benchmark_list) // 2
+    # num_row = len(policy_list) * 2
+    # fig = plt.figure(figsize=(2.2 * num_col, 2 * num_row))
+    # gs = gridspec.GridSpec(num_row, num_col)
+    # plt.subplots_adjust(top=0.85,
+    #                 bottom=0.10,
+    #                 left=0.10,
+    #                 right=0.98,
+    #                 hspace=0.9,
+    #                 wspace=0.15)
+        
+    # exec_time_axes = []
+    # baselines_dict = {}
+    # for b_i, b in enumerate(benchmark_list):
+    #     baselines = []
+    #     tmp_data = data[(data["exec_policy"] == "sync") & (data["benchmark"] == b)]
+    #     labels = sorted(tmp_data["size"].unique())
+    #     for i, l in enumerate(labels):
+    #         baselines += [np.median(tmp_data[tmp_data["size"] == int(l)]["theoretical_time_sec"])]
+    #     baselines_dict[b] = baselines
+        
+    # for p_i, p in enumerate(policy_list): 
+    #     for b_i, b in enumerate(benchmark_list):
+    #         index_tot = (len(benchmark_list) * p_i + b_i)
+    #         j = index_tot % num_col
+    #         i = index_tot // num_col
+    #         curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
+    #         exec_time_axes += [build_theoretical_time_plot_2rows(curr_res, gs, i, j, baseline_labels=baselines_dict[b])]
+        
+    # plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    # plt.suptitle("Slowdown w.r.t. execution\nwithout resource contention", fontsize=16, x=.02, y=0.99, ha="left")
+    
+    # l1 = lines.Line2D([0.01, 0.99], [0.46, 0.46], transform=fig.transFigure, figure=fig, color="#2f2f2f", linestyle="--", linewidth=1)
+    # fig.lines.extend([l1])
+
+    # save_plot(PLOT_DIR, "speedup_theoretical_time_2rows_{}.{}", OUTPUT_DATE)
+        
+    #%% Similar plot, but formatted for 1-column on a paper and without serial execution time;
+    
     sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
     plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     plt.rcParams['axes.titlepad'] = 20 
@@ -459,11 +587,11 @@ if __name__ == "__main__":
     benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     policy_list = list(reversed(sorted(data["exec_policy"].unique())))
     num_col = len(benchmark_list) // 2
-    num_row = len(policy_list) * 2
-    fig = plt.figure(figsize=(2.2 * num_col, 2 * num_row))
+    num_row = len(policy_list)
+    fig = plt.figure(figsize=(2.2 * num_col, 2.4 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
-    plt.subplots_adjust(top=0.85,
-                    bottom=0.10,
+    plt.subplots_adjust(top=0.75,
+                    bottom=0.18,
                     left=0.10,
                     right=0.98,
                     hspace=0.9,
@@ -478,22 +606,23 @@ if __name__ == "__main__":
         for i, l in enumerate(labels):
             baselines += [np.median(tmp_data[tmp_data["size"] == int(l)]["theoretical_time_sec"])]
         baselines_dict[b] = baselines
-        
+    
+    policy_list = ["default"]  # Skip sync policy;
     for p_i, p in enumerate(policy_list): 
         for b_i, b in enumerate(benchmark_list):
             index_tot = (len(benchmark_list) * p_i + b_i)
             j = index_tot % num_col
             i = index_tot // num_col
             curr_res = data[(data["benchmark"] == b) & (data["exec_policy"] == p)].reset_index(drop=True)  
-            exec_time_axes += [build_theoretical_time_plot_2rows(curr_res, gs, i, j, baseline_labels=baselines_dict[b])]
+            exec_time_axes += [build_theoretical_time_plot_2rows_default(curr_res, gs, i, j, baseline_labels=baselines_dict[b])]
         
     plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     plt.suptitle("Slowdown w.r.t. execution\nwithout resource contention", fontsize=16, x=.02, y=0.99, ha="left")
     
-    l1 = lines.Line2D([0.01, 0.99], [0.46, 0.46], transform=fig.transFigure, figure=fig, color="#2f2f2f", linestyle="--", linewidth=1)
-    fig.lines.extend([l1])
+    # l1 = lines.Line2D([0.01, 0.99], [0.46, 0.46], transform=fig.transFigure, figure=fig, color="#2f2f2f", linestyle="--", linewidth=1)
+    # fig.lines.extend([l1])
 
-    save_plot(PLOT_DIR, "speedup_theoretical_time_2rows_{}.{}", OUTPUT_DATE)
+    save_plot(PLOT_DIR, "speedup_theoretical_time_2rows_default_{}.{}", OUTPUT_DATE)
     
     #%%
     
