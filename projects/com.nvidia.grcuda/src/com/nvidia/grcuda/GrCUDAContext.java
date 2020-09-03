@@ -66,6 +66,7 @@ public final class GrCUDAContext {
     public static final DependencyPolicyEnum DEFAULT_DEPENDENCY_POLICY = DependencyPolicyEnum.DEFAULT;
     public static final RetrieveNewStreamPolicyEnum DEFAULT_RETRIEVE_STREAM_POLICY = RetrieveNewStreamPolicyEnum.FIFO;
     public static final RetrieveParentStreamPolicyEnum DEFAULT_PARENT_STREAM_POLICY = RetrieveParentStreamPolicyEnum.DEFAULT;
+    public static final boolean DEFAULT_FORCE_STREAM_ATTACH = false;
 
     private static final String ROOT_NAMESPACE = "CU";
 
@@ -77,12 +78,16 @@ public final class GrCUDAContext {
     private volatile boolean cudaInitialized = false;
     private final RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy;
     private final RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum;
+    private final boolean forceStreamAttach;
 
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
 
     public GrCUDAContext(Env env) {
         this.env = env;
+
+        // Retrieve if we should force array stream attachment;
+        forceStreamAttach = env.getOptions().get(GrCUDAOptions.ForceStreamAttach);
 
         // Retrieve the stream retrieval policy;
         retrieveNewStreamPolicy = parseRetrieveStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveNewStreamPolicy));
@@ -181,6 +186,10 @@ public final class GrCUDAContext {
     
     public RetrieveParentStreamPolicyEnum getRetrieveParentStreamPolicyEnum() {
         return retrieveParentStreamPolicyEnum;
+    }
+
+    public boolean isForceStreamAttach() {
+        return forceStreamAttach;
     }
 
     /**
