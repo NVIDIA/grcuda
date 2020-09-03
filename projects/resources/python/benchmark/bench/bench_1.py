@@ -4,7 +4,7 @@ from java.lang import System
 import numpy as np
 from random import random, randint, seed
 
-from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
 
 ##############################

@@ -65,4 +65,7 @@ public final class GrCUDAOptions {
 
     @Option(category = OptionCategory.USER, help = "Choose how streams for new GrCUDA computations are obtained from parent computations", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> RetrieveParentStreamPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY.getName());
+
+    @Option(category = OptionCategory.USER, help = "Force the use of array stream attaching even when not required (e.g. post-Pascal GPUs)", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> ForceStreamAttach = new OptionKey<>(false);
 }

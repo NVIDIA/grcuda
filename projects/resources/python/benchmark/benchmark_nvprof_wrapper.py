@@ -10,7 +10,8 @@ from java.lang import System
 ##############################
 ##############################
 
-DEFAULT_NUM_BLOCKS = 64
+DEFAULT_NUM_BLOCKS = 64  # GTX 960, 8 SM
+DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
 
 # Benchmark settings;
 benchmarks = [

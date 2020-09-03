@@ -6,6 +6,8 @@ import polyglot
 
 DEFAULT_BLOCK_SIZE_1D = 32
 DEFAULT_BLOCK_SIZE_2D = 8
+DEFAULT_NUM_BLOCKS = 64  # GTX 960, 8 SM
+DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
 
 
 def time_phase(phase_name: str) -> Callable:
