@@ -3,6 +3,8 @@ import polyglot
 from java.lang import System
 import numpy as np
 from random import random, randint, seed, sample
+import pickle
+import os
 
 from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
@@ -10,7 +12,11 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
+#FIXME: OUTDATED, USE Benchmark 72 instead
+
 NUM_THREADS_PER_BLOCK = 32
+
+STORE_TO_PICKLE = True
 
 SPMV_KERNEL = """
 extern "C" __global__ void spmv(const int *ptr, const int *idx, const int *val, const float *vec, float *res, int num_rows, int num_nnz) {
@@ -291,7 +297,7 @@ class Benchmark7(Benchmark):
         for i in range(self.size):
             difference += np.abs(self.cpu_result[i] - gpu_result[i])
 
-        self.benchmark.add_to_benchmark("cpu_time_sec", cpu_time)
+
         self.benchmark.add_to_benchmark("cpu_gpu_res_difference", str(difference))
         if self.benchmark.debug:
             BenchmarkResult.log_message(f"\tcpu result: [" + ", ".join([f"{x:.4f}" for x in self.cpu_result[:10]])
