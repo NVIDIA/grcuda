@@ -5,7 +5,7 @@ from java.lang import System
 import numpy as np
 from random import random, randint, seed
 
-from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -184,8 +184,8 @@ class Benchmark6(Benchmark):
         self.num_features = 200  # self.nb_feat_log_prob_np.shape[1]
         self.num_classes = 10  # self.nb_feat_log_prob_np.shape[0]
 
-        self.num_blocks_size = 64
-        self.num_blocks_feat = 64
+        self.num_blocks_size = DEFAULT_NUM_BLOCKS
+        self.num_blocks_feat = DEFAULT_NUM_BLOCKS
         self.block_size = DEFAULT_BLOCK_SIZE_1D
 
         self.x_cpu = None

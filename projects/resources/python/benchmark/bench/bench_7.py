@@ -4,7 +4,7 @@ from java.lang import System
 import numpy as np
 from random import random, randint, seed, sample
 
-from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -99,7 +99,7 @@ class Benchmark7(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_size = 32
+        self.num_blocks_size = DEFAULT_NUM_BLOCKS
         self.block_size = None
 
         self.spmv_kernel = None

@@ -4,7 +4,7 @@ from java.lang import System
 import numpy as np
 from random import random, randint, seed, sample
 
-from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_BLOCK_SIZE_2D
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_BLOCK_SIZE_2D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -238,7 +238,7 @@ class Benchmark8(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = 16  # i.e. 2 * number of SM on the GTX960
+        self.num_blocks_per_processor = DEFAULT_NUM_BLOCKS   # 16  # i.e. 2 * number of SM on the GTX960
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
@@ -308,11 +308,8 @@ class Benchmark8(Benchmark):
         seed(self.random_seed)
 
         # Create a random image;
-        self.image_cpu = np.zeros((self.size, self.size))  # Create here the image used for validation;
-        for i in range(self.size):
-            for j in range(self.size):
-                self.image_cpu[i, j] = random()
-                self.image[i][j] = float(self.image_cpu[i, j])
+        self.image_cpu = np.random.rand(self.size, self.size).astype(np.float32)  # Create here the image used for validation;
+        self.image.copyFrom(int(np.int64(self.image_cpu.ctypes.data)), len(self.image))
 
         self.kernel_small_cpu = gaussian_kernel(self.kernel_small_diameter, self.kernel_small_variance)
         self.kernel_large_cpu = gaussian_kernel(self.kernel_large_diameter, self.kernel_large_variance)

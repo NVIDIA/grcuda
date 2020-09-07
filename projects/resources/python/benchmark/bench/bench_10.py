@@ -4,7 +4,7 @@ from java.lang import System
 import numpy as np
 from random import random, randint, seed, sample, uniform
 
-from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_BLOCK_SIZE_2D
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_BLOCK_SIZE_2D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -184,7 +184,7 @@ class Benchmark10(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = 16 # i.e. 2 * number of SM on the GTX960
+        self.num_blocks_per_processor = DEFAULT_NUM_BLOCKS  # 16 # i.e. 2 * number of SM on the GTX960
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D

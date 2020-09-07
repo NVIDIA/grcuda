@@ -4,7 +4,7 @@ import time
 import numpy as np
 from random import random, randint, seed
 
-from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D
+from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
 from java.lang import System
 import math
@@ -71,7 +71,7 @@ class Benchmark5(Benchmark):
         super().__init__("b5", benchmark, nvprof_profile)
         self.size = 0
 
-        self.num_blocks = 64
+        self.num_blocks = DEFAULT_NUM_BLOCKS
         self.sum_kernel = None
         self.cpu_result = 0
         self.block_size = DEFAULT_BLOCK_SIZE_1D
@@ -110,6 +110,7 @@ class Benchmark5(Benchmark):
         seed(self.random_seed)
         self.x_tmp = [K] * self.size
         if self.benchmark.random_init:
+            # self.x_tmp = np.random.uniform(-0.5, 0.5, self.size).astype(float) + K
             for i in range(len(self.x_tmp)):
                 self.x_tmp[i] = random() - 0.5 + K
 
