@@ -39,7 +39,7 @@ num_elem = {
     "b1": [100_000_000, 200_000_000, 500_000_000, 600_000_000, 700_000_000],
     "b5": [10_000_000, 20_000_000, 50_000_000, 60_000_000, 70_000_000],
     "b6": [1_000_000, 2_000_000, 4_000_000, 5_000_000, 6_000_000],
-    "b7": [20_000_000, 40_000_000, 60_000_000, 100_000_000, 140_000_000],
+    "b7": [20_000_000, 40_000_000, 60_000_000, 80_000_000, 100_000_000],
     "b8": [5000, 8000, 10000, 12000, 16000],
     "b10": [7000, 10000, 12000, 14000, 16000],
 }
@@ -108,7 +108,7 @@ GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithTh
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
 
 
-def execute_grcuda_benchmark(benchmark, size, block_size, exec_policy, new_stream_policy,
+def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stream_policy,
                       parent_stream_policy, dependency_policy, num_iter, debug, time_phases, output_date=None):
     if debug:
         BenchmarkResult.log_message("")
@@ -116,7 +116,7 @@ def execute_grcuda_benchmark(benchmark, size, block_size, exec_policy, new_strea
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message(f"Benchmark {i + 1}/{tot_benchmarks}")
         BenchmarkResult.log_message(f"benchmark={b}, size={n},"
-                                    f"block size={block_size}, "
+                                    f"block sizes={block_sizes}, "
                                     f"exec policy={exec_policy}, "
                                     f"new stream policy={new_stream_policy}, "
                                     f"parent stream policy={parent_stream_policy}, "
@@ -129,7 +129,7 @@ def execute_grcuda_benchmark(benchmark, size, block_size, exec_policy, new_strea
     if not output_date:
         output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     file_name = f"{output_date}_{benchmark}_{exec_policy}_{new_stream_policy}_{parent_stream_policy}_" \
-                f"{dependency_policy}_{size}_{block_size['block_size_1d']}_{block_size['block_size_2d']}_{num_iter}.json"
+                f"{dependency_policy}_{size}_{num_iter}.json"
     # Create a folder if it doesn't exist;
     output_folder_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, output_date + "_grcuda")
     if not os.path.exists(output_folder_path):
@@ -137,9 +137,11 @@ def execute_grcuda_benchmark(benchmark, size, block_size, exec_policy, new_strea
             BenchmarkResult.log_message(f"creating result folder: {output_folder_path}")
         os.mkdir(output_folder_path)
     output_path = os.path.join(output_folder_path, file_name)
+    b1d_size = " ".join([str(b['block_size_1d']) for b in block_sizes])
+    b2d_size = " ".join([str(b['block_size_2d']) for b in block_sizes])
 
     benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, exec_policy, dependency_policy, parent_stream_policy,
-                                           num_iter, size, benchmark, block_size["block_size_1d"], block_size["block_size_2d"],
+                                           num_iter, size, benchmark, b1d_size, b2d_size,
                                            "-d" if debug else "",  "-p" if time_phases else "", output_path)
     start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
@@ -192,7 +194,7 @@ if __name__ == "__main__":
                 tot += len(num_elem[b]) * len(block_sizes) * len(exec_policies) * len(new_stream_policies) * len(parent_stream_policies) * len(dependency_policies)
         else:
             for b in benchmarks:
-                tot += len(num_elem[b]) * len(block_sizes) * len(exec_policies)
+                tot += len(num_elem[b]) * len(exec_policies)
         return tot
 
     output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -202,18 +204,18 @@ if __name__ == "__main__":
     tot_benchmarks = tot_benchmark_count()
     for b in benchmarks:
         for n in num_elem[b]:
-            for block_size in block_sizes:
-                for exec_policy in exec_policies:
-                    # CUDA Benchmarks;
-                    if use_cuda:
+            for exec_policy in exec_policies:
+                # CUDA Benchmarks;
+                if use_cuda:
+                    for block_size in block_sizes:
                         execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, num_blocks=num_blocks, output_date=output_date)
                         i += 1
-                    # GrCUDA Benchmarks;
-                    else:
-                        for new_stream_policy in new_stream_policies:
-                            for parent_stream_policy in parent_stream_policies:
-                                for dependency_policy in dependency_policies:
-                                    execute_grcuda_benchmark(b, n, block_size, exec_policy, new_stream_policy,
-                                                             parent_stream_policy, dependency_policy, num_iter,
-                                                             debug, time_phases, output_date=output_date)
-                                    i += 1
+                # GrCUDA Benchmarks;
+                else:
+                    for new_stream_policy in new_stream_policies:
+                        for parent_stream_policy in parent_stream_policies:
+                            for dependency_policy in dependency_policies:
+                                execute_grcuda_benchmark(b, n, block_sizes, exec_policy, new_stream_policy,
+                                                         parent_stream_policy, dependency_policy, num_iter,
+                                                         debug, time_phases, output_date=output_date)
+                                i += 1
