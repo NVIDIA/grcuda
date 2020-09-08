@@ -362,8 +362,8 @@ class Benchmark7(Benchmark):
             self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
         self.benchmark.add_computation_time((end - start_comp) / 1_000_000_000)
         # Compute GPU result;
-        for i in range(self.size):
-            self.gpu_result[i] = self.auth1[i] + self.hub1[i]
+        # for i in range(self.size):
+        #     self.gpu_result[i] = self.auth1[i] + self.hub1[i]
 
         self.benchmark.add_to_benchmark("gpu_result", 0)
         if self.benchmark.debug:
