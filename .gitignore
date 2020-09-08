@@ -48,3 +48,4 @@ mx.grcuda/eclipse-launches
 projects/resources/cuda/bin
 data/results/*
 data/nvprof_log/*
+data/pickle/*

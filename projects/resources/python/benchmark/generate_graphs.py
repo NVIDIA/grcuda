@@ -3,6 +3,7 @@ import os
 import pickle
 import argparse
 import time
+import numpy as np
 
 DEBUG = True
 DEGREE = 3
@@ -55,10 +56,8 @@ if __name__ == "__main__":
         val = [1] * size * degree
         for i in range(size):
             # Create degree random edges;
-            edges = sorted(sample(range(size), degree))
-            for j, e in enumerate(edges):
-                x[i * degree + j] = i
-                y[i * degree + j] = e
+            x[(i * degree):((i + 1) * degree)] = [i] * degree
+            y[(i * degree):((i + 1) * degree)] = sorted(sample(range(size), degree))
         if debug:
             print(f"1. created COO, {time.time() - start:.2f} sec")
     
