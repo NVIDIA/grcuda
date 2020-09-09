@@ -162,12 +162,14 @@ if __name__ == "__main__":
         benchmark = b(benchmark_res, nvprof_profile=nvprof_profile)
         for p in policies[b_name]:
             for n in num_elem[b_name]:
+                prevent_reinit = False
                 for re in realloc:
                     for ri in reinit:
                         for block_size in block_sizes:
                             for i in range(num_iter):
                                 benchmark.run(num_iter=i, policy=p, size=n, realloc=re, reinit=ri,
-                                              block_size=block_size, time_phases=time_phases)
+                                              block_size=block_size, time_phases=time_phases, prevent_reinit=prevent_reinit)
+                                prevent_reinit = True
                             # Print the summary of this block;
                             if benchmark_res.debug:
                                 benchmark_res.print_current_summary(name=b_name, policy=p, size=n,

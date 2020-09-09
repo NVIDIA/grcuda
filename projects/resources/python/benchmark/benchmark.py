@@ -104,7 +104,8 @@ class Benchmark(ABC):
         else:
             return function(*args)
 
-    def run(self, num_iter: int, policy: str, size: int, realloc: bool, reinit: bool, time_phases: bool, block_size: dict = None) -> None:
+    def run(self, num_iter: int, policy: str, size: int, realloc: bool, reinit: bool,
+            time_phases: bool, block_size: dict = None, prevent_reinit=False) -> None:
 
         # Fix missing block size;
         if "block_size_1d" not in block_size:
@@ -131,7 +132,7 @@ class Benchmark(ABC):
         if num_iter == 0 or realloc:
             self.alloc(size, block_size)
         # Initialize memory for the benchmark;
-        if num_iter == 0 or reinit or reinit:
+        if (num_iter == 0 or reinit) and not prevent_reinit:
             self.init()
 
         # Reset the result;
