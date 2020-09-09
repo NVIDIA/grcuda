@@ -3,6 +3,7 @@ import os
 import pickle
 import argparse
 import time
+import json
 import numpy as np
 
 DEBUG = True
@@ -13,6 +14,13 @@ def get_pickle_filename(size: int) -> str:
     if not os.path.exists(pickle_folder):
         os.makedirs(pickle_folder)
     return os.path.join(pickle_folder, f"graph_{size}")
+
+
+def get_json_filename(size: int) -> str:
+    pickle_folder = f"{os.getenv('GRCUDA_HOME')}/data/json"
+    if not os.path.exists(pickle_folder):
+        os.makedirs(pickle_folder)
+    return os.path.join(pickle_folder, f"graph_{size}.json")
 
 
 def create_csr_from_coo(x_in, y_in, val_in, size, degree=None):
@@ -35,6 +43,8 @@ if __name__ == "__main__":
 
     parser.add_argument("-d", "--debug", action="store_true",
                         help="If present, print debug messages")
+    parser.add_argument("-p", "--pickle", action="store_true",
+                        help="If present, store graphs with pickle instead of JSON")
     parser.add_argument("-n", "--size", metavar="N", type=int, nargs="*",
                         help="Sizes of the graph")
     parser.add_argument("-e", "--degree", metavar="N", type=int, nargs="?",
@@ -44,6 +54,7 @@ if __name__ == "__main__":
     debug = args.debug if args.debug else DEBUG
     degree = args.degree if args.degree else DEGREE
     sizes = args.size
+    use_pickle = args.pickle
     
     for size in sizes:
         if debug:
@@ -79,10 +90,21 @@ if __name__ == "__main__":
 
         # Store to pickle file;
         start = time.time()
-        pickle_file_name = get_pickle_filename(size)
-        if debug:
-            print(f"store pickled data to {pickle_file_name}...")
-        with open(pickle_file_name, "wb+") as f:
-            pickle.dump([ptr_cpu, idx_cpu, val_cpu, ptr2_cpu, idx2_cpu, val2_cpu], f)
-        if debug:
-            print(f"5. stores pickled data, {time.time() - start:.2f} sec")
+        if use_pickle:
+            pickle_file_name = get_pickle_filename(size)
+            if debug:
+                print(f"store pickled data to {pickle_file_name}...")
+            with open(pickle_file_name, "wb") as f:
+                pickle.dump([ptr_cpu, idx_cpu, val_cpu, ptr2_cpu, idx2_cpu, val2_cpu], f, pickle.HIGHEST_PROTOCOL)
+            if debug:
+                print(f"5. stores pickled data, {time.time() - start:.2f} sec")
+        else:
+            json_file_name = get_json_filename(size)
+            if debug:
+                print(f"store json data to {json_file_name}...")
+            with open(json_file_name, "wb") as f:
+                import codecs
+                json.dump({"ptr_cpu": ptr_cpu, "idx_cpu": idx_cpu, "val_cpu": val_cpu,
+                           "ptr2_cpu": ptr2_cpu, "idx2_cpu": idx2_cpu, "val2_cpu": val2_cpu}, codecs.getwriter('utf-8')(f), ensure_ascii=False)
+            if debug:
+                print(f"5. stored json data, {time.time() - start:.2f} sec")
