@@ -13,10 +13,6 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-STORE_TO_PICKLE = True
-LOAD_FROM_PICKLE = False
-LOAD_FROM_JSON = True
-
 NUM_THREADS_PER_BLOCK = 32
 THREADS_PER_VECTOR = 4
 MAX_NUM_VECTORS_PER_BLOCK = 1024 / THREADS_PER_VECTOR
@@ -225,97 +221,32 @@ class Benchmark7(Benchmark):
     @time_phase("initialization")
     def init(self):
 
-        def get_pickle_filename(size: int) -> str:
-            pickle_folder = f"{os.getenv('GRCUDA_HOME')}/data/pickle"
-            if not os.path.exists(pickle_folder):
-                os.makedirs(pickle_folder)
-            return os.path.join(pickle_folder, f"graph_{size}")
-
-        def get_json_filename(size: int) -> str:
-            pickle_folder = f"{os.getenv('GRCUDA_HOME')}/data/json"
-            if not os.path.exists(pickle_folder):
-                os.makedirs(pickle_folder)
-            return os.path.join(pickle_folder, f"graph_{size}.json")
-
-        def create_csr_from_coo(x_in, y_in, val_in, size, degree=None):
-            if degree:
-                ptr_out = [degree] * (size + 1)
-                ptr_out[0] = 0
-            else:
-                # values, count = np.unique(x_in, return_counts=True)
-                ptr_out = [0] * (size + 1)
-                for x in x_in:
-                    ptr_out[x] += 1
-            for i in range(len(ptr_out) - 1):
-                ptr_out[i + 1] += ptr_out[i]
-            # ptr_out = np.cumsum(ptr_out, dtype=np.int32)
-            return ptr_out, y_in, val_in
-
         self.random_seed = randint(0, 10000000)
         seed(self.random_seed)
 
-        if LOAD_FROM_PICKLE:
-            start = System.nanoTime()
-            pickle_file_name = get_pickle_filename(self.size)
-            if self.benchmark.debug:
-                BenchmarkResult.log_message(f"load pickled data from {pickle_file_name}")
-            with open(pickle_file_name, "rb") as f:
-                [self.ptr_cpu, self.idx_cpu, self.val_cpu, self.ptr2_cpu, self.idx2_cpu, self.val2_cpu] = pickle.load(f)
-            print(f"load time pickle = {(System.nanoTime() - start) / 1_000_000_000}")
-        elif LOAD_FROM_JSON:
-            start = System.nanoTime()
-            json_file_name = get_json_filename(self.size)
-            if self.benchmark.debug:
-                BenchmarkResult.log_message(f"load json data from {json_file_name}")
-            with open(json_file_name, "rb") as f:
-                import codecs
-                graph = json.load(codecs.getreader('utf-8')(f))
-                self.ptr_cpu = graph["ptr_cpu"]
-                self.idx_cpu = graph["idx_cpu"]
-                self.val_cpu = graph["val_cpu"]
-                self.ptr2_cpu = graph["ptr2_cpu"]
-                self.idx2_cpu = graph["idx2_cpu"]
-                self.val2_cpu = graph["val2_cpu"]
-            print(f"load time json = {(System.nanoTime() - start) / 1_000_000_000}")
-        else:
-            # Create a random COO graph;
-            x = [0] * self.size * self.max_degree
-            y = [0] * self.size * self.max_degree
-            val = [1] * self.size * self.max_degree
-            for i in range(self.size):
-                # Create max_degree random edges;
-                edges = sorted(sample(range(self.size), self.max_degree))
-                for j, e in enumerate(edges):
-                    x[i * self.max_degree + j] = i
-                    y[i * self.max_degree + j] = e
-
-            # Turn the COO into CSR and CSC representations;
-            self.ptr_cpu, self.idx_cpu, self.val_cpu = create_csr_from_coo(x, y, val, self.size, degree=self.max_degree)
-            x2, y2 = zip(*sorted(zip(y, x)))
-            self.ptr2_cpu, self.idx2_cpu, self.val2_cpu = create_csr_from_coo(x2, y2, val, self.size)
-
-            # Low-level copies from numpy array, they are faster but require slow casting to numpy arrays;
-            # self.ptr.copyFrom(int(np.int64(self.ptr_cpu.ctypes.data)), len(self.ptr))
-            # self.ptr2.copyFrom(int(np.int64(self.ptr2_cpu.ctypes.data)), len(self.ptr2))
-            # self.idx.copyFrom(int(np.int64(self.idx_cpu.ctypes.data)), len(self.idx))
-            # self.idx2.copyFrom(int(np.int64(self.idx2_cpu.ctypes.data)), len(self.idx2))
-            # self.val.copyFrom(int(np.int64(self.val_cpu.ctypes.data)), len(self.val))
-            # self.val2.copyFrom(int(np.int64(self.val2_cpu.ctypes.data)), len(self.val2))
-
-            # for i in range(len(self.ptr_cpu)):
-            #     self.ptr[i] = self.ptr_cpu[i]
-            #     self.ptr2[i] = self.ptr2_cpu[i]
-            # for i in range(len(self.idx_cpu)):
-            #     self.idx[i] = self.idx_cpu[i]
-            #     self.idx2[i] = self.idx2_cpu[i]
-            #     self.val[i] = self.val_cpu[i]
-            #     self.val2[i] = self.val2_cpu[i]
-            if STORE_TO_PICKLE:
-                pickle_file_name = get_pickle_filename(self.size)
-                if self.benchmark.debug:
-                    BenchmarkResult.log_message(f"store pickled data to {pickle_file_name}")
-                with open(pickle_file_name, "wb+") as f:
-                    pickle.dump([self.ptr_cpu, self.idx_cpu, self.val_cpu, self.ptr2_cpu, self.idx2_cpu, self.val2_cpu], f)
+        # Create a random COO graph;
+        self.ptr_cpu = [0] * (self.size + 1)
+        self.idx_cpu = [0] * self.size * self.max_degree
+        self.val_cpu = [1] * self.size * self.max_degree
+        self.val2_cpu = self.val_cpu
+        csc_dict = {}
+        for i in range(self.size):
+            # Create degree random edges;
+            self.ptr_cpu[i + 1] = self.ptr_cpu[i] + self.max_degree
+            edges = sample(range(self.size), self.max_degree)
+            self.idx_cpu[(i * self.max_degree):((i + 1) * self.max_degree)] = edges
+            for y_i in edges:
+                if y_i in csc_dict:
+                    csc_dict[y_i] += [i]
+                else:
+                    csc_dict[y_i] = [i]
+        self.ptr2_cpu = [0] * (self.size + 1)
+        self.idx2_cpu = [0] * self.size * self.max_degree
+        for i in range(self.size):
+            if i in csc_dict:
+                edges = csc_dict[i]
+                self.ptr2_cpu[i + 1] = self.ptr2_cpu[i] + len(edges)
+                self.idx2_cpu[self.ptr2_cpu[i]:self.ptr2_cpu[i + 1]] = edges
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
@@ -387,8 +318,8 @@ class Benchmark7(Benchmark):
             self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
         self.benchmark.add_computation_time((end - start_comp) / 1_000_000_000)
         # Compute GPU result;
-        for i in range(self.size):
-            self.gpu_result[i] = self.auth1[i] + self.hub1[i]
+        # for i in range(self.size):
+        #     self.gpu_result[i] = self.auth1[i] + self.hub1[i]
 
         self.benchmark.add_to_benchmark("gpu_result", 0)
         if self.benchmark.debug:

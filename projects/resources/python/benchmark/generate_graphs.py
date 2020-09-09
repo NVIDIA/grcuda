@@ -50,6 +50,7 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--degree", metavar="N", type=int, nargs="?",
                         help="Degree of the graph")
 
+    OLD = False
     args = parser.parse_args()
     debug = args.debug if args.debug else DEBUG
     degree = args.degree if args.degree else DEGREE
@@ -61,32 +62,63 @@ if __name__ == "__main__":
             print(f"creating graph with N={size}, E={size * degree}")
 
         # Create a random COO graph;
-        start = time.time()
-        x = [0] * size * degree
-        y = [0] * size * degree
-        val = [1] * size * degree
-        for i in range(size):
-            # Create degree random edges;
-            x[(i * degree):((i + 1) * degree)] = [i] * degree
-            y[(i * degree):((i + 1) * degree)] = sorted(sample(range(size), degree))
-        if debug:
-            print(f"1. created COO, {time.time() - start:.2f} sec")
-    
-        # Turn the COO into CSR and CSC representations;
-        start = time.time()
-        ptr_cpu, idx_cpu, val_cpu = create_csr_from_coo(x, y, val, size, degree=degree)
-        if debug:
-            print(f"2. created CSR1, {time.time() - start:.2f} sec")
+        if OLD:
+            start = time.time()
+            x = [0] * size * degree
+            y = [0] * size * degree
+            val = [1] * size * degree
+            for i in range(size):
+                # Create degree random edges;
+                x[(i * degree):((i + 1) * degree)] = [i] * degree
+                y[(i * degree):((i + 1) * degree)] = sorted(sample(range(size), degree))
+            if debug:
+                print(f"1. created COO, {time.time() - start:.2f} sec")
 
-        start = time.time()
-        x2, y2 = zip(*sorted(zip(y, x)))
-        if debug:
-            print(f"3. sorted CSR1, {time.time() - start:.2f} sec")
+            # Turn the COO into CSR and CSC representations;
+            start = time.time()
+            ptr_cpu, idx_cpu, val_cpu = create_csr_from_coo(x, y, val, size, degree=degree)
+            if debug:
+                print(f"2. created CSR1, {time.time() - start:.2f} sec")
 
-        start = time.time()
-        ptr2_cpu, idx2_cpu, val2_cpu = create_csr_from_coo(x2, y2, val, size)
-        if debug:
-            print(f"4. created CSR2, {time.time() - start:.2f} sec")
+            start = time.time()
+            x2, y2 = zip(*sorted(zip(y, x)))
+            if debug:
+                print(f"3. sorted CSR1, {time.time() - start:.2f} sec")
+
+            start = time.time()
+            ptr2_cpu, idx2_cpu, val2_cpu = create_csr_from_coo(x2, y2, val, size)
+            if debug:
+                print(f"4. created CSR2, {time.time() - start:.2f} sec")
+        else:
+            start = time.time()
+            ptr_cpu = [0] * (size + 1)
+            idx_cpu = [0] * size * degree
+            val_cpu = [1] * size * degree
+            val2_cpu = val_cpu
+            csc_dict = {}
+            for i in range(size):
+                # Create degree random edges;
+                ptr_cpu[i + 1] = ptr_cpu[i] + degree
+                edges = sample(range(size), degree)
+                idx_cpu[(i * degree):((i + 1) * degree)] = edges
+                for y_i in edges:
+                    if y_i in csc_dict:
+                        csc_dict[y_i] += [i]
+                    else:
+                        csc_dict[y_i] = [i]
+            if debug:
+                print(f"1. created CSR, {time.time() - start:.2f} sec")
+
+            ptr2_cpu = [0] * (size + 1)
+            idx2_cpu = [0] * size * degree
+            start = time.time()
+            for i in range(size):
+                if i in csc_dict:
+                    edges = csc_dict[i]
+                    ptr2_cpu[i + 1] = ptr2_cpu[i] + len(edges)
+                    idx2_cpu[ptr2_cpu[i]:ptr2_cpu[i + 1]] = edges
+            if debug:
+                print(f"2. created CSC, {time.time() - start:.2f} sec")
 
         # Store to pickle file;
         start = time.time()
