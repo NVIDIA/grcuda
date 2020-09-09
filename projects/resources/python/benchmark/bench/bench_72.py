@@ -5,6 +5,7 @@ import numpy as np
 from random import random, randint, seed, sample
 import os
 import pickle
+import json
 
 from benchmark import Benchmark, time_phase, DEFAULT_BLOCK_SIZE_1D, DEFAULT_NUM_BLOCKS
 from benchmark_result import BenchmarkResult
@@ -13,7 +14,8 @@ from benchmark_result import BenchmarkResult
 ##############################
 
 STORE_TO_PICKLE = True
-LOAD_FROM_PICKLE = True
+LOAD_FROM_PICKLE = False
+LOAD_FROM_JSON = True
 
 NUM_THREADS_PER_BLOCK = 32
 THREADS_PER_VECTOR = 4
@@ -229,6 +231,12 @@ class Benchmark7(Benchmark):
                 os.makedirs(pickle_folder)
             return os.path.join(pickle_folder, f"graph_{size}")
 
+        def get_json_filename(size: int) -> str:
+            pickle_folder = f"{os.getenv('GRCUDA_HOME')}/data/json"
+            if not os.path.exists(pickle_folder):
+                os.makedirs(pickle_folder)
+            return os.path.join(pickle_folder, f"graph_{size}.json")
+
         def create_csr_from_coo(x_in, y_in, val_in, size, degree=None):
             if degree:
                 ptr_out = [degree] * (size + 1)
@@ -247,11 +255,28 @@ class Benchmark7(Benchmark):
         seed(self.random_seed)
 
         if LOAD_FROM_PICKLE:
+            start = System.nanoTime()
             pickle_file_name = get_pickle_filename(self.size)
             if self.benchmark.debug:
-                BenchmarkResult.log_message(f"laod pickled data from {pickle_file_name}")
+                BenchmarkResult.log_message(f"load pickled data from {pickle_file_name}")
             with open(pickle_file_name, "rb") as f:
                 [self.ptr_cpu, self.idx_cpu, self.val_cpu, self.ptr2_cpu, self.idx2_cpu, self.val2_cpu] = pickle.load(f)
+            print(f"load time pickle = {(System.nanoTime() - start) / 1_000_000_000}")
+        elif LOAD_FROM_JSON:
+            start = System.nanoTime()
+            json_file_name = get_json_filename(self.size)
+            if self.benchmark.debug:
+                BenchmarkResult.log_message(f"load json data from {json_file_name}")
+            with open(json_file_name, "rb") as f:
+                import codecs
+                graph = json.load(codecs.getreader('utf-8')(f))
+                self.ptr_cpu = graph["ptr_cpu"]
+                self.idx_cpu = graph["idx_cpu"]
+                self.val_cpu = graph["val_cpu"]
+                self.ptr2_cpu = graph["ptr2_cpu"]
+                self.idx2_cpu = graph["idx2_cpu"]
+                self.val2_cpu = graph["val2_cpu"]
+            print(f"load time json = {(System.nanoTime() - start) / 1_000_000_000}")
         else:
             # Create a random COO graph;
             x = [0] * self.size * self.max_degree
@@ -362,8 +387,8 @@ class Benchmark7(Benchmark):
             self.benchmark.add_phase({"name": "sync", "time_sec": (end - start) / 1_000_000_000})
         self.benchmark.add_computation_time((end - start_comp) / 1_000_000_000)
         # Compute GPU result;
-        # for i in range(self.size):
-        #     self.gpu_result[i] = self.auth1[i] + self.hub1[i]
+        for i in range(self.size):
+            self.gpu_result[i] = self.auth1[i] + self.hub1[i]
 
         self.benchmark.add_to_benchmark("gpu_result", 0)
         if self.benchmark.debug:
