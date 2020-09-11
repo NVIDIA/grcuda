@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     int block_size_1d = options.block_size_1d;
     int block_size_2d = options.block_size_2d;
-    int num_blocks = NUM_BLOCKS; // options.num_blocks;
+    int num_blocks = options.num_blocks;
     int skip_iterations = options.skip_iterations;
     int err = 0;
 
