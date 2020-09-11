@@ -1,14 +1,13 @@
 FLAGS = -std=c++11 -O3 -arch=sm_50
 BIN_FOLDER=bin
 
-.PHONY: all b1 b5 b6 b7 b8 b9 b10
+.PHONY: all b1 b5 b6 b7 b8 b10
 all: \
 	b1 \
 	b5 \
 	b6 \
 	b7 \
 	b8 \
-	b9 \
 	b10
 
 b1: b1*
@@ -30,10 +29,6 @@ b7: b7*
 b8: b8*
 	nvcc b8_default.cu $(FLAGS) -o $(BIN_FOLDER)/b8_default;
 	nvcc b8_sync.cu $(FLAGS) -o $(BIN_FOLDER)/b8_sync
-
-b9: b9*
-	nvcc b9_default.cu $(FLAGS) -o $(BIN_FOLDER)/b9_default;
-	nvcc b9_sync.cu $(FLAGS) -o $(BIN_FOLDER)/b9_sync
 
 b10: b10*
 	nvcc b10_default.cu $(FLAGS) -o $(BIN_FOLDER)/b10_default;

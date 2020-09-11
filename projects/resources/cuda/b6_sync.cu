@@ -5,6 +5,7 @@
 #include <iostream>
 #include "utils.hpp"
 #include "options.hpp"
+#include "b6.cuh"
 
 /////////////////////////////
 /////////////////////////////
@@ -15,117 +16,14 @@ using clock_type = chrono::high_resolution_clock;
 /////////////////////////////
 /////////////////////////////
 
-extern "C" __global__ void nb_1(const int* x, const float* y, float* z, int size, int n_feat, int n_classes) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < size; i += blockDim.x * gridDim.x) {
-        for (int j = 0; j < n_classes; j++) {
-            for (int q = 0; q < n_feat; q++) {
-                z[i * n_classes + j] += x[i * n_feat + q] * y[j * n_feat + q];
-            } 
-        }
-    }
-}
-
-extern "C" __global__ void nb_2(const float* x, float* y, int n_row_x, int n_col_x) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
-        float curr_max = x[i * n_col_x];
-        for (int j = 0; j < n_col_x; j++) {
-            curr_max = fmaxf(curr_max, x[i * n_col_x + j]); 
-        }
-        y[i] = curr_max;
-    }
-}
-
-extern "C" __global__ void nb_3(const float* x, const float* y, float* z, int n_row_x, int n_col_x) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
-        float sum = 0;
-        for (int j = 0; j < n_col_x; j++) {
-            sum += expf(x[i * n_col_x + j] - y[i]);
-        }
-        z[i] = logf(sum) + y[i];
-    }
-}
-
-extern "C" __global__ void nb_4(float* x, float* y, int n_row_x, int n_col_x) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
-        for (int j = 0; j < n_col_x; j++) {
-            x[i * n_col_x + j] = expf(x[i * n_col_x + j] - y[i]);
-        }
-    }
-}
-
-extern "C" __global__ void rr_1(const int* x, float *y, int n_row_x, int n_col_x) {
-    for(int j = blockIdx.x * blockDim.x + threadIdx.x; j < n_col_x; j += blockDim.x * gridDim.x) {
-        float feature_mean = 0;
-        float sum_sq = 0;
-        // Compute mean and variance;
-        for (int i = 0; i < n_row_x; i++) {
-            feature_mean += x[j * n_row_x + i];
-            sum_sq += x[j * n_row_x + i] * x[j * n_row_x + i];
-        }
-        feature_mean /= n_row_x;
-        float std = sqrtf(sum_sq / n_row_x - feature_mean * feature_mean);
-        
-        // Update values;
-        for (int i = 0; i < n_row_x; i++) {
-            y[j * n_row_x + i] = ((float) x[j * n_row_x + i] - feature_mean) / std;
-        }
-    }
-}
-
-extern "C" __global__ void rr_2(const float* x, const float* y, float* z, int size, int n_feat, int n_classes) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < size; i += blockDim.x * gridDim.x) {
-        for (int j = 0; j < n_classes; j++) {
-            for (int q = 0; q < n_feat; q++) {
-                z[i * n_classes + j] += x[i * n_feat + q] * y[j * n_feat + q];
-            }
-        }
-    }
-}
-
-extern "C" __global__ void rr_3(float* x, const float *y, int n_row_x, int n_col_x) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
-        for (int j = 0; j < n_col_x; j++) {
-            x[i * n_col_x + j] += y[j];
-        }
-    }
-}
-
-extern "C" __global__ void softmax(float *x, int n_row_x, int n_col_x) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
-        float row_exp_sum = 0;
-        for (int j = 0; j < n_col_x; j++) {
-            row_exp_sum += expf( x[i * n_col_x + j]);
-        }
-        for (int j = 0; j < n_col_x; j++) {
-             x[i * n_col_x + j] = expf(x[i * n_col_x + j]) / row_exp_sum;
-        }
-    }
-}
-
-extern "C" __global__ void argmax(const float *x, const float *y, int *z, int n_row_x, int n_col_x) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n_row_x; i += blockDim.x * gridDim.x) {
-        int curr_best_index = 0;
-        float curr_best = x[i * n_col_x] + y[i * n_col_x];
-        for (int j = 0; j < n_col_x; j++) {
-            float curr = x[i * n_col_x + j] + y[i * n_col_x + j];
-            if (curr > curr_best) {
-                curr_best = curr;
-                curr_best_index = j;
-            }
-        }
-        z[i] = curr_best_index;
-    }
-}
-
-/////////////////////////////
-/////////////////////////////
-
 void reset(float *r1, float *r2, const float *nb_class_log_prior, int N, int num_classes) {
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < num_classes; j++) {
             r1[i * num_classes + j] = nb_class_log_prior[j];
             r2[i * num_classes + j] = 0;
         }
+        // r1_mean[i] = 0;
+        // r1_std[i] = 0;
     }
 }
 
@@ -134,7 +32,8 @@ void reset(float *r1, float *r2, const float *nb_class_log_prior, int N, int num
 
 int main(int argc, char *argv[]) {
 
-    srand(time(0));
+    //srand(time(0));
+    srand(13);
 
     Options options = Options(argc, argv);
 	int debug = options.debug;
@@ -143,7 +42,7 @@ int main(int argc, char *argv[]) {
     int N = options.N;
 
     int block_size = options.block_size_1d;
-    int num_blocks = options.num_blocks;
+    int num_blocks = 32; // options.num_blocks;
     int skip_iterations = options.skip_iterations;
     int err = 0;
 
@@ -168,6 +67,7 @@ int main(int argc, char *argv[]) {
     if (err) std::cout << err << std::endl;
     
     float *nb_feat_log_prob, *nb_class_log_prior, *ridge_coeff, *ridge_intercept, *nb_amax, *nb_l, *r1, *r2;
+    // float *r1_mean, *r1_std;
     int *r;
     err = cudaMallocManaged(&nb_feat_log_prob, sizeof(float) * num_classes * num_features);
     err = cudaMallocManaged(&nb_class_log_prior, sizeof(float) * num_classes);
@@ -178,6 +78,9 @@ int main(int argc, char *argv[]) {
     err = cudaMallocManaged(&r1, sizeof(float) * N * num_classes);
     err = cudaMallocManaged(&r2, sizeof(float) * N * num_classes);
     err = cudaMallocManaged(&r, sizeof(int) * N);
+
+    // err = cudaMallocManaged(&r1_mean, sizeof(float) * num_features);
+    // err = cudaMallocManaged(&r1_std, sizeof(float) * num_features);
     if (err) std::cout << err << std::endl;
 
     // Initialze arrays;
@@ -189,7 +92,7 @@ int main(int argc, char *argv[]) {
         nb_class_log_prior[i] = (float)(rand()) / (float)(RAND_MAX);
         ridge_intercept[i] = (float)(rand()) / (float)(RAND_MAX);
     }
-    int max_occurrence_of_ngram = 10;
+    int max_occurrence_of_ngram = 2;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < num_features; j++) {
             x[i * num_features + j] = rand() % max_occurrence_of_ngram;
@@ -216,9 +119,17 @@ int main(int argc, char *argv[]) {
         if (debug) std::cout << " reset=" << (float) reset_time / 1000 << " ms" << std::endl;
         
         start = clock_type::now();
-
         rr_1<<<num_blocks, block_size>>>(x, z, N, num_features);
+        // dim3 num_blocks_2d(8, 8);
+        // dim3 block_size_2d(1, 32);
+        // rr_1_0<<<num_blocks_2d, block_size_2d>>>(x, r1_mean, r1_std, N, num_features);
+        // cudaDeviceSynchronize();
+        // rr_1_1<<<num_blocks_2d, block_size_2d>>>(x, z, r1_mean, r1_std, N, num_features);
         cudaDeviceSynchronize();
+
+        // auto e1 = clock_type::now();
+        // auto rr1time = chrono::duration_cast<chrono::microseconds>(e1 - start).count();
+        // if (debug) std::cout << " rr1=" << (float) rr1time / 1000 << " ms" << std::endl;
        
         nb_1<<<num_blocks, block_size>>>(x, nb_feat_log_prob, r1, N, num_features, num_classes);
         cudaDeviceSynchronize();
