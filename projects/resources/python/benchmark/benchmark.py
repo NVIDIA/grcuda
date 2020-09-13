@@ -130,7 +130,6 @@ class Benchmark(ABC):
 
         # Allocate memory for the benchmark;
         if (num_iter == 0 or realloc) and not prevent_reinit:
-            print("ASDASDSADSA")
             self.alloc(size, block_size)
         # Initialize memory for the benchmark;
         if (num_iter == 0 or reinit) and not prevent_reinit:

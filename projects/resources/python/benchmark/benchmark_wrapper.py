@@ -103,7 +103,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 ##############################
 
 GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithThread " \
-                  "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
+                  "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ForceStreamAttach --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
 

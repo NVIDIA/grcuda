@@ -42,9 +42,9 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=Tr
     for k, v in data_dict.items():
         row = []
         # Parse filename;
-        benchmark, exec_policy, new_stream_policy, parent_stream_policy, dependency_policy, _, block_size_1d, block_size_2d = k.split("_")[6:-1]
-        block_size_str = block_size_1d + ",8" # block_size_1d + "," + block_size_2d]
-        row += [benchmark, exec_policy, new_stream_policy, parent_stream_policy, dependency_policy, int(block_size_1d), int(block_size_2d), block_size_str]
+        benchmark, exec_policy, new_stream_policy, parent_stream_policy, dependency_policy = k.split("_")[6:11]
+        
+        row += [benchmark, exec_policy, new_stream_policy, parent_stream_policy, dependency_policy, 0, 0, ""]
 
         # Retrieve other information;
         total_iterations = v["num_iterations"]
@@ -59,6 +59,10 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=Tr
                 for reinit, val_reinit in val_realloc.items():
                     for block_size, val_block_size in val_reinit.items():
                         # Process each iteration;
+                        block_size_1d, block_size_2d = block_size.split(",")
+                        row[5] = int(block_size_1d)
+                        row[6] = int(block_size_2d)
+                        row[7] = block_size_1d + ",8" # block_size_1d + "," + block_size_2d]
                         for curr_iteration in val_block_size:
                             num_iter = curr_iteration["iteration"]
                             gpu_result = curr_iteration["gpu_result"]
