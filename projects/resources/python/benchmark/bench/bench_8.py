@@ -310,7 +310,7 @@ class Benchmark8(Benchmark):
         # Create a random image;
         self.image_cpu = np.random.rand(self.size, self.size).astype(np.float32)  # Create here the image used for validation;
         self.image.copyFrom(int(np.int64(self.image_cpu.ctypes.data)), len(self.image))
-
+        self.gpu_result = np.zeros((self.size, self.size))
         self.kernel_small_cpu = gaussian_kernel(self.kernel_small_diameter, self.kernel_small_variance)
         self.kernel_large_cpu = gaussian_kernel(self.kernel_large_diameter, self.kernel_large_variance)
         self.kernel_unsharpen_cpu = gaussian_kernel(self.kernel_unsharpen_diameter, self.kernel_unsharpen_variance)
@@ -326,7 +326,7 @@ class Benchmark8(Benchmark):
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
-        self.gpu_result = np.zeros((self.size, self.size))
+        self.gpu_result.fill(0)
         self.maximum[0] = 0.0
         self.minimum[0] = 0.0
 
