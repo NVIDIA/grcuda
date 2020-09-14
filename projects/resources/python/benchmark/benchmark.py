@@ -45,6 +45,7 @@ class Benchmark(ABC):
         self.random_seed = 42  # Default random seed, it will be overwritten with a random one;
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
+        self._block_size = {}
 
     @abstractmethod
     def alloc(self, size: int, block_size: dict = None) -> None:
@@ -123,6 +124,7 @@ class Benchmark(ABC):
                                            time_phases=time_phases)
         self.current_iter = num_iter
         self.time_phases = time_phases
+        self._block_size = block_size
         # TODO: set the execution policy;
 
         # Start a timer to monitor the total GPU execution time;

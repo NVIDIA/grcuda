@@ -185,7 +185,7 @@ class Benchmark6(Benchmark):
         self.num_classes = 10  # self.nb_feat_log_prob_np.shape[0]
 
         self.num_blocks_size = 32  # DEFAULT_NUM_BLOCKS
-        self.num_blocks_feat = 32  #DEFAULT_NUM_BLOCKS
+        self.num_blocks_feat = 32  # DEFAULT_NUM_BLOCKS
         self.block_size = DEFAULT_BLOCK_SIZE_1D
 
         self.x_cpu = None
@@ -266,7 +266,7 @@ class Benchmark6(Benchmark):
                 self.r2[i * self.num_classes + j] = 0
 
     def execute(self) -> object:
-
+        self.block_size = self._block_size["block_size_1d"]
         # Schedule the categorical Naive Bayes and Ridge Regression kernels
         start_comp = System.nanoTime()
         start = 0

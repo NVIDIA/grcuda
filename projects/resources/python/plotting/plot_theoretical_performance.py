@@ -27,8 +27,8 @@ import matplotlib.ticker as ticker
 
 DEFAULT_RES_DIR = "../../../../data/results"
 
-INPUT_DATE_GRCUDA = "2020_08_14_17_36_06_grcuda"
-OUTPUT_DATE = "2020_08_12"
+INPUT_DATE_GRCUDA = "2020_09_12_22_44_07_grcuda"
+OUTPUT_DATE = "2020_09_13"
 PLOT_DIR = "../../../../data/plots"
 
 B5_ITER = 10
@@ -364,7 +364,7 @@ def build_theoretical_time_plot_2rows_default(data, gridspec, x, y, baseline_lab
     labels_str = [str(x) for x in labels]
     
     # Set the same y limits in each plot;
-    ax.set_ylim((0, 1))
+    ax.set_ylim((0, 1.2))
 
     # Add a horizontal line to denote speedup = 1x;
     # ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -374,7 +374,7 @@ def build_theoretical_time_plot_2rows_default(data, gridspec, x, y, baseline_lab
     ax.set_xticklabels(labels=[get_exp_label(l) for l in labels], rotation=0, ha="center", fontsize=8)
     ax.tick_params(labelcolor="black")
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(5))
+    ax.yaxis.set_major_locator(plt.LinearLocator(6))
     if y == 0:
         ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=9)
     else:
