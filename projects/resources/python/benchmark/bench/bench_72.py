@@ -269,7 +269,7 @@ class Benchmark7(Benchmark):
         self.row_cnt_2[0] = 0
 
     def execute(self) -> object:
-
+        self.block_size = self._block_size["block_size_1d"]
         num_blocks_spmv = int(np.ceil(self.size / self.block_size))
 
         start_comp = System.nanoTime()

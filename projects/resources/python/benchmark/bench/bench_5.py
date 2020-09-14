@@ -122,7 +122,7 @@ class Benchmark5(Benchmark):
                 self.x[i][j] = self.x_tmp[j]
 
     def execute(self) -> object:
-
+        self.block_size = self._block_size["block_size_1d"]
         result = [0] * self.K
 
         # Call the kernels;

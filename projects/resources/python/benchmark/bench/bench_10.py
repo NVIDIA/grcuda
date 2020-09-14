@@ -263,7 +263,8 @@ class Benchmark10(Benchmark):
             self.y[i] = self.y_cpu[i]
 
     def execute(self) -> object:
-
+        self.block_size_1d = self._block_size["block_size_1d"]
+        self.block_size_2d = self._block_size["block_size_2d"]
         start_comp = System.nanoTime()
         start = 0
 

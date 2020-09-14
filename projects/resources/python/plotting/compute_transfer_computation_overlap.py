@@ -13,18 +13,18 @@ import numpy as np
 
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
-INPUT_DATE = "2020_07_20"
-OUTPUT_DATE = "2020_08_05"
+INPUT_DATE = "2020_09_13"
+OUTPUT_DATE = "2020_09_13"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
 DATA_DICT = {
-    "b1": "b1_31343.csv",
-    "b5": "b5_808.csv",
-    "b6": "b6_1989.csv",
-    "b7": "b7_2663.csv",
-    "b8": "b8_10958.csv",
-    "b10": "b10_7753.csv",
+    "b1": "b1_default_nometric_12925.csv",
+    "b5": "b5_default_nometric_14259.csv",
+    "b6": "b6_default_nometric_15377.csv",
+    "b7": "b7_default_nometric_17540.csv",
+    "b8": "b8_default_nometric_22305.csv",
+    "b10": "b10_default_nometric_22683.csv",
     }
 
 SKIP_SUMMARY_ROWS = {

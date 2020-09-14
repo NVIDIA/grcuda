@@ -331,7 +331,8 @@ class Benchmark8(Benchmark):
         self.minimum[0] = 0.0
 
     def execute(self) -> object:
-
+        self.block_size_1d = self._block_size["block_size_1d"]
+        self.block_size_2d = self._block_size["block_size_2d"]
         start_comp = System.nanoTime()
         start = 0
 

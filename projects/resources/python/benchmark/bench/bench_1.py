@@ -124,7 +124,7 @@ class Benchmark1(Benchmark):
         self.res[0] = 0.0
 
     def execute(self) -> object:
-
+        self.block_size = self._block_size["block_size_1d"]
         start_comp = System.nanoTime()
         start = 0
 
