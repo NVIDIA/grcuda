@@ -408,7 +408,8 @@ def build_theoretical_time_plot_2rows_default(data, gridspec, x, y, baseline_lab
     if x == 0 and y== 0:
         legend_labels = [f"1D={x.split(',')[0]}" for x in data["block_size_str"].unique()]
         custom_lines = [
-            lines.Line2D([], [], color="white", marker=markers[i], markersize=10, label=legend_labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") 
+            # Patch(facecolor="white", marker=markers[i], markersize=10, label=legend_labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") 
+            lines.Line2D([0], [0], linestyle="none", marker=markers[i], markersize=10, label=legend_labels[i], markerfacecolor=palette[i], markeredgecolor="#2f2f2f") 
             for i in range(len(legend_labels))]        
         leg = fig.legend(custom_lines, legend_labels, 
                                  bbox_to_anchor=(0.99, 1), fontsize=10, ncol=2, handletextpad=0.1, columnspacing=0.2)
