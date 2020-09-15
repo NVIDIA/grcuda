@@ -194,6 +194,7 @@ def join_tables(t1, t2, key=["benchmark", "exec_policy", "block_size_1d", "block
         t2_tmp = t2_tmp[common_columns]
 
     merged = t1_tmp.merge(t2_tmp, suffixes=("_grcuda", "_cuda"), left_index=True, right_index=True, sort=True).reset_index()
+    # merged = merged.merge(t2_tmp, suffixes=("_cuda2", ""), left_index=True, right_index=True, sort=True).reset_index()
     merged["grcuda_cuda_speedup"] = merged["computation_sec_cuda"] / merged["computation_sec_grcuda"]
     return merged
 
