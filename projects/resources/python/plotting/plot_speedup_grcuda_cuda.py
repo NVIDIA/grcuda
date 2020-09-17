@@ -27,11 +27,11 @@ import matplotlib.ticker as ticker
 
 
 INPUT_DATE_GRCUDA = "2020_09_09_grcuda"
-INPUT_DATE_CUDA = "2020_09_13_08_46_15_cuda"
-OUTPUT_DATE = "2020_09_14"
+INPUT_DATE_CUDA = "2020_09_15_04_30_19_cuda"
+OUTPUT_DATE = "2020_09_17"
 PLOT_DIR = "../../../../data/plots"
 
-INPUT_DATE_CUDA_P100 = "2020_09_13_08_46_15_cuda"
+INPUT_DATE_CUDA_P100 = "2020_09_15_04_30_19_cuda"
 INPUT_DATE_CUDA_960 = "2020_08_13_17_37_35_cuda"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b8": "Images", "b6": "ML Ensemble", "b7": "HITS", "b10": "DL"}

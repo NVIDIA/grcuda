@@ -22,14 +22,14 @@ from load_data import load_data
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
 
 
-INPUT_DATE = "2020_08_13_16_41_16_grcuda"
-OUTPUT_DATE = "2020_09_14"
+INPUT_DATE = "2020_09_16_06_25_22_grcuda"
+OUTPUT_DATE = "2020_09_17"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b8": "Images", "b6": "ML Ensemble", "b7": "HITS", "b10": "DL"}
 
 INPUT_DATE_960 = "2020_08_13_16_41_16_grcuda"
-INPUT_DATE_P100 = "2020_09_09_grcuda"
+INPUT_DATE_P100 = "2020_09_16_06_25_22_grcuda"
 INPUT_DATE_P100_NP = "2020_09_12_grcuda_no_prefetch"
 
 
