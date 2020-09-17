@@ -10,14 +10,31 @@ import pandas as pd
 import json
 import os
 import numpy as np
+import time
 
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
+# 960
+INPUT_DATE = "2020_07_20"
+
+# P100
 INPUT_DATE = "2020_09_13"
 OUTPUT_DATE = "2020_09_13"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
+
+# 960
+DATA_DICT = {
+    "b1": "b1_31343.csv",
+    "b5": "b5_808.csv",
+    "b6": "b6_1989.csv",
+    "b7": "b7_2663.csv",
+    "b8": "b8_10958.csv",
+    "b10": "b10_7753.csv",
+    }
+
+# P100
 DATA_DICT = {
     "b1": "b1_default_nometric_12925.csv",
     "b5": "b5_default_nometric_14259.csv",
@@ -45,6 +62,15 @@ OPERATIONS_TO_MERGE = set(["htod", "dtoh"])
 
 NUM_ITER = 29
 
+def time_phase(func: str):
+    def func_call(*args, **kwargs) -> object:
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        print(f"{func.__name__} took {end - start:.2f} seconds")
+        return result
+    return func_call
+
 def get_overlap(a, b, c, d):
     """
     Given 2 segments (a, b) and (c, d), get the overlap length of the 2 segments;
@@ -54,6 +80,33 @@ def get_overlap(a, b, c, d):
     return max(0, e - s), s, e
 
 
+@time_phase
+def get_overlap_ct_fast(data):
+    """
+    For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
+    By definition, a computation has 0 overlap with itself.
+    Keep only overlaps of computations with transfers;
+    """
+    data["overlap_ct_sec"] = 0.0
+    
+    segments = [(r["start_ms"], r["end_ms"], r["name"] in OPERATIONS_TO_MERGE) for i, r in data.iterrows()]
+    overlap_list = np.zeros(len(segments))
+    
+    # Initial collection of overlaps;
+    for i, row_i in enumerate(segments):
+        overlaps = []
+        for j, row_j in enumerate(segments):
+            if row_j[0] > row_i[1]:
+                break
+            if i != j and not row_i[2] and row_j[2]:
+                overlap, start, end = get_overlap(row_i[0], row_i[1], row_j[0], row_j[1])
+                if overlap > 0:
+                    overlaps += [(start, end)]
+        overlap_list[i] = get_total_segment_set_length(overlaps)
+    return sum(overlap_list), None
+
+
+@time_phase    
 def get_overlap_ct(data):
     """
     For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
@@ -80,6 +133,32 @@ def get_overlap_ct(data):
     # return, overlap_matrix
 
 
+@time_phase
+def get_overlap_tc_fast(data):
+    """
+    For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
+    By definition, a computation has 0 overlap with itself.
+    Keep only overlaps of transfers with computations;
+    """
+    data["overlap_tc_sec"] = 0.0
+    segments = [(r["start_ms"], r["end_ms"], r["name"] in OPERATIONS_TO_MERGE) for i, r in data.iterrows()]
+    overlap_list = np.zeros(len(segments))
+
+    # Initial collection of overlaps;
+    for i, row_i in enumerate(segments):
+        overlaps = []
+        for j, row_j in enumerate(segments):
+            if row_j[0] > row_i[1]:
+                break
+            if i != j and row_i[2] and not row_j[2]:
+                overlap, start, end = get_overlap(row_i[0], row_i[1], row_j[0], row_j[1])
+                if overlap > 0:
+                    overlaps += [(start, end)]
+        overlap_list[i] = get_total_segment_set_length(overlaps)
+    return sum(overlap_list), None
+
+
+@time_phase
 def get_overlap_tc(data):
     """
     For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
@@ -106,6 +185,34 @@ def get_overlap_tc(data):
     # return get_total_segment_set_length(overlap_collection), overlap_matrix
 
 
+
+@time_phase
+def get_overlap_cc_fast(data):
+    """
+    For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
+    By definition, a computation has 0 overlap with itself.
+    Keep only overlaps of computations with computations;
+    """
+    data["overlap_cc_sec"] = 0.0
+    segments = [(r["start_ms"], r["end_ms"]) for i, r in data.iterrows() if r["name"] in OPERATIONS_TO_MERGE]
+    overlap_tot = 0
+
+    # Initial collection of overlaps;
+    for i, row_i in enumerate(segments):
+        overlaps = []
+        for j, row_j in enumerate(segments):
+            if j >= i:
+                break
+            if i != j:
+                overlap, start, end = get_overlap(row_i[0], row_i[1], row_j[0], row_j[1])
+                if overlap > 0:
+                    overlaps += [(start, end)]
+        overlap_tot += get_total_segment_set_length(overlaps)
+    return overlap_tot, None
+
+
+
+@time_phase
 def get_overlap_cc(data):
     """
     For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
@@ -134,6 +241,31 @@ def get_overlap_cc(data):
     # return get_total_segment_set_length(overlap_collection), overlap_matrix
 
 
+@time_phase
+def get_overlap_total_fast(data):
+    """
+    For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
+    By definition, a computation has 0 overlap with itself;
+    """
+    data["overlap_tc_sec"] = 0.0
+    segments = [(r["start_ms"], r["end_ms"]) for i, r in data.iterrows()]
+    overlap_tot = 0
+
+    # Initial collection of overlaps;
+    for i, row_i in enumerate(segments):
+        overlaps = []
+        for j, row_j in enumerate(segments):
+            if j >= i:
+                break
+            if i != j :
+                overlap, start, end = get_overlap(row_i[0], row_i[1], row_j[0], row_j[1])
+                if overlap > 0:
+                    overlaps += [(start, end)]
+        overlap_tot += get_total_segment_set_length(overlaps)
+    return overlap_tot, None
+
+
+@time_phase
 def get_overlap_total(data):
     """
     For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
@@ -233,8 +365,16 @@ if __name__ == "__main__":
             "[Unified Memory Memcpy DtoH]": "dtoh"
             })
         
+        # Remove page faults;
+        data = data[data["name"] != "[Unified Memory GPU page faults]"].reset_index(drop=True)
+        
         # Keep just the name of kernels;
         data["name"] = data["name"].apply(lambda x: x.split("(")[0])
+        
+        # 960
+        merge_dict = {"b1": 0.1, "b5": 0.1, "b6": 0.1, "b7": 0.1, "b8": 0.1, "b10": 0.1}
+        # P100
+        merge_dict = {"b1": 0.1, "b5": 0.1, "b6": 0.1, "b7": 0.1, "b8": 0.1, "b10": 0.1}
         
         # Create a summary data-set where contiguous operations are merged;
         data["group"] = -1
@@ -243,7 +383,7 @@ if __name__ == "__main__":
         for i, row in data.iterrows():
             tmp_operation = row["name"]
             # Keep adding to the current operation, if the time difference between the 2 operations is small enough to consider them as contiguous;
-            if tmp_operation == current_operation and tmp_operation in OPERATIONS_TO_MERGE and i > 0 and np.abs(row["start_ms"] - data.at[i - 1, "end_ms"]) < 0.1:
+            if tmp_operation == current_operation and tmp_operation in OPERATIONS_TO_MERGE and i > 0 and (row["start_ms"] - data.at[i - 1, "end_ms"] < merge_dict[b]):
                data.at[i, "group"] = current_group
             else:
                 # New group of operations;
@@ -259,6 +399,8 @@ if __name__ == "__main__":
             "end_ms": np.max,
             "group": lambda x: x.iloc[0],
             })
+        print(b, len(summary))
+        
         # Ignore the first iteration;
         summary = summary.iloc[SKIP_SUMMARY_ROWS[b]:, :].reset_index(drop=True)
         # # Set the start of the computation equal to 0;
@@ -274,14 +416,14 @@ if __name__ == "__main__":
         # summary["overlap_ct_sec"] = get_overlap_matrix_ct(summary).sum(axis=0)
         # summary["overlap_ct_perc"] = summary["overlap_ct_sec"] / summary["duration_ms"]
         # ct_overlap_perc = summary[~summary["name"].isin(OPERATIONS_TO_MERGE)]["overlap_ct_perc"].mean()
-        ct_overlap, ct_overlap_matrix = get_overlap_ct(summary)
+        ct_overlap, ct_overlap_matrix = get_overlap_ct_fast(summary)
         ct_overlap_perc = ct_overlap / summary[~summary["name"].isin(OPERATIONS_TO_MERGE)]["duration_ms"].sum()
         
         # # 2. Percentage of transfer overlapped with computation;
         # summary["overlap_tc_sec"] = get_overlap_matrix_tc(summary).sum(axis=0) 
         # summary["overlap_tc_perc"] = summary["overlap_tc_sec"] / summary["duration_ms"]
         # tc_overlap_perc = summary[summary["name"].isin(OPERATIONS_TO_MERGE)]["overlap_tc_perc"].mean()
-        tc_overlap, tc_overlap_matrix = get_overlap_tc(summary)
+        tc_overlap, tc_overlap_matrix = get_overlap_tc_fast(summary)
         tc_overlap_perc = tc_overlap / summary[summary["name"].isin(OPERATIONS_TO_MERGE)]["duration_ms"].sum()
         # tc_overlap_perc = 0
         
@@ -289,11 +431,11 @@ if __name__ == "__main__":
         # summary["overlap_cc_sec"] = get_overlap_matrix_cc(summary).sum(axis=0) 
         # summary["overlap_cc_perc"] = summary["overlap_cc_sec"] / summary["duration_ms"]
         # cc_overlap_perc = summary[~summary["name"].isin(OPERATIONS_TO_MERGE)]["overlap_cc_perc"].mean()
-        cc_overlap, cc_overlap_matrix = get_overlap_cc(summary)
+        cc_overlap, cc_overlap_matrix = get_overlap_cc_fast(summary)
         cc_overlap_perc = cc_overlap / summary[~summary["name"].isin(OPERATIONS_TO_MERGE)]["duration_ms"].sum()
         # cc_overlap_perc = 0
         
-        total_overlap, total_overlap_matrix = get_overlap_total(summary)
+        total_overlap, total_overlap_matrix = get_overlap_total_fast(summary)
         total_overlap_perc = total_overlap / summary["duration_ms"].sum()
         # total_overlap_perc = 0
         
