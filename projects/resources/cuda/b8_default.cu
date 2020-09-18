@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
         cudaStreamAttachMemAsync(s3, blurred_unsharpen, 0);
         cudaStreamAttachMemAsync(s3, image_unsharpen, 0);
         cudaStreamAttachMemAsync(s2, image2, 0);
-        cudaStreamAttachMemAsync(s3, image3, 0);
+        cudaStreamAttachMemAsync(s1, image3, 0);
 
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float), s1>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
 

@@ -56,6 +56,15 @@ dependency_policies = ["with-const"]
 block_sizes_1d = [32, 128, 256, 1024]
 block_sizes_2d = [8, 8, 8, 8]
 
+block_dim_dict = {
+    "b1": DEFAULT_NUM_BLOCKS,
+    "b5": DEFAULT_NUM_BLOCKS,
+    "b6": 32,
+    "b7": DEFAULT_NUM_BLOCKS,
+    "b8": 32,
+    "b10": 32,
+}
+
 ##############################
 ##############################
 
@@ -102,7 +111,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 ##############################
 ##############################
 
-GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithThread " \
+GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=140G --jvm --polyglot --WithThread " \
                   "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ForceStreamAttach --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
@@ -167,7 +176,7 @@ if __name__ == "__main__":
                         help="If present, run performance tests using CUDA")
     parser.add_argument("-i", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
                         help="Number of times each benchmark is executed")
-    parser.add_argument("-g", "--num_blocks", metavar="N", type=int, default=DEFAULT_NUM_BLOCKS,
+    parser.add_argument("-g", "--num_blocks", metavar="N", type=int,
                         help="Number of blocks in each kernel, when applicable")
     parser.add_argument("-p", "--time_phases", action="store_true",
                         help="Measure the execution time of each phase of the benchmark;"
@@ -208,7 +217,8 @@ if __name__ == "__main__":
                 # CUDA Benchmarks;
                 if use_cuda:
                     for block_size in block_sizes:
-                        execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, num_blocks=num_blocks, output_date=output_date)
+                        nb = num_blocks if num_blocks else block_dim_dict[b]
+                        execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, num_blocks=nb, output_date=output_date)
                         i += 1
                 # GrCUDA Benchmarks;
                 else:
