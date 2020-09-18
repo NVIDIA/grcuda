@@ -184,7 +184,7 @@ class Benchmark10(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = DEFAULT_NUM_BLOCKS  # 16 # i.e. 2 * number of SM on the GTX960
+        self.num_blocks_per_processor = 32  # 16 # i.e. 2 * number of SM on the GTX960
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D

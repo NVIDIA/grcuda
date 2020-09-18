@@ -183,6 +183,14 @@ extern "C" __global__ void combine(const float *x, const float *y, const float *
 }
 """
 
+RESET = """
+extern "C" __global__ void reset(float *x, int n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) { 
+        x[i] = 0.0;
+    }
+}
+"""
+
 
 ##############################
 ##############################
@@ -222,6 +230,7 @@ class Benchmark8(Benchmark):
         self.kernel_large_variance = 10
         self.maximum = None
         self.minimum = None
+        self.reset = None
 
         self.blurred_unsharpen = None
         self.image_unsharpen = None
@@ -238,7 +247,7 @@ class Benchmark8(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = DEFAULT_NUM_BLOCKS   # 16  # i.e. 2 * number of SM on the GTX960
+        self.num_blocks_per_processor = 32  # 16  # i.e. 2 * number of SM on the GTX960
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
@@ -256,8 +265,6 @@ class Benchmark8(Benchmark):
         self.size = size
         self.block_size_1d = block_size["block_size_1d"]
         self.block_size_2d = block_size["block_size_2d"]
-
-        self.gpu_result = np.zeros(self.size)
 
         # Allocate vectors;
         self.image = polyglot.eval(language="grcuda", string=f"float[{size}][{size}]")
@@ -287,6 +294,7 @@ class Benchmark8(Benchmark):
         self.minimum_kernel = build_kernel(EXTEND_MASK, "minimum", "pointer, pointer, sint32")
         self.unsharpen_kernel = build_kernel(UNSHARPEN, "unsharpen", "pointer, pointer, pointer, float, sint32")
         self.combine_mask_kernel = build_kernel(COMBINE, "combine", "const pointer, const pointer, const pointer, pointer, sint32")
+        self.reset_kernel = build_kernel(RESET, "reset", "pointer, sint32")
 
     @time_phase("initialization")
     def init(self):
@@ -326,18 +334,23 @@ class Benchmark8(Benchmark):
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
-        self.gpu_result.fill(0)
+        for i in range(self.size):
+            for j in range(self.size):
+                self.image3[i][j] = 0.0
         self.maximum[0] = 0.0
         self.minimum[0] = 0.0
 
     def execute(self) -> object:
         self.block_size_1d = self._block_size["block_size_1d"]
         self.block_size_2d = self._block_size["block_size_2d"]
+        a = self.num_blocks_per_processor / 2
+
         start_comp = System.nanoTime()
         start = 0
 
+        self.reset_kernel((a, a), (self.block_size_2d, self.block_size_2d))(self.image3, 0)
+
         # Blur - Small;
-        a = self.num_blocks_per_processor / 2
         self.execute_phase("blur_small",
                            self.gaussian_blur_kernel((a, a), (self.block_size_2d, self.block_size_2d), 4 * self.kernel_small_diameter**2),
                            self.image, self.blurred_small, self.size, self.size, self.kernel_small, self.kernel_small_diameter)

@@ -61,6 +61,16 @@ block_sizes_2d_dict = {
     "b10": 8,
 }
 
+block_dim_dict = {
+    "b1": DEFAULT_NUM_BLOCKS,
+    "b5": DEFAULT_NUM_BLOCKS,
+    "b6": 32,
+    "b7": DEFAULT_NUM_BLOCKS,
+    "b8": 32,
+    "b10": 32,
+}
+
+
 ##############################
 ##############################
 
