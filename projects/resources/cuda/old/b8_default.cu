@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
    
     if (debug && err) std::cout << err << std::endl;
 
-    // Initialze arrays;
+    // Initialize arrays;
     start = clock_type::now();
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {

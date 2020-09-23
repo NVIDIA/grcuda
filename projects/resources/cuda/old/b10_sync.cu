@@ -39,7 +39,6 @@ int main(int argc, char *argv[]) {
     int num_blocks = options.num_blocks;
     int skip_iterations = options.skip_iterations;
     int err = 0;
-
     if (debug) {
         std::cout << "running b10 sync" << std::endl;
         std::cout << "N=" << N << std::endl;

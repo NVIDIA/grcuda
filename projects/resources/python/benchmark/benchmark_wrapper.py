@@ -10,8 +10,8 @@ from java.lang import System
 ##############################
 ##############################
 
-DEFAULT_NUM_BLOCKS = 64  # GTX 960, 8 SM
-DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
+DEFAULT_NUM_BLOCKS = 32  # GTX 960, 8 SM
+# DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
 
 # Benchmark settings;
 benchmarks = [
@@ -35,15 +35,14 @@ num_elem = {
 }
 
 # P100
-num_elem = {
-    "b1": [100_000_000, 200_000_000, 500_000_000, 600_000_000, 700_000_000],
-    "b5": [10_000_000, 20_000_000, 50_000_000, 60_000_000, 70_000_000],
-    "b6": [1_000_000, 2_000_000, 4_000_000, 5_000_000, 6_000_000],
-    "b7": [20_000_000, 40_000_000, 60_000_000, 100_000_000, 140_000_000],
-    "b8": [5000, 8000, 10000, 12000, 16000],
-    "b10": [7000, 10000, 12000, 14000, 16000],
-}
-
+# num_elem = {
+#     "b1": [100_000_000, 200_000_000, 500_000_000, 600_000_000, 700_000_000],
+#     "b5": [10_000_000, 20_000_000, 50_000_000, 60_000_000, 70_000_000],
+#     "b6": [1_000_000, 2_000_000, 4_000_000, 5_000_000, 6_000_000],
+#     "b7": [20_000_000, 40_000_000, 60_000_000, 100_000_000, 140_000_000],
+#     "b8": [5000, 8000, 10000, 12000, 16000],
+#     "b10": [7000, 10000, 12000, 14000, 16000],
+# }
 
 exec_policies = ["default", "sync"]
 
@@ -56,19 +55,30 @@ dependency_policies = ["with-const"]
 block_sizes_1d = [32, 128, 256, 1024]
 block_sizes_2d = [8, 8, 8, 8]
 
+# 960
 block_dim_dict = {
     "b1": DEFAULT_NUM_BLOCKS,
     "b5": DEFAULT_NUM_BLOCKS,
     "b6": 32,
     "b7": DEFAULT_NUM_BLOCKS,
-    "b8": 32,
-    "b10": 32,
+    "b8": 12,
+    "b10": 16,
 }
 
+# P100
+# block_dim_dict = {
+#     "b1": DEFAULT_NUM_BLOCKS,
+#     "b5": DEFAULT_NUM_BLOCKS,
+#     "b6": 64,
+#     "b7": DEFAULT_NUM_BLOCKS,
+#     "b8": 32,
+#     "b10": 32,
+# }
+
 ##############################
 ##############################
 
-CUDA_CMD = "./{}_{} -n {} -b {} -c {} -t {} -g {} | tee {}"
+CUDA_CMD = "./b -k {} -p {} -n {} -b {} -c {} -t {} -g {} | tee {}"
 
 
 def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, debug, num_blocks=DEFAULT_NUM_BLOCKS, output_date=None):
@@ -111,8 +121,8 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 ##############################
 ##############################
 
-GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=140G --jvm --polyglot --WithThread " \
-                  "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ForceStreamAttach --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
+GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithThread " \
+                  "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
 
@@ -124,7 +134,7 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message(f"Benchmark {i + 1}/{tot_benchmarks}")
-        BenchmarkResult.log_message(f"benchmark={b}, size={n},"
+        BenchmarkResult.log_message(f"benchmark={benchmark}, size={n},"
                                     f"block sizes={block_sizes}, "
                                     f"exec policy={exec_policy}, "
                                     f"new stream policy={new_stream_policy}, "

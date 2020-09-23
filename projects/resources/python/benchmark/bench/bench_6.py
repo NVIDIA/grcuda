@@ -184,8 +184,8 @@ class Benchmark6(Benchmark):
         self.num_features = 200  # self.nb_feat_log_prob_np.shape[1]
         self.num_classes = 10  # self.nb_feat_log_prob_np.shape[0]
 
-        self.num_blocks_size = 32  # DEFAULT_NUM_BLOCKS
-        self.num_blocks_feat = 32  # DEFAULT_NUM_BLOCKS
+        self.num_blocks_size = 64  # DEFAULT_NUM_BLOCKS
+        self.num_blocks_feat = 64  # DEFAULT_NUM_BLOCKS
         self.block_size = DEFAULT_BLOCK_SIZE_1D
 
         self.x_cpu = None

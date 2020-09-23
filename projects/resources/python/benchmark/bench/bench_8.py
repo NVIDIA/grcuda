@@ -191,6 +191,13 @@ extern "C" __global__ void reset(float *x, int n) {
 }
 """
 
+RESET = """
+extern "C" __global__ void reset(float *x, int n) {
+    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) { 
+        x[i] = 0.0;
+    }
+}
+"""
 
 ##############################
 ##############################
@@ -247,7 +254,7 @@ class Benchmark8(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = 32  # 16  # i.e. 2 * number of SM on the GTX960
+        self.num_blocks_per_processor = 12  # 32
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
@@ -334,9 +341,10 @@ class Benchmark8(Benchmark):
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
-        for i in range(self.size):
-            for j in range(self.size):
-                self.image3[i][j] = 0.0
+        # for i in range(self.size):
+        #     for j in range(self.size):
+        #         self.image3[i][j] = 0.0
+        self.image3.copyFrom(int(np.int64(self.image_cpu.ctypes.data)), len(self.image3))
         self.maximum[0] = 0.0
         self.minimum[0] = 0.0
 
@@ -347,6 +355,8 @@ class Benchmark8(Benchmark):
 
         start_comp = System.nanoTime()
         start = 0
+
+        self.reset_kernel(self.num_blocks_per_processor, self.block_size_1d)(self.image3, 0)
 
         self.reset_kernel((a, a), (self.block_size_2d, self.block_size_2d))(self.image3, 0)
 
