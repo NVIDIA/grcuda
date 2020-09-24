@@ -15,12 +15,12 @@ DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
 
 # Benchmark settings;
 benchmarks = [
-    "b1",
-    "b5",
-    "b6",
-    "b7",
+    # "b1",
+    # "b5",
+    # "b6",
+    # "b7",
     "b8",
-    "b10",
+    # "b10",
 ]
 
 num_elem = {
@@ -47,7 +47,7 @@ block_sizes_1d_dict = {
     "b5": 256,
     "b6": 32,
     "b7": 32,
-    "b8": 128,
+    "b8": 1024,
     "b10": 1024,
 }
 

@@ -3,22 +3,19 @@
 //////////////////////////////
 //////////////////////////////
 
-__global__ void square(const float *x, float *y, int n)
-{
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x)
-    {
+__global__ void square(const float *x, float *y, int n) {
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         // float tmp = x[i];
         // float sum = 0;
         // for (int j = 0; j < 4; j++) {
         //     sum += tmp + j;
         // }
 
-        y[i] = x[i] * x[i]; // tmp + tmp * tmp / 2 + tmp * tmp * tmp / 6;
+        y[i] = x[i] * x[i];  // tmp + tmp * tmp / 2 + tmp * tmp * tmp / 6;
     }
 }
 
-__inline__ __device__ float warp_reduce(float val)
-{
+__inline__ __device__ float warp_reduce(float val) {
     int warp_size = 32;
     for (int offset = warp_size / 2; offset > 0; offset /= 2)
         val += __shfl_down_sync(0xFFFFFFFF, val, offset);
@@ -35,24 +32,21 @@ __inline__ __device__ float warp_reduce(float val)
 //     return __longlong_as_float(old);
 // }
 
-__global__ void reduce(const float *x, const float *y, float *z, int N)
-{
+__global__ void reduce(const float *x, const float *y, float *z, int N) {
     int warp_size = 32;
     float sum = float(0);
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
-    {
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x) {
         sum += x[i] - y[i];
     }
-    sum = warp_reduce(sum);                   // Obtain the sum of values in the current warp;
-    if ((threadIdx.x & (warp_size - 1)) == 0) // Same as (threadIdx.x % warp_size) == 0 but faster
-        atomicAdd(z, sum);                    // The first thread in the warp updates the output;
+    sum = warp_reduce(sum);                    // Obtain the sum of values in the current warp;
+    if ((threadIdx.x & (warp_size - 1)) == 0)  // Same as (threadIdx.x % warp_size) == 0 but faster
+        atomicAdd(z, sum);                     // The first thread in the warp updates the output;
 }
 
 //////////////////////////////
 //////////////////////////////
 
-void Benchmark1::alloc()
-{
+void Benchmark1::alloc() {
     err = cudaMallocManaged(&x, sizeof(float) * N);
     err = cudaMallocManaged(&y, sizeof(float) * N);
     err = cudaMallocManaged(&x1, sizeof(float) * N);
@@ -63,27 +57,22 @@ void Benchmark1::alloc()
     err = cudaStreamCreate(&s2);
 }
 
-void Benchmark1::init()
-{
-    for (int i = 0; i < N; i++)
-    {
+void Benchmark1::init() {
+    for (int i = 0; i < N; i++) {
         x[i] = 1.0 / (i + 1);
         y[i] = 2.0 / (i + 1);
     }
 }
 
-void Benchmark1::reset()
-{
-    for (int i = 0; i < N; i++)
-    {
+void Benchmark1::reset() {
+    for (int i = 0; i < N; i++) {
         x[i] = 1.0 / (i + 1);
         y[i] = 2.0 / (i + 1);
     }
     res[0] = 0.0;
 }
 
-void Benchmark1::execute_sync(int iter)
-{
+void Benchmark1::execute_sync(int iter) {
     square<<<num_blocks, block_size_1d>>>(x, x1, N);
     err = cudaDeviceSynchronize();
     square<<<num_blocks, block_size_1d>>>(y, y1, N);
@@ -92,8 +81,7 @@ void Benchmark1::execute_sync(int iter)
     err = cudaDeviceSynchronize();
 }
 
-void Benchmark1::execute_async(int iter)
-{
+void Benchmark1::execute_async(int iter) {
     cudaStreamAttachMemAsync(s1, x, sizeof(float) * N);
     cudaStreamAttachMemAsync(s1, x1, sizeof(float) * N);
     cudaStreamAttachMemAsync(s2, y, sizeof(float) * N);
@@ -115,11 +103,57 @@ void Benchmark1::execute_async(int iter)
     cudaStreamSynchronize(s1);
 }
 
-void Benchmark1::execute_cudagraph(int iter) {}
+void Benchmark1::execute_cudagraph(int iter) {
+    if (iter == 0) {
+        cudaEvent_t ef;
+        cudaEventCreate(&ef);
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+        cudaEventRecord(ef, s1);
+        cudaStreamWaitEvent(s2, ef, 0);
 
-void Benchmark1::execute_cudagraph_manual(int iter) {}
+        square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
+        square<<<num_blocks, block_size_1d, 0, s2>>>(y, y1, N);
+        // Stream 1 waits stream 2;
+        cudaEvent_t e1;
+        cudaEventCreate(&e1);
+        cudaEventRecord(e1, s2);
+        cudaStreamWaitEvent(s1, e1, 0);
+        reduce<<<num_blocks, block_size_1d, 0, s1>>>(x1, y1, res, N);
 
-std::string Benchmark1::print_result(bool short_form)
-{
+        cudaStreamEndCapture(s1, &graph);
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
+
+void Benchmark1::execute_cudagraph_manual(int iter) {
+    if (iter == 0) {
+        cudaGraphCreate(&graph, 0);
+        void *kernel_1_args[3] = {(void *)&x, (void *)&x1, &N};
+        void *kernel_2_args[3] = {(void *)&y, (void *)&y1, &N};
+        void *kernel_3_args[4] = {(void *)&x1, (void *)&y1, (void *)&res, &N};
+
+        dim3 tb(block_size_1d);
+        dim3 bs(num_blocks);
+
+        // square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
+        add_node(kernel_1_args, kernel_1_params, (void *)square, tb, bs, graph, &kernel_1, nodeDependencies);
+
+        // square<<<num_blocks, block_size_1d, 0, s2>>>(y, y1, N);
+        add_node(kernel_2_args, kernel_2_params, (void *)square, tb, bs, graph, &kernel_2, nodeDependencies);
+
+        // reduce<<<num_blocks, block_size_1d, 0, s1>>>(x1, y1, res, N);
+        nodeDependencies.push_back(kernel_1);
+        nodeDependencies.push_back(kernel_2);
+        add_node(kernel_3_args, kernel_3_params, (void *)reduce, tb, bs, graph, &kernel_3, nodeDependencies);
+
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
+
+std::string Benchmark1::print_result(bool short_form) {
     return std::to_string(res[0]);
 }

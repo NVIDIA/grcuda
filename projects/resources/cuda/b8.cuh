@@ -21,6 +21,8 @@ class Benchmark8 : public Benchmark {
     float *image, *image2, *image3, *image_unsharpen, *mask_small, *mask_large, *mask_unsharpen, *blurred_small, *blurred_large, *blurred_unsharpen;
     float *kernel_small, *kernel_large, *kernel_unsharpen, *maximum, *minimum;
     cudaStream_t s1, s2, s3, s4, s5;
+    cudaGraph_t graph;
+    cudaGraphExec_t graphExec;
 
     inline void gaussian_kernel(float *kernel, int diameter, float sigma) {
         int mean = diameter / 2;

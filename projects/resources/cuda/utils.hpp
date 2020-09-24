@@ -4,6 +4,20 @@
 #include <tuple>
 #include <algorithm>
 #include <map>
+#include "dvrapi_error_string.h"
+
+#define checkCudaErrors(err) __checkCudaErrors(err, __FILE__, __LINE__)
+
+// These are the inline versions for all of the SDK helper functions
+inline void __checkCudaErrors(int err, const char *file, const int line) {
+  if (0 != err) {
+    fprintf(stderr,
+            "checkCudaErrors() Driver API error = %04d \"%s\" from file <%s>, "
+            "line %i.\n",
+            err, getCudaDrvErrorString(err), file, line);
+    exit(EXIT_FAILURE);
+  }
+}
 
 template<typename T> struct map_init_helper
 {

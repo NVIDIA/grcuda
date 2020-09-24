@@ -116,9 +116,38 @@ void Benchmark5::execute_async(int iter) {
 }
 
 void Benchmark5::execute_cudagraph(int iter) {
+    if (iter == 0) {
+        for (int j = 0; j < M; j++) {
+            cudaStreamBeginCapture(s[j], cudaStreamCaptureModeGlobal);
+            bs<<<num_blocks, block_size_1d, 0, s[j]>>>(x[j], y[j], N, R, V, T, K);
+            cudaStreamEndCapture(s[j], &graphs[j]);
+            cudaGraphInstantiate(&graphExec[j], graphs[j], NULL, NULL, 0);
+        }
+    }
+    for (int j = 0; j < M; j++) {
+        cudaGraphLaunch(graphExec[j], s[j]);
+    }
+    for (int j = 0; j < M; j++) {
+        cudaStreamSynchronize(s[j]);
+    }
 }
 
 void Benchmark5::execute_cudagraph_manual(int iter) {
+    if (iter == 0) {
+        cudaGraphCreate(&graphs[0], 0);
+        for (int j = 0; j < M; j++) {
+            void *kernel_args[7] = {(void *)&x[j], (void*)&y[j], &N, &R, &V, &T, &K};
+            
+            dim3 tb(block_size_1d);
+            dim3 b_size(num_blocks);
+
+            // bs<<<num_blocks, block_size_1d, 0, s[j]>>>(x[j], y[j], N, R, V, T, K);
+            add_node(kernel_args, kernel_params[j], (void *)bs, tb, b_size, graphs[0], &kernels[j], nodeDependencies);
+        }
+        cudaGraphInstantiate(&graphExec[0], graphs[0], NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec[0], s[0]);
+    err = cudaStreamSynchronize(s[0]);
 }
 
 std::string

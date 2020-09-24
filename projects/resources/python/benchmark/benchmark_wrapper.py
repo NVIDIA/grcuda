@@ -46,6 +46,8 @@ num_elem = {
 
 exec_policies = ["default", "sync"]
 
+cuda_exec_policies = ["cudagraph"] # ["default", "sync", "cudagraph"]
+
 new_stream_policies = ["always-new"]
 
 parent_stream_policies = ["disjoint"]
@@ -223,15 +225,16 @@ if __name__ == "__main__":
     tot_benchmarks = tot_benchmark_count()
     for b in benchmarks:
         for n in num_elem[b]:
-            for exec_policy in exec_policies:
+            if use_cuda:
                 # CUDA Benchmarks;
-                if use_cuda:
+                for exec_policy in cuda_exec_policies:
                     for block_size in block_sizes:
                         nb = num_blocks if num_blocks else block_dim_dict[b]
                         execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, num_blocks=nb, output_date=output_date)
                         i += 1
-                # GrCUDA Benchmarks;
-                else:
+            # GrCUDA Benchmarks;
+            else:
+                for exec_policy in exec_policies:
                     for new_stream_policy in new_stream_policies:
                         for parent_stream_policy in parent_stream_policies:
                             for dependency_policy in dependency_policies:

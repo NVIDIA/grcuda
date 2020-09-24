@@ -159,7 +159,7 @@ void Benchmark10::alloc() {
 
     err = cudaMallocManaged(&x11, sizeof(float) * pooled_len);
     err = cudaMallocManaged(&y11, sizeof(float) * pooled_len);
-    
+
     err = cudaStreamCreate(&s1);
     err = cudaStreamCreate(&s2);
 }
@@ -232,14 +232,13 @@ void Benchmark10::execute_sync(int iter) {
 }
 
 void Benchmark10::execute_async(int iter) {
-
     cudaStreamAttachMemAsync(s1, x, sizeof(float) * x_len);
     cudaStreamAttachMemAsync(s1, x1, 0);
     cudaStreamAttachMemAsync(s1, x2, 0);
     // cudaStreamAttachMemAsync(s1, x3, 0);
     cudaStreamAttachMemAsync(s1, kernel_1, 0);
     cudaStreamAttachMemAsync(s1, kernel_2, 0);
-    
+
     cudaStreamAttachMemAsync(s2, y, sizeof(float) * x_len);
     cudaStreamAttachMemAsync(s2, y1, 0);
     // cudaStreamAttachMemAsync(s2, y2, 0);
@@ -278,10 +277,53 @@ void Benchmark10::execute_async(int iter) {
 
     dot_product<<<num_blocks, block_size_1d, 0, s1>>>(z, dense_weights, res, x2_len);
     cudaStreamSynchronize(s1);
-    cudaStreamSynchronize(s2);
 }
 
-void Benchmark10::execute_cudagraph(int iter) {}
+void Benchmark10::execute_cudagraph(int iter) {
+    if (iter == 0) {
+        cudaEvent_t ef;
+        cudaEventCreate(&ef);
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+        cudaEventRecord(ef, s1);
+        cudaStreamWaitEvent(s2, ef, 0);
+
+        dim3 block_size_2d_dim(block_size_2d, block_size_2d);
+        dim3 grid_size(num_blocks, num_blocks);
+        dim3 grid_size_2(num_blocks / 2, num_blocks / 2);
+
+        dim3 block_size_3d_dim(block_size_2d / 2, block_size_2d / 2, block_size_2d / 2);
+        dim3 grid_size_3(num_blocks / 2, num_blocks / 2, num_blocks / 2);
+
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float), s1>>>(x1, x, kernel_1, N, N, channels, K, kn1, stride);
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float), s2>>>(y1, y, kernel_3, N, N, channels, K, kn1, stride);
+
+        mean_pooling<<<grid_size_3, block_size_3d_dim, 0, s1>>>(x11, x1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
+        mean_pooling<<<grid_size_3, block_size_3d_dim, 0, s2>>>(y11, y1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
+
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s1>>>(x2, x11, kernel_2, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s2>>>(y2, y11, kernel_4, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s1>>>(x2, x1, kernel_2, N / stride, N / stride, kn1, K, kn2, stride);
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s2>>>(y2, y1, kernel_4, N / stride, N / stride, kn1, K, kn2, stride);
+
+        // gap<<<grid_size_2, block_size_2d_dim, kn2 * sizeof(float), s1>>>(x3, x2, N / (stride * stride), N / (stride * stride), kn2);
+        // gap<<<grid_size_2, block_size_2d_dim, kn2 * sizeof(float), s2>>>(y3, y2, N / (stride * stride), N / (stride * stride), kn2);
+
+        cudaEvent_t e1;
+        cudaEventCreate(&e1);
+        cudaEventRecord(e1, s2);
+        cudaStreamWaitEvent(s1, e1, 0);
+
+        concat<<<num_blocks, block_size_1d, 0, s1>>>(z, x2, y2, x2_len);
+
+        dot_product<<<num_blocks, block_size_1d, 0, s1>>>(z, dense_weights, res, x2_len);
+
+        cudaStreamEndCapture(s1, &graph);
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
 
 void Benchmark10::execute_cudagraph_manual(int iter) {}
 
