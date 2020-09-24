@@ -136,8 +136,8 @@ void Benchmark5::execute_cudagraph_manual(int iter) {
     if (iter == 0) {
         cudaGraphCreate(&graphs[0], 0);
         for (int j = 0; j < M; j++) {
-            void *kernel_args[7] = {(void *)&x[j], (void*)&y[j], &N, &R, &V, &T, &K};
-            
+            void *kernel_args[7] = {(void *)&x[j], (void *)&y[j], &N, &R, &V, &T, &K};
+
             dim3 tb(block_size_1d);
             dim3 b_size(num_blocks);
 
@@ -148,6 +148,19 @@ void Benchmark5::execute_cudagraph_manual(int iter) {
     }
     cudaGraphLaunch(graphExec[0], s[0]);
     err = cudaStreamSynchronize(s[0]);
+}
+
+void Benchmark5::execute_cudagraph_single(int iter) {
+    if (iter == 0) {
+        cudaStreamBeginCapture(s[0], cudaStreamCaptureModeGlobal);
+        for (int j = 0; j < M; j++) {
+            bs<<<num_blocks, block_size_1d, 0, s[0]>>>(x[j], y[j], N, R, V, T, K);
+        }
+        cudaStreamEndCapture(s[0], &graphs[0]);
+        cudaGraphInstantiate(&graphExec[0], graphs[0], NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec[0], s[0]);
+    cudaStreamSynchronize(s[0]);
 }
 
 std::string

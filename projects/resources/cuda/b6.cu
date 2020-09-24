@@ -385,6 +385,42 @@ void Benchmark6::execute_cudagraph_manual(int iter) {
     err = cudaStreamSynchronize(s1);
 }
 
+void Benchmark6::execute_cudagraph_single(int iter) {
+    if (iter == 0) {
+      
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+
+        rr_1<<<num_blocks, block_size_1d, 0, s1>>>(x, z, N, num_features);
+        // dim3 num_blocks_2d(8, 8);
+        // dim3 block_size_1d_2d(8, 8);
+        // rr_1_0<<<num_blocks_2d, block_size_1d_2d, 0, s1>>>(x, r1_mean, r1_std, N, num_features);
+        // rr_1_1<<<num_blocks_2d, block_size_1d_2d, 0, s1>>>(x, z, r1_mean, r1_std, N, num_features);
+
+        nb_1<<<num_blocks, block_size_1d, 0, s1>>>(x, nb_feat_log_prob, r1, N, num_features, num_classes);
+
+        rr_2<<<num_blocks, block_size_1d, 0, s1>>>(z, ridge_coeff, r2, N, num_features, num_classes);
+
+        nb_2<<<num_blocks, block_size_1d, 0, s1>>>(r1, nb_amax, N, num_classes);
+
+        nb_3<<<num_blocks, block_size_1d, 0, s1>>>(r1, nb_amax, nb_l, N, num_classes);
+
+        rr_3<<<num_blocks, block_size_1d, 0, s1>>>(r2, ridge_intercept, N, num_classes);
+
+        nb_4<<<num_blocks, block_size_1d, 0, s1>>>(r1, nb_l, N, num_classes);
+
+        softmax<<<num_blocks, block_size_1d, 0, s1>>>(r1, N, num_classes);
+
+        softmax<<<num_blocks, block_size_1d, 0, s1>>>(r2, N, num_classes);
+
+        argmax<<<num_blocks, block_size_1d, 0, s1>>>(r1, r2, r, N, num_classes);
+
+        cudaStreamEndCapture(s1, &graph);
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
+
 std::string Benchmark6::print_result(bool short_form) {
     if (short_form) {
         return std::to_string(r[0]);

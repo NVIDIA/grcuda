@@ -390,6 +390,38 @@ void Benchmark10::execute_cudagraph_manual(int iter) {
     err = cudaStreamSynchronize(s1);
 }
 
+void Benchmark10::execute_cudagraph_single(int iter) {
+    if (iter == 0) {
+       
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+
+        dim3 block_size_2d_dim(block_size_2d, block_size_2d);
+        dim3 grid_size(num_blocks, num_blocks);
+        dim3 grid_size_2(num_blocks / 2, num_blocks / 2);
+
+        dim3 block_size_3d_dim(block_size_2d / 2, block_size_2d / 2, block_size_2d / 2);
+        dim3 grid_size_3(num_blocks / 2, num_blocks / 2, num_blocks / 2);
+
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float), s1>>>(x1, x, kernel_1, N, N, channels, K, kn1, stride);
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float), s1>>>(y1, y, kernel_3, N, N, channels, K, kn1, stride);
+
+        mean_pooling<<<grid_size_3, block_size_3d_dim, 0, s1>>>(x11, x1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
+        mean_pooling<<<grid_size_3, block_size_3d_dim, 0, s1>>>(y11, y1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
+
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s1>>>(x2, x11, kernel_2, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+        conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s1>>>(y2, y11, kernel_4, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+
+        concat<<<num_blocks, block_size_1d, 0, s1>>>(z, x2, y2, x2_len);
+
+        dot_product<<<num_blocks, block_size_1d, 0, s1>>>(z, dense_weights, res, x2_len);
+
+        cudaStreamEndCapture(s1, &graph);
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
+
 std::string Benchmark10::print_result(bool short_form) {
     return std::to_string(res[0]);
 }
