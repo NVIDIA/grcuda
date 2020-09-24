@@ -20,7 +20,7 @@ class Benchmark10 : public Benchmark {
     int kn1 = 8;
     int kn2 = 16;
     int pooling_diameter = 5;
-    
+
     float *x, *x1, *x2, *x3, *y, *y1, *y2, *y3, *kernel_1, *kernel_2, *kernel_3, *kernel_4, *z, *dense_weights, *res;
     float *x11, *y11;
     float *x_cpu;
@@ -33,4 +33,6 @@ class Benchmark10 : public Benchmark {
     int k1_len, k2_len, z_len;
 
     cudaStream_t s1, s2;
+    cudaGraph_t graph;
+    cudaGraphExec_t graphExec;
 };

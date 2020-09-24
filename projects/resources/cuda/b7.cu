@@ -153,6 +153,27 @@ extern "C" __global__ void divide(const float *x, float *y, float *val, int n) {
     }
 }
 
+extern "C" __global__ void reset_kernel(float *n1, float *n2, int *r1, int *r2) {
+    if (blockIdx.x * blockDim.x + threadIdx.x == 0) {
+        *n1 = 0;
+        *n2 = 0;
+        *r1 = 0;
+        *r2 = 0;
+    }
+}
+
+//////////////////////////////
+//////////////////////////////
+
+void CUDART_CB host_callback(void *data) {
+    // Check status of GPU after stream operations are done
+    callBackData_t *tmp = (callBackData_t *)(data);
+    tmp->n1[0] = 0.0;
+    tmp->n2[0] = 0.0;
+    tmp->r1[0] = 0;
+    tmp->r2[0] = 0;
+}
+
 //////////////////////////////
 //////////////////////////////
 
@@ -307,6 +328,12 @@ void Benchmark7::execute_async(int iter) {
         cudaStreamAttachMemAsync(s2, hub1, 0);
         divide<<<num_blocks, block_size_1d, 0, s2>>>(hub2, hub1, hub_norm, N);
 
+        // cudaEvent_t e3;
+        // cudaEventCreate(&e3);
+        // cudaEventRecord(e3, s2);
+        // checkCudaErrors(cudaStreamWaitEvent(s1, e3, 0));
+        // reset_kernel<<<1, 1, 0, s1>>>(auth_norm, hub_norm, rowCounter1, rowCounter2);
+
         err = cudaStreamSynchronize(s1);
         err = cudaStreamSynchronize(s2);
         auth_norm[0] = 0;
@@ -316,9 +343,66 @@ void Benchmark7::execute_async(int iter) {
 
         if (debug && err) std::cout << err << std::endl;
     }
+    // err = cudaStreamSynchronize(s1);
 }
 
-void Benchmark7::execute_cudagraph(int iter) {}
+void Benchmark7::execute_cudagraph(int iter) {
+    if (iter == 0) {
+        cudaEvent_t ef;
+        cudaEventCreate(&ef);
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+        cudaEventRecord(ef, s1);
+        cudaStreamWaitEvent(s2, ef, 0);
+
+        // callBackData_t hostFnData = {auth_norm, hub_norm, rowCounter1, rowCounter2};
+        // cudaHostFn_t fn = host_callback;
+
+        for (int i = 0; i < iterations; i++) {
+            cudaEvent_t e1, e2;
+            cudaEventCreate(&e1);
+            cudaEventCreate(&e2);
+
+            int nb = ceil(N / ((float)block_size_1d));
+
+            // spmv<<<nb, block_size_1d, 0, s1>>>(ptr2, idx2, val2, hub1, auth2, N, nnz);
+            spmv3<<<nb, block_size_1d, block_size_1d * sizeof(float), s1>>>(rowCounter1, ptr2, idx2, val2, hub1, auth2, N);
+
+            // spmv<<<nb, block_size_1d, 0, s2>>>(ptr, idx, val, auth1, hub2, N, nnz);
+            spmv3<<<nb, block_size_1d, block_size_1d * sizeof(float), s2>>>(rowCounter2, ptr, idx, val, auth1, hub2, N);
+
+            sum<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth_norm, N);
+            err = cudaEventRecord(e1, s1);
+            sum<<<num_blocks, block_size_1d, 0, s2>>>(hub2, hub_norm, N);
+            err = cudaEventRecord(e2, s2);
+            // Stream 1 waits stream 2;
+            err = cudaStreamWaitEvent(s1, e2, 0);
+            divide<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth1, auth_norm, N);
+            // Stream 2 waits stream 1;
+            err = cudaStreamWaitEvent(s2, e1, 0);
+            divide<<<num_blocks, block_size_1d, 0, s2>>>(hub2, hub1, hub_norm, N);
+            // Stream 1 waits stream 2;
+            cudaEvent_t e3;
+            cudaEventCreate(&e3);
+            cudaEventRecord(e3, s2);
+            checkCudaErrors(cudaStreamWaitEvent(s1, e3, 0));
+
+            // This doesn't work for some reason;
+            // checkCudaErrors(cudaLaunchHostFunc(s1, fn, &hostFnData));
+
+            reset_kernel<<<1, 1, 0, s1>>>(auth_norm, hub_norm, rowCounter1, rowCounter2);
+            cudaEvent_t e4;
+            cudaEventCreate(&e4);
+            cudaEventRecord(e4, s1);
+            checkCudaErrors(cudaStreamWaitEvent(s2, e4, 0));
+
+        }
+
+        checkCudaErrors(cudaStreamEndCapture(s1, &graph));
+        checkCudaErrors(cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0));
+    }
+    checkCudaErrors(cudaGraphLaunch(graphExec, s1));
+    err = cudaStreamSynchronize(s1);
+}
 
 void Benchmark7::execute_cudagraph_manual(int iter) {}
 

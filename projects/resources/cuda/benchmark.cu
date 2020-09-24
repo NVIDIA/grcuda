@@ -3,6 +3,16 @@
 namespace chrono = std::chrono;
 using clock_type = chrono::high_resolution_clock;
 
+int Benchmark::add_node(void** paramarray, cudaKernelNodeParams &param, void* func, dim3 gridsize, dim3 threads, cudaGraph_t &g, cudaGraphNode_t *n, std::vector<cudaGraphNode_t> &dependencies) {
+    param.func = func;
+    param.blockDim = threads;
+    param.gridDim = gridsize;
+    param.kernelParams = paramarray;
+    param.sharedMemBytes = 0;
+    param.extra = NULL;
+    return cudaGraphAddKernelNode(n, g, dependencies.data(), dependencies.size(), &param);
+}
+
 void Benchmark::run()
 {
     auto start_tot = clock_type::now();

@@ -326,7 +326,68 @@ void Benchmark8::execute_async(int iter) {
     cudaStreamSynchronize(s1);
 }
 
-void Benchmark8::execute_cudagraph(int iter) {}
+void Benchmark8::execute_cudagraph(int iter) {
+    dim3 block_size_2d_dim(block_size_2d, block_size_2d);
+    dim3 grid_size(num_blocks, num_blocks);
+    int nb = num_blocks / 2;
+    dim3 grid_size_2(nb, nb);
+    if (iter == 0) {
+        cudaEvent_t ef;
+        cudaEventCreate(&ef);
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+        cudaEventRecord(ef, s1);
+        cudaStreamWaitEvent(s2, ef, 0);
+        cudaStreamWaitEvent(s3, ef, 0);
+        cudaStreamWaitEvent(s4, ef, 0);
+        cudaStreamWaitEvent(s5, ef, 0);
+
+        gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float), s1>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
+
+        gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_large_diameter * kernel_large_diameter * sizeof(float), s2>>>(image, blurred_large, N, N, kernel_large, kernel_large_diameter);
+
+        gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_unsharpen_diameter * kernel_unsharpen_diameter * sizeof(float), s3>>>(image, blurred_unsharpen, N, N, kernel_unsharpen, kernel_unsharpen_diameter);
+
+        sobel<<<grid_size_2, block_size_2d_dim, 0, s1>>>(blurred_small, mask_small, N, N);
+
+        sobel<<<grid_size_2, block_size_2d_dim, 0, s2>>>(blurred_large, mask_large, N, N);
+
+        cudaEvent_t e1, e2, e3, e4, e5;
+        cudaEventCreate(&e1);
+        cudaEventCreate(&e2);
+        cudaEventCreate(&e3);
+        cudaEventCreate(&e4);
+        cudaEventCreate(&e5);
+
+        cudaEventRecord(e1, s2);
+        cudaStreamWaitEvent(s5, e1, 0);
+        maximum_kernel<<<num_blocks, block_size_1d, 0, s5>>>(mask_large, maximum, N * N);
+
+        cudaStreamWaitEvent(s4, e1, 0);
+        minimum_kernel<<<num_blocks, block_size_1d, 0, s4>>>(mask_large, minimum, N * N);
+
+        cudaEventRecord(e2, s4);
+        cudaEventRecord(e5, s5);
+
+        cudaStreamWaitEvent(s2, e2, 0);
+        cudaStreamWaitEvent(s2, e5, 0);
+
+        extend<<<num_blocks, block_size_1d, 0, s2>>>(mask_large, minimum, maximum, N * N);
+
+        unsharpen<<<num_blocks, block_size_1d, 0, s3>>>(image, blurred_unsharpen, image_unsharpen, 0.5, N * N);
+        cudaEventRecord(e3, s3);
+        cudaStreamWaitEvent(s2, e3, 0);
+        combine<<<num_blocks, block_size_1d, 0, s2>>>(image_unsharpen, blurred_large, mask_large, image2, N * N);
+        cudaEventRecord(e4, s2);
+        cudaStreamWaitEvent(s1, e4, 0);
+
+        combine<<<num_blocks, block_size_1d, 0, s1>>>(image2, blurred_small, mask_small, image3, N * N);
+
+        cudaStreamEndCapture(s1, &graph);
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
 
 void Benchmark8::execute_cudagraph_manual(int iter) {}
 

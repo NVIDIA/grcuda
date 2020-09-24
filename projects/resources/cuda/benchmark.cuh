@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include "options.hpp"
+#include "utils.hpp"
 
 struct Benchmark
 {
@@ -16,6 +17,7 @@ public:
     virtual void execute_cudagraph_manual(int iter) = 0;
     virtual std::string print_result(bool short_form = false) = 0;
     void run();
+    int add_node(void** paramarray, cudaKernelNodeParams &param, void* func, dim3 gridsize, dim3 threads, cudaGraph_t &g, cudaGraphNode_t *n, std::vector<cudaGraphNode_t> &dependencies);
 
     Benchmark(Options &options) : debug(options.debug),
                                              num_executions(options.num_iter),

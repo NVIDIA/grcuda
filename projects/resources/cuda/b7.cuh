@@ -1,6 +1,14 @@
 #pragma once
 #include <set>
+
 #include "benchmark.cuh"
+
+typedef struct callBackData {
+    float *n1;
+    float *n2;
+    int *r1;
+    int *r2;
+} callBackData_t;
 
 class Benchmark7 : public Benchmark {
    public:
@@ -24,6 +32,8 @@ class Benchmark7 : public Benchmark {
     float *auth1, *auth2, *hub1, *hub2, *auth_norm, *hub_norm;
 
     cudaStream_t s1, s2;
+    cudaGraph_t graph;
+    cudaGraphExec_t graphExec;
 
     inline void random_coo(int *x, int *y, int *val, int N, int degree) {
         for (int i = 0; i < N; i++) {
