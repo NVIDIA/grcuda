@@ -1,9 +1,11 @@
 #pragma once
 
 #include <getopt.h>
-#include <string>
+
 #include <cstdlib>
 #include <map>
+#include <string>
+
 #include "utils.hpp"
 
 //////////////////////////////
@@ -21,16 +23,15 @@
 //////////////////////////////
 //////////////////////////////
 
-enum Policy
-{
+enum Policy {
     Sync,
     Async,
     CudaGraph,
-    CudaGraphAsync
+    CudaGraphAsync,
+    CudaGraphSingle
 };
 
-enum BenchmarkEnum
-{
+enum BenchmarkEnum {
     B1,
     B5,
     B6,
@@ -43,20 +44,21 @@ enum BenchmarkEnum
 //////////////////////////////
 //////////////////////////////
 
-inline Policy get_policy(std::string policy)
-{
+inline Policy get_policy(std::string policy) {
     if (policy == "sync")
         return Policy::Sync;
     else if (policy == "cudagraph")
         return Policy::CudaGraph;
-    else if (policy == "cudagraph_manual")
+    else if (policy == "cudagraphmanual")
         return Policy::CudaGraphAsync;
+
+    else if (policy == "cudagraphsingle")
+        return Policy::CudaGraphSingle;
     else
         return Policy::Async;
 }
 
-inline BenchmarkEnum get_benchmark(std::string benchmark)
-{
+inline BenchmarkEnum get_benchmark(std::string benchmark) {
     if (benchmark == "b1")
         return BenchmarkEnum::B1;
     else if (benchmark == "b5")
@@ -73,9 +75,7 @@ inline BenchmarkEnum get_benchmark(std::string benchmark)
         return BenchmarkEnum::ERR;
 }
 
-struct Options
-{
-
+struct Options {
     // Testing options;
     uint num_iter = NUM_ITER;
     int debug = DEBUG;
@@ -94,9 +94,8 @@ struct Options
     //////////////////////////////
     //////////////////////////////
 
-    Options(int argc, char *argv[])
-    {
-        map_init(policy_map)(Policy::Sync, "sync")(Policy::Async, "default")(Policy::CudaGraph, "cudagraph")(Policy::CudaGraphAsync, "cudagraph_manual");
+    Options(int argc, char *argv[]) {
+        map_init(policy_map)(Policy::Sync, "sync")(Policy::Async, "default")(Policy::CudaGraph, "cudagraph")(Policy::CudaGraphAsync, "cudagraphmanual")(Policy::CudaGraphSingle, "cudagraphsingle");
         map_init(benchmark_map)(BenchmarkEnum::B1, "b1")(BenchmarkEnum::B5, "b5")(BenchmarkEnum::B6, "b6")(BenchmarkEnum::B7, "b7")(BenchmarkEnum::B8, "b8")(BenchmarkEnum::B10, "b10");
 
         int opt;
@@ -113,39 +112,37 @@ struct Options
         // getopt_long stores the option index here;
         int option_index = 0;
 
-        while ((opt = getopt_long(argc, argv, "dt:n:b:c:g:s:k:p:", long_options, &option_index)) != EOF)
-        {
-            switch (opt)
-            {
-            case 'd':
-                debug = true;
-                break;
-            case 't':
-                num_iter = atoi(optarg);
-                break;
-            case 'n':
-                N = atoi(optarg);
-                break;
-            case 'b':
-                block_size_1d = atoi(optarg);
-                break;
-            case 'c':
-                block_size_2d = atoi(optarg);
-                break;
-            case 'g':
-                num_blocks = atoi(optarg);
-                break;
-            case 's':
-                skip_iterations = atoi(optarg);
-                break;
-            case 'k':
-                benchmark_choice = get_benchmark(optarg);
-                break;
-            case 'p':
-                policy_choice = get_policy(optarg);
-                break;
-            default:
-                break;
+        while ((opt = getopt_long(argc, argv, "dt:n:b:c:g:s:k:p:", long_options, &option_index)) != EOF) {
+            switch (opt) {
+                case 'd':
+                    debug = true;
+                    break;
+                case 't':
+                    num_iter = atoi(optarg);
+                    break;
+                case 'n':
+                    N = atoi(optarg);
+                    break;
+                case 'b':
+                    block_size_1d = atoi(optarg);
+                    break;
+                case 'c':
+                    block_size_2d = atoi(optarg);
+                    break;
+                case 'g':
+                    num_blocks = atoi(optarg);
+                    break;
+                case 's':
+                    skip_iterations = atoi(optarg);
+                    break;
+                case 'k':
+                    benchmark_choice = get_benchmark(optarg);
+                    break;
+                case 'p':
+                    policy_choice = get_policy(optarg);
+                    break;
+                default:
+                    break;
             }
         }
     }

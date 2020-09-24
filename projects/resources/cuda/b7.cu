@@ -394,6 +394,130 @@ void Benchmark7::execute_cudagraph(int iter) {
             cudaEventCreate(&e4);
             cudaEventRecord(e4, s1);
             checkCudaErrors(cudaStreamWaitEvent(s2, e4, 0));
+        }
+
+        checkCudaErrors(cudaStreamEndCapture(s1, &graph));
+        checkCudaErrors(cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0));
+    }
+    checkCudaErrors(cudaGraphLaunch(graphExec, s1));
+    err = cudaStreamSynchronize(s1);
+}
+
+void Benchmark7::execute_cudagraph_manual(int iter) {
+    if (iter == 0) {
+        // callBackData_t hostFnData = {auth_norm, hub_norm, rowCounter1, rowCounter2};
+        // cudaHostFn_t fn = host_callback;
+
+        int pascalGpu = 0;
+        // cudaDeviceGetAttribute(&pascalGpu, cudaDeviceAttr::cudaDevAttrConcurrentManagedAccess, 0);
+        cudaGraphCreate(&graph, 0);
+        void *kernel_1_args[7] = {(void *)&rowCounter1, (void *)&ptr2, (void *)&idx2, (void *)&val2, (void *)&hub1, (void *)&auth2, &N};
+        void *kernel_2_args[7] = {(void *)&rowCounter2, (void *)&ptr, (void *)&idx, (void *)&val, (void *)&auth1, (void *)&hub2, &N};
+        void *kernel_3_args[3] = {(void *)&auth2, (void *)&auth_norm, &N};
+        void *kernel_4_args[3] = {(void *)&hub2, (void *)&hub_norm, &N};
+        void *kernel_5_args[4] = {(void *)&auth2, (void *)&auth1, (void *)&auth_norm, &N};
+        void *kernel_6_args[4] = {(void *)&hub2, (void *)&hub1, (void *)&hub_norm, &N};
+        void *kernel_7_args[4] = {(void *)&auth_norm, (void *)&hub_norm, (void *)&rowCounter1, (void *)&rowCounter2};
+
+        callback_data = {0};
+        callback_data.n1 = auth_norm;
+        callback_data.n2 = hub_norm;
+        callback_data.r1 = rowCounter1;
+        callback_data.r2 = rowCounter2;
+
+        for (int i = 0; i < iterations; i++) {
+            dim3 tb(block_size_1d);
+            dim3 bs(num_blocks);
+            dim3 nb(ceil(N / ((float)block_size_1d)));
+
+            if (i > 0) {
+                nodeDependencies.clear();
+                if (pascalGpu) {
+                    nodeDependencies.push_back(host_node);
+                } else {
+                    nodeDependencies.push_back(kernel_7);
+                }
+            }
+            checkCudaErrors(add_node(kernel_1_args, kernel_1_params, (void *)spmv3, nb, tb, graph, &kernel_1, nodeDependencies, block_size_1d * sizeof(float)));
+            if (i > 0) {
+                nodeDependencies.clear();
+                if (pascalGpu) {
+                    nodeDependencies.push_back(host_node);
+                } else {
+                    nodeDependencies.push_back(kernel_7);
+                }
+            }
+            add_node(kernel_2_args, kernel_2_params, (void *)spmv3, nb, tb, graph, &kernel_2, nodeDependencies, block_size_1d * sizeof(float));
+
+            nodeDependencies.clear();
+            nodeDependencies.push_back(kernel_1);
+            add_node(kernel_3_args, kernel_3_params, (void *)sum, bs, tb, graph, &kernel_3, nodeDependencies);
+
+            nodeDependencies.clear();
+            nodeDependencies.push_back(kernel_2);
+            add_node(kernel_4_args, kernel_4_params, (void *)sum, bs, tb, graph, &kernel_4, nodeDependencies);
+
+            nodeDependencies.clear();
+            nodeDependencies.push_back(kernel_2);
+            nodeDependencies.push_back(kernel_3);
+            add_node(kernel_5_args, kernel_5_params, (void *)divide, bs, tb, graph, &kernel_5, nodeDependencies);
+
+            nodeDependencies.clear();
+            nodeDependencies.push_back(kernel_1);
+            nodeDependencies.push_back(kernel_4);
+            checkCudaErrors(add_node(kernel_6_args, kernel_6_params, (void *)divide, bs, tb, graph, &kernel_6, nodeDependencies));
+
+            nodeDependencies.clear();
+            nodeDependencies.push_back(kernel_5);
+            nodeDependencies.push_back(kernel_6);
+            if (pascalGpu) {
+                host_params.fn = host_callback;
+                host_params.userData = (void *)&callback_data;
+
+                checkCudaErrors(cudaGraphAddHostNode(&host_node, graph,
+                                                     nodeDependencies.data(),
+                                                     nodeDependencies.size(), &host_params));
+            } else {
+                add_node(kernel_7_args, kernel_7_params, (void *)reset_kernel, bs, tb, graph, &kernel_7, nodeDependencies);
+            }
+
+            // spmv3<<<nb, block_size_1d, block_size_1d * sizeof(float), s1>>>(rowCounter1, ptr2, idx2, val2, hub1, auth2, N);
+            // spmv3<<<nb, block_size_1d, block_size_1d * sizeof(float), s2>>>(rowCounter2, ptr, idx, val, auth1, hub2, N);
+            // sum<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth_norm, N);
+            // sum<<<num_blocks, block_size_1d, 0, s2>>>(hub2, hub_norm, N);
+            // divide<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth1, auth_norm, N);
+            // divide<<<num_blocks, block_size_1d, 0, s2>>>(hub2, hub1, hub_norm, N);
+
+            // reset_kernel<<<1, 1, 0, s1>>>(auth_norm, hub_norm, rowCounter1, rowCounter2);
+        }
+        checkCudaErrors(cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0));
+    }
+    checkCudaErrors(cudaGraphLaunch(graphExec, s1));
+    err = cudaStreamSynchronize(s1);
+}
+
+void Benchmark7::execute_cudagraph_single(int iter) {
+    if (iter == 0) {
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+
+        for (int i = 0; i < iterations; i++) {
+           
+            int nb = ceil(N / ((float)block_size_1d));
+
+            // spmv<<<nb, block_size_1d, 0, s1>>>(ptr2, idx2, val2, hub1, auth2, N, nnz);
+            spmv3<<<nb, block_size_1d, block_size_1d * sizeof(float), s1>>>(rowCounter1, ptr2, idx2, val2, hub1, auth2, N);
+
+            // spmv<<<nb, block_size_1d, 0, s2>>>(ptr, idx, val, auth1, hub2, N, nnz);
+            spmv3<<<nb, block_size_1d, block_size_1d * sizeof(float), s1>>>(rowCounter2, ptr, idx, val, auth1, hub2, N);
+
+            sum<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth_norm, N);
+            sum<<<num_blocks, block_size_1d, 0, s1>>>(hub2, hub_norm, N);
+          
+            divide<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth1, auth_norm, N);
+          
+            divide<<<num_blocks, block_size_1d, 0, s1>>>(hub2, hub1, hub_norm, N);
+
+            reset_kernel<<<1, 1, 0, s1>>>(auth_norm, hub_norm, rowCounter1, rowCounter2);
 
         }
 
@@ -404,7 +528,6 @@ void Benchmark7::execute_cudagraph(int iter) {
     err = cudaStreamSynchronize(s1);
 }
 
-void Benchmark7::execute_cudagraph_manual(int iter) {}
 
 std::string Benchmark7::print_result(bool short_form) {
     if (short_form) {

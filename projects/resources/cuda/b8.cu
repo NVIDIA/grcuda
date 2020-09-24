@@ -457,6 +457,44 @@ void Benchmark8::execute_cudagraph_manual(int iter) {
     err = cudaStreamSynchronize(s1);
 }
 
+void Benchmark8::execute_cudagraph_single(int iter) {
+    dim3 block_size_2d_dim(block_size_2d, block_size_2d);
+    dim3 grid_size(num_blocks, num_blocks);
+    int nb = num_blocks / 2;
+    dim3 grid_size_2(nb, nb);
+    if (iter == 0) {
+        
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+       
+        gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float), s1>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
+
+        gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_large_diameter * kernel_large_diameter * sizeof(float), s1>>>(image, blurred_large, N, N, kernel_large, kernel_large_diameter);
+
+        gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_unsharpen_diameter * kernel_unsharpen_diameter * sizeof(float), s1>>>(image, blurred_unsharpen, N, N, kernel_unsharpen, kernel_unsharpen_diameter);
+
+        sobel<<<grid_size_2, block_size_2d_dim, 0, s1>>>(blurred_small, mask_small, N, N);
+
+        sobel<<<grid_size_2, block_size_2d_dim, 0, s1>>>(blurred_large, mask_large, N, N);
+
+        maximum_kernel<<<num_blocks, block_size_1d, 0, s1>>>(mask_large, maximum, N * N);
+
+        minimum_kernel<<<num_blocks, block_size_1d, 0, s1>>>(mask_large, minimum, N * N);
+
+        extend<<<num_blocks, block_size_1d, 0, s1>>>(mask_large, minimum, maximum, N * N);
+
+        unsharpen<<<num_blocks, block_size_1d, 0, s1>>>(image, blurred_unsharpen, image_unsharpen, 0.5, N * N);
+    
+        combine<<<num_blocks, block_size_1d, 0, s1>>>(image_unsharpen, blurred_large, mask_large, image2, N * N);
+      
+        combine<<<num_blocks, block_size_1d, 0, s1>>>(image2, blurred_small, mask_small, image3, N * N);
+
+        cudaStreamEndCapture(s1, &graph);
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
+
 std::string Benchmark8::print_result(bool short_form) {
     if (short_form) {
         return std::to_string(image3[0]);

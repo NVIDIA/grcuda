@@ -154,6 +154,21 @@ void Benchmark1::execute_cudagraph_manual(int iter) {
     err = cudaStreamSynchronize(s1);
 }
 
+void Benchmark1::execute_cudagraph_single(int iter) {
+    if (iter == 0) {
+        cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+
+        square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
+        square<<<num_blocks, block_size_1d, 0, s1>>>(y, y1, N);
+        reduce<<<num_blocks, block_size_1d, 0, s1>>>(x1, y1, res, N);
+
+        cudaStreamEndCapture(s1, &graph);
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
+
 std::string Benchmark1::print_result(bool short_form) {
     return std::to_string(res[0]);
 }

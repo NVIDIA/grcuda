@@ -16,6 +16,7 @@ class Benchmark5 : public Benchmark {
     void execute_async(int iter);
     void execute_cudagraph(int iter);
     void execute_cudagraph_manual(int iter);
+    void execute_cudagraph_single(int iter);
     std::string print_result(bool short_form = false);
 
    private:

@@ -20,6 +20,7 @@ class Benchmark7 : public Benchmark {
     void execute_async(int iter);
     void execute_cudagraph(int iter);
     void execute_cudagraph_manual(int iter);
+    void execute_cudagraph_single(int iter);
     std::string print_result(bool short_form = false);
 
    private:
@@ -34,6 +35,19 @@ class Benchmark7 : public Benchmark {
     cudaStream_t s1, s2;
     cudaGraph_t graph;
     cudaGraphExec_t graphExec;
+
+    std::vector<cudaGraphNode_t> nodeDependencies;
+    cudaGraphNode_t kernel_1, kernel_2, kernel_3, kernel_4, kernel_5, kernel_6, kernel_7;
+    cudaGraphNode_t host_node;
+    callBackData_t callback_data;
+    cudaHostNodeParams host_params;
+    cudaKernelNodeParams kernel_1_params;
+    cudaKernelNodeParams kernel_2_params;
+    cudaKernelNodeParams kernel_3_params;
+    cudaKernelNodeParams kernel_4_params;
+    cudaKernelNodeParams kernel_5_params;
+    cudaKernelNodeParams kernel_6_params;
+    cudaKernelNodeParams kernel_7_params;
 
     inline void random_coo(int *x, int *y, int *val, int N, int degree) {
         for (int i = 0; i < N; i++) {
