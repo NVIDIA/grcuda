@@ -138,15 +138,15 @@ void Benchmark1::execute_cudagraph_manual(int iter) {
         dim3 bs(num_blocks);
 
         // square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
-        add_node(kernel_1_args, kernel_1_params, (void *)square, tb, bs, graph, &kernel_1, nodeDependencies);
+        add_node(kernel_1_args, kernel_1_params, (void *)square, bs, tb, graph, &kernel_1, nodeDependencies);
 
         // square<<<num_blocks, block_size_1d, 0, s2>>>(y, y1, N);
-        add_node(kernel_2_args, kernel_2_params, (void *)square, tb, bs, graph, &kernel_2, nodeDependencies);
+        add_node(kernel_2_args, kernel_2_params, (void *)square, bs, tb, graph, &kernel_2, nodeDependencies);
 
         // reduce<<<num_blocks, block_size_1d, 0, s1>>>(x1, y1, res, N);
         nodeDependencies.push_back(kernel_1);
         nodeDependencies.push_back(kernel_2);
-        add_node(kernel_3_args, kernel_3_params, (void *)reduce, tb, bs, graph, &kernel_3, nodeDependencies);
+        add_node(kernel_3_args, kernel_3_params, (void *)reduce, bs, tb, graph, &kernel_3, nodeDependencies);
 
         cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
     }

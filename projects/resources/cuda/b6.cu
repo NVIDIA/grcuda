@@ -334,7 +334,7 @@ void Benchmark6::execute_cudagraph_manual(int iter) {
         void* kernel_3_args[6] = {(void*)&z, (void*)&ridge_coeff, (void*)&r2, &N, &num_features, &num_classes};
         void* kernel_4_args[4] = {(void*)&r1, (void*)&nb_amax, &N, &num_classes};
         void* kernel_5_args[5] = {(void*)&r1, (void*)&nb_amax, (void*)&nb_l, &N, &num_classes};
-        void* kernel_6_args[5] = {(void*)&r2, (void*)&ridge_intercept, (void*)&nb_l, &N, &num_classes};
+        void* kernel_6_args[4] = {(void*)&r2, (void*)&ridge_intercept, &N, &num_classes};
         void* kernel_7_args[4] = {(void*)&r1, (void*)&nb_l, &N, &num_classes};
         void* kernel_8_args[3] = {(void*)&r1, &N, &num_classes};
         void* kernel_9_args[3] = {(void*)&r2, &N, &num_classes};
@@ -343,51 +343,41 @@ void Benchmark6::execute_cudagraph_manual(int iter) {
         dim3 tb(block_size_1d);
         dim3 bs(num_blocks);
 
-        add_node(kernel_1_args, kernel_1_params, (void*)rr_1, tb, bs, graph, &kernel_1, nodeDependencies);
-        add_node(kernel_2_args, kernel_2_params, (void*)nb_1, tb, bs, graph, &kernel_2, nodeDependencies);
+        add_node(kernel_1_args, kernel_1_params, (void*)rr_1, bs, tb, graph, &kernel_1, nodeDependencies);
+        add_node(kernel_2_args, kernel_2_params, (void*)nb_1, bs, tb, graph, &kernel_2, nodeDependencies);
 
+        nodeDependencies.clear();
         nodeDependencies.push_back(kernel_1);
-        add_node(kernel_3_args, kernel_3_params, (void*)rr_2, tb, bs, graph, &kernel_3, nodeDependencies);
+        add_node(kernel_3_args, kernel_3_params, (void*)rr_2, bs, tb, graph, &kernel_3, nodeDependencies);
 
         nodeDependencies.clear();
         nodeDependencies.push_back(kernel_2);
-        add_node(kernel_4_args, kernel_4_params, (void*)nb_2, tb, bs, graph, &kernel_4, nodeDependencies);
+        add_node(kernel_4_args, kernel_4_params, (void*)nb_2, bs, tb, graph, &kernel_4, nodeDependencies);
 
         nodeDependencies.clear();
         nodeDependencies.push_back(kernel_4);
-        add_node(kernel_5_args, kernel_5_params, (void*)nb_3, tb, bs, graph, &kernel_5, nodeDependencies);
+        add_node(kernel_5_args, kernel_5_params, (void*)nb_3, bs, tb, graph, &kernel_5, nodeDependencies);
 
-        // nodeDependencies.clear();
-        // nodeDependencies.push_back(kernel_3);
-        // add_node(kernel_6_args, kernel_6_params, (void*)rr_3, tb, bs, graph, &kernel_6, nodeDependencies);
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_3);
+        add_node(kernel_6_args, kernel_6_params, (void*)rr_3, bs, tb, graph, &kernel_6, nodeDependencies);
 
-        // nodeDependencies.clear();
-        // nodeDependencies.push_back(kernel_5);
-        // add_node(kernel_7_args, kernel_7_params, (void*)nb_4, tb, bs, graph, &kernel_7, nodeDependencies);
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_5);
+        add_node(kernel_7_args, kernel_7_params, (void*)nb_4, bs, tb, graph, &kernel_7, nodeDependencies);
 
-        // nodeDependencies.clear();
-        // nodeDependencies.push_back(kernel_7);
-        // add_node(kernel_8_args, kernel_8_params, (void*)softmax, tb, bs, graph, &kernel_8, nodeDependencies);
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_7);
+        add_node(kernel_8_args, kernel_8_params, (void*)softmax, bs, tb, graph, &kernel_8, nodeDependencies);
 
-        // nodeDependencies.clear();
-        // nodeDependencies.push_back(kernel_6);
-        // add_node(kernel_9_args, kernel_9_params, (void*)softmax, tb, bs, graph, &kernel_9, nodeDependencies);
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_6);
+        add_node(kernel_9_args, kernel_9_params, (void*)softmax, bs, tb, graph, &kernel_9, nodeDependencies);
 
-        // nodeDependencies.clear();
-        // nodeDependencies.push_back(kernel_8);
-        // nodeDependencies.push_back(kernel_9);
-        // add_node(kernel_10_args, kernel_10_params, (void*)argmax, tb, bs, graph, &kernel_10, nodeDependencies);
-
-        // rr_1<<<num_blocks, block_size_1d, 0, s1>>>(x, z, N, num_features);
-        // nb_1<<<num_blocks, block_size_1d, 0, s2>>>(x, nb_feat_log_prob, r1, N, num_features, num_classes);
-        // rr_2<<<num_blocks, block_size_1d, 0, s1>>>(z, ridge_coeff, r2, N, num_features, num_classes);
-        // nb_2<<<num_blocks, block_size_1d, 0, s2>>>(r1, nb_amax, N, num_classes);
-        // nb_3<<<num_blocks, block_size_1d, 0, s2>>>(r1, nb_amax, nb_l, N, num_classes);
-        // rr_3<<<num_blocks, block_size_1d, 0, s1>>>(r2, ridge_intercept, N, num_classes);
-        // nb_4<<<num_blocks, block_size_1d, 0, s2>>>(r1, nb_l, N, num_classes);
-        // softmax<<<num_blocks, block_size_1d, 0, s2>>>(r1, N, num_classes);
-        // softmax<<<num_blocks, block_size_1d, 0, s1>>>(r2, N, num_classes)
-        // argmax<<<num_blocks, block_size_1d, 0, s1>>>(r1, r2, r, N, num_classes);
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_8);
+        nodeDependencies.push_back(kernel_9);
+        add_node(kernel_10_args, kernel_10_params, (void*)argmax, bs, tb, graph, &kernel_10, nodeDependencies);
 
         cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
     }

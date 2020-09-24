@@ -142,7 +142,7 @@ void Benchmark5::execute_cudagraph_manual(int iter) {
             dim3 b_size(num_blocks);
 
             // bs<<<num_blocks, block_size_1d, 0, s[j]>>>(x[j], y[j], N, R, V, T, K);
-            add_node(kernel_args, kernel_params[j], (void *)bs, tb, b_size, graphs[0], &kernels[j], nodeDependencies);
+            add_node(kernel_args, kernel_params[j], (void *)bs, b_size, tb, graphs[0], &kernels[j], nodeDependencies);
         }
         cudaGraphInstantiate(&graphExec[0], graphs[0], NULL, NULL, 0);
     }
