@@ -325,7 +325,70 @@ void Benchmark10::execute_cudagraph(int iter) {
     err = cudaStreamSynchronize(s1);
 }
 
-void Benchmark10::execute_cudagraph_manual(int iter) {}
+void Benchmark10::execute_cudagraph_manual(int iter) {
+    if (iter == 0) {
+        cudaGraphCreate(&graph, 0);
+        int a = N / stride;
+        int b = N / stride / pooling_diameter;
+        void *kernel_1_args[9] = {(void *)&x1, (void *)&x, (void *)&kernel_1, &N, &N, &channels, &K, &kn1, &stride};
+        void *kernel_2_args[9] = {(void *)&y1, (void *)&y, (void *)&kernel_3, &N, &N, &channels, &K, &kn1, &stride};
+        void *kernel_3_args[7] = {(void *)&x11, (void *)&x1, &a, &a, &kn1, &pooling_diameter, &pooling_diameter};
+        void *kernel_4_args[7] = {(void *)&y11, (void *)&y1, &a, &a, &kn1, &pooling_diameter, &pooling_diameter};
+        void *kernel_5_args[9] = {(void *)&x2, (void *)&x11, (void *)&kernel_2, &b, &b, &kn1, &K, &kn2, &stride};
+        void *kernel_6_args[9] = {(void *)&y2, (void *)&y11, (void *)&kernel_4, &b, &b, &kn1, &K, &kn2, &stride};
+        void *kernel_7_args[4] = {(void *)&z, (void *)&x2, (void*)&y2, &x2_len};
+        void *kernel_8_args[4] = {(void *)&z, (void *)&dense_weights, (void*)&res, &x2_len};
+
+        dim3 block_size_2d_dim(block_size_2d, block_size_2d);
+        dim3 grid_size(num_blocks, num_blocks);
+        dim3 grid_size_2(num_blocks / 2, num_blocks / 2);
+        dim3 block_size_3d_dim(block_size_2d / 2, block_size_2d / 2, block_size_2d / 2);
+        dim3 grid_size_3(num_blocks / 2, num_blocks / 2, num_blocks / 2);
+        dim3 tb(block_size_1d);
+        dim3 bs(num_blocks);
+
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float), s1>>>(x1, x, kernel_1, N, N, channels, K, kn1, stride);
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float), s2>>>(y1, y, kernel_3, N, N, channels, K, kn1, stride);
+        // mean_pooling<<<grid_size_3, block_size_2d_dim, 0, s1>>>(x11, x1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
+        // mean_pooling<<<grid_size_3, block_size_3d_dim, 0, s2>>>(y11, y1, N / stride, N / stride, kn1, pooling_diameter, pooling_diameter);
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s1>>>(x2, x11, kernel_2, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+        // conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * kn2 * sizeof(float), s2>>>(y2, y11, kernel_4, N / stride / pooling_diameter, N / stride / pooling_diameter, kn1, K, kn2, stride);
+        // concat<<<num_blocks, block_size_1d, 0, s1>>>(z, x2, y2, x2_len);
+        // dot_product<<<num_blocks, block_size_1d, 0, s1>>>(z, dense_weights, res, x2_len);
+
+        add_node(kernel_1_args, kernel_1_params, (void *)conv2d, grid_size_2, block_size_2d_dim, graph, &k_1, nodeDependencies, K * K * kn1 * channels * sizeof(float));
+        add_node(kernel_2_args, kernel_2_params, (void *)conv2d, grid_size_2, block_size_2d_dim, graph, &k_2, nodeDependencies, K * K * kn1 * channels * sizeof(float));
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(k_1);
+        add_node(kernel_3_args, kernel_3_params, (void *)mean_pooling, grid_size_3, block_size_2d_dim, graph, &k_3, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(k_2);
+        add_node(kernel_4_args, kernel_4_params, (void *)mean_pooling, grid_size_3, block_size_2d_dim, graph, &k_4, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(k_3);
+        add_node(kernel_5_args, kernel_5_params, (void *)conv2d, grid_size_2, block_size_2d_dim, graph, &k_5, nodeDependencies, K * K * kn1 * kn2 * sizeof(float));
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(k_4);
+        add_node(kernel_6_args, kernel_6_params, (void *)conv2d, grid_size_2, block_size_2d_dim, graph, &k_6, nodeDependencies, K * K * kn1 * kn2 * sizeof(float));
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(k_5);
+        nodeDependencies.push_back(k_6);
+        add_node(kernel_7_args, kernel_7_params, (void *)concat, bs, tb, graph, &k_7, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(k_7);
+        add_node(kernel_8_args, kernel_8_params, (void *)dot_product, bs, tb, graph, &k_8, nodeDependencies);
+
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
 
 std::string Benchmark10::print_result(bool short_form) {
     return std::to_string(res[0]);

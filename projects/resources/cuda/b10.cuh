@@ -35,4 +35,15 @@ class Benchmark10 : public Benchmark {
     cudaStream_t s1, s2;
     cudaGraph_t graph;
     cudaGraphExec_t graphExec;
+
+    std::vector<cudaGraphNode_t> nodeDependencies;
+    cudaGraphNode_t k_1, k_2, k_3, k_4, k_5, k_6, k_7, k_8;
+    cudaKernelNodeParams kernel_1_params;
+    cudaKernelNodeParams kernel_2_params;
+    cudaKernelNodeParams kernel_3_params;
+    cudaKernelNodeParams kernel_4_params;
+    cudaKernelNodeParams kernel_5_params;
+    cudaKernelNodeParams kernel_6_params;
+    cudaKernelNodeParams kernel_7_params;
+    cudaKernelNodeParams kernel_8_params;
 };
