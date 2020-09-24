@@ -24,6 +24,20 @@ class Benchmark8 : public Benchmark {
     cudaGraph_t graph;
     cudaGraphExec_t graphExec;
 
+    std::vector<cudaGraphNode_t> nodeDependencies;
+    cudaGraphNode_t kernel_1, kernel_2, kernel_3, kernel_4, kernel_5, kernel_6, kernel_7, kernel_8, kernel_9, kernel_10, kernel_11;
+    cudaKernelNodeParams kernel_1_params;
+    cudaKernelNodeParams kernel_2_params;
+    cudaKernelNodeParams kernel_3_params;
+    cudaKernelNodeParams kernel_4_params;
+    cudaKernelNodeParams kernel_5_params;
+    cudaKernelNodeParams kernel_6_params;
+    cudaKernelNodeParams kernel_7_params;
+    cudaKernelNodeParams kernel_8_params;
+    cudaKernelNodeParams kernel_9_params;
+    cudaKernelNodeParams kernel_10_params;
+    cudaKernelNodeParams kernel_11_params;
+
     inline void gaussian_kernel(float *kernel, int diameter, float sigma) {
         int mean = diameter / 2;
         float sum_tmp = 0;

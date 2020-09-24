@@ -389,7 +389,73 @@ void Benchmark8::execute_cudagraph(int iter) {
     err = cudaStreamSynchronize(s1);
 }
 
-void Benchmark8::execute_cudagraph_manual(int iter) {}
+void Benchmark8::execute_cudagraph_manual(int iter) {
+    if (iter == 0) {
+        dim3 block_size_2d_dim(block_size_2d, block_size_2d);
+        dim3 grid_size(num_blocks, num_blocks);
+        int nb = num_blocks / 2;
+        dim3 grid_size_2(nb, nb);
+        dim3 tb(block_size_1d);
+        dim3 bs(num_blocks);
+        int N2 = N * N;
+        int a = 0.5;
+        cudaGraphCreate(&graph, 0);
+        void *kernel_1_args[6] = {(void *)&image, (void *)&blurred_small, &N, &N, (void *)&kernel_small, &kernel_small_diameter};
+        void *kernel_2_args[6] = {(void *)&image, (void *)&blurred_large, &N, &N, (void *)&kernel_large, &kernel_large_diameter};
+        void *kernel_3_args[6] = {(void *)&image, (void *)&blurred_unsharpen, &N, &N, (void *)&kernel_unsharpen, &kernel_unsharpen_diameter};
+        void *kernel_4_args[4] = {(void *)&blurred_small, (void *)&mask_small, &N, &N};
+        void *kernel_5_args[4] = {(void *)&blurred_large, (void *)&mask_large, &N, &N};
+        void *kernel_6_args[3] = {(void *)&mask_large, (void *)&maximum, &N2};
+        void *kernel_7_args[3] = {(void *)&mask_large, (void *)&minimum, &N2};
+        void *kernel_8_args[4] = {(void *)&mask_large, (void *)&minimum, (void *)&maximum, &N2};
+        void *kernel_9_args[5] = {(void *)&image, (void*)&blurred_unsharpen, (void*)&image_unsharpen, &a, &N2};
+        void *kernel_10_args[5] = {(void *)&image_unsharpen, (void *)&blurred_large, (void *)&mask_large, (void*)&image2, &N2};
+        void *kernel_11_args[5] = {(void *)&image2, (void *)&blurred_small, (void *)&mask_small, (void*)&image3, &N2};
+
+        add_node(kernel_1_args, kernel_1_params, (void *)gaussian_blur, grid_size_2, block_size_2d_dim, graph, &kernel_1, nodeDependencies, kernel_small_diameter * kernel_small_diameter * sizeof(float));
+        add_node(kernel_2_args, kernel_2_params, (void *)gaussian_blur, grid_size_2, block_size_2d_dim, graph, &kernel_2, nodeDependencies, kernel_large_diameter * kernel_large_diameter * sizeof(float));
+        add_node(kernel_3_args, kernel_3_params, (void *)gaussian_blur, grid_size_2, block_size_2d_dim, graph, &kernel_3, nodeDependencies, kernel_unsharpen_diameter * kernel_unsharpen_diameter * sizeof(float));
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_1);
+        add_node(kernel_4_args, kernel_4_params, (void *)sobel, grid_size_2, block_size_2d_dim, graph, &kernel_4, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_2);
+        add_node(kernel_5_args, kernel_5_params, (void *)sobel, grid_size_2, block_size_2d_dim, graph, &kernel_5, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_5);
+        add_node(kernel_6_args, kernel_6_params, (void *)maximum_kernel, bs, tb, graph, &kernel_6, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_5);
+        add_node(kernel_7_args, kernel_7_params, (void *)minimum_kernel, bs, tb, graph, &kernel_7, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_6);
+        nodeDependencies.push_back(kernel_7);
+        add_node(kernel_8_args, kernel_8_params, (void *)extend, bs, tb, graph, &kernel_8, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_3);
+        add_node(kernel_9_args, kernel_9_params, (void *)unsharpen, bs, tb, graph, &kernel_9, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_8);
+        nodeDependencies.push_back(kernel_9);
+        add_node(kernel_10_args, kernel_10_params, (void *)combine, bs, tb, graph, &kernel_10, nodeDependencies);
+
+        nodeDependencies.clear();
+        nodeDependencies.push_back(kernel_4);
+        nodeDependencies.push_back(kernel_10);
+        add_node(kernel_11_args, kernel_11_params, (void *)combine, bs, tb, graph, &kernel_11, nodeDependencies);
+
+        cudaGraphInstantiate(&graphExec, graph, NULL, NULL, 0);
+    }
+    cudaGraphLaunch(graphExec, s1);
+    err = cudaStreamSynchronize(s1);
+}
 
 std::string Benchmark8::print_result(bool short_form) {
     if (short_form) {
