@@ -47,6 +47,15 @@ bs(const double *x, double *y, int N, double R, double V, double T, double K) {
     }
 }
 
+void prefetch(double *x, double *y, cudaStream_t &s, int N) {
+    int pascalGpu = 0;
+    cudaDeviceGetAttribute(&pascalGpu, cudaDeviceAttr::cudaDevAttrConcurrentManagedAccess, 0);
+    if (pascalGpu) {
+        cudaMemPrefetchAsync(x, sizeof(double) * N, 0, s);
+        cudaMemPrefetchAsync(y, sizeof(double) * N, 0, s);
+    }
+}
+
 //////////////////////////////
 //////////////////////////////
 
@@ -119,6 +128,7 @@ void Benchmark5::execute_cudagraph(int iter) {
     if (iter == 0) {
         for (int j = 0; j < M; j++) {
             cudaStreamBeginCapture(s[j], cudaStreamCaptureModeGlobal);
+            prefetch(x[j], y[j], s[j], N);
             bs<<<num_blocks, block_size_1d, 0, s[j]>>>(x[j], y[j], N, R, V, T, K);
             cudaStreamEndCapture(s[j], &graphs[j]);
             cudaGraphInstantiate(&graphExec[j], graphs[j], NULL, NULL, 0);
@@ -154,6 +164,7 @@ void Benchmark5::execute_cudagraph_single(int iter) {
     if (iter == 0) {
         cudaStreamBeginCapture(s[0], cudaStreamCaptureModeGlobal);
         for (int j = 0; j < M; j++) {
+            prefetch(x[j], y[j], s[0], N);
             bs<<<num_blocks, block_size_1d, 0, s[0]>>>(x[j], y[j], N, R, V, T, K);
         }
         cudaStreamEndCapture(s[0], &graphs[0]);
