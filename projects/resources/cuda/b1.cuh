@@ -12,6 +12,7 @@ class Benchmark1 : public Benchmark {
     void execute_cudagraph(int iter);
     void execute_cudagraph_manual(int iter);
     void execute_cudagraph_single(int iter);
+    void prefetch(cudaStream_t &s1, cudaStream_t &s2);
     std::string print_result(bool short_form = false);
 
    private:

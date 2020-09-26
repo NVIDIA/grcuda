@@ -43,6 +43,17 @@ __global__ void reduce(const float *x, const float *y, float *z, int N) {
         atomicAdd(z, sum);                     // The first thread in the warp updates the output;
 }
 
+void Benchmark1::prefetch(cudaStream_t &s1, cudaStream_t &s2) {
+    int pascalGpu = 0;
+    cudaDeviceGetAttribute(&pascalGpu, cudaDeviceAttr::cudaDevAttrConcurrentManagedAccess, 0);
+    if (pascalGpu) {
+        cudaMemPrefetchAsync(x, sizeof(float) * N, 0, s1);
+        cudaMemPrefetchAsync(y, sizeof(float) * N, 0, s2);
+        cudaMemPrefetchAsync(x1, sizeof(float) * N, 0, s1);
+        cudaMemPrefetchAsync(y1, sizeof(float) * N, 0, s2);
+    }
+}
+
 //////////////////////////////
 //////////////////////////////
 
@@ -111,6 +122,8 @@ void Benchmark1::execute_cudagraph(int iter) {
         cudaEventRecord(ef, s1);
         cudaStreamWaitEvent(s2, ef, 0);
 
+        prefetch(s1, s2);
+
         square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
         square<<<num_blocks, block_size_1d, 0, s2>>>(y, y1, N);
         // Stream 1 waits stream 2;
@@ -157,6 +170,8 @@ void Benchmark1::execute_cudagraph_manual(int iter) {
 void Benchmark1::execute_cudagraph_single(int iter) {
     if (iter == 0) {
         cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
+
+        prefetch(s1, s1);
 
         square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
         square<<<num_blocks, block_size_1d, 0, s1>>>(y, y1, N);
