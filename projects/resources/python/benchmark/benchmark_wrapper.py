@@ -46,7 +46,7 @@ num_elem = {
 
 exec_policies = ["default", "sync"]
 
-cuda_exec_policies = ["cudagraph"] # ["default", "sync", "cudagraph"]
+cuda_exec_policies = ["cudagraphmanual", "cudagraphsingle"] # ["default", "sync", "cudagraph"]
 
 new_stream_policies = ["always-new"]
 
@@ -74,7 +74,7 @@ block_dim_dict = {
 #     "b6": 64,
 #     "b7": DEFAULT_NUM_BLOCKS,
 #     "b8": 32,
-#     "b10": 32,
+#     "b10": DEFAULT_NUM_BLOCKS,
 # }
 
 ##############################

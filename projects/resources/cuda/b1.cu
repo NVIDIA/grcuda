@@ -122,7 +122,7 @@ void Benchmark1::execute_cudagraph(int iter) {
         cudaEventRecord(ef, s1);
         cudaStreamWaitEvent(s2, ef, 0);
 
-        prefetch(s1, s2);
+        // prefetch(s1, s2);
 
         square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
         square<<<num_blocks, block_size_1d, 0, s2>>>(y, y1, N);
@@ -171,7 +171,7 @@ void Benchmark1::execute_cudagraph_single(int iter) {
     if (iter == 0) {
         cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
 
-        prefetch(s1, s1);
+        // prefetch(s1, s1);
 
         square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
         square<<<num_blocks, block_size_1d, 0, s1>>>(y, y1, N);

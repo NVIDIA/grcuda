@@ -207,10 +207,10 @@ git clone https://github.com/NVIDIA/grcuda.git (this can be replaced with a fork
 ```
 
 2. **Download the right JDK**
-* [Here](https://github.com/graalvm/openjdk8-jvmci-builder/releases/tag/jvmci-20.0-b02) you can find releases for GraalVM 20.0, but other versions are available on the same repository
+* [Here](https://github.com/graalvm/graal-jvmci-8/releases) you can find releases for GraalVM 20.2 or newer, but other versions are available on the same repository
 
 3. **Download the right build for GraalVM**
-* [Here](https://github.com/graalvm/graalvm-ce-builds/releases) you can find releases for GraalVM 20.0, and more recent versions once they will become available
+* [Here](https://github.com/graalvm/graalvm-ce-builds/releases) you can find releases for GraalVM 20.2, and more recent versions once they will become available
 
 4. **Setup your CUDA environment**
 * Install CUDA and Nvidia drivers, for example following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=CentOS&target_version=7&target_type=rpmnetwork)
@@ -271,14 +271,19 @@ graalpython -m ginstall install numpy;
 
 11. **Execute performance tests using Graalpython**
 
-```
-cd projects/resources/python/benchmark
-graalpython --jvm --polyglot --WithThread benchmark_main.py -d -i 5 -n 1000
-```
-
 Run a specific benchmark with custom settings
 ```
-graalpython --jvm --polyglot --WithThread --grcuda.RetrieveNewStreamPolicy=fifo --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 100 --no_cpu_validation --reinit false --realloc false -b b7
+graalpython --jvm --polyglot --grcuda.RetrieveNewStreamPolicy=fifo --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 100 --no_cpu_validation --reinit false --realloc false -b b7
+```
+
+Run all benchmarks
+```
+graalpython --jvm --polyglot benchmark_wrapper.py -d -i 30 
+```
+
+Run the CUDA version of all benchmarks
+```
+graalpython --jvm --polyglor benchmark_wrapper.py -d -i 30 -c
 ```
 
 Profile a specific benchmark using `nvprof`. Running `nvprof` as `sudo` might not be required, see [here](https://developer.nvidia.com/nvidia-development-tools-solutions-ERR_NVGPUCTRPERM-permission-issue-performance-counters).
