@@ -837,7 +837,7 @@ public final class CUDARuntime {
                 return NoneValue.get();
             }
         },
-        CUDA_MEMPREFETCHASYNC("cudaMemPrefetchAsync ", "(pointer, uint64, sint32, pointer): sint32") {
+        CUDA_MEMPREFETCHASYNC("cudaMemPrefetchAsync", "(pointer, uint64, sint32, pointer): sint32") {
             @Override
             @TruffleBoundary
             public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
