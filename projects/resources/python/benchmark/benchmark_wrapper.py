@@ -11,7 +11,7 @@ from java.lang import System
 ##############################
 
 DEFAULT_NUM_BLOCKS = 32  # GTX 960, 8 SM
-# DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
+DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
 
 # Benchmark settings;
 benchmarks = [
@@ -35,14 +35,14 @@ num_elem = {
 }
 
 # P100
-# num_elem = {
-#     "b1": [120_000_000, 200_000_000, 500_000_000, 600_000_000, 700_000_000],
-#     "b5": [12_000_000, 20_000_000, 50_000_000, 60_000_000, 70_000_000],
-#     "b6": [1_200_000, 2_000_000, 4_000_000, 5_000_000, 6_000_000],
-#     "b7": [20_000_000, 40_000_000, 60_000_000, 100_000_000, 140_000_000],
-#     "b8": [4800, 8000, 10000, 12000, 16000],
-#     "b10": [7000, 10000, 12000, 14000, 16000],
-# }
+num_elem = {
+     "b1": [120_000_000, 200_000_000, 500_000_000, 600_000_000, 700_000_000],
+     "b5": [12_000_000, 20_000_000, 50_000_000, 60_000_000, 70_000_000],
+     "b6": [1_200_000, 2_000_000, 4_000_000, 5_000_000, 6_000_000],
+     "b7": [20_000_000, 40_000_000, 60_000_000, 100_000_000, 140_000_000],
+     "b8": [4800, 8000, 10000, 12000, 16000],
+     "b10": [7000, 10000, 12000, 14000, 16000],
+}
 
 exec_policies = ["default", "sync"]
 
@@ -53,6 +53,8 @@ new_stream_policies = ["always-new"]
 parent_stream_policies = ["disjoint"]
 
 dependency_policies = ["with-const"]
+
+prefetch = [True, False]
 
 block_sizes_1d = [32, 128, 256, 1024]
 block_sizes_2d = [8, 8, 8, 8]
@@ -123,14 +125,14 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 ##############################
 ##############################
 
-GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=24G --jvm --polyglot --WithThread " \
-                  "--grcuda.RetrieveNewStreamPolicy={} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
+GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=140G --jvm --polyglot --WithThread " \
+                  "--grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
 
 
 def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stream_policy,
-                      parent_stream_policy, dependency_policy, num_iter, debug, time_phases, output_date=None):
+                      parent_stream_policy, dependency_policy, num_iter, debug, time_phases, prefetch=False, output_date=None):
     if debug:
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
@@ -142,6 +144,7 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
                                     f"new stream policy={new_stream_policy}, "
                                     f"parent stream policy={parent_stream_policy}, "
                                     f"dependency policy={dependency_policy}, "
+                                    f"prefetch={prefetch}, "
                                     f"time_phases={time_phases}")
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message("")
@@ -150,7 +153,7 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
     if not output_date:
         output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     file_name = f"{output_date}_{benchmark}_{exec_policy}_{new_stream_policy}_{parent_stream_policy}_" \
-                f"{dependency_policy}_{size}_{num_iter}.json"
+                f"{dependency_policy}_{prefetch}_{size}_{num_iter}.json"
     # Create a folder if it doesn't exist;
     output_folder_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, output_date + "_grcuda")
     if not os.path.exists(output_folder_path):
@@ -161,7 +164,7 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
     b1d_size = " ".join([str(b['block_size_1d']) for b in block_sizes])
     b2d_size = " ".join([str(b['block_size_2d']) for b in block_sizes])
 
-    benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, exec_policy, dependency_policy, parent_stream_policy,
+    benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, "--grcuda.inputPrefetch" if prefetch else "", exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, benchmark, b1d_size, b2d_size,
                                            "-d" if debug else "",  "-p" if time_phases else "", output_path)
     start = System.nanoTime()
@@ -212,10 +215,10 @@ if __name__ == "__main__":
         tot = 0
         if use_cuda:
             for b in benchmarks:
-                tot += len(num_elem[b]) * len(block_sizes) * len(exec_policies) * len(new_stream_policies) * len(parent_stream_policies) * len(dependency_policies)
+                tot += len(num_elem[b]) * len(block_sizes) * len(cuda_exec_policies) * len(new_stream_policies) * len(parent_stream_policies) * len(dependency_policies)
         else:
             for b in benchmarks:
-                tot += len(num_elem[b]) * len(exec_policies)
+                tot += len(num_elem[b]) * len(exec_policies) * len(prefetch)
         return tot
 
     output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -238,7 +241,8 @@ if __name__ == "__main__":
                     for new_stream_policy in new_stream_policies:
                         for parent_stream_policy in parent_stream_policies:
                             for dependency_policy in dependency_policies:
-                                execute_grcuda_benchmark(b, n, block_sizes, exec_policy, new_stream_policy,
+                                for p in prefetch:
+                                    execute_grcuda_benchmark(b, n, block_sizes, exec_policy, new_stream_policy,
                                                          parent_stream_policy, dependency_policy, num_iter,
-                                                         debug, time_phases, output_date=output_date)
-                                i += 1
+                                                         debug, time_phases, p, output_date=output_date)
+                                    i += 1
