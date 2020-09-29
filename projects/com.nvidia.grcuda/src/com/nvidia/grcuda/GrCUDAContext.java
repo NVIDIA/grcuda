@@ -79,6 +79,7 @@ public final class GrCUDAContext {
     private final RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy;
     private final RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum;
     private final boolean forceStreamAttach;
+    private final boolean inputPrefetch;
 
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
@@ -88,6 +89,9 @@ public final class GrCUDAContext {
 
         // Retrieve if we should force array stream attachment;
         forceStreamAttach = env.getOptions().get(GrCUDAOptions.ForceStreamAttach);
+
+        // Retrieve if we should prefetch input data to GPU;
+        inputPrefetch = env.getOptions().get(GrCUDAOptions.inputPrefetch);
 
         // Retrieve the stream retrieval policy;
         retrieveNewStreamPolicy = parseRetrieveStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveNewStreamPolicy));
@@ -105,13 +109,13 @@ public final class GrCUDAContext {
         System.out.println("-- using " + executionPolicy.getName() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
-                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy);
+                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch);
                 break;
             case DEFAULT:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy, inputPrefetch);
                 break;
             default:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch);
         }
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);

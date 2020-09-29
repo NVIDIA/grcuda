@@ -55,7 +55,7 @@ public class ComplexExecutionDAGTest {
         return crossProduct(Arrays.asList(new Object[][]{
                 {RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveNewStreamPolicyEnum.FIFO},
                 {RetrieveParentStreamPolicyEnum.DISJOINT, RetrieveParentStreamPolicyEnum.DEFAULT},
-                {DependencyPolicyEnum.WITH_CONST, DependencyPolicyEnum.DEFAULT},
+                {DependencyPolicyEnum.WITH_CONST, DependencyPolicyEnum.DEFAULT}
         }));
     }
 

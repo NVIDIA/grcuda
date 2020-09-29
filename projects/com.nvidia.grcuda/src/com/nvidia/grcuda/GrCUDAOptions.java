@@ -68,4 +68,7 @@ public final class GrCUDAOptions {
 
     @Option(category = OptionCategory.USER, help = "Force the use of array stream attaching even when not required (e.g. post-Pascal GPUs)", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> ForceStreamAttach = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.USER, help = "Always prefetch input arrays to GPU if possible (e.g. post-Pascal GPUs)", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> inputPrefetch = new OptionKey<>(false);
 }

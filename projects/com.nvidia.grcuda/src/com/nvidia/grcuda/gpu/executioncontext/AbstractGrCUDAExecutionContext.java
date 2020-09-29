@@ -10,6 +10,9 @@ import com.nvidia.grcuda.gpu.computation.dependency.DefaultDependencyComputation
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputationBuilder;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.gpu.computation.dependency.WithConstDependencyComputationBuilder;
+import com.nvidia.grcuda.gpu.computation.prefetch.AbstractArrayPrefetcher;
+import com.nvidia.grcuda.gpu.computation.prefetch.DefaultArrayPrefetcher;
+import com.nvidia.grcuda.gpu.computation.prefetch.NoneArrayPrefetcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -48,12 +51,22 @@ public abstract class AbstractGrCUDAExecutionContext {
      */
     private final DependencyComputationBuilder dependencyBuilder;
 
+    /**
+     * Reference to the prefetching strategy to use in this execution context;
+     */
+    protected final AbstractArrayPrefetcher arrayPrefetcher;
+
     public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
-        this(new CUDARuntime(context, env), dependencyPolicy);
+        this(new CUDARuntime(context, env), dependencyPolicy, false);
     }
 
-    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy) {
+    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+        this(new CUDARuntime(context, env), dependencyPolicy, inputPrefetch);
+    }
+
+    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
         this.cudaRuntime = cudaRuntime;
+        // Compute the dependency policy to use;
         switch (dependencyPolicy) {
             case WITH_CONST:
                 this.dependencyBuilder = new WithConstDependencyComputationBuilder();
@@ -63,6 +76,12 @@ public abstract class AbstractGrCUDAExecutionContext {
                 break;
             default:
                 this.dependencyBuilder = new DefaultDependencyComputationBuilder();
+        }
+        // Compute the prefetcher to use;
+        if (inputPrefetch && this.cudaRuntime.isArchitectureIsPascalOrNewer()) {
+            arrayPrefetcher = new DefaultArrayPrefetcher(this.cudaRuntime);
+        } else {
+            arrayPrefetcher = new NoneArrayPrefetcher(this.cudaRuntime);
         }
         this.dag = new ExecutionDAG(dependencyPolicy);
     }

@@ -12,12 +12,16 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  */
 public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
-    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
-        super(context, env, dependencyPolicy);
+    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+        super(context, env, dependencyPolicy, inputPrefetch);
     }
 
     public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy);
+        super(cudaRuntime, dependencyPolicy, false);
+    }
+
+    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+        super(cudaRuntime, dependencyPolicy, inputPrefetch);
     }
 
     /**
@@ -31,6 +35,9 @@ public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
         // Book-keeping;
         computation.setComputationStarted();
         computation.updateIsComputationArrayAccess();
+
+        // Prefetching;
+        arrayPrefetcher.prefetchToGpu(computation);
 
         // Start the computation immediately;
         Object result = computation.execute();

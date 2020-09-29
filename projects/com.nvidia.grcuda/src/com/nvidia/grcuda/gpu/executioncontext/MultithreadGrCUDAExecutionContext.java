@@ -49,7 +49,7 @@ public class MultithreadGrCUDAExecutionContext extends AbstractGrCUDAExecutionCo
 
     public MultithreadGrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager,
                                              GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy);
+        super(cudaRuntime, dependencyPolicy, false);
         this.threadManager = threadManager;
         this.streamManager = streamManager;
     }
