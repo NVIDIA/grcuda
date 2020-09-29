@@ -184,7 +184,7 @@ class Benchmark10(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = 16 # 32
+        self.num_blocks_per_processor = 16 # DEFAULT_NUM_BLOCKS
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
