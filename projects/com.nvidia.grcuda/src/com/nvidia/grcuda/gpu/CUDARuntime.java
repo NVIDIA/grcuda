@@ -114,6 +114,11 @@ public final class CUDARuntime {
      */
     private final ArrayStreamArchitecturePolicy arrayStreamArchitecturePolicy;
 
+    /**
+     * True if the GPU architecture is Pascal or newer;
+     */
+    private final boolean architectureIsPascalOrNewer;
+
     public CUDARuntime(GrCUDAContext context, Env env) {
         this.context = context;
         try {
@@ -134,9 +139,9 @@ public final class CUDARuntime {
         context.addDisposable(this::shutdown);
 
         // Check if the GPU available in the system has Compute Capability >= 6.0 (Pascal architecture)
-        int computeCapabilityMajor = cudaDeviceGetAttribute(CUDADeviceAttribute.COMPUTE_CAPABILITY_MAJOR, 0);
+        architectureIsPascalOrNewer = cudaDeviceGetAttribute(CUDADeviceAttribute.COMPUTE_CAPABILITY_MAJOR, 0) >= 6;
         // Use pre-Pascal stream attachment policy if the CC is < 6 or if the attachment is forced by options;
-        this.arrayStreamArchitecturePolicy = (computeCapabilityMajor < 6 || context.isForceStreamAttach()) ? new PrePascalArrayStreamAssociation() : new PostPascalArrayStreamAssociation();
+        this.arrayStreamArchitecturePolicy = (!architectureIsPascalOrNewer || context.isForceStreamAttach()) ? new PrePascalArrayStreamAssociation() : new PostPascalArrayStreamAssociation();
     }
 
     // using this slow/uncached instance since all calls are non-critical
@@ -146,6 +151,10 @@ public final class CUDARuntime {
 
     public GrCUDAContext getContext() {
         return context;
+    }
+
+    public boolean isArchitectureIsPascalOrNewer() {
+        return architectureIsPascalOrNewer;
     }
 
     interface CallSupport {
@@ -413,6 +422,17 @@ public final class CUDARuntime {
     public void cudaStreamAttachMem(CUDAStream stream, AbstractArray array) {
         cudaStreamAttachMemAsync(stream, array);
         cudaStreamSynchronize(stream);
+    }
+
+    @TruffleBoundary
+    public void cudaMemPrefetchAsync(AbstractArray array, CUDAStream stream) {
+        try {
+            Object callable = CUDARuntimeFunction.CUDA_MEMPREFETCHASYNC.getSymbol(this);
+            Object result = INTEROP.execute(callable, array.getPointer(), array.getSizeBytes(), 0, stream.getRawPointer());
+            checkCUDAReturnCode(result, "cudaMemPrefetchAsync");
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
     }
 
     @TruffleBoundary
@@ -814,6 +834,50 @@ public final class CUDARuntime {
 
                 // Always set "size" to 0 to cover the entire array;
                 callSymbol(cudaRuntime, streamAddr, arrayAddr, 0, flag);
+                return NoneValue.get();
+            }
+        },
+        CUDA_MEMPREFETCHASYNC("cudaMemPrefetchAsync ", "(pointer, uint64, sint32, pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+
+                Object streamObj;
+                Object arrayObj;
+                long size;
+                int destinationDevice;
+
+                if (args.length == 3) {
+                    arrayObj = args[0];
+                    streamObj = DefaultStream.get();
+                } else if (args.length == 4) {
+                    arrayObj = args[0];
+                    streamObj = args[3];
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw ArityException.create(4, args.length);
+                }
+
+                if (args[1] instanceof Long) {
+                    size = ((Long) args[1]);
+                } else {
+                    throw new GrCUDAException("expected Long object for array size");
+                }
+
+                if (args[2] instanceof Integer) {
+                    destinationDevice = ((Integer) args[2]);
+                } else {
+                    throw new GrCUDAException("expected Integer object for destination device");
+                }
+
+                // Extract pointers;
+                long streamAddr;
+                long arrayAddr;
+                streamAddr = extractStreamPointer(streamObj);
+                arrayAddr = extractArrayPointer(arrayObj);
+
+                // Always set "size" to 0 to cover the entire array;
+                callSymbol(cudaRuntime, arrayAddr, size, destinationDevice, streamAddr);
                 return NoneValue.get();
             }
         },

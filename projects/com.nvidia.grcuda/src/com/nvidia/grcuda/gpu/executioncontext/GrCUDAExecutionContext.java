@@ -21,16 +21,21 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
      */
     private final GrCUDAStreamManager streamManager;
 
-    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
-        this(new CUDARuntime(context, env), new GrCUDAThreadManager(context), dependencyPolicy);
+    public GrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+        this(new CUDARuntime(context, env), new GrCUDAThreadManager(context), dependencyPolicy, inputPrefetch);
     }
 
-    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, DependencyPolicyEnum dependencyPolicy) {
-        this(cudaRuntime, threadManager, new GrCUDAStreamManager(cudaRuntime), dependencyPolicy);
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+        this(cudaRuntime, threadManager, new GrCUDAStreamManager(cudaRuntime), dependencyPolicy, inputPrefetch);
     }
 
     public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy);
+        super(cudaRuntime, dependencyPolicy, false);
+        this.streamManager = streamManager;
+    }
+
+    public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+        super(cudaRuntime, dependencyPolicy, inputPrefetch);
         this.streamManager = streamManager;
     }
 
@@ -46,6 +51,9 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
         // Compute the stream where the computation will be done, if the computation can be performed asynchronously;
         streamManager.assignStream(vertex);
+
+        // Prefetching;
+        arrayPrefetcher.prefetchToGpu(vertex);
 
         // Start the computation;
         Object result = executeComputationSync(vertex);
