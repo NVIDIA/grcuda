@@ -82,10 +82,10 @@ block_dim_dict = {
 ##############################
 ##############################
 
-CUDA_CMD = "./b -k {} -p {} -n {} -b {} -c {} -t {} -g {} | tee {}"
+CUDA_CMD = "./b -k {} -p {} -n {} -b {} -c {} -t {} -g {} {} {} | tee {}"
 
 
-def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, debug, num_blocks=DEFAULT_NUM_BLOCKS, output_date=None):
+def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, debug, prefetch=False, num_blocks=DEFAULT_NUM_BLOCKS, output_date=None):
     if debug:
         BenchmarkResult.log_message("")
         BenchmarkResult.log_message("")
@@ -93,6 +93,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
         BenchmarkResult.log_message(f"Benchmark {i + 1}/{tot_benchmarks}")
         BenchmarkResult.log_message(f"benchmark={b}, size={n},"
                                     f" block size={block_size}, "
+                                    f" prefetch={prefetch}, "
                                     f" exec policy={exec_policy}")
         BenchmarkResult.log_message("#" * 30)
         BenchmarkResult.log_message("")
@@ -100,7 +101,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 
     if not output_date:
         output_date = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    file_name = f"cuda_{output_date}_{benchmark}_{exec_policy}_{size}_{block_size['block_size_1d']}_{block_size['block_size_2d']}_{num_iter}_{num_blocks}.csv"
+    file_name = f"cuda_{output_date}_{benchmark}_{exec_policy}_{size}_{block_size['block_size_1d']}_{block_size['block_size_2d']}_{prefetch}_{num_iter}_{num_blocks}.csv"
     # Create a folder if it doesn't exist;
     output_folder_path = os.path.join(BenchmarkResult.DEFAULT_RES_FOLDER, output_date + "_cuda")
     if not os.path.exists(output_folder_path):
@@ -110,7 +111,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
     output_path = os.path.join(output_folder_path, file_name)
 
     benchmark_cmd = CUDA_CMD.format(benchmark, exec_policy, size, block_size["block_size_1d"],
-                                    block_size["block_size_2d"], num_iter, num_blocks, output_path)
+                                    block_size["block_size_2d"], num_iter, num_blocks, "-r" if prefetch else "", "-a" if not prefetch else "", output_path)
     start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
@@ -215,7 +216,7 @@ if __name__ == "__main__":
         tot = 0
         if use_cuda:
             for b in benchmarks:
-                tot += len(num_elem[b]) * len(block_sizes) * len(cuda_exec_policies) * len(new_stream_policies) * len(parent_stream_policies) * len(dependency_policies)
+                tot += len(num_elem[b]) * len(block_sizes) * len(cuda_exec_policies) * len(new_stream_policies) * len(parent_stream_policies) * len(dependency_policies) * len(prefetch)
         else:
             for b in benchmarks:
                 tot += len(num_elem[b]) * len(exec_policies) * len(prefetch)
@@ -232,9 +233,10 @@ if __name__ == "__main__":
                 # CUDA Benchmarks;
                 for exec_policy in cuda_exec_policies:
                     for block_size in block_sizes:
-                        nb = num_blocks if num_blocks else block_dim_dict[b]
-                        execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, num_blocks=nb, output_date=output_date)
-                        i += 1
+                        for p in prefetch:
+                            nb = num_blocks if num_blocks else block_dim_dict[b]
+                            execute_cuda_benchmark(b, n, block_size, exec_policy, num_iter, debug, num_blocks=nb, prefetch=p, output_date=output_date)
+                            i += 1
             # GrCUDA Benchmarks;
             else:
                 for exec_policy in exec_policies:
