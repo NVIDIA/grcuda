@@ -242,13 +242,14 @@ void Benchmark7::reset() {
 
 void Benchmark7::execute_sync(int iter) {
     for (int iter = 0; iter < iterations; iter++) {
-        // cudaMemPrefetchAsync(auth1, N * sizeof(float), 0);
-        // cudaMemPrefetchAsync(auth2, N * sizeof(float), 0);
-        // cudaMemPrefetchAsync(hub1, N * sizeof(float), 0);
-        // cudaMemPrefetchAsync(hub2, N * sizeof(float), 0);
-        // cudaMemPrefetchAsync(auth_norm, sizeof(float), 0);
-        // cudaMemPrefetchAsync(hub_norm, sizeof(float), 0);
-        // cudaDeviceSynchronize();
+        if (pascalGpu && do_prefetch) {
+            cudaMemPrefetchAsync(auth1, N * sizeof(float), 0);
+            cudaMemPrefetchAsync(auth2, N * sizeof(float), 0);
+            cudaMemPrefetchAsync(hub1, N * sizeof(float), 0);
+            cudaMemPrefetchAsync(hub2, N * sizeof(float), 0);
+            cudaMemPrefetchAsync(auth_norm, sizeof(float), 0);
+            cudaMemPrefetchAsync(hub_norm, sizeof(float), 0);
+        }
 
         int nb = ceil(N / ((float)block_size_1d));
 
@@ -282,25 +283,29 @@ void Benchmark7::execute_sync(int iter) {
 }
 
 void Benchmark7::execute_async(int iter) {
-    for (int iter = 0; iter < iterations; iter++) {
-        // cudaMemPrefetchAsync(auth1, N * sizeof(float), 0, s2);
-        // cudaMemPrefetchAsync(auth2, N * sizeof(float), 0, s1);
-        // cudaMemPrefetchAsync(hub1, N * sizeof(float), 0, s1);
-        // cudaMemPrefetchAsync(hub2, N * sizeof(float), 0, s2);
-        // cudaMemPrefetchAsync(auth_norm, sizeof(float), 0, s1);
-        // cudaMemPrefetchAsync(hub_norm, sizeof(float), 0, s2);
-
+    if (!pascalGpu || stream_attach) {
         cudaStreamAttachMemAsync(s1, ptr2, 0);
         cudaStreamAttachMemAsync(s1, idx2, 0);
         cudaStreamAttachMemAsync(s1, val2, 0);
-        cudaStreamAttachMemAsync(s1, hub1, 0);
-        cudaStreamAttachMemAsync(s1, auth2, 0);
-
         cudaStreamAttachMemAsync(s2, ptr, 0);
         cudaStreamAttachMemAsync(s2, idx, 0);
         cudaStreamAttachMemAsync(s2, val, 0);
-        cudaStreamAttachMemAsync(s2, auth1, 0);
-        cudaStreamAttachMemAsync(s2, hub2, 0);
+    }
+    for (int iter = 0; iter < iterations; iter++) {
+        if (!pascalGpu || stream_attach) {
+            cudaStreamAttachMemAsync(s1, hub1, 0);
+            cudaStreamAttachMemAsync(s1, auth2, 0);
+            cudaStreamAttachMemAsync(s2, auth1, 0);
+            cudaStreamAttachMemAsync(s2, hub2, 0);
+        }
+        if (pascalGpu && do_prefetch) {
+            cudaMemPrefetchAsync(auth1, N * sizeof(float), 0, s2);
+            cudaMemPrefetchAsync(auth2, N * sizeof(float), 0, s1);
+            cudaMemPrefetchAsync(hub1, N * sizeof(float), 0, s1);
+            cudaMemPrefetchAsync(hub2, N * sizeof(float), 0, s2);
+            cudaMemPrefetchAsync(auth_norm, sizeof(float), 0, s1);
+            cudaMemPrefetchAsync(hub_norm, sizeof(float), 0, s2);
+        }
 
         cudaEvent_t e1, e2;
         cudaEventCreate(&e1);
@@ -501,7 +506,6 @@ void Benchmark7::execute_cudagraph_single(int iter) {
         cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
 
         for (int i = 0; i < iterations; i++) {
-           
             int nb = ceil(N / ((float)block_size_1d));
 
             // spmv<<<nb, block_size_1d, 0, s1>>>(ptr2, idx2, val2, hub1, auth2, N, nnz);
@@ -512,13 +516,12 @@ void Benchmark7::execute_cudagraph_single(int iter) {
 
             sum<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth_norm, N);
             sum<<<num_blocks, block_size_1d, 0, s1>>>(hub2, hub_norm, N);
-          
+
             divide<<<num_blocks, block_size_1d, 0, s1>>>(auth2, auth1, auth_norm, N);
-          
+
             divide<<<num_blocks, block_size_1d, 0, s1>>>(hub2, hub1, hub_norm, N);
 
             reset_kernel<<<1, 1, 0, s1>>>(auth_norm, hub_norm, rowCounter1, rowCounter2);
-
         }
 
         checkCudaErrors(cudaStreamEndCapture(s1, &graph));
@@ -527,7 +530,6 @@ void Benchmark7::execute_cudagraph_single(int iter) {
     checkCudaErrors(cudaGraphLaunch(graphExec, s1));
     err = cudaStreamSynchronize(s1);
 }
-
 
 std::string Benchmark7::print_result(bool short_form) {
     if (short_form) {

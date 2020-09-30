@@ -197,6 +197,12 @@ void Benchmark6::reset() {
 }
 
 void Benchmark6::execute_sync(int iter) {
+    if (do_prefetch && pascalGpu) {
+        cudaMemPrefetchAsync(r1, sizeof(float) * N * num_classes, 0, 0);
+        cudaMemPrefetchAsync(r2, sizeof(float) * N * num_classes, 0, 0);
+        cudaMemPrefetchAsync(r, sizeof(int) * N, 0, 0);
+    }
+
     rr_1<<<num_blocks, block_size_1d>>>(x, z, N, num_features);
     // dim3 num_blocks_2d(8, 8);
     // dim3 block_size_1d_2d(1, 32);
@@ -238,16 +244,23 @@ void Benchmark6::execute_sync(int iter) {
 }
 
 void Benchmark6::execute_async(int iter) {
-    cudaStreamAttachMemAsync(s1, z, 0);
-    // cudaStreamAttachMemAsync(s1, r1_mean, 0);
-    // cudaStreamAttachMemAsync(s1, r1_std, 0);
-    cudaStreamAttachMemAsync(s2, nb_feat_log_prob, 0);
-    cudaStreamAttachMemAsync(s2, r1, 0);
-    cudaStreamAttachMemAsync(s1, ridge_coeff, 0);
-    cudaStreamAttachMemAsync(s1, r2, 0);
-    cudaStreamAttachMemAsync(s2, nb_amax, 0);
-    cudaStreamAttachMemAsync(s2, nb_l, 0);
-    cudaStreamAttachMemAsync(s1, ridge_intercept, 0);
+    if (!pascalGpu || stream_attach) {
+        cudaStreamAttachMemAsync(s1, z, 0);
+        // cudaStreamAttachMemAsync(s1, r1_mean, 0);
+        // cudaStreamAttachMemAsync(s1, r1_std, 0);
+        cudaStreamAttachMemAsync(s2, nb_feat_log_prob, 0);
+        cudaStreamAttachMemAsync(s2, r1, 0);
+        cudaStreamAttachMemAsync(s1, ridge_coeff, 0);
+        cudaStreamAttachMemAsync(s1, r2, 0);
+        cudaStreamAttachMemAsync(s2, nb_amax, 0);
+        cudaStreamAttachMemAsync(s2, nb_l, 0);
+        cudaStreamAttachMemAsync(s1, ridge_intercept, 0);
+    }
+    if (do_prefetch && pascalGpu) {
+        cudaMemPrefetchAsync(r1, sizeof(float) * N * num_classes, 0, s2);
+        cudaMemPrefetchAsync(r2, sizeof(float) * N * num_classes, 0, s1);
+        cudaMemPrefetchAsync(r, sizeof(int) * N, 0, s1);
+    }
 
     rr_1<<<num_blocks, block_size_1d, 0, s1>>>(x, z, N, num_features);
     // dim3 num_blocks_2d(8, 8);
@@ -387,7 +400,6 @@ void Benchmark6::execute_cudagraph_manual(int iter) {
 
 void Benchmark6::execute_cudagraph_single(int iter) {
     if (iter == 0) {
-      
         cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
 
         rr_1<<<num_blocks, block_size_1d, 0, s1>>>(x, z, N, num_features);

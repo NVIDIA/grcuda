@@ -199,6 +199,11 @@ void Benchmark10::execute_sync(int iter) {
     dim3 block_size_3d_dim(block_size_2d / 2, block_size_2d / 2, block_size_2d / 2);
     dim3 grid_size_3(num_blocks / 2, num_blocks / 2, num_blocks / 2);
 
+    if (do_prefetch && pascalGpu) {
+        cudaMemPrefetchAsync(x, sizeof(float) * x_len, 0, 0);
+        cudaMemPrefetchAsync(y, sizeof(float) * x_len, 0, 0);
+    }
+
     conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float)>>>(x1, x, kernel_1, N, N, channels, K, kn1, stride);
     cudaDeviceSynchronize();
     conv2d<<<grid_size_2, block_size_2d_dim, K * K * kn1 * channels * sizeof(float)>>>(y1, y, kernel_3, N, N, channels, K, kn1, stride);
@@ -232,20 +237,25 @@ void Benchmark10::execute_sync(int iter) {
 }
 
 void Benchmark10::execute_async(int iter) {
-    cudaStreamAttachMemAsync(s1, x, sizeof(float) * x_len);
-    cudaStreamAttachMemAsync(s1, x1, 0);
-    cudaStreamAttachMemAsync(s1, x2, 0);
-    // cudaStreamAttachMemAsync(s1, x3, 0);
-    cudaStreamAttachMemAsync(s1, kernel_1, 0);
-    cudaStreamAttachMemAsync(s1, kernel_2, 0);
+    if (!pascalGpu || stream_attach) {
+        cudaStreamAttachMemAsync(s1, x, sizeof(float) * x_len);
+        cudaStreamAttachMemAsync(s1, x1, 0);
+        cudaStreamAttachMemAsync(s1, x2, 0);
+        // cudaStreamAttachMemAsync(s1, x3, 0);
+        cudaStreamAttachMemAsync(s1, kernel_1, 0);
+        cudaStreamAttachMemAsync(s1, kernel_2, 0);
 
-    cudaStreamAttachMemAsync(s2, y, sizeof(float) * x_len);
-    cudaStreamAttachMemAsync(s2, y1, 0);
-    // cudaStreamAttachMemAsync(s2, y2, 0);
-    // cudaStreamAttachMemAsync(s2, y3, 0);
-    cudaStreamAttachMemAsync(s2, kernel_3, 0);
-    cudaStreamAttachMemAsync(s2, kernel_4, 0);
-
+        cudaStreamAttachMemAsync(s2, y, sizeof(float) * x_len);
+        cudaStreamAttachMemAsync(s2, y1, 0);
+        // cudaStreamAttachMemAsync(s2, y2, 0);
+        // cudaStreamAttachMemAsync(s2, y3, 0);
+        cudaStreamAttachMemAsync(s2, kernel_3, 0);
+        cudaStreamAttachMemAsync(s2, kernel_4, 0);
+    }
+    if (do_prefetch && pascalGpu) {
+        cudaMemPrefetchAsync(x, sizeof(float) * x_len, 0, 0);
+        cudaMemPrefetchAsync(y, sizeof(float) * x_len, 0, 0);
+    }
     dim3 block_size_2d_dim(block_size_2d, block_size_2d);
     dim3 grid_size(num_blocks, num_blocks);
     dim3 grid_size_2(num_blocks / 2, num_blocks / 2);
@@ -336,8 +346,8 @@ void Benchmark10::execute_cudagraph_manual(int iter) {
         void *kernel_4_args[7] = {(void *)&y11, (void *)&y1, &a, &a, &kn1, &pooling_diameter, &pooling_diameter};
         void *kernel_5_args[9] = {(void *)&x2, (void *)&x11, (void *)&kernel_2, &b, &b, &kn1, &K, &kn2, &stride};
         void *kernel_6_args[9] = {(void *)&y2, (void *)&y11, (void *)&kernel_4, &b, &b, &kn1, &K, &kn2, &stride};
-        void *kernel_7_args[4] = {(void *)&z, (void *)&x2, (void*)&y2, &x2_len};
-        void *kernel_8_args[4] = {(void *)&z, (void *)&dense_weights, (void*)&res, &x2_len};
+        void *kernel_7_args[4] = {(void *)&z, (void *)&x2, (void *)&y2, &x2_len};
+        void *kernel_8_args[4] = {(void *)&z, (void *)&dense_weights, (void *)&res, &x2_len};
 
         dim3 block_size_2d_dim(block_size_2d, block_size_2d);
         dim3 grid_size(num_blocks, num_blocks);
@@ -392,7 +402,6 @@ void Benchmark10::execute_cudagraph_manual(int iter) {
 
 void Benchmark10::execute_cudagraph_single(int iter) {
     if (iter == 0) {
-       
         cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
 
         dim3 block_size_2d_dim(block_size_2d, block_size_2d);

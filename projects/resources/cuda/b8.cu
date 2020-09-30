@@ -221,6 +221,10 @@ void Benchmark8::execute_sync(int iter) {
     dim3 grid_size(num_blocks, num_blocks);
     dim3 grid_size_2(num_blocks / 2, num_blocks / 2);
 
+    if (pascalGpu && do_prefetch) {
+        cudaMemPrefetchAsync(image3, N * N * sizeof(float), 0, 0);
+    }
+
     gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float)>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
     cudaDeviceSynchronize();
 
@@ -264,15 +268,16 @@ void Benchmark8::execute_async(int iter) {
     dim3 grid_size(num_blocks, num_blocks);
     int nb = num_blocks / 2;
     dim3 grid_size_2(nb, nb);
-
-    cudaStreamAttachMemAsync(s1, blurred_small, 0);
-    cudaStreamAttachMemAsync(s1, mask_small, 0);
-    cudaStreamAttachMemAsync(s2, blurred_large, 0);
-    cudaStreamAttachMemAsync(s2, mask_large, 0);
-    cudaStreamAttachMemAsync(s2, image2, 0);
-    cudaStreamAttachMemAsync(s3, blurred_unsharpen, 0);
-    cudaStreamAttachMemAsync(s3, image_unsharpen, 0);
-    cudaStreamAttachMemAsync(s1, image3, 0);
+    if (!pascalGpu || stream_attach) {
+        cudaStreamAttachMemAsync(s1, blurred_small, 0);
+        cudaStreamAttachMemAsync(s1, mask_small, 0);
+        cudaStreamAttachMemAsync(s2, blurred_large, 0);
+        cudaStreamAttachMemAsync(s2, mask_large, 0);
+        cudaStreamAttachMemAsync(s2, image2, 0);
+        cudaStreamAttachMemAsync(s3, blurred_unsharpen, 0);
+        cudaStreamAttachMemAsync(s3, image_unsharpen, 0);
+        cudaStreamAttachMemAsync(s1, image3, 0);
+    }
 
     gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float), s1>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
 
@@ -313,7 +318,9 @@ void Benchmark8::execute_async(int iter) {
     cudaEventRecord(e4, s2);
     cudaStreamWaitEvent(s1, e4, 0);
     cudaStreamAttachMemAsync(s1, image2, 0);
-
+    if (pascalGpu && do_prefetch) {
+        cudaMemPrefetchAsync(image3, N * N * sizeof(float), 0, s1);
+    }
     combine<<<num_blocks, block_size_1d, 0, s1>>>(image2, blurred_small, mask_small, image3, N * N);
 
     // Extra
@@ -408,9 +415,9 @@ void Benchmark8::execute_cudagraph_manual(int iter) {
         void *kernel_6_args[3] = {(void *)&mask_large, (void *)&maximum, &N2};
         void *kernel_7_args[3] = {(void *)&mask_large, (void *)&minimum, &N2};
         void *kernel_8_args[4] = {(void *)&mask_large, (void *)&minimum, (void *)&maximum, &N2};
-        void *kernel_9_args[5] = {(void *)&image, (void*)&blurred_unsharpen, (void*)&image_unsharpen, &a, &N2};
-        void *kernel_10_args[5] = {(void *)&image_unsharpen, (void *)&blurred_large, (void *)&mask_large, (void*)&image2, &N2};
-        void *kernel_11_args[5] = {(void *)&image2, (void *)&blurred_small, (void *)&mask_small, (void*)&image3, &N2};
+        void *kernel_9_args[5] = {(void *)&image, (void *)&blurred_unsharpen, (void *)&image_unsharpen, &a, &N2};
+        void *kernel_10_args[5] = {(void *)&image_unsharpen, (void *)&blurred_large, (void *)&mask_large, (void *)&image2, &N2};
+        void *kernel_11_args[5] = {(void *)&image2, (void *)&blurred_small, (void *)&mask_small, (void *)&image3, &N2};
 
         add_node(kernel_1_args, kernel_1_params, (void *)gaussian_blur, grid_size_2, block_size_2d_dim, graph, &kernel_1, nodeDependencies, kernel_small_diameter * kernel_small_diameter * sizeof(float));
         add_node(kernel_2_args, kernel_2_params, (void *)gaussian_blur, grid_size_2, block_size_2d_dim, graph, &kernel_2, nodeDependencies, kernel_large_diameter * kernel_large_diameter * sizeof(float));
@@ -463,9 +470,8 @@ void Benchmark8::execute_cudagraph_single(int iter) {
     int nb = num_blocks / 2;
     dim3 grid_size_2(nb, nb);
     if (iter == 0) {
-        
         cudaStreamBeginCapture(s1, cudaStreamCaptureModeGlobal);
-       
+
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_small_diameter * kernel_small_diameter * sizeof(float), s1>>>(image, blurred_small, N, N, kernel_small, kernel_small_diameter);
 
         gaussian_blur<<<grid_size_2, block_size_2d_dim, kernel_large_diameter * kernel_large_diameter * sizeof(float), s1>>>(image, blurred_large, N, N, kernel_large, kernel_large_diameter);
@@ -483,9 +489,9 @@ void Benchmark8::execute_cudagraph_single(int iter) {
         extend<<<num_blocks, block_size_1d, 0, s1>>>(mask_large, minimum, maximum, N * N);
 
         unsharpen<<<num_blocks, block_size_1d, 0, s1>>>(image, blurred_unsharpen, image_unsharpen, 0.5, N * N);
-    
+
         combine<<<num_blocks, block_size_1d, 0, s1>>>(image_unsharpen, blurred_large, mask_large, image2, N * N);
-      
+
         combine<<<num_blocks, block_size_1d, 0, s1>>>(image2, blurred_small, mask_small, image3, N * N);
 
         cudaStreamEndCapture(s1, &graph);
