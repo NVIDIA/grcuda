@@ -44,8 +44,6 @@ __global__ void reduce(const float *x, const float *y, float *z, int N) {
 }
 
 void Benchmark1::prefetch(cudaStream_t &s1, cudaStream_t &s2) {
-    int pascalGpu = 0;
-    cudaDeviceGetAttribute(&pascalGpu, cudaDeviceAttr::cudaDevAttrConcurrentManagedAccess, 0);
     if (pascalGpu) {
         cudaMemPrefetchAsync(x, sizeof(float) * N, 0, s1);
         cudaMemPrefetchAsync(y, sizeof(float) * N, 0, s2);
@@ -84,6 +82,14 @@ void Benchmark1::reset() {
 }
 
 void Benchmark1::execute_sync(int iter) {
+    if (do_prefetch && pascalGpu) {
+        cudaMemPrefetchAsync(x, sizeof(float) * N, 0, 0);
+        cudaMemPrefetchAsync(x1, sizeof(float) * N, 0, 0);
+        cudaMemPrefetchAsync(y, sizeof(float) * N, 0, 0);
+        cudaMemPrefetchAsync(y1, sizeof(float) * N, 0, 0);
+        cudaMemPrefetchAsync(res, sizeof(float), 0, 0);
+    }
+
     square<<<num_blocks, block_size_1d>>>(x, x1, N);
     err = cudaDeviceSynchronize();
     square<<<num_blocks, block_size_1d>>>(y, y1, N);
@@ -93,13 +99,19 @@ void Benchmark1::execute_sync(int iter) {
 }
 
 void Benchmark1::execute_async(int iter) {
-    cudaStreamAttachMemAsync(s1, x, sizeof(float) * N);
-    cudaStreamAttachMemAsync(s1, x1, sizeof(float) * N);
-    cudaStreamAttachMemAsync(s2, y, sizeof(float) * N);
-    cudaStreamAttachMemAsync(s2, y1, sizeof(float) * N);
-
-    // cudaMemPrefetchAsync(x, sizeof(float) * N, 0, s1);
-    // cudaMemPrefetchAsync(y, sizeof(float) * N, 0, s2);
+    if (!pascalGpu || stream_attach) {
+        cudaStreamAttachMemAsync(s1, x, sizeof(float) * N);
+        cudaStreamAttachMemAsync(s1, x1, sizeof(float) * N);
+        cudaStreamAttachMemAsync(s2, y, sizeof(float) * N);
+        cudaStreamAttachMemAsync(s2, y1, sizeof(float) * N);
+    }
+    if (pascalGpu && do_prefetch) {
+        cudaMemPrefetchAsync(x, sizeof(float) * N, 0, s1);
+        cudaMemPrefetchAsync(x1, sizeof(float) * N, 0, s1);
+        cudaMemPrefetchAsync(y, sizeof(float) * N, 0, s2);
+        cudaMemPrefetchAsync(y1, sizeof(float) * N, 0, s2);
+        cudaMemPrefetchAsync(res, sizeof(float), 0, s1);
+    }
 
     square<<<num_blocks, block_size_1d, 0, s1>>>(x, x1, N);
     square<<<num_blocks, block_size_1d, 0, s2>>>(y, y1, N);

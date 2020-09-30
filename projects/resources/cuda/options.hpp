@@ -19,6 +19,8 @@
 #define DEFAULT_SKIP 3
 #define DEFAULT_BENCHMARK "b1"
 #define DEFAULT_POLICY "default"
+#define DEFAULT_PREFETCH false
+#define DEFAULT_STREAM_ATTACH true
 
 //////////////////////////////
 //////////////////////////////
@@ -51,7 +53,6 @@ inline Policy get_policy(std::string policy) {
         return Policy::CudaGraph;
     else if (policy == "cudagraphmanual")
         return Policy::CudaGraphAsync;
-
     else if (policy == "cudagraphsingle")
         return Policy::CudaGraphSingle;
     else
@@ -84,6 +85,8 @@ struct Options {
     int num_blocks = DEFAULT_NUM_BLOCKS;
     int N = 0;
     int skip_iterations = DEFAULT_SKIP;
+    bool prefetch = DEFAULT_PREFETCH;
+    bool stream_attach = DEFAULT_STREAM_ATTACH;
     BenchmarkEnum benchmark_choice = get_benchmark(DEFAULT_BENCHMARK);
     Policy policy_choice = get_policy(DEFAULT_POLICY);
 
@@ -108,11 +111,13 @@ struct Options {
                                                {"skip_first", required_argument, 0, 's'},
                                                {"benchmark", required_argument, 0, 'k'},
                                                {"policy", required_argument, 0, 'p'},
+                                               {"prefetch", required_argument, 0, 'r'},
+                                               {"attach", required_argument, 0, 'a'},
                                                {0, 0, 0, 0}};
         // getopt_long stores the option index here;
         int option_index = 0;
 
-        while ((opt = getopt_long(argc, argv, "dt:n:b:c:g:s:k:p:", long_options, &option_index)) != EOF) {
+        while ((opt = getopt_long(argc, argv, "dt:n:b:c:g:s:k:p:ra", long_options, &option_index)) != EOF) {
             switch (opt) {
                 case 'd':
                     debug = true;
@@ -140,6 +145,12 @@ struct Options {
                     break;
                 case 'p':
                     policy_choice = get_policy(optarg);
+                    break;
+                case 'r':
+                    prefetch = true;
+                    break;
+                case 'a':
+                    stream_attach = true;
                     break;
                 default:
                     break;
