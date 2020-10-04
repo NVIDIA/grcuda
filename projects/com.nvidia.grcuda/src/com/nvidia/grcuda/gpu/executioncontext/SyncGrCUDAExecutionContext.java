@@ -32,12 +32,12 @@ public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
     @Override
     public Object registerExecution(GrCUDAComputationalElement computation) throws UnsupportedTypeException {
 
+        // Prefetching;
+        arrayPrefetcher.prefetchToGpu(computation);
+
         // Book-keeping;
         computation.setComputationStarted();
         computation.updateIsComputationArrayAccess();
-
-        // Prefetching;
-        arrayPrefetcher.prefetchToGpu(computation);
 
         // Start the computation immediately;
         Object result = computation.execute();
