@@ -13,8 +13,8 @@
 
 int main(int argc, char *argv[])
 {
-    // srand(time(0));
-    srand(12);
+    srand(time(0));
+//    srand(12);
     
     Options options = Options(argc, argv);
     BenchmarkEnum benchmark_choice = options.benchmark_choice;
