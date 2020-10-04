@@ -40,6 +40,7 @@ import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.computation.prefetch.PrefetcherEnum;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
@@ -91,7 +92,7 @@ public final class GrCUDAContext {
         forceStreamAttach = env.getOptions().get(GrCUDAOptions.ForceStreamAttach);
 
         // Retrieve if we should prefetch input data to GPU;
-        inputPrefetch = env.getOptions().get(GrCUDAOptions.inputPrefetch);
+        inputPrefetch = env.getOptions().get(GrCUDAOptions.InputPrefetch);
 
         // Retrieve the stream retrieval policy;
         retrieveNewStreamPolicy = parseRetrieveStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveNewStreamPolicy));
@@ -109,13 +110,13 @@ public final class GrCUDAContext {
         System.out.println("-- using " + executionPolicy.getName() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
-                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch);
+                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, PrefetcherEnum.SYNC);
                 break;
             case DEFAULT:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy, inputPrefetch);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy, PrefetcherEnum.DEFAULT);
                 break;
             default:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy, PrefetcherEnum.DEFAULT);
         }
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);

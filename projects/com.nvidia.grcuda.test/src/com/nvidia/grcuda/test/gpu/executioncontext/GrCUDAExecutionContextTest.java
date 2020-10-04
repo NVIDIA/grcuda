@@ -99,7 +99,7 @@ public class GrCUDAExecutionContextTest {
     public void dependencyKernelSimpleTest() {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.inputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -127,7 +127,7 @@ public class GrCUDAExecutionContextTest {
     public void dependency2KernelsSimpleTest() {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.inputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
 
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
@@ -160,7 +160,7 @@ public class GrCUDAExecutionContextTest {
     public void dependencyPipelineSimple2Test() {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.inputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
 
             // FIXME: this test fails randomly with small values (< 100000, more or less),
             //  but the same computation doesn't fail in Graalpython.
@@ -211,7 +211,7 @@ public class GrCUDAExecutionContextTest {
     public void dependencyPipelineSimple3Test() {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.inputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
 
             final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
@@ -249,7 +249,7 @@ public class GrCUDAExecutionContextTest {
     public void dependencyPipelineSimple4Test() throws InterruptedException {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.inputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
 
             final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
@@ -282,7 +282,7 @@ public class GrCUDAExecutionContextTest {
     public void dependencyPipelineWithArrayCopyTest() {
 
         try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.inputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
 
             final int numElements = 100000;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;

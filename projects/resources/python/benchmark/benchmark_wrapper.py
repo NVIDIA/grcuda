@@ -16,10 +16,10 @@ DEFAULT_NUM_BLOCKS = 176  # GTX 1660 Super, 22 SM
 
 # Benchmark settings;
 benchmarks = [
-#    "b1",
-#    "b5",
+    "b1",
+    "b5",
     "b6",
-#    "b7",
+    "b7",
     "b8",
     "b10",
 ]
@@ -147,7 +147,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 ##############################
 ##############################
 
-GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=26G --jvm --polyglot --WithThread " \
+GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=26G --jvm --polyglot " \
                   "--grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
@@ -186,7 +186,7 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
     b1d_size = " ".join([str(b['block_size_1d']) for b in block_sizes])
     b2d_size = " ".join([str(b['block_size_2d']) for b in block_sizes])
 
-    benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, "--grcuda.inputPrefetch" if prefetch else "--grcuda.ForceStreamAttach", exec_policy, dependency_policy, parent_stream_policy,
+    benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "--grcuda.ForceStreamAttach", exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, benchmark, b1d_size, b2d_size,
                                            "-d" if debug else "",  "-p" if time_phases else "", output_path)
     start = System.nanoTime()

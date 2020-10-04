@@ -9,6 +9,7 @@ import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.computation.KernelExecution;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.computation.prefetch.PrefetcherEnum;
 import com.nvidia.grcuda.gpu.stream.GrCUDAStreamManager;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -49,7 +50,7 @@ public class MultithreadGrCUDAExecutionContext extends AbstractGrCUDAExecutionCo
 
     public MultithreadGrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager,
                                              GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy, false);
+        super(cudaRuntime, dependencyPolicy, PrefetcherEnum.NONE);
         this.threadManager = threadManager;
         this.streamManager = streamManager;
     }

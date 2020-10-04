@@ -1,6 +1,7 @@
 package com.nvidia.grcuda.test.mock;
 
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.computation.prefetch.PrefetcherEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 
