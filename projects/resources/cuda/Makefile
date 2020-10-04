@@ -1,4 +1,4 @@
-FLAGS = -std=c++11 -O3 -arch=sm_50
+FLAGS = -std=c++11 -O3 -arch=sm_70
 BIN_FOLDER=bin
 FILES=main.cu benchmark.cu b1.cu b5.cu b6.cu b7.cu b8.cu b10.cu
 

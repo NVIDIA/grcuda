@@ -20,7 +20,7 @@
 #define DEFAULT_BENCHMARK "b1"
 #define DEFAULT_POLICY "default"
 #define DEFAULT_PREFETCH false
-#define DEFAULT_STREAM_ATTACH true
+#define DEFAULT_STREAM_ATTACH false
 
 //////////////////////////////
 //////////////////////////////

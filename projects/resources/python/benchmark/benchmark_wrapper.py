@@ -12,13 +12,14 @@ from java.lang import System
 
 DEFAULT_NUM_BLOCKS = 32  # GTX 960, 8 SM
 DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
+DEFAULT_NUM_BLOCKS = 176  # GTX 1660 Super, 22 SM
 
 # Benchmark settings;
 benchmarks = [
-    "b1",
-    "b5",
+#    "b1",
+#    "b5",
     "b6",
-    "b7",
+#    "b7",
     "b8",
     "b10",
 ]
@@ -44,9 +45,19 @@ num_elem = {
      "b10": [7000, 10000, 12000, 14000, 16000],
 }
 
+# GTX 1660 Super
+num_elem = {
+     "b1": [60_000_000, 80_000_000, 100_000_000, 120_000_000, 200_000_000],
+     "b5": [6_000_000, 8_000_000, 10_000_000, 12_000_000, 20_000_000],
+     "b6": [500_000, 800_000, 1_000_000, 1_200_000, 2_000_000],
+     "b7": [7_000_000],# 10_000_000, 15_000_000, 20_000_000, 40_000_000],
+     "b8": [3200, 4000, 4800, 8000, 10000],
+     "b10": [6000, 7000, 10000, 12000, 14000],
+}
+
 exec_policies = ["default", "sync"]
 
-cuda_exec_policies = ["cudagraphmanual", "cudagraphsingle"] # ["default", "sync", "cudagraph", "cudagraphmanual", "cudagraphsingle"]
+cuda_exec_policies = ["default", "sync", "cudagraph", "cudagraphmanual", "cudagraphsingle"]
 
 new_stream_policies = ["always-new"]
 
@@ -78,6 +89,16 @@ block_dim_dict = {
 #     "b8": 32,
 #     "b10": DEFAULT_NUM_BLOCKS,
 # }
+
+# 1660
+block_dim_dict = {
+    "b1": DEFAULT_NUM_BLOCKS,
+    "b5": DEFAULT_NUM_BLOCKS,
+    "b6": 32,
+    "b7": DEFAULT_NUM_BLOCKS,
+    "b8": 16,
+    "b10": DEFAULT_NUM_BLOCKS,
+}
 
 ##############################
 ##############################
@@ -126,7 +147,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 ##############################
 ##############################
 
-GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=140G --jvm --polyglot --WithThread " \
+GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize=26G --jvm --polyglot --WithThread " \
                   "--grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} " \
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
@@ -165,7 +186,7 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
     b1d_size = " ".join([str(b['block_size_1d']) for b in block_sizes])
     b2d_size = " ".join([str(b['block_size_2d']) for b in block_sizes])
 
-    benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, "--grcuda.inputPrefetch" if prefetch else "", exec_policy, dependency_policy, parent_stream_policy,
+    benchmark_cmd = GRAALPYTHON_CMD.format(new_stream_policy, "--grcuda.inputPrefetch" if prefetch else "--grcuda.ForceStreamAttach", exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, benchmark, b1d_size, b2d_size,
                                            "-d" if debug else "",  "-p" if time_phases else "", output_path)
     start = System.nanoTime()
