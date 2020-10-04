@@ -13,6 +13,8 @@ import com.nvidia.grcuda.gpu.computation.dependency.WithConstDependencyComputati
 import com.nvidia.grcuda.gpu.computation.prefetch.AbstractArrayPrefetcher;
 import com.nvidia.grcuda.gpu.computation.prefetch.DefaultArrayPrefetcher;
 import com.nvidia.grcuda.gpu.computation.prefetch.NoneArrayPrefetcher;
+import com.nvidia.grcuda.gpu.computation.prefetch.PrefetcherEnum;
+import com.nvidia.grcuda.gpu.computation.prefetch.SyncArrayPrefetcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -57,14 +59,14 @@ public abstract class AbstractGrCUDAExecutionContext {
     protected final AbstractArrayPrefetcher arrayPrefetcher;
 
     public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
-        this(new CUDARuntime(context, env), dependencyPolicy, false);
+        this(new CUDARuntime(context, env), dependencyPolicy, PrefetcherEnum.NONE);
     }
 
-    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
         this(new CUDARuntime(context, env), dependencyPolicy, inputPrefetch);
     }
 
-    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
         this.cudaRuntime = cudaRuntime;
         // Compute the dependency policy to use;
         switch (dependencyPolicy) {
@@ -78,10 +80,18 @@ public abstract class AbstractGrCUDAExecutionContext {
                 this.dependencyBuilder = new DefaultDependencyComputationBuilder();
         }
         // Compute the prefetcher to use;
-        if (inputPrefetch && this.cudaRuntime.isArchitectureIsPascalOrNewer()) {
-            arrayPrefetcher = new DefaultArrayPrefetcher(this.cudaRuntime);
-        } else {
-            arrayPrefetcher = new NoneArrayPrefetcher(this.cudaRuntime);
+        boolean pascalGpu;
+        switch (inputPrefetch) {
+            case DEFAULT:
+                pascalGpu = this.cudaRuntime.isArchitectureIsPascalOrNewer();
+                arrayPrefetcher = pascalGpu ? new DefaultArrayPrefetcher(this.cudaRuntime) : new NoneArrayPrefetcher(this.cudaRuntime);
+                break;
+            case SYNC:
+                pascalGpu = this.cudaRuntime.isArchitectureIsPascalOrNewer();
+                arrayPrefetcher = pascalGpu ? new SyncArrayPrefetcher(this.cudaRuntime) : new NoneArrayPrefetcher(this.cudaRuntime);
+                break;
+            default:
+                arrayPrefetcher = new NoneArrayPrefetcher(this.cudaRuntime);
         }
         this.dag = new ExecutionDAG(dependencyPolicy);
     }

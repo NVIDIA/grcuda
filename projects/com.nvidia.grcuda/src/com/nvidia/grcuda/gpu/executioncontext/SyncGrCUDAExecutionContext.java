@@ -4,6 +4,7 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.gpu.computation.prefetch.PrefetcherEnum;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -12,15 +13,15 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  */
 public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
-    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
         super(context, env, dependencyPolicy, inputPrefetch);
     }
 
     public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy, false);
+        super(cudaRuntime, dependencyPolicy, PrefetcherEnum.NONE);
     }
 
-    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, boolean inputPrefetch) {
+    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
         super(cudaRuntime, dependencyPolicy, inputPrefetch);
     }
 
