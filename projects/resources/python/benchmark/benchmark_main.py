@@ -108,6 +108,8 @@ if __name__ == "__main__":
                         help="Number of threads per block when using 1D kernels")
     parser.add_argument("--block_size_2d", metavar="N", type=int, nargs="*",
                         help="Number of threads per block when using 2D kernels")
+    parser.add_argument("-g", "--number_of_blocks", metavar="N", type=int, nargs="?",
+                        help="Number of blocks in the computation")
     parser.add_argument("-r", "--random", action="store_true",
                         help="Initialize benchmarks randomly whenever possible")
     parser.add_argument("-p", "--time_phases", action="store_true",
@@ -154,8 +156,11 @@ if __name__ == "__main__":
 
     # Setup the block size for each benchmark;
     block_sizes = create_block_size_list(args.block_size_1d, args.block_size_2d)
+    number_of_blocks = args.number_of_blocks
     if (args.block_size_1d or args.block_size_2d) and benchmark_res.debug:
         BenchmarkResult.log_message(f"using block sizes: {block_sizes}")
+    if number_of_blocks:
+        BenchmarkResult.log_message(f"using number of blocks: {number_of_blocks}")
 
     # Execute each test;
     for b_name, b in benchmarks.items():
@@ -168,7 +173,7 @@ if __name__ == "__main__":
                         for block_size in block_sizes:
                             for i in range(num_iter):
                                 benchmark.run(num_iter=i, policy=p, size=n, realloc=re, reinit=ri,
-                                              block_size=block_size, time_phases=time_phases, prevent_reinit=prevent_reinit)
+                                              block_size=block_size, time_phases=time_phases, prevent_reinit=prevent_reinit, number_of_blocks=number_of_blocks)
                                 prevent_reinit = True
                             # Print the summary of this block;
                             if benchmark_res.debug:

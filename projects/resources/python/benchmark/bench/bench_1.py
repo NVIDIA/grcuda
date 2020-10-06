@@ -76,7 +76,7 @@ class Benchmark1(Benchmark):
         self.reduce_kernel = None
         self.cpu_result = 0
 
-        self.num_blocks = DEFAULT_NUM_BLOCKS
+        # self.num_blocks = DEFAULT_NUM_BLOCKS
         self.block_size = DEFAULT_BLOCK_SIZE_1D
 
     @time_phase("allocation")

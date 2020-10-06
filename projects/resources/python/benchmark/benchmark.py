@@ -8,7 +8,7 @@ DEFAULT_BLOCK_SIZE_1D = 32
 DEFAULT_BLOCK_SIZE_2D = 8
 DEFAULT_NUM_BLOCKS = 64  # GTX 960, 8 SM
 DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
-
+DEFAULT_NUM_BLOCKS = 176  # GTX 1660 Super, 22 SM
 
 def time_phase(phase_name: str) -> Callable:
     """
@@ -45,6 +45,7 @@ class Benchmark(ABC):
         self.random_seed = 42  # Default random seed, it will be overwritten with a random one;
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
+        self.num_blocks = DEFAULT_NUM_BLOCKS
         self._block_size = {}
 
     @abstractmethod
@@ -106,13 +107,14 @@ class Benchmark(ABC):
             return function(*args)
 
     def run(self, num_iter: int, policy: str, size: int, realloc: bool, reinit: bool,
-            time_phases: bool, block_size: dict = None, prevent_reinit=False) -> None:
+            time_phases: bool, block_size: dict = None, prevent_reinit=False, number_of_blocks=DEFAULT_NUM_BLOCKS) -> None:
 
         # Fix missing block size;
         if "block_size_1d" not in block_size:
             block_size["block_size_1d"] = DEFAULT_BLOCK_SIZE_1D
         if "block_size_2d" not in block_size:
             block_size["block_size_2d"] = DEFAULT_BLOCK_SIZE_2D
+        self.num_blocks = number_of_blocks
 
         self.benchmark.start_new_benchmark(name=self.name,
                                            policy=policy,

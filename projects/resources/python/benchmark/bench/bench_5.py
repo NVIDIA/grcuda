@@ -71,7 +71,7 @@ class Benchmark5(Benchmark):
         super().__init__("b5", benchmark, nvprof_profile)
         self.size = 0
 
-        self.num_blocks = DEFAULT_NUM_BLOCKS
+        # self.num_blocks = DEFAULT_NUM_BLOCKS
         self.sum_kernel = None
         self.cpu_result = 0
         self.block_size = DEFAULT_BLOCK_SIZE_1D
