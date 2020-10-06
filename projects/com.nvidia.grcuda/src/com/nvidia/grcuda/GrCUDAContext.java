@@ -110,13 +110,13 @@ public final class GrCUDAContext {
         System.out.println("-- using " + executionPolicy.getName() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
-                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, PrefetcherEnum.SYNC);
+                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch ? PrefetcherEnum.SYNC : PrefetcherEnum.NONE);
                 break;
             case DEFAULT:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy, PrefetcherEnum.DEFAULT);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy, inputPrefetch ? PrefetcherEnum.DEFAULT : PrefetcherEnum.NONE);
                 break;
             default:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy, PrefetcherEnum.DEFAULT);
+                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch ? PrefetcherEnum.DEFAULT : PrefetcherEnum.NONE);
         }
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
