@@ -177,7 +177,7 @@ class Benchmark7(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_size = DEFAULT_NUM_BLOCKS
+        self.num_blocks_size = self.num_blocks
         self.block_size = None
 
         self.spmv_kernel = None
@@ -270,6 +270,7 @@ class Benchmark7(Benchmark):
 
     def execute(self) -> object:
         self.block_size = self._block_size["block_size_1d"]
+        self.num_blocks_size = self.num_blocks
         num_blocks_spmv = int(np.ceil(self.size / self.block_size))
 
         start_comp = System.nanoTime()

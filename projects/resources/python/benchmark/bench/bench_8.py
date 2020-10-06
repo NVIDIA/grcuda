@@ -254,7 +254,7 @@ class Benchmark8(Benchmark):
         self.cpu_result = None
         self.gpu_result = None
 
-        self.num_blocks_per_processor = 16 # 12  # 32
+        self.num_blocks_per_processor = self.num_blocks # 12  # 32
 
         self.block_size_1d = DEFAULT_BLOCK_SIZE_1D
         self.block_size_2d = DEFAULT_BLOCK_SIZE_2D
@@ -351,6 +351,7 @@ class Benchmark8(Benchmark):
     def execute(self) -> object:
         self.block_size_1d = self._block_size["block_size_1d"]
         self.block_size_2d = self._block_size["block_size_2d"]
+        self.num_blocks_per_processor = self.num_blocks  # 12  # 32
         a = self.num_blocks_per_processor / 2
 
         start_comp = System.nanoTime()
