@@ -11,11 +11,14 @@ from java.lang import System
 ##############################
 
 # True if using GPUs with capabilities with capability >= 7.5. If so, nvprof is no longer supported;
-POST_TURING = False
+POST_TURING = True
 
 DEFAULT_NUM_BLOCKS = 64  # GTX 960, 8 SM
 DEFAULT_NUM_BLOCKS = 448  # P100, 56 SM
 DEFAULT_NUM_BLOCKS = 176  # GTX 1660 Super, 22 SM
+
+HEAP_SIZE = 26 
+#HEAP_SIZE = 140 # P100
 
 # Benchmark settings;
 benchmarks = [
@@ -81,7 +84,7 @@ use_metrics = [True, False]
 
 LOG_FOLDER = "../../../../data/nvprof_log"
 if POST_TURING:
-    METRICS = "--metrics 'dram__bytes_read.sum.per_second,dram__bytes_write.sum.per_second,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_atom.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_ld.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_st.sum, lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_ld.sum,lts__t_sectors_op_read.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,lts__t_sectors_op_write.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,smsp__inst_executed.sum,smsp__sass_thread_inst_executed_op_dadd_pred_on.sum,smsp__sass_thread_inst_executed_op_dmul_pred_on.sum,smsp__sass_thread_inst_executed_op_dfma_pred_on.sum,smsp__sass_thread_inst_executed_op_fadd_pred_on.sum,smsp__sass_thread_inst_executed_op_fmul_pred_on.sum,smsp__sass_thread_inst_executed_op_ffma_pred_on.sum'"
+    METRICS = "--metrics 'dram__bytes_read.sum.per_second,dram__bytes_write.sum.per_second,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_atom.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_ld.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_ld.sum,lts__t_sectors_op_read.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,lts__t_sectors_op_write.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,smsp__inst_executed.sum,smsp__sass_thread_inst_executed_op_dadd_pred_on.sum,smsp__sass_thread_inst_executed_op_dmul_pred_on.sum,smsp__sass_thread_inst_executed_op_dfma_pred_on.sum,smsp__sass_thread_inst_executed_op_fadd_pred_on.sum,smsp__inst_executed.avg.per_cycle_active,smsp__sass_thread_inst_executed_op_fmul_pred_on.sum,smsp__sass_thread_inst_executed_op_ffma_pred_on.sum'"
 else:
     METRICS = "--metrics 'dram_read_throughput,dram_write_throughput,dram_read_bytes,dram_write_bytes,l2_global_atomic_store_bytes,l2_global_load_bytes,l2_global_reduction_bytes,l2_local_global_store_bytes,l2_local_load_bytes,l2_read_throughput,l2_write_throughput,inst_executed,ipc,flop_count_dp,flop_count_sp'"
 
@@ -92,18 +95,18 @@ GRCUDA_HOME = "/home/users/alberto.parravicini/Documents/grcuda"
 
 if POST_TURING:
     GRAALPYTHON_CMD_METRICS = """/usr/local/cuda/bin/ncu -f --print-units base --csv --log-file "{}" --profile-from-start off --target-processes all {} \
-    {}/graalpython --vm.XX:MaxHeapSize=28G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} \
+    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
     --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} --grcuda.RetrieveParentStreamPolicy={} benchmark_main.py \
     -i {} -n {} --reinit false --realloc false -g {} -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} --nvprof
     """
     GRAALPYTHON_CMD_TRACE = """/usr/local/cuda/bin/nvprof --csv --log-file "{}" --print-gpu-trace {} --profile-from-start off --profile-child-processes \
-    {}/graalpython --vm.XX:MaxHeapSize=28G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} \
+    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
     --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} --grcuda.RetrieveParentStreamPolicy={} benchmark_main.py \
     -i {} -n {} --reinit false --realloc false -g {} -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} --nvprof
     """
 else:
     GRAALPYTHON_CMD = """/usr/local/cuda/bin/nvprof --csv --log-file "{}" --print-gpu-trace {} --profile-from-start off --profile-child-processes \
-    {}/graalpython --vm.XX:MaxHeapSize=28G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} \
+    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
     --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} --grcuda.RetrieveParentStreamPolicy={} benchmark_main.py \
     -i {} -n {} --reinit false --realloc false -g {} -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} --nvprof
     """
@@ -143,18 +146,18 @@ def execute_grcuda_benchmark(benchmark, size, exec_policy, new_stream_policy,
 
         if POST_TURING:
             if m:
-                benchmark_cmd = GRAALPYTHON_CMD_METRICS.format(output_path, METRICS, GRAALPYTHON_FOLDER,
-                                                       new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "--grcuda.ForceStreamAttach", exec_policy, dependency_policy, parent_stream_policy,
+                benchmark_cmd = GRAALPYTHON_CMD_METRICS.format(output_path, METRICS, GRAALPYTHON_FOLDER, HEAP_SIZE,
+                                                       new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "", exec_policy, dependency_policy, parent_stream_policy,
                                                        num_iter, size, num_blocks, benchmark, block_size[0], block_size[1],
                                                        "-d" if debug else "",  "-p" if time_phases else "")
             else:
-               benchmark_cmd = GRAALPYTHON_CMD_TRACE.format(output_path, "", GRAALPYTHON_FOLDER,
-                                                   new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "--grcuda.ForceStreamAttach", exec_policy, dependency_policy, parent_stream_policy,
+               benchmark_cmd = GRAALPYTHON_CMD_TRACE.format(output_path, "", GRAALPYTHON_FOLDER, HEAP_SIZE,
+                                                   new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "", exec_policy, dependency_policy, parent_stream_policy,
                                                    num_iter, size, num_blocks, benchmark, block_size[0], block_size[1],
                                                    "-d" if debug else "",  "-p" if time_phases else "") 
         else:
-            benchmark_cmd = GRAALPYTHON_CMD.format(output_path, METRICS if m else "", GRAALPYTHON_FOLDER,
-                                                   new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "--grcuda.ForceStreamAttach", exec_policy, dependency_policy, parent_stream_policy,
+            benchmark_cmd = GRAALPYTHON_CMD.format(output_path, METRICS if m else "", GRAALPYTHON_FOLDER, HEAP_SIZE,
+                                                   new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "", exec_policy, dependency_policy, parent_stream_policy,
                                                    num_iter, size, num_blocks, benchmark, block_size[0], block_size[1],
                                                    "-d" if debug else "",  "-p" if time_phases else "")
         start = System.nanoTime()

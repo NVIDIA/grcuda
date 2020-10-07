@@ -114,7 +114,8 @@ class Benchmark(ABC):
             block_size["block_size_1d"] = DEFAULT_BLOCK_SIZE_1D
         if "block_size_2d" not in block_size:
             block_size["block_size_2d"] = DEFAULT_BLOCK_SIZE_2D
-        self.num_blocks = number_of_blocks
+        if number_of_blocks:
+            self.num_blocks = number_of_blocks
 
         self.benchmark.start_new_benchmark(name=self.name,
                                            policy=policy,
