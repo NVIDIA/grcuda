@@ -250,14 +250,15 @@ class Benchmark7(Benchmark):
 
     @time_phase("reset_result")
     def reset_result(self) -> None:
+        # FIXME: using the same data for CSC and CSR, because ptr2 is giving data-dependent performance differences
         for i in range(len(self.ptr_cpu)):
             self.ptr[i] = self.ptr_cpu[i]
-            self.ptr2[i] = self.ptr2_cpu[i]
+            self.ptr2[i] = self.ptr_cpu[i]
         for i in range(len(self.idx_cpu)):
             self.idx[i] = self.idx_cpu[i]
-            self.idx2[i] = self.idx2_cpu[i]
+            self.idx2[i] = self.idx_cpu[i]
             self.val[i] = self.val_cpu[i]
-            self.val2[i] = self.val2_cpu[i]
+            self.val2[i] = self.val_cpu[i]
         for i in range(self.size):
             self.auth1[i] = 1.0
             self.auth2[i] = 1.0

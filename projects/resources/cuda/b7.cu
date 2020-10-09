@@ -218,15 +218,16 @@ void Benchmark7::init() {
 }
 
 void Benchmark7::reset() {
+    // FIXME: using the same data for CSC and CSR, because ptr2 is giving data-dependent performance differences
     for (int j = 0; j < nnz; j++) {
         idx[j] = idx_tmp[j];
-        idx2[j] = idx2_tmp[j];
+        idx2[j] = idx_tmp[j];
         val[j] = val_tmp[j];
-        val2[j] = val2_tmp[j];
+        val2[j] = val_tmp[j];
     }
     for (int j = 0; j < N + 1; j++) {
         ptr[j] = ptr_tmp[j];
-        ptr2[j] = ptr2_tmp[j];
+        ptr2[j] = ptr_tmp[j];
     }
     for (int i = 0; i < N; i++) {
         auth1[i] = 1;
