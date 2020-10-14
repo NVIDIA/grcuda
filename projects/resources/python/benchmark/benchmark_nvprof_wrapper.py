@@ -34,8 +34,8 @@ benchmarks = [
 num_elem = {
     "b1": [120_000_000],
     "b5": [12_000_000],
-    "b6": [800_000],
-    "b7": [15_000_000],
+    "b6": [1_200_000],
+    "b7": [20_000_000],
     "b8": [4800],
     "b10": [7000],
 }
@@ -54,7 +54,7 @@ block_sizes_1d_dict = {
     "b6": 32,
     "b7": 32,
     "b8": 1024,
-    "b10": 1024,
+    "b10": 32,
 }
 
 block_sizes_2d_dict = {
@@ -68,11 +68,11 @@ block_sizes_2d_dict = {
 
 block_dim_dict = {
     "b1": DEFAULT_NUM_BLOCKS,
-    "b5": DEFAULT_NUM_BLOCKS,
-    "b6": 32,
+    "b5": 32,
+    "b6": DEFAULT_NUM_BLOCKS,
     "b7": DEFAULT_NUM_BLOCKS,
     "b8": 16,
-    "b10": DEFAULT_NUM_BLOCKS,
+    "b10": 12,
 }
 
 prefetch = [False, True]
@@ -84,7 +84,7 @@ use_metrics = [True, False]
 
 LOG_FOLDER = "../../../../data/nvprof_log"
 if POST_TURING:
-    METRICS = "--metrics 'dram__bytes_read.sum.per_second,dram__bytes_write.sum.per_second,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_atom.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_ld.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_ld.sum,lts__t_sectors_op_read.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,lts__t_sectors_op_write.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,smsp__inst_executed.sum,smsp__sass_thread_inst_executed_op_dadd_pred_on.sum,smsp__sass_thread_inst_executed_op_dmul_pred_on.sum,smsp__sass_thread_inst_executed_op_dfma_pred_on.sum,smsp__sass_thread_inst_executed_op_fadd_pred_on.sum,smsp__inst_executed.avg.per_cycle_active,smsp__sass_thread_inst_executed_op_fmul_pred_on.sum,smsp__sass_thread_inst_executed_op_ffma_pred_on.sum'"
+    METRICS = "--metrics 'dram__bytes_read.sum.per_second,dram__bytes_write.sum.per_second,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_atom.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_ld.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_ld.sum,lts__t_sectors_op_read.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,lts__t_sectors_op_write.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,smsp__inst_executed.sum,smsp__sass_thread_inst_executed_op_dadd_pred_on.sum,smsp__sass_thread_inst_executed_op_dmul_pred_on.sum,smsp__sass_thread_inst_executed_op_dfma_pred_on.sum,smsp__sass_thread_inst_executed_op_fadd_pred_on.sum,smsp__inst_executed.avg.per_cycle_active,smsp__sass_thread_inst_executed_op_fmul_pred_on.sum,smsp__sass_thread_inst_executed_op_ffma_pred_on.sum,sm__inst_executed.sum'"
 else:
     METRICS = "--metrics 'dram_read_throughput,dram_write_throughput,dram_read_bytes,dram_write_bytes,l2_global_atomic_store_bytes,l2_global_load_bytes,l2_global_reduction_bytes,l2_local_global_store_bytes,l2_local_load_bytes,l2_read_throughput,l2_write_throughput,inst_executed,ipc,flop_count_dp,flop_count_sp'"
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
                         help="If present, print debug messages")
     parser.add_argument("-i", "--num_iter", metavar="N", type=int, default=BenchmarkResult.DEFAULT_NUM_ITER,
                         help="Number of times each benchmark is executed")
-    parser.add_argument("-g", "--num_blocks", metavar="N", type=int, default=DEFAULT_NUM_BLOCKS,
+    parser.add_argument("-g", "--num_blocks", metavar="N", type=int,
                         help="Number of blocks in each kernel, when applicable")
     parser.add_argument("-p", "--time_phases", action="store_true",
                         help="Measure the execution time of each phase of the benchmark;"
