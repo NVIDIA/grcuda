@@ -30,6 +30,7 @@ package com.nvidia.grcuda;
 
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
+import com.nvidia.grcuda.functions.BindAllFunction;
 import com.nvidia.grcuda.functions.BindFunction;
 import com.nvidia.grcuda.functions.BindKernelFunction;
 import com.nvidia.grcuda.functions.BuildKernelFunction;
@@ -39,6 +40,7 @@ import com.nvidia.grcuda.functions.GetDevicesFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.gpu.CUDARuntime;
+<<<<<<< HEAD
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.gpu.computation.prefetch.PrefetcherEnum;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
@@ -48,6 +50,9 @@ import com.nvidia.grcuda.gpu.executioncontext.MultithreadGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.SyncGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
+=======
+import com.nvidia.grcuda.tensorrt.TensorRTRegistry;
+>>>>>>> nvidia/master
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -122,7 +127,12 @@ public final class GrCUDAContext {
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
         namespace.addNamespace(namespace);
         namespace.addFunction(new BindFunction());
+<<<<<<< HEAD
         namespace.addFunction(new DeviceArrayFunction(this.grCUDAExecutionContext));
+=======
+        namespace.addFunction(new BindAllFunction(this));
+        namespace.addFunction(new DeviceArrayFunction(cudaRuntime));
+>>>>>>> nvidia/master
         namespace.addFunction(new MapFunction());
         namespace.addFunction(new ShredFunction());
         namespace.addFunction(new BindKernelFunction(this.grCUDAExecutionContext));
@@ -139,6 +149,11 @@ public final class GrCUDAContext {
             Namespace blas = new Namespace(CUBLASRegistry.NAMESPACE);
             namespace.addNamespace(blas);
             new CUBLASRegistry(this).registerCUBLASFunctions(blas);
+        }
+        if (this.getOption(GrCUDAOptions.TensorRTEnabled)) {
+            Namespace trt = new Namespace(TensorRTRegistry.NAMESPACE);
+            namespace.addNamespace(trt);
+            new TensorRTRegistry(this).registerTensorRTFunctions(trt);
         }
         this.rootNamespace = namespace;
     }

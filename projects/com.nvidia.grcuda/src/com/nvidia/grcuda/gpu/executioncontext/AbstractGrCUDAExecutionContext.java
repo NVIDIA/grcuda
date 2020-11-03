@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.gpu.executioncontext;
 
+import com.nvidia.grcuda.Binding;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.CUDARuntime;
@@ -125,8 +126,8 @@ public abstract class AbstractGrCUDAExecutionContext {
 
     // Functions used to interface directly with the CUDA runtime;
 
-    public Kernel loadKernel(String cubinFile, String kernelName, String signature) {
-        return cudaRuntime.loadKernel(this, cubinFile, kernelName, signature);
+    public Kernel loadKernel(Binding binding) {
+        return cudaRuntime.loadKernel(this, binding);
     }
 
     public Kernel buildKernel(String code, String kernelName, String signature) {

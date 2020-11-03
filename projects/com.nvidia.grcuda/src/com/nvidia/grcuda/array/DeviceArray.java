@@ -28,15 +28,14 @@
  */
 package com.nvidia.grcuda.array;
 
-import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.nvidia.grcuda.gpu.computation.DeviceArrayReadExecution;
 import com.nvidia.grcuda.gpu.computation.DeviceArrayWriteExecution;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
@@ -50,8 +49,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
-
-import java.util.Arrays;
 
 @ExportLibrary(InteropLibrary.class)
 public final class DeviceArray extends AbstractArray implements TruffleObject {
@@ -67,7 +64,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public DeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, long numElements, ElementType elementType) {
+    public DeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, long numElements, Type elementType) {
         super(grCUDAExecutionContext, elementType);
         this.numElements = numElements;
         this.sizeBytes = numElements * elementType.getSizeBytes();
@@ -78,36 +75,96 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
 
     @Override
     final public long getSizeBytes() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return sizeBytes;
     }
 
     @Override
     public long getPointer() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return nativeView.getStartAddress();
+    }
+
+    public Type getElementType() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
+        return elementType;
     }
 
     @Override
     public String toString() {
-        return "DeviceArray(elementType=" + elementType + ", numElements=" + numElements + ", nativeView=" + nativeView + ')';
+        if (arrayFreed) {
+            return "DeviceArray(memory freed)";
+        } else {
+            return "DeviceArray(elementType=" + elementType + ", numElements=" + numElements + ", nativeView=" + nativeView + ')';
+        }
     }
 
     @Override
     protected void finalize() throws Throwable {
-        grCUDAExecutionContext.getCudaRuntime().cudaFree(nativeView);
+        if (!arrayFreed) {
+            grCUDAExecutionContext.getCudaRuntime().cudaFree(nativeView);
+        }
         super.finalize();
+    }
+
+//    public void copyFrom(long fromPointer, long numCopyElements) throws IndexOutOfBoundsException {
+//        if (arrayFreed) {
+//            CompilerDirectives.transferToInterpreter();
+//            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+//        }
+//        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
+//        if (numBytesToCopy > getSizeBytes()) {
+//            CompilerDirectives.transferToInterpreter();
+//            throw new IndexOutOfBoundsException();
+//        }
+//        runtime.cudaMemcpy(getPointer(), fromPointer, numBytesToCopy);
+//    }
+//
+//    public void copyTo(long toPointer, long numCopyElements) throws IndexOutOfBoundsException {
+//        if (arrayFreed) {
+//            CompilerDirectives.transferToInterpreter();
+//            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+//        }
+//        long numBytesToCopy = numCopyElements * elementType.getSizeBytes();
+//        if (numBytesToCopy > getSizeBytes()) {
+//            CompilerDirectives.transferToInterpreter();
+//            throw new IndexOutOfBoundsException();
+//        }
+//        runtime.cudaMemcpy(toPointer, getPointer(), numBytesToCopy);
+//    }
+
+    @Override
+    public void freeMemory() {
+        if (arrayFreed) {
+            throw new GrCUDAException("device array already freed");
+        }
+        grCUDAExecutionContext.getCudaRuntime().cudaFree(nativeView);
+        arrayFreed = true;
     }
 
     // Implementation of InteropLibrary
 
     @ExportMessage
-    @Override
     public long getArraySize() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return numElements;
     }
 
     @ExportMessage
     boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < numElements;
+        return !arrayFreed && index >= 0 && index < numElements;
     }
 
     @ExportMessage
@@ -124,6 +181,10 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     @ExportMessage
     Object readArrayElement(long index,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws InvalidArrayIndexException {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
@@ -143,14 +204,13 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
 
     public Object readArrayElementImpl(long index, ValueProfile elementTypeProfile) {
         switch (elementTypeProfile.profile(elementType)) {
-            case BYTE:
             case CHAR:
                 return nativeView.getByte(index);
-            case SHORT:
+            case SINT16:
                 return nativeView.getShort(index);
-            case INT:
+            case SINT32:
                 return nativeView.getInt(index);
-            case LONG:
+            case SINT64:
                 return nativeView.getLong(index);
             case FLOAT:
                 return nativeView.getFloat(index);
@@ -164,6 +224,10 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
     public void writeArrayElement(long index, Object value,
                     @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
                     @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException, InvalidArrayIndexException {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         if ((index < 0) || (index >= numElements)) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
@@ -181,17 +245,16 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
                                       ValueProfile elementTypeProfile) throws UnsupportedTypeException {
         try {
             switch (elementTypeProfile.profile(elementType)) {
-                case BYTE:
                 case CHAR:
                     nativeView.setByte(index, valueLibrary.asByte(value));
                     break;
-                case SHORT:
+                case SINT16:
                     nativeView.setShort(index, valueLibrary.asShort(value));
                     break;
-                case INT:
+                case SINT32:
                     nativeView.setInt(index, valueLibrary.asInt(value));
                     break;
-                case LONG:
+                case SINT64:
                     nativeView.setLong(index, valueLibrary.asLong(value));
                     break;
                 case FLOAT:

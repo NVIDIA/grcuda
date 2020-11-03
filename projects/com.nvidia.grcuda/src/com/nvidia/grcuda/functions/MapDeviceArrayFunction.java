@@ -28,7 +28,10 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.ElementType;
+import java.util.concurrent.ConcurrentHashMap;
+
+import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
@@ -75,7 +78,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @GenerateUncached
 abstract class MapArrayNode extends Node {
 
-    abstract Object execute(Object source, ElementType elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext);
+    abstract Object execute(Object source, Type elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext);
 
     private static final FrameDescriptor DESCRIPTOR = new FrameDescriptor();
     private static final FrameSlot SIZE_SLOT = DESCRIPTOR.addFrameSlot("size", FrameSlotKind.Long);
@@ -170,7 +173,7 @@ abstract class MapArrayNode extends Node {
     }
 
     @Specialization(limit = "3")
-    Object doMap(Object source, ElementType elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext,
+    Object doMap(Object source, Type elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext,
                     @CachedLibrary("source") InteropLibrary interop,
                     @CachedContext(GrCUDALanguage.class) @SuppressWarnings("unused") GrCUDAContext context,
                     @Cached(value = "createLoop(source)", uncached = "createUncachedLoop(source, context)") CallTarget loop) {
@@ -228,9 +231,9 @@ public final class MapDeviceArrayFunction extends Function {
         } catch (UnsupportedMessageException e1) {
             throw UnsupportedTypeException.create(arguments, "first argument of MapDeviceArray must be string (type name)");
         }
-        ElementType elementType;
+        Type elementType;
         try {
-            elementType = elementTypeProfile.profile(ElementType.lookupType(typeName));
+            elementType = elementTypeProfile.profile(Type.fromGrCUDATypeString(typeName));
         } catch (TypeException e) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAInternalException(e.getMessage());

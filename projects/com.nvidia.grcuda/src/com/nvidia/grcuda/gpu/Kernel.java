@@ -35,6 +35,16 @@ import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.computation.ComputationArgument;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import com.nvidia.grcuda.Parameter;
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.Type;
+import com.nvidia.grcuda.TypeException;
+import com.nvidia.grcuda.gpu.CUDARuntime.CUModule;
+import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,7 +59,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @ExportLibrary(InteropLibrary.class)
@@ -57,27 +66,59 @@ public class Kernel implements TruffleObject {
 
     private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
     private final String kernelName;
-    private final CUDARuntime.CUModule kernelModule;
-    private final long kernelFunction;
-    private final String kernelSignature;
+    private final String kernelSymbol;
+    private final long nativeKernelFunctionHandle;
+    private final CUModule module;
+    private final Parameter[] kernelParameters;
     private int launchCount = 0;
     private final List<ComputationArgument> arguments = new ArrayList<>();
     private String ptxCode;
 
-    public Kernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction, String kernelSignature) {
-        this.grCUDAExecutionContext = grCUDAExecutionContext;
-        this.kernelName = kernelName;
-        this.kernelModule = kernelModule;
-        this.kernelFunction = kernelFunction;
-        this.kernelSignature = kernelSignature;
-        parseSignature(kernelSignature);
-        this.grCUDAExecutionContext.registerKernel(this);
+    /**
+     * Create a kernel without PTX code.
+     *
+     * @param grCUDAExecutionContext captured reference to the GrCUDA execution context
+     * @param kernelName name of the kernel as exposed through Truffle
+     * @param kernelSymbol name of the kernel symbol*
+     * @param kernelFunction native pointer to the kernel function (CUfunction)
+     * @param kernelSignature signature string of the kernel (NFI or NIDL)
+     * @param module CUmodule that contains the kernel function
+     */
+    public Kernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String kernelName,
+                    String kernelSymbol, long kernelFunction,
+                    String kernelSignature, CUModule module) {
+        this(grCUDAExecutionContext, kernelName, kernelSymbol, kernelFunction, kernelSignature, module, "");
     }
 
-    public Kernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String kernelName, CUDARuntime.CUModule kernelModule, long kernelFunction,
-                    String kernelSignature, String ptx) {
-        this(grCUDAExecutionContext, kernelName, kernelModule, kernelFunction, kernelSignature);
+    /**
+     * Create a kernel and hold on to the PTX code.
+     *
+     * @param grCUDAExecutionContext captured reference to the GrCUDA execution context
+     * @param kernelName name of kernel as exposed through Truffle
+     * @param kernelSymbol name of the kernel symbol
+     * @param kernelFunction native pointer to the kernel function (CUfunction)
+     * @param kernelSignature signature string of the kernel (NFI or NIDL)
+     * @param module CUmodule that contains the kernel function
+     * @param ptx PTX source code for the kernel.
+     */
+    public Kernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String kernelName, String kernelSymbol,
+                    long kernelFunction, String kernelSignature, CUModule module, String ptx) {
+//        parseSignature(kernelSignature);
+        try {
+            ArrayList<Parameter> paramList = Parameter.parseParameterSignature(kernelSignature);
+            Parameter[] params = new Parameter[paramList.size()];
+            this.kernelParameters = paramList.toArray(params);
+        } catch (TypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(e.getMessage());
+        }
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
+        this.kernelName = kernelName;
+        this.kernelSymbol = kernelSymbol;
+        this.nativeKernelFunctionHandle = kernelFunction;
+        this.module = module;
         this.ptxCode = ptx;
+        this.grCUDAExecutionContext.registerKernel(this);
     }
 
     public void incrementLaunchCount() {
@@ -92,58 +133,144 @@ public class Kernel implements TruffleObject {
         return arguments;
     }
 
-    public KernelArguments createKernelArguments(Object[] args, InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
+    public Parameter[] getKernelParameters() {
+        return kernelParameters;
+    }
+
+    KernelArguments createKernelArguments(Object[] args, InteropLibrary booleanAccess,
+                    InteropLibrary int8Access, InteropLibrary int16Access,
+                    InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
                     throws UnsupportedTypeException, ArityException {
-        if (args.length != arguments.size()) {
+        if (args.length != kernelParameters.length) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(arguments.size(), args.length);
+            throw ArityException.create(kernelParameters.length, args.length);
         }
-        KernelArguments kernelArgs = new KernelArguments(args, arguments);
-        for (int argIdx = 0; argIdx < arguments.size(); argIdx++) {
-            ArgumentType type = arguments.get(argIdx).getType();
+        KernelArguments kernelArgs = new KernelArguments(args.length);
+        for (int paramIdx = 0; paramIdx < kernelParameters.length; paramIdx++) {
+            Object arg = args[paramIdx];
+            Parameter param = kernelParameters[paramIdx];
+            Type paramType = param.getType();
             try {
-                switch (type) {
-                    case INT32:
-                        UnsafeHelper.Integer32Object int32 = UnsafeHelper.createInteger32Object();
-                        int32.setValue(int32Access.asInt(args[argIdx]));
-                        kernelArgs.setArgument(argIdx, int32);
-                        break;
-                    case INT64:
-                        UnsafeHelper.Integer64Object int64 = UnsafeHelper.createInteger64Object();
-                        int64.setValue(int64Access.asLong(args[argIdx]));
-                        kernelArgs.setArgument(argIdx, int64);
-                        break;
-                    case FLOAT32:
-                        UnsafeHelper.Float32Object fp32 = UnsafeHelper.createFloat32Object();
-                        // going via "double" to allow floats to be initialized with doubles
-                        fp32.setValue((float) doubleAccess.asDouble(args[argIdx]));
-                        kernelArgs.setArgument(argIdx, fp32);
-                        break;
-                    case FLOAT64:
-                        UnsafeHelper.Float64Object fp64 = UnsafeHelper.createFloat64Object();
-                        fp64.setValue(doubleAccess.asDouble(args[argIdx]));
-                        kernelArgs.setArgument(argIdx, fp64);
-                        break;
-                    case POINTER:
-                        if (args[argIdx] instanceof DeviceArray) {
-                            DeviceArray deviceArray = (DeviceArray) args[argIdx];
-                            UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
-                            pointer.setValueOfPointer(deviceArray.getPointer());
-                            kernelArgs.setArgument(argIdx, pointer);
-                        } else if (args[argIdx] instanceof MultiDimDeviceArray) {
-                            MultiDimDeviceArray deviceArray = (MultiDimDeviceArray) args[argIdx];
-                            UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
-                            pointer.setValueOfPointer(deviceArray.getPointer());
-                            kernelArgs.setArgument(argIdx, pointer);
-                        } else {
-                            CompilerDirectives.transferToInterpreter();
-                            throw UnsupportedTypeException.create(new Object[]{args[argIdx]}, "expected DeviceArray type");
+                if (param.isPointer()) {
+                    if (arg instanceof DeviceArray) {
+                        DeviceArray deviceArray = (DeviceArray) arg;
+                        if (!param.isSynonymousWithPointerTo(deviceArray.getElementType())) {
+                            throw new GrCUDAException("device array of " + deviceArray.getElementType() + " cannot be used as pointer argument " + paramType);
                         }
-                        break;
+                        UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
+                        pointer.setValueOfPointer(deviceArray.getPointer());
+                        kernelArgs.setArgument(paramIdx, pointer);
+                    } else if (arg instanceof MultiDimDeviceArray) {
+                        MultiDimDeviceArray deviceArray = (MultiDimDeviceArray) arg;
+                        if (!param.isSynonymousWithPointerTo(deviceArray.getElementType())) {
+                            throw new GrCUDAException("multi-dimensional device array of " +
+                                    deviceArray.getElementType() + " cannot be used as pointer argument " + paramType);
+                        }
+                        UnsafeHelper.PointerObject pointer = UnsafeHelper.createPointerObject();
+                        pointer.setValueOfPointer(deviceArray.getPointer());
+                        kernelArgs.setArgument(paramIdx, pointer);
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                        throw UnsupportedTypeException.create(new Object[]{arg}, "expected DeviceArray type");
+                    }
+                } else {
+                    // by-value argument
+                    switch (paramType) {
+                        case BOOLEAN: {
+                            UnsafeHelper.Integer8Object int8 = UnsafeHelper.createInteger8Object();
+                            int8.setValue(booleanAccess.asBoolean(arg) ? ((byte) 1) : ((byte) 0));
+                            kernelArgs.setArgument(paramIdx, int8);
+                            break;
+                        }
+                        case SINT8:
+                        case CHAR: {
+                            UnsafeHelper.Integer8Object int8 = UnsafeHelper.createInteger8Object();
+                            int8.setValue(int8Access.asByte(arg));
+                            kernelArgs.setArgument(paramIdx, int8);
+                            break;
+                        }
+                        case SINT16: {
+                            UnsafeHelper.Integer16Object int16 = UnsafeHelper.createInteger16Object();
+                            int16.setValue(int16Access.asShort(arg));
+                            kernelArgs.setArgument(paramIdx, int16);
+                            break;
+                        }
+                        case SINT32:
+                        case WCHAR: {
+                            UnsafeHelper.Integer32Object int32 = UnsafeHelper.createInteger32Object();
+                            int32.setValue(int32Access.asInt(arg));
+                            kernelArgs.setArgument(paramIdx, int32);
+                            break;
+                        }
+                        case SINT64:
+                        case SLL64:
+                            // no larger primitive type than long -> interpret long as unsigned
+                        case UINT64:
+                        case ULL64: {
+                            UnsafeHelper.Integer64Object int64 = UnsafeHelper.createInteger64Object();
+                            int64.setValue(int64Access.asLong(arg));
+                            kernelArgs.setArgument(paramIdx, int64);
+                            break;
+                        }
+                        case UINT8:
+                        case CHAR8: {
+                            int uint8 = int16Access.asShort(arg);
+                            if (uint8 < 0 || uint8 > 0xff) {
+                                CompilerDirectives.transferToInterpreter();
+                                throw createExceptionValueOutOfRange(paramType, uint8);
+                            }
+                            UnsafeHelper.Integer8Object int8 = UnsafeHelper.createInteger8Object();
+                            int8.setValue((byte) (0xff & uint8));
+                            kernelArgs.setArgument(paramIdx, int8);
+                            break;
+                        }
+                        case UINT16:
+                        case CHAR16: {
+                            int uint16 = int32Access.asInt(arg);
+                            if (uint16 < 0 || uint16 > 0xffff) {
+                                CompilerDirectives.transferToInterpreter();
+                                throw createExceptionValueOutOfRange(paramType, uint16);
+                            }
+                            UnsafeHelper.Integer16Object int16 = UnsafeHelper.createInteger16Object();
+                            int16.setValue((short) (0xffff & uint16));
+                            kernelArgs.setArgument(paramIdx, int16);
+                            break;
+                        }
+                        case UINT32: {
+                            long uint32 = int64Access.asLong(arg);
+                            if (uint32 < 0 || uint32 > 0xffffffffL) {
+                                CompilerDirectives.transferToInterpreter();
+                                throw createExceptionValueOutOfRange(paramType, uint32);
+                            }
+                            UnsafeHelper.Integer32Object int32 = UnsafeHelper.createInteger32Object();
+                            int32 = UnsafeHelper.createInteger32Object();
+                            int32.setValue((int) (0xffffffffL & uint32));
+                            kernelArgs.setArgument(paramIdx, int32);
+                            break;
+                        }
+                        case FLOAT: {
+                            UnsafeHelper.Float32Object fp32 = UnsafeHelper.createFloat32Object();
+                            // going via "double" to allow floats to be initialized with doubles
+                            fp32.setValue((float) doubleAccess.asDouble(arg));
+                            kernelArgs.setArgument(paramIdx, fp32);
+                            break;
+                        }
+                        case DOUBLE: {
+                            UnsafeHelper.Float64Object fp64 = UnsafeHelper.createFloat64Object();
+                            fp64.setValue(doubleAccess.asDouble(arg));
+                            kernelArgs.setArgument(paramIdx, fp64);
+                            break;
+                        }
+                        default:
+                            CompilerDirectives.transferToInterpreter();
+                            throw UnsupportedTypeException.create(new Object[]{arg},
+                                    "unsupported by-value parameter type: " + paramType);
+                    }
                 }
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{args[argIdx]}, "expected type " + type);
+                throw UnsupportedTypeException.create(new Object[]{arg},
+                        "expected type " + paramType + " in argument " + arg);
             }
         }
         return kernelArgs;
@@ -200,17 +327,21 @@ public class Kernel implements TruffleObject {
         }
     }
 
-    public long getKernelFunction() {
-        return kernelFunction;
+    private static GrCUDAException createExceptionValueOutOfRange(Type type, long value) {
+        return new GrCUDAException("value " + value + " is out of range for type " + type);
     }
 
-    public void dispose() {
-        kernelModule.decrementRefCount();
+    public long getKernelFunctionHandle() {
+        if (module.isClosed()) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException("CUmodule containing kernel " + kernelName + " is already closed");
+        }
+        return nativeKernelFunctionHandle;
     }
 
     @Override
     public String toString() {
-        return "Kernel(" + kernelName + ", " + kernelSignature + ", launchCount=" + launchCount + ")";
+        return "Kernel(" + kernelName + ", " + Arrays.toString(kernelParameters) + ", launchCount=" + launchCount + ")";
     }
 
     public String getPTX() {
@@ -219,6 +350,10 @@ public class Kernel implements TruffleObject {
 
     public String getKernelName() {
         return kernelName;
+    }
+
+    public String getSymbolName() {
+        return kernelSymbol;
     }
 
     public int getLaunchCount() {
@@ -230,7 +365,7 @@ public class Kernel implements TruffleObject {
     protected static final String PTX = "ptx";
     protected static final String NAME = "name";
     protected static final String LAUNCH_COUNT = "launchCount";
-    private static final MemberSet MEMBERS = new MemberSet(PTX, NAME, LAUNCH_COUNT);
+    static final MemberSet MEMBERS = new MemberSet(PTX, NAME, LAUNCH_COUNT);
 
     @ExportMessage
     @SuppressWarnings("static-method")

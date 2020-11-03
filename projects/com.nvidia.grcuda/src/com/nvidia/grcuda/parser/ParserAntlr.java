@@ -39,7 +39,7 @@ public final class ParserAntlr {
     }
 
     @SuppressWarnings("static-method")
-    public ExpressionNode parse(Source source) throws ParserException {
+    public ExpressionNode parse(Source source) throws GrCUDAParserException {
         CompilerAsserts.neverPartOfCompilation();
         return GrCUDAParser.parseCUDA(source);
     }

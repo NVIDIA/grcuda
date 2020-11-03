@@ -28,10 +28,13 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.ElementType;
+import java.util.ArrayList;
+import java.util.Optional;
+
+import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.TypeException;
-import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.MemberSet;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
@@ -48,9 +51,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
-
-import java.util.ArrayList;
-import java.util.Optional;
 
 @ExportLibrary(InteropLibrary.class)
 public final class DeviceArrayFunction extends Function {
@@ -73,9 +73,9 @@ public final class DeviceArrayFunction extends Function {
             throw ArityException.create(1, arguments.length);
         }
         String typeName = expectString(arguments[0], "first argument of DeviceArray must be string (type name)");
-        ElementType elementType;
+        Type elementType;
         try {
-            elementType = ElementType.lookupType(typeName);
+            elementType = Type.fromGrCUDATypeString(typeName);
         } catch (TypeException e) {
             throw new GrCUDAException(e.getMessage());
         }
@@ -86,7 +86,7 @@ public final class DeviceArrayFunction extends Function {
         }
     }
 
-    static Object createArray(Object[] arguments, int start, ElementType elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext) throws UnsupportedTypeException {
+    static Object createArray(Object[] arguments, int start, Type elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext) throws UnsupportedTypeException {
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
         for (int i = start; i < arguments.length; ++i) {
