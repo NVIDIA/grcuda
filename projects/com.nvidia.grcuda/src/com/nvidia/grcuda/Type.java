@@ -183,7 +183,7 @@ public enum Type {
         }
     }
 
-    String getMangled() {
+    public String getMangled() {
         return this.cxxEncoding;
     }
 }

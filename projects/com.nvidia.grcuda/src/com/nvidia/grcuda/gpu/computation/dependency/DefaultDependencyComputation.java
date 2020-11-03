@@ -1,7 +1,6 @@
 package com.nvidia.grcuda.gpu.computation.dependency;
 
-import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
+import com.nvidia.grcuda.ParameterWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.computation.InitializeArgumentList;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -19,20 +18,20 @@ import java.util.Set;
 public class DefaultDependencyComputation extends DependencyComputation {
 
     @CompilerDirectives.TruffleBoundary
-    DefaultDependencyComputation(List<ComputationArgumentWithValue> argumentList) {
+    DefaultDependencyComputation(List<ParameterWithValue> argumentList) {
         activeArgumentSet = new HashSet<>(argumentList);
     }
 
-    static DefaultDependencyComputation initialize(List<ComputationArgumentWithValue> argumentList) {
+    static DefaultDependencyComputation initialize(List<ParameterWithValue> argumentList) {
         return new DefaultDependencyComputation(argumentList);
     }
 
     @CompilerDirectives.TruffleBoundary
     @Override
-    public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
-        Set<ComputationArgumentWithValue> dependencies = new HashSet<>();
-        Set<ComputationArgumentWithValue> newArgumentSet = new HashSet<>();
-        for (ComputationArgumentWithValue arg : activeArgumentSet) {
+    public List<ParameterWithValue> computeDependencies(GrCUDAComputationalElement other) {
+        Set<ParameterWithValue> dependencies = new HashSet<>();
+        Set<ParameterWithValue> newArgumentSet = new HashSet<>();
+        for (ParameterWithValue arg : activeArgumentSet) {
             // The other computation requires the current argument, so we have found a new dependency;
             if (other.getDependencyComputation().getActiveArgumentSet().contains(arg)) {
                 dependencies.add(arg);

@@ -2,7 +2,7 @@ package com.nvidia.grcuda.gpu.computation.prefetch;
 
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
+import com.nvidia.grcuda.ParameterWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 
@@ -22,7 +22,7 @@ public class SyncArrayPrefetcher extends AbstractArrayPrefetcher {
      */
     @Override
     public void prefetchToGpu(GrCUDAComputationalElement computation) {
-        for (ComputationArgumentWithValue a : computation.getArgumentList()) {
+        for (ParameterWithValue a : computation.getArgumentList()) {
             if (a.getArgumentValue() instanceof AbstractArray) {
                 AbstractArray array = (AbstractArray) a.getArgumentValue();
                 // The array has been used by the CPU, so we should prefetch it;

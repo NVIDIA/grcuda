@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.test.mock;
 
 import com.nvidia.grcuda.NoneValue;
-import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
+import com.nvidia.grcuda.ParameterWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 
@@ -18,11 +18,11 @@ public class KernelExecutionMock extends GrCUDAComputationalElement {
      */
     private int durationMs = 0;
 
-    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
+    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ParameterWithValue> args) {
         super(grCUDAExecutionContext, args);
     }
 
-    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args, int durationMs) {
+    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ParameterWithValue> args, int durationMs) {
         super(grCUDAExecutionContext, args);
         this.durationMs = durationMs;
     }

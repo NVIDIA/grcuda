@@ -1,13 +1,13 @@
 package com.nvidia.grcuda.gpu.computation;
 
 import com.nvidia.grcuda.CUDAEvent;
+import com.nvidia.grcuda.ParameterWithValue;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyComputation;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
-import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.Collection;
@@ -23,7 +23,7 @@ public abstract class GrCUDAComputationalElement {
     /**
      * This list contains the original set of input arguments that are used to compute dependencies;
      */
-    protected final List<ComputationArgumentWithValue> argumentList;
+    protected final List<ParameterWithValue> argumentList;
     /**
      * Reference to the execution context where this computation is executed;
      */
@@ -75,11 +75,11 @@ public abstract class GrCUDAComputationalElement {
      * @param grCUDAExecutionContext execution context in which this computational element will be scheduled
      * @param args the list of arguments provided to the computation. Arguments are expected to be {@link org.graalvm.polyglot.Value}
      */
-    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
+    public GrCUDAComputationalElement(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ParameterWithValue> args) {
         this(grCUDAExecutionContext, new DefaultExecutionInitializer(args));
     }
 
-    public List<ComputationArgumentWithValue> getArgumentList() {
+    public List<ParameterWithValue> getArgumentList() {
         return argumentList;
     }
 
@@ -186,7 +186,7 @@ public abstract class GrCUDAComputationalElement {
      * Set for all the {@link com.nvidia.grcuda.array.AbstractArray} in the computation if this computation is an array access;
      */
     public void updateIsComputationArrayAccess() {
-        for (ComputationArgumentWithValue o : this.argumentList) {
+        for (ParameterWithValue o : this.argumentList) {
             if (o.getArgumentValue() instanceof AbstractArray) {
                 ((AbstractArray) o.getArgumentValue()).setLastComputationArrayAccess(isComputationArrayAccess);
             }
@@ -199,7 +199,7 @@ public abstract class GrCUDAComputationalElement {
      * @param other kernel for which we want to check dependencies, w.r.t. this kernel
      * @return the list of arguments that the two kernels have in common
      */
-    public Collection<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
+    public Collection<ParameterWithValue> computeDependencies(GrCUDAComputationalElement other) {
         return this.dependencyComputation.computeDependencies(other);
     }
 
@@ -231,14 +231,14 @@ public abstract class GrCUDAComputationalElement {
      * and consider each of them in the dependency computations;
      */
     private static class DefaultExecutionInitializer implements InitializeArgumentList {
-        private final List<ComputationArgumentWithValue> args;
+        private final List<ParameterWithValue> args;
 
-        DefaultExecutionInitializer(List<ComputationArgumentWithValue> args) {
+        DefaultExecutionInitializer(List<ParameterWithValue> args) {
             this.args = args;
         }
 
         @Override
-        public List<ComputationArgumentWithValue> initialize() {
+        public List<ParameterWithValue> initialize() {
             return args;
         }
     }

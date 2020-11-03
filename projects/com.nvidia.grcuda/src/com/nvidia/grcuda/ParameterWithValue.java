@@ -1,6 +1,6 @@
-package com.nvidia.grcuda.gpu.computation;
+package com.nvidia.grcuda;
 
-import com.nvidia.grcuda.gpu.ArgumentType;
+import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
 import java.util.Objects;
 
@@ -10,16 +10,21 @@ import java.util.Objects;
  * and if it's constant (i.e. its content cannot be modified in the computation).
  * This class also holds a reference to the actual object associated to the argument;
  */
-public class ComputationArgumentWithValue extends ComputationArgument {
+public class ParameterWithValue extends Parameter {
     private final Object argumentValue;
 
-    public ComputationArgumentWithValue(ArgumentType type, boolean isArray, boolean isConst, Object argumentValue) {
-        super(type, isArray, isConst);
+//    public ParameterWithValue(ArgumentType type, boolean isArray, boolean isConst, Object argumentValue) {
+//        super(type, isArray, isConst);
+//        this.argumentValue = argumentValue;
+//    }
+
+    public ParameterWithValue(String name, Type type, Kind kind, Object argumentValue) {
+        super(name, type, kind);
         this.argumentValue = argumentValue;
     }
 
-    public ComputationArgumentWithValue(ComputationArgument computationArgument, Object argumentValue) {
-        super(computationArgument.getType(), computationArgument.isArray(), computationArgument.isConst());
+    public ParameterWithValue(Parameter parameter, Object argumentValue) {
+        super(parameter.getPosition(), parameter.getName(), parameter.getType(), parameter.getKind());
         this.argumentValue = argumentValue;
     }
 
@@ -39,7 +44,7 @@ public class ComputationArgumentWithValue extends ComputationArgument {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ComputationArgumentWithValue that = (ComputationArgumentWithValue) o;
+        ParameterWithValue that = (ParameterWithValue) o;
         return Objects.equals(argumentValue, that.argumentValue);
     }
 

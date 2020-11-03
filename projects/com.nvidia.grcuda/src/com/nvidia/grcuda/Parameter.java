@@ -47,10 +47,12 @@ public class Parameter {
         POINTER_INOUT,
     }
 
-    private int position;
-    private final String name;
-    private final Type type;
-    private final Kind kind;
+    // Used to denote default position, for cases in which position is not relevant;
+    private static final int DEFAULT_POSITION = 0;
+    protected int position;
+    protected final String name;
+    protected final Type type;
+    protected final Kind kind;
 
     protected final boolean isArray;
     protected final boolean isConst;
@@ -70,6 +72,10 @@ public class Parameter {
         this.kind = kind;
         this.isArray = kind.equals(Kind.POINTER_IN) || kind.equals(Kind.POINTER_INOUT) || kind.equals(Kind.POINTER_OUT);
         this.isConst = kind.equals(Kind.POINTER_IN) || kind.equals(Kind.BY_VALUE);
+    }
+
+    Parameter(String name, Type type, Kind kind) {
+        this(DEFAULT_POSITION, name, type, kind);
     }
 
     /**
@@ -172,12 +178,33 @@ public class Parameter {
      */
     private static Parameter parseLegacyParameterString(int position, String param) throws TypeException {
         String name = "param" + (position + 1);
-        // TODO: undesrtand if a pointer is const
-        boolean isConst = false;
-        Type type = Type.fromNIDLTypeString(param.trim());
+
+        // Find if the type is const;
+        String[] typePieces = param.trim().split(" ");
+        String typeString;
+        boolean typeIsConst = false;
+        if (typePieces.length == 1) {
+            // If only 1 piece is found, the argument is not const;
+            typeString = typePieces[0].trim();
+        } else if (typePieces.length == 2) {
+            // Const can be either before or after the type;
+            if (typePieces[0].trim().equals("const")) {
+                typeIsConst = true;
+                typeString = typePieces[1].trim();
+            } else if (typePieces[1].trim().equals("const")) {
+                typeIsConst = true;
+                typeString = typePieces[0].trim();
+            } else {
+                throw new IllegalArgumentException("invalid type identifier in kernel signature: " + param);
+            }
+        } else {
+            throw new IllegalArgumentException("invalid type identifier in kernel signature: " + param);
+        }
+
+        Type type = Type.fromNIDLTypeString(typeString);
         assertNonVoidType(type, position, param);
         Kind kind = type == Type.NFI_POINTER ? Kind.POINTER_INOUT : Kind.BY_VALUE;
-        if (isConst && type == Type.NFI_POINTER) {
+        if (typeIsConst && type == Type.NFI_POINTER) {
             kind = Kind.POINTER_IN;
         }
         return new Parameter(position, name, type, kind);

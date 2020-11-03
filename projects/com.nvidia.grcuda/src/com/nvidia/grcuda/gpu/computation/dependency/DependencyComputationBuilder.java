@@ -1,9 +1,9 @@
 package com.nvidia.grcuda.gpu.computation.dependency;
 
-import com.nvidia.grcuda.gpu.computation.ComputationArgumentWithValue;
+import com.nvidia.grcuda.ParameterWithValue;
 
 import java.util.List;
 
 public interface DependencyComputationBuilder {
-    DependencyComputation initialize(List<ComputationArgumentWithValue> argumentList);
+    DependencyComputation initialize(List<ParameterWithValue> argumentList);
 }
