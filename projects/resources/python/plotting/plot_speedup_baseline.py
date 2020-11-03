@@ -18,19 +18,20 @@ import matplotlib.lines as lines
 import math
 
 import os
-from load_data import load_data
+from load_data import load_data, compute_speedup
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
 
 
-INPUT_DATE = "2020_09_16_06_25_22_grcuda"
-OUTPUT_DATE = "2020_09_17"
+# INPUT_DATE = "2020_09_19_grcuda"
+OUTPUT_DATE = "2020_10_14"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b8": "Images", "b6": "ML Ensemble", "b7": "HITS", "b10": "DL"}
 
-INPUT_DATE_960 = "2020_08_13_16_41_16_grcuda"
-INPUT_DATE_P100 = "2020_09_16_06_25_22_grcuda"
-INPUT_DATE_P100_NP = "2020_09_12_grcuda_no_prefetch"
+INPUT_DATE_960 = "960/2020_10_11_13_15_09_grcuda_baseline"
+INPUT_DATE_P100 = "P100/2020_10_13_10_03_48_grcuda_baseline" # "2020_09_29_17_30_03_grcuda_forceprefetch"
+# INPUT_DATE_P100_NP = "P100/2020_09_19_grcuda_no_prefetch"
+INPUT_DATE_1660 = "1660/2020_10_13_18_21_04_grcuda_baseline"
 
 
 def build_exec_time_plot(data, gridspec, x, y):
@@ -270,8 +271,12 @@ def build_exec_time_plot_2_row_multigpu(data, gridspec, fig, i, j):
     
     data["size_str"] = data["size"].astype(str)
     
-    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"]]
-    markers = ["o", "X", "D"]
+    # Add prefetching or not to GPU name;
+    data["gpu_original"] = data["gpu"].copy()
+    # data["gpu"] += np.where(data["exec_policy_full"] == "sync_f", ", sync with prefetch", "")
+    
+    palette = [COLORS["peach1"], COLORS["b8"], COLORS["b2"], COLORS["b3"], COLORS["b5"]][:len(data["gpu"].unique())]
+    markers = ["o", "X", "D", "X", "D"][:len(data["gpu"].unique())]
     
     # Add a lineplot with the exec times;
     ax = fig.add_subplot(gridspec[i, j])
@@ -288,7 +293,8 @@ def build_exec_time_plot_2_row_multigpu(data, gridspec, fig, i, j):
     
     # Top y-lim is depends on the benchmark, and is multiple of 1.5;
     max_y_val = np.max(data.groupby(["gpu", "size_str"])["computation_speedup"].median())
-    fixed_max_y_val = np.ceil(max_y_val / 1.5) * 1.5
+    # fixed_max_y_val = np.ceil(max_y_val / 1.5) * 1.5
+    fixed_max_y_val = 3 if i == 0 else 1.8
     
     # Obtain max/min for each block size;
     max_speedup = {}
@@ -318,15 +324,15 @@ def build_exec_time_plot_2_row_multigpu(data, gridspec, fig, i, j):
         ax.add_collection(lc)
     for g in data["gpu"].unique():
         for e in zip(min_speedup[g], max_speedup[g]):
-            if e[1][1] - e[0][1] > (0.2 if i == 0 else 0.05):
+            if (e[1][1] - e[0][1] > (0.3 if i == 0 else 0.1)) and not (b == "b6" and g in ["GTX960", "GTX1660 Super"]):
                 v_offset = 0.05 if i == 0 else 0.01
-                ax.annotate(f"{e[0][2].split(',')[0]}", xy=(size_dict[int(e[0][0])] + 0.02, e[0][1] - v_offset), fontsize=6, ha="left", va="center", color="#888888", alpha=0.8,)
-                ax.annotate(f"{e[1][2].split(',')[0]}", xy=(size_dict[int(e[1][0])] + 0.02, min(fixed_max_y_val, e[1][1] + v_offset)), fontsize=6, ha="left", va="center", color="#888888", alpha=0.8,)
+                ax.annotate(f"{e[0][2].split(',')[0]}", xy=(size_dict[int(e[0][0])] + 0.02, e[0][1] - v_offset), fontsize=6, ha="left", va="center", color="#2f2f2f", alpha=0.9,)
+                ax.annotate(f"{e[1][2].split(',')[0]}", xy=(size_dict[int(e[1][0])] + 0.02, min(fixed_max_y_val, e[1][1] + v_offset)), fontsize=6, ha="left", va="center", color="#2f2f2f", alpha=0.9,)
 
     labels = sorted(data["size"].unique())
     labels_str = [str(x) for x in labels]
     
-    ax.set_ylim((0.9, fixed_max_y_val))
+    ax.set_ylim((0.8, fixed_max_y_val))
 
     # Add a horizontal line to denote speedup = 1x;
     ax.axhline(y=1, color="#2f2f2f", linestyle="--", zorder=1, linewidth=1, alpha=0.5)
@@ -334,10 +340,11 @@ def build_exec_time_plot_2_row_multigpu(data, gridspec, fig, i, j):
     # Set the x ticks;
     odd_ticks = 0 if (len(labels_str) % 2 == 1) else 1
     ax.set_xticks([l for i, l in enumerate(labels_str) if i % 2 == odd_ticks])
+    
     ax.set_xticklabels(labels=[get_exp_label(l) for i, l in enumerate(labels) if i % 2 == odd_ticks], rotation=0, ha="center", fontsize=9)
-    ax.tick_params(labelcolor="black")
+    ax.tick_params(labelcolor="black", pad=3)
     # Set the y ticks;
-    ax.yaxis.set_major_locator(plt.LinearLocator(7))
+    ax.yaxis.set_major_locator(plt.LinearLocator(8 if i == 0 else 6))
     if j == 0:
         ax.set_yticklabels(labels=["{:.1f}x".format(l) for l in ax.get_yticks()], ha="right", fontsize=10)
     else:
@@ -354,17 +361,25 @@ def build_exec_time_plot_2_row_multigpu(data, gridspec, fig, i, j):
     ax.annotate(f"{BENCHMARK_NAMES[data['benchmark'].iloc[0]]}", xy=(0.50, 1.05), fontsize=12, ha="center", xycoords="axes fraction")
     
      # Turn off tick lines;
+    ax.yaxis.grid(True)
     ax.xaxis.grid(False)
-    
+   
     # Add baseline execution time annotations (median of execution time across blocks);
-    gpus = ["960", "P100"]
-    ax.annotate(f"Median baseline exec. time (ms):", xy=(0, -0.27), fontsize=9, ha="left", xycoords="axes fraction", color="#949494")
-    for g_i, gpu in enumerate(data["gpu"].unique()):
+    # curr_label_set = set([int(l) for l_i, l in enumerate(labels) if l_i % 2 == odd_ticks])
+    # other_label_set = set([int(l) for l_i, l in enumerate(labels) if l_i % 2 != odd_ticks])
+    gpus = ["960", "1660", "P100"]
+    ax.annotate("Median baseline exec. time (ms):", xy=(0, -0.27), fontsize=9, ha="left", xycoords="axes fraction", color="#949494")
+    for g_i, gpu in enumerate(data["gpu_original"].unique()):
         if g_i < len(gpus):
             if (j == 0):
                 ax.annotate(f"{gpus[g_i]}:", xy=(-0.75, -0.37 - g_i * 0.1), fontsize=9, color=palette[g_i], ha="right", xycoords=("data", "axes fraction"))
+                   
+            # Always print the maximum number of ticks;
+            # curr_sizes = set(data[data["gpu_original"] == gpu]["size"].unique())
+            # odd_ticks_2 = odd_ticks if len(curr_sizes.intersection(curr_label_set)) > len(curr_sizes.intersection(other_label_set)) else int(not odd_ticks)
+          
             for l_i, l in enumerate(labels):
-                vals = data[(data["size"] == int(l)) & (data["gpu"] == gpu)]["baseline_time_sec"]
+                vals = data[(data["size"] == int(l)) & (data["gpu_original"] == gpu)]["baseline_time_sec"]
                 baseline_median = np.median(vals) if len(vals) > 0 else np.nan
                 # print(i, j, gpu, baseline_median)
                 if not math.isnan(baseline_median) and l_i % 2 == odd_ticks:
@@ -510,18 +525,92 @@ if __name__ == "__main__":
     
     #%% Plot both P100 and GTX960
     
+    # data_960 = load_data(INPUT_DATE_960, skip_iter=3)
+    # data_p100 = load_data(INPUT_DATE_P100, skip_iter=3)
+    # data_1660 = load_data(INPUT_DATE_1660, skip_iter=3)
+    # # data_p100_np = load_data(INPUT_DATE_P100_NP, skip_iter=3)
+    # data_960["gpu"] = "GTX960"
+    # data_p100["gpu"] = "P100"
+    # data_1660["gpu"] = "GTX1660 Super"
+    # # data_p100_np["gpu"] = "P100, no prefetch"
+    # # data = pd.concat([data_960, data_p100, data_p100_np])
+    # data = pd.concat([data_960, data_1660, data_p100]).reset_index(drop=True)
+    
+    # # data = data[data["force_prefetch"] == False]
+    
+    # # Ignore synchronous execution;
+    # # data = data[data["exec_policy"] != "sync"]
+    
+    # # Remove no prefetch data if required;
+    # # data = data[data["gpu"] != "P100, no prefetch"]
+    
+    # # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    # sns.set_style("white", {"ytick.left": True, "xtick.bottom": True})
+    # plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
+    # plt.rcParams['axes.titlepad'] = 20 
+    # plt.rcParams['axes.labelpad'] = 10 
+    # plt.rcParams['axes.titlesize'] = 22 
+    # plt.rcParams['axes.labelsize'] = 14 
+    
+    # # Lists of benchmarks and block sizes;
+    # benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
+    # block_size_list = sorted(data["block_size_str"].unique(), key=lambda x: [int(y) for y in x.split(",")])
+    
+    # # Lists of benchmarks and block sizes;
+    # benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
+    # num_row = 2
+    # num_col = len(benchmark_list) // num_row
+    # fig = plt.figure(figsize=(2.2 * num_col, 2.7 * num_row))
+    # gs = gridspec.GridSpec(num_row, num_col)
+    # plt.subplots_adjust(top=0.86,
+    #                 bottom=0.18,
+    #                 left=0.09,
+    #                 right=0.98,
+    #                 hspace=0.75,
+    #                 wspace=0.1)
+        
+    # exec_time_axes = []
+    # speedups = []
+    # for b_i, b in enumerate(benchmark_list):
+    #     i = b_i // num_col
+    #     j = b_i % num_col
+    #     curr_res = data[data["benchmark"] == b].reset_index(drop=True)  
+    #     curr_res = remove_outliers_df_grouped(curr_res, column="computation_speedup", group=["block_size_str", "size", "gpu"])
+    #     speedups += [curr_res.groupby(["size", "block_size_str", "gpu"])["computation_speedup"].apply(gmean)]
+    #     exec_time_axes += [build_exec_time_plot_2_row_multigpu(curr_res, gs, fig, i, j)]
+        
+    # plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    # # plt.annotate("Speedup over\nserial scheduling", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
+    # plt.suptitle("Parallel scheduler speedup\nover serial scheduler", fontsize=16, x=.02, y=0.99, ha="left")
+
+    # save_plot(PLOT_DIR, "speedup_baseline_multigpu_{}.{}", OUTPUT_DATE)
+    
+    
+    #%% Plot speedup with prefetching of sync and default w.r.t. sync baseline;
+    
     data_960 = load_data(INPUT_DATE_960, skip_iter=3)
     data_p100 = load_data(INPUT_DATE_P100, skip_iter=3)
-    data_p100_np = load_data(INPUT_DATE_P100_NP, skip_iter=3)
+    data_1660 = load_data(INPUT_DATE_1660, skip_iter=3)
     data_960["gpu"] = "GTX960"
     data_p100["gpu"] = "P100"
-    data_p100_np["gpu"] = "P100, no prefetch"
-    data = pd.concat([data_960, data_p100, data_p100_np])
+    data_1660["gpu"] = "GTX1660 Super"
+    data = pd.concat([data_960, data_1660, data_p100]).reset_index(drop=True)
     
+    data["exec_policy_full"] = data["exec_policy"] + np.where(data["force_prefetch"], "_f", "")
+    
+    # Recompute speedups w.r.t. sync-noprefetch policy;
+    compute_speedup(data, ["gpu", "benchmark", "new_stream_policy", "parent_stream_policy",
+            "dependency_policy", "block_size_1d", "block_size_2d",
+            "total_iterations", "cpu_validation", "random_init", "size", "realloc", "reinit"], baseline_filter_col="exec_policy_full", baseline_filter_val="sync")
+
     # Ignore synchronous execution;
-    data = data[data["exec_policy"] != "sync"]
+    data = data[data["exec_policy_full"] != "sync"]
+    # Skip no-prefetch;
+    data = data[(data["exec_policy_full"] != "default") | (data["gpu"] == "GTX960")]
+    data = data[(data["exec_policy_full"] != "sync_f") | (data["gpu"] == "GTX960")]
     
-    sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})
+    sns.set_style("white", {"ytick.left": True, "xtick.bottom": True})
     plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     plt.rcParams['axes.titlepad'] = 20 
     plt.rcParams['axes.labelpad'] = 10 
@@ -536,13 +625,13 @@ if __name__ == "__main__":
     benchmark_list = [b for b in BENCHMARK_NAMES.keys() if b in data["benchmark"].unique()]
     num_row = 2
     num_col = len(benchmark_list) // num_row
-    fig = plt.figure(figsize=(2.2 * num_col, 2.7 * num_row))
+    fig = plt.figure(figsize=(2.2 * num_col, 2.8 * num_row))
     gs = gridspec.GridSpec(num_row, num_col)
     plt.subplots_adjust(top=0.86,
                     bottom=0.18,
                     left=0.09,
                     right=0.98,
-                    hspace=0.75,
+                    hspace=0.85,
                     wspace=0.1)
         
     exec_time_axes = []
@@ -555,10 +644,9 @@ if __name__ == "__main__":
         speedups += [curr_res.groupby(["size", "block_size_str", "gpu"])["computation_speedup"].apply(gmean)]
         exec_time_axes += [build_exec_time_plot_2_row_multigpu(curr_res, gs, fig, i, j)]
         
-    plt.annotate("Input number of elements", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
+    plt.annotate("Input number of elements (x-axis not to scale)", xy=(0.5, 0.02), fontsize=14, ha="center", va="center", xycoords="figure fraction")
     # plt.annotate("Speedup over\nserial scheduling", xy=(0.022, 0.44), fontsize=14, ha="left", va="center", rotation=90, xycoords="figure fraction")    
     plt.suptitle("Parallel scheduler speedup\nover serial scheduler", fontsize=16, x=.02, y=0.99, ha="left")
 
-    save_plot(PLOT_DIR, "speedup_baseline_multigpu_{}.{}", OUTPUT_DATE)
-    
+    save_plot(PLOT_DIR, "speedup_baseline_multigpu_prefetch_{}.{}", OUTPUT_DATE)
     

@@ -277,7 +277,7 @@ graalpython -m ginstall install numpy;
 
 Run a specific benchmark with custom settings
 ```
-graalpython --jvm --polyglot --grcuda.RetrieveNewStreamPolicy=fifo --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 100 --no_cpu_validation --reinit false --realloc false -b b7
+graalpython --jvm --polyglot --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10
 ```
 
 Run all benchmarks
@@ -293,15 +293,15 @@ graalpython --jvm --polyglor benchmark_wrapper.py -d -i 30 -c
 Profile a specific benchmark using `nvprof`. Running `nvprof` as `sudo` might not be required, see [here](https://developer.nvidia.com/nvidia-development-tools-solutions-ERR_NVGPUCTRPERM-permission-issue-performance-counters).
  Note that the `graalpython` benchmark has the `--nvprof` flag, so that only the real computation is profiled (and not the benchmark initialization). 
  Additionally, provide `nvprof` with flags `--csv` to get a CSV output, and `--log-file bench-name_%p.csv"` to store the result.
-  Not using the flag `--print-gpu-trace` will print aggregated results. Additional metrics can be collected by `nvprof` with e.g. `--metrics "achieved_occupancy,sm_efficiency"` ([full list](https://docs.nvidia.com/cuda/profiler-users-guide/index.html#metrics-reference))
+  Not using the flag `--print-gpu-trace` will print aggregated results. Additional metrics can be collected by `nvprof` with e.g. `--metrics "achieved_occupancy,sm_efficiency"` ([full list](https://docs.nvidia.com/cuda/profiler-users-guide/index.html#metrics-reference)). GPUs with architecture starting from Turing (e.g. GTX 1660 Super) no longer allow collecting metrics with `nvprof`, but `ncu` ([link](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)) and Nsight Compute ([link](https://developer.nvidia.com/nsight-compute)).
 ```
-sudo /usr/local/cuda/bin/nvprof --profile-from-start off --print-gpu-trace --profile-child-processes  /path/to/graalpython --jvm --polyglot --WithThread --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py  -i 10 -n 1000000  --reinit false --realloc false  -b b1 --no_cpu_validation -d --block_size_1d 256 --block_size_2d 16 --nvprof
+sudo /usr/local/cuda/bin/nvprof --profile-from-start off --print-gpu-trace --profile-child-processes  /path/to/graalpython --jvm --polyglot --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10d --block_size_1d 256 --block_size_2d 16 --nvprof
 ```
 
 * Benchmarks are defined in the `projects/resources/python/benchmark/bench` folder, 
-and you can create more benchmarks by inheriting from the `Benchmark` class
+and you can create more benchmarks by inheriting from the `Benchmark` class. Single benchmarks are executed from `benchmark_main.py`, while running all benchmark is done through `benchmark_wrapper.py`
 * The output of benchmarks is stored in a JSON (by default, located in `data/results`)
-* The benchmarking suite supports the following options
+* The benchmarking suite, through `benchmark_main.py`, supports the following options
     1. `-d`, `--debug`: print to the console the results and details of each benchmark. False by default
     2. `-t`, `--num_iter`: number of times that each benchmark is executed, for each combination of options. 30 by default
     3. `-o`, `--output_path`: full path to the file where results are stored. By default results are stored in `data/results`,
@@ -312,6 +312,12 @@ and you can create more benchmarks by inheriting from the `Benchmark` class
     7. `-b`, `--benchmark`: run the benchmark only for the specified kernel. Otherwise run all benchmarks specified in `benchmark_main.py`
     8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
     9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default
+	10. `--block_size_1d`: number of threads per block when using 1D kernels
+	11. `--block_size_2d`: number of threads per block when using 2D kernels
+	12. `-g`, `--number_of_blocks`: number of blocks in the computation
+	13. `-p`, `--time_phases`: measure the execution time of each phase of the benchmark; note that this introduces overheads, and might influence the total execution time. Results for each phase are meaningful only for synchronous execution
+	14. `--nvprof`: if present, enable profiling when using nvprof. For this option to have effect, run graalpython using nvprof, with flag '--profile-from-start off'
+	
 
 ## DAG Scheduling Settings
 The automatic DAG scheduling of GrCUDA supports different settings that can be used for debugging or to simplify the dependency computation in some circumstances
@@ -324,6 +330,7 @@ The automatic DAG scheduling of GrCUDA supports different settings that can be u
  `fifo` (the default) reuses free streams whenever possible, while `always_new` creates new streams every time a computation should use a stream different from its parent
 * `RetrieveParentStreamPolicy`: choose how streams for new GrCUDA computations are obtained from parent computations;
 `default` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint
- 
+* `--grcuda.InputPrefetch`: if present, prefetch the data on GPUs with architecture starting from Pascal. In most cases, it improves performance.
+* `--grcuda.ForceStreamAttach`: if present, force association between arrays and CUDA streams. True by default on architectures older than Pascal, to allow concurrent CPU/GPU computation. On architectures starting from Pascal, it can improve performance.
 
 

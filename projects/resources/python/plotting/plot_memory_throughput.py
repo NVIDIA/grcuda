@@ -25,16 +25,16 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
-INPUT_DATE = "2020_08_16"
-OUTPUT_DATE = "2020_08_16"
+INPUT_DATE = "2020_09_23_960"
+OUTPUT_DATE = "2020_09_17"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {
     "b1": "VEC",
     "b5": "B&S", 
+    "b8": "IMG",
     "b6": "ML",
     "b7": "HITS", 
-    "b8": "IMG",
     "b10": "DL"
     }
 POLICIES = ["sync", "default"]
@@ -192,7 +192,9 @@ def barplot(data, ax, title, y_column, y_limit, annotation_title, y_ticks=6, y_t
     # Obtain labels;
     x_labels = [BENCHMARK_NAMES[l] for l in data["benchmark"].unique()]
 
-    palette = [COLORS["peach1"], COLORS["b8"]]
+    peach = "#fab086"
+    green = "#6cb77c"
+    palette = [peach, green]
     edgecolor = "#2f2f2f"
     
     bar_width = 0.35
@@ -215,7 +217,7 @@ def barplot(data, ax, title, y_column, y_limit, annotation_title, y_ticks=6, y_t
     ax.grid(True, axis="y")
     
     # ax.annotate(title, fontsize=9, x=.02, y=0.95, ha="left")
-    plt.suptitle("Hardware metrics for each\nbenchmark and execution policy", fontsize=14, x=.01, y=0.97, ha="left")
+    plt.suptitle("Hardware metrics for each\nbenchmark and execution policy,\nGTX 960", fontsize=14, x=.01, y=0.97, ha="left")
     ax.annotate(title, xy=(0, 1.08), fontsize=10, ha="left", xycoords="axes fraction")#, xycoords="data", xytext=(0, 100), textcoords="offset points")
     autolabel(ax, rects1, rects2)
     
