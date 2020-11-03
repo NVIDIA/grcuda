@@ -71,7 +71,7 @@ public class BindKernelTest {
         String cubinFileName = sourceFile.getParent() + File.separator + "inc_kernel.ptx";
 
         // Compile source file with NVCC
-        Process compiler = Runtime.getRuntime().exec("nvcc --ptx " +
+        Process compiler = Runtime.getRuntime().exec("/usr/local/cuda/bin/nvcc --ptx " +
                         sourceFile.getAbsolutePath() + " -o " + cubinFileName);
         BufferedReader output = new BufferedReader(new InputStreamReader(compiler.getErrorStream()));
         int nvccReturnCode = compiler.waitFor();

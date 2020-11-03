@@ -261,9 +261,13 @@ graalpython -m ginstall install numpy;
 7. **Install GrCUDA with** `./install.sh`
 
 8. **Setup your IDE with** `mx ideinit`
+* In IntelliJ Idea, install the Python plugin, then do Project Structure -> SDKs -> Create a new Python 2.7 Virtual Environment, it is used by `mx`
+* In IntelliJ Idea, Project Structures -> Modules -> Set the Module SDK (under Dependencies) of `mx` and submodules to your Java SDK (e.g. `1.8`)
 * Also update the project SDK and the default JUnit configurations to use the GraalVM SDK in `$GRAAL_HOME`, and update the `PATH` variable so that it can find `nvcc`
-* Modify the template Junit test configuration adding `-Djava.library.path="/path/to/graalvmbuild/lib` to the VM options to find `trufflenfi`
+	* Modify the template Junit test configuration adding `-Djava.library.path="/path/to/graalvmbuild/lib` (in Java 11) or -Djava.library.path="graalvm-ce-java8-20.2.0/jre/lib/amd64"to the VM options to find `trufflenfi`
  and update the environment variables with `PATH=your/path/env/var` to find `nvcc`
+	* In IntelliJ Idea, Run -> Edit Configurations, then create a new JUnit configuration set to "All in package" with `com.nvidia.grcuda` as module and `com.nvidia.grcuda.test` below, add to VM options `-Djava.library.path="/path/to/graalvm-ce-java8-20.0.0/jre/lib/amd64"` (or your version of GraalVM). Specify the SDK by setting the GraalVM JRE in e.g. `/path/to/graalvm-ce-java8-20.0.0`
+	* Environment variables should have PATH identical to what you use in a shell
 9. **Run tests with** `mx unittest com.nvidia`
 * Run a specific test using, for example, `mx unittest com.nvidia.grcuda.test.gpu.ExecutionDAGTest#executionDAGConstructorTest`
 
