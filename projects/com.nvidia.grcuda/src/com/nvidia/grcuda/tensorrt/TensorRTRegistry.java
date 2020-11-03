@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.nvidia.grcuda.DeviceArray;
+import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.GPUPointer;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAOptions;

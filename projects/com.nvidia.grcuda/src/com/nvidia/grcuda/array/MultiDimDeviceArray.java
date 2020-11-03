@@ -228,4 +228,15 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         long offset = index * stridePerDimension[0];
         return new MultiDimDeviceArrayView(this, 1, offset, stridePerDimension[1]);
     }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return getPointer();
+    }
 }

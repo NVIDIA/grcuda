@@ -34,7 +34,7 @@ public class TypeException extends Exception {
 
     private static final long serialVersionUID = -7313402629647154160L;
 
-    TypeException(String message) {
+    public TypeException(String message) {
         super(message);
         CompilerAsserts.neverPartOfCompilation();
     }

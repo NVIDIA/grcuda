@@ -1,7 +1,9 @@
 package com.nvidia.grcuda.gpu.computation;
 
+import com.nvidia.grcuda.Parameter;
+import com.nvidia.grcuda.ParameterWithValue;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.gpu.ArgumentType;
 
 import java.util.Collections;
 import java.util.List;
@@ -16,6 +18,7 @@ class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeAr
 
     private final T array;
     private final boolean readOnly;
+    private final static String PARAMETER_NAME = "array_access";
 
     ArrayExecutionInitializer(T array) {
         this(array, false);
@@ -27,8 +30,8 @@ class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeAr
     }
 
     @Override
-    public List<ComputationArgumentWithValue> initialize() {
+    public List<ParameterWithValue> initialize() {
         return Collections.singletonList(
-                new ComputationArgumentWithValue(ArgumentType.POINTER, true, readOnly, this.array));
+                new ParameterWithValue(PARAMETER_NAME, Type.NFI_POINTER, this.readOnly ? Parameter.Kind.POINTER_IN : Parameter.Kind.POINTER_INOUT, this.array));
     }
 }

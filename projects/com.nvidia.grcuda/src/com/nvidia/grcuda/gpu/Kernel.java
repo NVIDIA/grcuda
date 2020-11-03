@@ -32,7 +32,6 @@ import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.array.DeviceArray;
 import com.nvidia.grcuda.MemberSet;
 import com.nvidia.grcuda.array.MultiDimDeviceArray;
-import com.nvidia.grcuda.gpu.computation.ComputationArgument;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 
@@ -44,7 +43,6 @@ import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.gpu.CUDARuntime.CUModule;
-import com.nvidia.grcuda.gpu.UnsafeHelper.MemoryObject;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -71,7 +69,6 @@ public class Kernel implements TruffleObject {
     private final CUModule module;
     private final Parameter[] kernelParameters;
     private int launchCount = 0;
-    private final List<ComputationArgument> arguments = new ArrayList<>();
     private String ptxCode;
 
     /**
@@ -129,10 +126,6 @@ public class Kernel implements TruffleObject {
         return grCUDAExecutionContext;
     }
 
-    public List<ComputationArgument> getArguments() {
-        return arguments;
-    }
-
     public Parameter[] getKernelParameters() {
         return kernelParameters;
     }
@@ -145,7 +138,7 @@ public class Kernel implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(kernelParameters.length, args.length);
         }
-        KernelArguments kernelArgs = new KernelArguments(args.length);
+        KernelArguments kernelArgs = new KernelArguments(args, this.kernelParameters);
         for (int paramIdx = 0; paramIdx < kernelParameters.length; paramIdx++) {
             Object arg = args[paramIdx];
             Parameter param = kernelParameters[paramIdx];
@@ -276,56 +269,56 @@ public class Kernel implements TruffleObject {
         return kernelArgs;
     }
 
-    private void parseSignature(String kernelSignature) {
-        for (String s : kernelSignature.trim().split(",")) {
-
-            // Find if the type is const;
-            String[] typePieces = s.trim().split(" ");
-            String typeString;
-            boolean typeIsConst = false;
-            if (typePieces.length == 1) {
-                // If only 1 piece is found, the argument is not const;
-                typeString = typePieces[0].trim();
-            } else if (typePieces.length == 2) {
-                // Const can be either before or after the type;
-                if (typePieces[0].trim().equals("const")) {
-                    typeIsConst = true;
-                    typeString = typePieces[1].trim();
-                } else if (typePieces[1].trim().equals("const")) {
-                    typeIsConst = true;
-                    typeString = typePieces[0].trim();
-                } else {
-                    throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
-                }
-            } else {
-                throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
-            }
-
-            ArgumentType type;
-            switch (typeString) {
-                case "pointer":
-                    type = ArgumentType.POINTER;
-                    break;
-                case "uint64":
-                case "sint64":
-                    type = ArgumentType.INT64;
-                    break;
-                case "uint32":
-                case "sint32":
-                    type = ArgumentType.INT32;
-                    break;
-                case "float":
-                    type = ArgumentType.FLOAT32;
-                    break;
-                case "double":
-                    type = ArgumentType.FLOAT64;
-                    break;
-                default:
-                    throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
-            }
-            this.arguments.add(new ComputationArgument(type, type.equals(ArgumentType.POINTER), typeIsConst));
-        }
-    }
+//    private void parseSignature(String kernelSignature) {
+//        for (String s : kernelSignature.trim().split(",")) {
+//
+//            // Find if the type is const;
+//            String[] typePieces = s.trim().split(" ");
+//            String typeString;
+//            boolean typeIsConst = false;
+//            if (typePieces.length == 1) {
+//                // If only 1 piece is found, the argument is not const;
+//                typeString = typePieces[0].trim();
+//            } else if (typePieces.length == 2) {
+//                // Const can be either before or after the type;
+//                if (typePieces[0].trim().equals("const")) {
+//                    typeIsConst = true;
+//                    typeString = typePieces[1].trim();
+//                } else if (typePieces[1].trim().equals("const")) {
+//                    typeIsConst = true;
+//                    typeString = typePieces[0].trim();
+//                } else {
+//                    throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
+//                }
+//            } else {
+//                throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
+//            }
+//
+//            ArgumentType type;
+//            switch (typeString) {
+//                case "pointer":
+//                    type = ArgumentType.POINTER;
+//                    break;
+//                case "uint64":
+//                case "sint64":
+//                    type = ArgumentType.INT64;
+//                    break;
+//                case "uint32":
+//                case "sint32":
+//                    type = ArgumentType.INT32;
+//                    break;
+//                case "float":
+//                    type = ArgumentType.FLOAT32;
+//                    break;
+//                case "double":
+//                    type = ArgumentType.FLOAT64;
+//                    break;
+//                default:
+//                    throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
+//            }
+//            this.arguments.add(new ComputationArgument(type, type.equals(ArgumentType.POINTER), typeIsConst));
+//        }
+//    }
 
     private static GrCUDAException createExceptionValueOutOfRange(Type type, long value) {
         return new GrCUDAException("value " + value + " is out of range for type " + type);

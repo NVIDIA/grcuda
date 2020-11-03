@@ -1,13 +1,13 @@
 package com.nvidia.grcuda.gpu.computation;
 
-import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.NoneValue;
+import com.nvidia.grcuda.Parameter;
+import com.nvidia.grcuda.ParameterWithValue;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.gpu.ConfiguredKernel;
 import com.nvidia.grcuda.gpu.Kernel;
 import com.nvidia.grcuda.gpu.KernelArguments;
 import com.nvidia.grcuda.gpu.KernelConfig;
-import com.nvidia.grcuda.gpu.UnsafeHelper;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
@@ -84,7 +84,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
 
     @Override
     public void associateArraysToStreamImpl() {
-        for (ComputationArgumentWithValue a : args.getKernelArgumentWithValues()) {
+        for (ParameterWithValue a : args.getKernelArgumentWithValues()) {
             if (a.getArgumentValue() instanceof AbstractArray) {
                 AbstractArray array = (AbstractArray) a.getArgumentValue();
                 if (getDependencyComputation().streamResetAttachFilter(a)) {
@@ -121,11 +121,11 @@ public class KernelExecution extends GrCUDAComputationalElement {
         }
 
         @Override
-        public List<ComputationArgumentWithValue> initialize() {
+        public List<ParameterWithValue> initialize() {
             // TODO: what about scalars? We cannot treat them in the same way, as they are copied and not referenced
             //   There should be a semantic to manually specify scalar dependencies? For now we have to skip them;
             return this.args.getKernelArgumentWithValues().stream()
-                    .filter(ComputationArgument::isArray).collect(Collectors.toList());
+                    .filter(Parameter::isArray).collect(Collectors.toList());
         }
     }
 }
