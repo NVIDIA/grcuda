@@ -15,10 +15,17 @@ Supported and tested GraalVM languages:
 - Java
 - C and Rust through the Graal Sulong Component
 
-For details and features of grCUDA language see the [grCUDA documentation](docs/language.md).
+A description of grCUDA and its the features can be found in the [grCUDA documentation](docs/grcuda.md).
 
-How to bind precompiled kernels to callables, compile and launch kernels is
-described in the [polyglot kernel launch](docs/launchkernel.md) documentation.
+The [bindings documentation](docs/bindings.md) contains a tutorial that shows
+how to bind precompiled kernels to callables, compile and launch kernels.
+
+**Additional Information:**
+
+- [grCUDA: A Polyglot Language Binding for CUDA in GraalVM](https://devblogs.nvidia.com/grcuda-a-polyglot-language-binding-for-cuda-in-graalvm/). NVIDIA Developer Blog,
+  November 2019.
+- [grCUDA: A Polyglot Language Binding](https://youtu.be/_lI6ubnG9FY). Presentation at Oracle CodeOne 2019, September 2019.
+- [Simplifying GPU Access](https://developer.nvidia.com/gtc/2020/video/s21269-vid). Presentation at NVIDIA GTC 2020, March 2020.
 
 ## Using grCUDA in the GraalVM
 
@@ -34,29 +41,29 @@ in JavaScript (NodeJS) and invoke the kernel:
 // build kernel from CUDA C/C++ source code
 const kernelSource = `
 __global__ void increment(int *arr, int n) {
-  auto idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
     arr[idx] += 1;
   }
 }`
-const buildkernel = Polyglot.eval('grcuda', 'buildkernel')
-const incKernel = buildkernel(
+const cu = Polyglot.eval('grcuda', 'CU') // get grCUDA namespace object
+const incKernel = cu.buildkernel(
   kernelSource, // CUDA kernel source code string
   'increment', // kernel name
   'pointer, sint32') // kernel signature
 
 // allocate device array
-const n = 100
-const deviceArray = Polyglot.eval('grcuda', 'int[100]')
-for (let i = 0; i < n; i++) {
+const numElements = 100
+const deviceArray = cu.DeviceArray('int', numElements)
+for (let i = 0; i < numElements; i++) {
   deviceArray[i] = i // ... and initialize on the host
 }
 // launch kernel in grid of 1 block with 128 threads
-incKernel(1, 128)(deviceArray, n)
+incKernel(1, 128)(deviceArray, numElements)
 
 // print elements from updated array
-for (let i = 0; i < n; ++i) {
-  console.log(deviceArray[i])
+for (const element of deviceArray) {
+  console.log(element)
 }
 ```
 
@@ -68,11 +75,12 @@ $GRAALVM_DIR/bin/node --polyglot --jvm example.js
 100
 ```
 
-The next example shows how to launch an existing compiled GPU kernel from Python.
+### Calling existing compiled GPU Kernels
+
+The next example shows how to launch an __existing compiled__ GPU kernel from Python.
 The CUDA kernel
 
 ```C
-extern "C"
 __global__ void increment(int *arr, int n) {
   auto idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < n) {
@@ -86,24 +94,25 @@ is compiled using `nvcc --cubin` into a cubin file. The kernel function can be l
 ```Python
 import polyglot
 
-n = 100
-device_array = polyglot.eval(language='grcuda', string='int[100]')
-for i in range(n):
+num_elements = 100
+cu = polyglot.eval(language='grcuda', string='CU')
+device_array = cu.DeviceArray('int', num_elements)
+for i in range(num_elements):
   device_array[i] = i
 
-inc_kernel = polyglot.eval(   # bind kernel from binary
-  language='cuda',
-  string='bindkernel("kernel.cubin", "increment", "pointer, sint32")')
+# bind to kernel from binary
+inc_kernel = cu.bindkernel('kernel.cubin',
+  'cxx increment(arr: inout pointer sint32, n: sint32)')
 
 # launch kernel as 1 block with 128 threads
-inc_kernel(1, 128)(device_array, n)
+inc_kernel(1, 128)(device_array, num_elements)
 
-for i in range(n):
+for i in range(num_elements):
   print(device_array[i])
 ```
 
 ```console
-nvcc --cubin  --generate-code arch=compute_70,code=sm_70 kernel.cu
+nvcc --cubin  --generate-code arch=compute_75,code=sm_75 kernel.cu
 $GRAALVM_DIR/bin/graalpython --polyglot --jvm example.py
 1
 2
@@ -157,13 +166,14 @@ grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.c
 
 ## Instructions to build grCUDA from Sources
 
-grCUDA requires the [mx build tool](https://github.com/graalvm/mx). Clone the mx reposistory and
-add the directory into `$PATH`, such that the `mx` can be invoked from the command line.
+grCUDA requires the [mx build tool](https://github.com/graalvm/mx). Clone the mx
+repository and add the directory into `$PATH`, such that the `mx` can be invoked from
+the command line.
 
 Build grCUDA and the unit tests:
 
 ```console
-cd <directory containing this REAMDE>
+cd <directory containing this README>
 mx build
 ```
 
@@ -332,5 +342,3 @@ The automatic DAG scheduling of GrCUDA supports different settings that can be u
 `default` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint
 * `--grcuda.InputPrefetch`: if present, prefetch the data on GPUs with architecture starting from Pascal. In most cases, it improves performance.
 * `--grcuda.ForceStreamAttach`: if present, force association between arrays and CUDA streams. True by default on architectures older than Pascal, to allow concurrent CPU/GPU computation. On architectures starting from Pascal, it can improve performance.
-
-

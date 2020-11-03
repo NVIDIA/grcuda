@@ -41,22 +41,38 @@ public class BuildKernelTest {
 
     /** CUDA C++ source code of incrementing kernel. */
     private static final String INCREMENT_KERNEL_SOURCE = "template <typename T>                     \n" +
-                    "__global__ void inc_kernel(T *out_arr, const T *in_arr, size_t num_elements) {  \n" +
+                    "__global__ void inc_kernel(T *out_arr, const T *in_arr, int num_elements) {     \n" +
                     "  for (auto idx = blockIdx.x * blockDim.x + threadIdx.x; idx < num_elements;    \n" +
                     "       idx += gridDim.x * blockDim.x) {                                         \n" +
                     "    out_arr[idx] = in_arr[idx] + (T{} + 1);                                     \n" +
                     "  }                                                                             \n" +
                     "}\n";
 
-    /** NFI Signature of incrementing kernel. */
-    private static final String INCREMENT_KERNEL_SIGNATURE = "pointer, pointer, uint64";
+    /** legacy NFI Signature of incrementing kernel. */
+    private static final String INCREMENT_KERNEL_NFI_LEGACY_SIGNATURE = "pointer, pointer, sint32";
+
+    /** NIDL Signature of incrementing kernel. */
+    private static final String INCREMENT_KERNEL_NIDL_SIGNATURE = "inc_kernel<int>(out_arr: out pointer sint32, in_arr: in pointer sint32, num_elements: sint32)";
 
     @Test
-    public void testBuildKernel() {
+    public void testBuildKernelwithNFILegacytSignature() {
         // See if inc_kernel can be built
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
-            Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, "inc_kernel<int>", INCREMENT_KERNEL_SIGNATURE);
+            Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, "inc_kernel<int>", INCREMENT_KERNEL_NFI_LEGACY_SIGNATURE);
+            assertNotNull(incrKernel);
+            assertTrue(incrKernel.canExecute());
+            assertEquals(0, incrKernel.getMember("launchCount").asInt());
+            assertNotNull(incrKernel.getMember("ptx").asString());
+        }
+    }
+
+    @Test
+    public void testBuildKernelwithNIDLSignature() {
+        // See if inc_kernel can be built
+        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+            Value buildkernel = context.eval("grcuda", "buildkernel");
+            Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, INCREMENT_KERNEL_NIDL_SIGNATURE);
             assertNotNull(incrKernel);
             assertTrue(incrKernel.canExecute());
             assertEquals(0, incrKernel.getMember("launchCount").asInt());
@@ -71,7 +87,7 @@ public class BuildKernelTest {
             final int numElements = 1000;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value buildkernel = context.eval("grcuda", "buildkernel");
-            Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, "inc_kernel<int>", INCREMENT_KERNEL_SIGNATURE);
+            Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, INCREMENT_KERNEL_NIDL_SIGNATURE);
             assertNotNull(incrKernel);
             assertTrue(incrKernel.canExecute());
             assertEquals(0, incrKernel.getMember("launchCount").asInt());
@@ -130,28 +146,28 @@ public class BuildKernelTest {
                     "    sub_b_matrix[row * block_size + col] = matrix_b[b + num_b_cols * row + col];\n" +
                     "    __syncthreads();\n" +
                     "\n" +
-                    "    // matrix-multiply tiles from shared memory\n" +
-                    "    for (int k = 0; k < block_size; ++k) {\n" +
-                    "      sub_c_val += sub_a_matrix[row * block_size + k] *\n" +
-                    "                   sub_b_matrix[k * block_size + col];\n" +
-                    "    }\n" +
-                    "    __syncthreads();\n" +
+                    "   // matrix-multiply tiles from shared memory\n" +
+                    "   for (int k = 0; k < block_size; ++k) {\n" +
+                    "     sub_c_val += sub_a_matrix[row * block_size + k] *\n" +
+                    "     sub_b_matrix[k * block_size + col];\n" +
+                    "   }\n" +
+                    "   __syncthreads();\n" +
                     "  }\n" +
                     "\n" +
                     "  // write back result element\n" +
                     "  matrix_c[num_b_cols * block_size * block_row + block_size * block_col +\n" +
-                    "           num_b_cols * row + col] = sub_c_val;\n" +
+                    "    num_b_cols * row + col] = sub_c_val;\n" +
                     "}\n";
 
     /** NFI Signature of matrix-multiplication kernel. */
-    private static final String MATMULT_KERNEL_SIGNATURE = "sint32, sint32, sint32, sint32, pointer, pointer, pointer";
+    private static final String MATMULT_KERNEL_SIGNATURE = "matmult(num_a_row: sint32, num_a_cols: sint32, num_b_cols: sint32, block_size: sint32, matrix_a: in pointer float, matrix_b: in pointer float, matrix_c: out pointer float)";
 
     @Test
     public void testBuild2DKernelAndLaunch() {
         // build matmult kernel, launch it on 2D grid, and check results
         try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
-            Value matmultKernel = buildkernel.execute(MATMULT_KERNEL_SOURCE, "matmult", MATMULT_KERNEL_SIGNATURE);
+            Value matmultKernel = buildkernel.execute(MATMULT_KERNEL_SOURCE, MATMULT_KERNEL_SIGNATURE);
             assertNotNull(matmultKernel);
             assertTrue(matmultKernel.canExecute());
 //            assertEquals(0, matmultKernel.getMember("launchCount").asInt());
@@ -183,7 +199,8 @@ public class BuildKernelTest {
                 for (int j = 0; j < numBCols; j++) {
                     float t = 0;
                     for (int k = 0; k < numACols; k++) {
-                        t += matrixA.getArrayElement(i * numACols + k).asFloat() * matrixB.getArrayElement(k * numBCols + j).asFloat();
+                        t += matrixA.getArrayElement(i * numACols + k).asFloat() * matrixB.getArrayElement(k * numBCols +
+                                        j).asFloat();
                     }
                     float c = matrixC.getArrayElement(i * numBCols + j).asFloat();
                     assertEquals(t, c, 1e-3);

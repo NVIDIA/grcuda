@@ -29,6 +29,13 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
+import java.util.ArrayList;
+
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.KernelBinding;
+import com.nvidia.grcuda.Parameter;
+import com.nvidia.grcuda.TypeException;
+import com.nvidia.grcuda.gpu.Kernel;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -44,13 +51,94 @@ public final class BindKernelFunction extends Function {
 
     @Override
     @TruffleBoundary
-    public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
-        checkArgumentLength(arguments, 3);
+    /**
+     * Bind to kernel function symbol from cubin or PTX file.
+     *
+     * This call resolves the symbol immediately and not lazily after the first invocation. The
+     * <code>bindkernel</code> call supports two different overloaded forms.
+     *
+     * 1. The legacy form with 3-arguments:
+     * <code>bindkernel(fileName, symbolName, nfiSignatureString)<code>
+     *    where <code>symbolName</code> is the name of the symbol as it appears and the cubin or PTX
+     * file (possibly mangled) and <code>nfiSignatureString</code> is like
+     * <code>uint64, pointer, pointer, float</code>.
+     *
+     *
+     * 2. The NIDL version with 2-arguments: <code>bindkernel(fileName, nidlSignatureString)</code>
+     * where <code>nidlSignatureString</code> is like
+     * <code>kernelName(param1: uint64, param2: in pointer float, param3: out pointer float, param4: float)</code>.
+     * If the kernel symbol is C++ mangled, prefix the keyword <code>cxx</code>, i.e.,
+     * <code>cxx kernelName(...)</code>.
+     *
+     * @param arguments string of length 2 or 3 containing the arguments for function
+     *            <code>bindkernel</code>.
+     * @param Kernel object
+     */
+    public Kernel call(Object[] arguments) throws UnsupportedTypeException, ArityException {
+        if ((arguments.length != 2) && (arguments.length != 3)) {
+            throw new GrCUDAException("bindkernel function requires two or three arguments");
+        }
+        String fileName = expectString(arguments[0], "argument 1 of bindkernel must be string (name of cubin or PTX file)");
+        KernelBinding binding = null;
+        if (arguments.length == 3) {
+            // parse legacy NFI-based kernel signature: comma-separated NFI types
+            String symbolName = expectString(arguments[1], "argument 2 of bindkernel must be string (symbol name)").trim();
+            String signature = expectString(arguments[2], "argument 3 of bind must be string (signature of kernel)").trim();
+            try {
+                ArrayList<Parameter> paramList = Parameter.parseParameterSignature(signature);
+                binding = KernelBinding.newCBinding(symbolName, paramList);
+            } catch (TypeException e) {
+                throw new GrCUDAException("invalid type: " + e.getMessage());
+            }
+        } else {
+            // parse NIDL kernel signature
+            //
+            // kernelName(argName_i: sint32, argName_j: inout pointer float)
+            // -> search for symbol "kernelName"
+            //
+            // cxx kernelName(argName_i: sint32, argName_j: inout pointer float)
+            // -> search for symbol "_Z10kernelNameiPf"
+            String signature = expectString(arguments[1], "argument 2 of bindkernel must be string (NIDL signature)").trim();
+            binding = parseSignature(signature);
+        }
+        binding.setLibraryFileName(fileName);
+        return grCUDAExecutionContext.loadKernel(binding);
+    }
 
-        String cubinFile = expectString(arguments[0], "argument 1 of bindkernel must be string (cubin file)");
-        String kernelName = expectString(arguments[1], "argument 2 of bindkernel must be string (kernel name)");
-        String kernelSignature = expectString(arguments[2], "argument 3 of bindkernel must be string (signature of kernel)");
+    private static KernelBinding parseSignature(String signature) {
+        String s = signature.trim();
+        boolean isCxxSymbol = false;
+        if (s.startsWith("cxx ")) {
+            s = s.substring("cxx ".length());
+            isCxxSymbol = true;
+        }
+        int firstLParenPos = s.indexOf('(');
+        if (firstLParenPos == -1) {
+            // attempt to parse a
+            throw new GrCUDAException("expected \"(\"");
+        }
+        if (firstLParenPos == 0) {
+            throw new GrCUDAException("expected identifier name before \"(\"");
+        }
+        int lastRParenPos = s.lastIndexOf(')');
+        if (lastRParenPos == -1) {
+            throw new GrCUDAException("expected \")\"");
+        }
+        if (lastRParenPos != (s.length() - 1)) {
+            throw new GrCUDAException("expected valid parameter signature within \"(  )\"");
+        }
+        String name = s.substring(0, firstLParenPos).trim();
+        String parenSignature = s.substring(firstLParenPos + 1, lastRParenPos).trim();
 
-        return grCUDAExecutionContext.loadKernel(cubinFile, kernelName, kernelSignature);
+        try {
+            ArrayList<Parameter> paramList = Parameter.parseParameterSignature(parenSignature);
+            if (isCxxSymbol) {
+                return KernelBinding.newCxxBinding(name, paramList);
+            } else {
+                return KernelBinding.newCBinding(name, paramList);
+            }
+        } catch (TypeException e) {
+            throw new GrCUDAException("invalid type: " + e.getMessage());
+        }
     }
 }

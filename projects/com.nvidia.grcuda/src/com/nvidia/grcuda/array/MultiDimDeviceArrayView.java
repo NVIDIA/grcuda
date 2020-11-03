@@ -28,6 +28,7 @@
  */
 package com.nvidia.grcuda.array;
 
+import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewReadExecution;
 import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewWriteExecution;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
@@ -118,6 +119,13 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
     }
 
     @Override
+    public void freeMemory() {
+        // This should not be called directly on a view;
+        CompilerDirectives.transferToInterpreter();
+        throw new GrCUDAException("Freeing memory directly on a MultiDimDeviceArrayView is not allowed");
+    }
+
+    @Override
     public String toString() {
         return String.format("MultiDimDeviceArrayView(dim=%d, offset=%d, stride=%d)\n",
                         thisDimension, offset, stride);
@@ -180,14 +188,13 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
         if ((thisDimension + 1) == mdDeviceArray.getNumberDimensions()) {
             long flatIndex = offset + index * stride;
             switch (elementTypeProfile.profile(mdDeviceArray.getElementType())) {
-                case BYTE:
                 case CHAR:
                     return mdDeviceArray.getNativeView().getByte(flatIndex);
-                case SHORT:
+                case SINT16:
                     return mdDeviceArray.getNativeView().getShort(flatIndex);
-                case INT:
+                case SINT32:
                     return mdDeviceArray.getNativeView().getInt(flatIndex);
-                case LONG:
+                case SINT64:
                     return mdDeviceArray.getNativeView().getLong(flatIndex);
                 case FLOAT:
                     return mdDeviceArray.getNativeView().getFloat(flatIndex);
@@ -225,17 +232,16 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             long flatIndex = offset + index * stride;
             try {
                 switch (elementTypeProfile.profile(mdDeviceArray.getElementType())) {
-                    case BYTE:
                     case CHAR:
                         mdDeviceArray.getNativeView().setByte(flatIndex, valueLibrary.asByte(value));
                         break;
-                    case SHORT:
+                    case SINT16:
                         mdDeviceArray.getNativeView().setShort(flatIndex, valueLibrary.asShort(value));
                         break;
-                    case INT:
+                    case SINT32:
                         mdDeviceArray.getNativeView().setInt(flatIndex, valueLibrary.asInt(value));
                         break;
-                    case LONG:
+                    case SINT64:
                         mdDeviceArray.getNativeView().setLong(flatIndex, valueLibrary.asLong(value));
                         break;
                     case FLOAT:

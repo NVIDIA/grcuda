@@ -28,16 +28,23 @@
  */
 package com.nvidia.grcuda.array;
 
-import com.nvidia.grcuda.ElementType;
+import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.GrCUDAInternalException;
+import com.nvidia.grcuda.NoneValue;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -62,7 +69,7 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
-    public MultiDimDeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, ElementType elementType, long[] dimensions,
+    public MultiDimDeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType, long[] dimensions,
                                boolean useColumnMajor) {
         super(grCUDAExecutionContext, elementType);
         if (dimensions.length < 2) {
@@ -152,10 +159,18 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
 
     @Override
     public final long getPointer() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return nativeView.getStartAddress();
     }
 
     final LittleEndianNativeArrayView getNativeView() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return nativeView;
     }
 
@@ -170,8 +185,19 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
 
     @Override
     protected void finalize() throws Throwable {
-        grCUDAExecutionContext.getCudaRuntime().cudaFree(nativeView);
+        if (!arrayFreed) {
+            grCUDAExecutionContext.getCudaRuntime().cudaFree(nativeView);
+        }
         super.finalize();
+    }
+
+    @Override
+    public void freeMemory() {
+        if (arrayFreed) {
+            throw new GrCUDAException("device array already freed");
+        }
+        grCUDAExecutionContext.getCudaRuntime().cudaFree(nativeView);
+        arrayFreed = true;
     }
 
     //
@@ -201,16 +227,5 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         }
         long offset = index * stridePerDimension[0];
         return new MultiDimDeviceArrayView(this, 1, offset, stridePerDimension[1]);
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return getPointer();
     }
 }

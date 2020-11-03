@@ -28,7 +28,9 @@
  */
 package com.nvidia.grcuda.nodes;
 
-import com.nvidia.grcuda.ElementType;
+import java.util.ArrayList;
+
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
@@ -41,15 +43,13 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-import java.util.ArrayList;
-
 public abstract class ArrayNode extends ExpressionNode {
 
     @Children private ExpressionNode[] sizeNodes;
 
-    private final ElementType elementType;
+    private final Type elementType;
 
-    ArrayNode(ElementType elementType, ArrayList<ExpressionNode> sizeNodes) {
+    ArrayNode(Type elementType, ArrayList<ExpressionNode> sizeNodes) {
         this.elementType = elementType;
         this.sizeNodes = new ExpressionNode[sizeNodes.size()];
         sizeNodes.toArray(this.sizeNodes);

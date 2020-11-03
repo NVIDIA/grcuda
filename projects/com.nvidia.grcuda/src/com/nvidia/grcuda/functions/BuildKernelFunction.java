@@ -29,6 +29,7 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
+import com.nvidia.grcuda.GrCUDAException;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -43,13 +44,100 @@ public class BuildKernelFunction extends Function {
 
     @Override
     @TruffleBoundary
+    /**
+     * Build kernel from source code using NVRTC and return callable.
+     *
+     * This call compiles the source immediately and not lazily after the first invocation. The
+     * <code>buildkernel</code> call supports two different overloaded forms.
+     *
+     * 1. The legacy form with 3-arguments:
+     * <code>buildkernel(sourceCode, kernelName, nfiSignatureString)<code>
+     *    where <code>sourceCode</code> is the CUDA C/C++ source code string, `kernelName` the
+     * non-lowered name of the kernel (possibly with template parameter), and
+     * <code>nfiSignatureString</code>, which is like <code>uint64, pointer, pointer, float</code>.
+     *
+     *
+     * 2. The NIDL version with 2-arguments:
+     * <code>buildkernel(sourceCode, nidlSignatureString)</code> where
+     * <code>nidlSignatureString</code> is like
+     * <code>kernelName(param1: uint64, param2: in pointer float, param3: out pointer float, param4: float)</code>.
+     * Note the kernel name can also contain a template instantiation argument if the kernel
+     * function is templated, e.g.,
+     * <code>increment<int>(arr: inout pointer sint32, length: sint32)</code>.
+     *
+     * @param arguments string of length 2 or 3 containing the arguments for function
+     *            <code>buildkernel</code>.
+     * @param Kernel object
+     */
     public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
-        checkArgumentLength(arguments, 3);
+        if ((arguments.length != 2) && (arguments.length != 3)) {
+            throw new GrCUDAException("bindkernel function requires two or three arguments");
+        }
 
         String code = expectString(arguments[0], "argument 1 of buildkernel must be string (kernel code)");
-        String kernelName = expectString(arguments[1], "argument 2 of buildkernel must be string (kernel name)");
-        String kernelSignature = expectString(arguments[2], "argument 3 of buildkernel must be string (signature of kernel)");
+        String parameterSignature = null;
+        String kernelName = null;
+        if (arguments.length == 3) {
+            // parse 3 argument call with kernel name and legacy NFI-based kernel signature
+            // (comma-separated NFI types)
+            kernelName = expectString(arguments[1], "argument 2 of buildkernel must be string (kernel name)").trim();
+            parameterSignature = expectString(arguments[2], "argument 3 of build must be string (signature of kernel)").trim();
+        } else {
+            // parse NIDL kernel signature
+            //
+            // kernelName<T>(argName_i: sint32, argName_j: inout pointer float)
+            // -> get kernel "kernelName<T>"
+            // -> effective kernel name "kernelName"
+            //
+            // kernelName(argName_i: sint32, argName_j: inout pointer float)
+            // -> get kernel "kernelName"
+            // -> effective kernel name "kernelName"
+            //
+            String signature = expectString(arguments[1], "argument 2 of bindkernel must be string (NIDL signature)").trim();
+            KernelNameSignaturePair kernelNameSignaturePair = parseSignature(signature);
+            kernelName = kernelNameSignaturePair.getKernelName();
+            parameterSignature = kernelNameSignaturePair.getParameterSignature();
+        }
+        return grCUDAExecutionContext.buildKernel(code, kernelName, parameterSignature);
+    }
 
-        return grCUDAExecutionContext.buildKernel(code, kernelName, kernelSignature);
+    private static KernelNameSignaturePair parseSignature(String signature) {
+        String s = signature.trim();
+        int firstLParenPos = s.indexOf('(');
+        if (firstLParenPos == -1) {
+            // attempt to parse a
+            throw new GrCUDAException("expected \"(\"");
+        }
+        if (firstLParenPos == 0) {
+            throw new GrCUDAException("expected identifier name before \"(\"");
+        }
+        int lastRParenPos = s.lastIndexOf(')');
+        if (lastRParenPos == -1) {
+            throw new GrCUDAException("expected \")\"");
+        }
+        if (lastRParenPos != (s.length() - 1)) {
+            throw new GrCUDAException("expected valid parameter signature within \"(  )\"");
+        }
+        String kernelName = s.substring(0, firstLParenPos).trim();
+        String paramSignature = s.substring(firstLParenPos + 1, lastRParenPos).trim();
+        return new KernelNameSignaturePair(kernelName, paramSignature);
+    }
+
+    private static final class KernelNameSignaturePair {
+        private final String kernelName;
+        private final String paramSignature;
+
+        KernelNameSignaturePair(String kernelName, String paramSignature) {
+            this.kernelName = kernelName;
+            this.paramSignature = paramSignature;
+        }
+
+        String getKernelName() {
+            return kernelName;
+        }
+
+        String getParameterSignature() {
+            return paramSignature;
+        }
     }
 }

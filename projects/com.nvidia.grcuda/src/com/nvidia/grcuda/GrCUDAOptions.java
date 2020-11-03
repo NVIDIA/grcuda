@@ -34,6 +34,7 @@ import org.graalvm.options.OptionStability;
 
 import com.nvidia.grcuda.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cuml.CUMLRegistry;
+import com.nvidia.grcuda.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.Option;
 
 @Option.Group(GrCUDALanguage.ID)
@@ -54,6 +55,7 @@ public final class GrCUDAOptions {
     @Option(category = OptionCategory.USER, help = "Set the location of the cuml library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> CuMLLibrary = new OptionKey<>(CUMLRegistry.DEFAULT_LIBRARY);
 
+<<<<<<< HEAD
     @Option(category = OptionCategory.USER, help = "Choose the scheduling policy of GrCUDA computations", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> ExecutionPolicy = new OptionKey<>(GrCUDAContext.DEFAULT_EXECUTION_POLICY.getName());
 
@@ -71,4 +73,12 @@ public final class GrCUDAOptions {
 
     @Option(category = OptionCategory.USER, help = "Always prefetch input arrays to GPU if possible (e.g. post-Pascal GPUs)", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> InputPrefetch = new OptionKey<>(false);
+=======
+    @Option(category = OptionCategory.USER, help = "Enable TensorRT support.", stability = OptionStability.STABLE) //
+    public static final OptionKey<Boolean> TensorRTEnabled = new OptionKey<>(true);
+
+    @Option(category = OptionCategory.USER, help = "Set the location of the TensorRT library.", stability = OptionStability.STABLE) //
+    public static final OptionKey<String> TensorRTLibrary = new OptionKey<>(TensorRTRegistry.DEFAULT_LIBRARY);
+
+>>>>>>> nvidia/master
 }

@@ -58,11 +58,15 @@ public class ConfiguredKernel implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object execute(Object[] arguments,
-                   @CachedLibrary(limit = "3") InteropLibrary int32Access,
-                   @CachedLibrary(limit = "3") InteropLibrary int64Access,
-                   @CachedLibrary(limit = "3") InteropLibrary doubleAccess) throws UnsupportedTypeException, ArityException {
+                    @CachedLibrary(limit = "3") InteropLibrary boolAccess,
+                    @CachedLibrary(limit = "3") InteropLibrary int8Access,
+                    @CachedLibrary(limit = "3") InteropLibrary int16Access,
+                    @CachedLibrary(limit = "3") InteropLibrary int32Access,
+                    @CachedLibrary(limit = "3") InteropLibrary int64Access,
+                    @CachedLibrary(limit = "3") InteropLibrary doubleAccess) throws UnsupportedTypeException, ArityException {
         kernel.incrementLaunchCount();
-        try (KernelArguments args = kernel.createKernelArguments(arguments, int32Access, int64Access, doubleAccess)) {
+        try (KernelArguments args = kernel.createKernelArguments(arguments, boolAccess, int8Access, int16Access,
+                        int32Access, int64Access, doubleAccess)) {
             // If using a manually specified stream, do not schedule it automatically, but execute it immediately;
             if (!config.useCustomStream()) {
                 new KernelExecution(this, args).schedule();
