@@ -15,11 +15,13 @@ import time
 DEFAULT_RES_DIR = "../../../../data/nvprof_log"
 
 # 960
-INPUT_DATE = "2020_07_20"
-
+# INPUT_DATE = "2020_10_07_960"
 # P100
-INPUT_DATE = "2020_09_13"
-OUTPUT_DATE = "2020_09_13"
+# INPUT_DATE = "2020_10_10_P100"
+# 1660
+INPUT_DATE = "2020_10_10_1660"
+
+OUTPUT_DATE = "2020_10_10"
 PLOT_DIR = "../../../../data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
@@ -30,28 +32,38 @@ DATA_DICT = {
     "b5": "b5_808.csv",
     "b6": "b6_1989.csv",
     "b7": "b7_2663.csv",
-    "b8": "b8_10958.csv",
+    "b8": "b8_default_nometric_20821.csv",
     "b10": "b10_7753.csv",
     }
 
 # P100
+# DATA_DICT = {
+#     "b1": "b1_default_nometric_13259.csv",
+#     "b5": "b5_default_nometric_14072.csv",
+#     "b6": "b6_default_nometric_14724.csv",
+#     "b7": "b7_default_nometric_15270.csv",
+#     "b8": "b8_default_nometric_17585.csv",
+#     "b10": "b10_default_nometric_17786.csv",
+#     }
+
+# 1660
 DATA_DICT = {
-    "b1": "b1_default_nometric_12925.csv",
-    "b5": "b5_default_nometric_14259.csv",
-    "b6": "b6_default_nometric_15377.csv",
-    "b7": "b7_default_nometric_17540.csv",
-    "b8": "b8_default_nometric_22305.csv",
-    "b10": "b10_default_nometric_22683.csv",
+    "b1": "b1_default_nometric_True_6931.csv",
+    "b5": "b5_default_nometric_True_10628.csv",
+    "b6": "b6_default_nometric_True_14244.csv",
+    "b7": "b7_default_nometric_True_18466.csv",
+    "b8": "b8_default_nometric_True_22913.csv",
+    "b10": "b10_default_nometric_True_25151.csv",
     }
 
-SKIP_SUMMARY_ROWS = {
-    "b1": 7,
-    "b5": 22,
-    "b6": 0,
-    "b7": 0,
-    "b8": 0,
-    "b10": 0,
-    }
+# SKIP_SUMMARY_ROWS = {
+#     "b1": 7,
+#     "b5": 22,
+#     "b6": 0,
+#     "b7": 0,
+#     "b8": 0,
+#     "b10": 0,
+#     }
 
 NVPROF_HEADER = ["start_ms", "duration_ms", "Grid X", "Grid Y", "Grid Z", "Block X", "Block Y", "Block Z",
                  "Registers Per Thread"," Static SMem", "Dynamic SMem", "Device", "Context", "Stream",
@@ -100,6 +112,7 @@ def get_overlap_ct_fast(data):
                 break
             if i != j and not row_i[2] and row_j[2]:
                 overlap, start, end = get_overlap(row_i[0], row_i[1], row_j[0], row_j[1])
+                
                 if overlap > 0:
                     overlaps += [(start, end)]
         overlap_list[i] = get_total_segment_set_length(overlaps)
@@ -194,7 +207,7 @@ def get_overlap_cc_fast(data):
     Keep only overlaps of computations with computations;
     """
     data["overlap_cc_sec"] = 0.0
-    segments = [(r["start_ms"], r["end_ms"]) for i, r in data.iterrows() if r["name"] in OPERATIONS_TO_MERGE]
+    segments = [(r["start_ms"], r["end_ms"]) for i, r in data.iterrows() if r["name"] not in OPERATIONS_TO_MERGE]
     overlap_tot = 0
 
     # Initial collection of overlaps;
@@ -247,7 +260,7 @@ def get_overlap_total_fast(data):
     For each computation, look at the computations before it and compute the length of the overlap with them, in seconds.
     By definition, a computation has 0 overlap with itself;
     """
-    data["overlap_tc_sec"] = 0.0
+    data["overlap_tot_sec"] = 0.0
     segments = [(r["start_ms"], r["end_ms"]) for i, r in data.iterrows()]
     overlap_tot = 0
 
@@ -330,15 +343,24 @@ def get_total_segment_set_length(segments):
         
     return sum([s[1] - s[0] for s in overlap_collection])
 
+#%%
 
 if __name__ == "__main__":
     
+    files = os.listdir(os.path.join(DEFAULT_RES_DIR, INPUT_DATE))
+    files_dict = {tuple(file.split(".")[0].split("_")[:4]): file for file in files if file != "summary.csv"}
+    
+    # Filter files;
+    filtered_files = [v for k, v in files_dict.items() if k[1] == "default" and k[2] == "nometric" and k[3] == "True"]
     
     output_res = []
-    for b in DATA_DICT.keys():
+    for b in filtered_files:
     
-        input_file = os.path.join(DEFAULT_RES_DIR, INPUT_DATE, DATA_DICT[b])
+        input_file = os.path.join(DEFAULT_RES_DIR, INPUT_DATE, b)
         data = pd.read_csv(input_file, skiprows=5, names=NVPROF_HEADER)
+        header = pd.read_csv(input_file, skiprows=3, nrows=1)
+        start_unit = header.iloc[0, 0]
+        duration_unit = header.iloc[0, 1]
         
         # Keep only a subset of columns;
         data = data[NVPROF_HEADER_FILTERED]
@@ -349,12 +371,18 @@ if __name__ == "__main__":
         # Fix data transfer column;
         data["transferred_data_byte"] = data["transferred_data_byte"].apply(lambda x: int(str(x).split(".")[0]) if not pd.isnull(x) else 0)
         
-        # Convert start from seconds to milliseconds;
-        data["start_ms"] *= 1000
+        # Convert start and duration from seconds to milliseconds;
+        if start_unit == "s":
+            data["start_ms"] *= 1000
+        elif start_unit == "us":
+            data["start_ms"] /= 1000
+        if duration_unit == "s":
+            data["duration_ms"] *= 1000
+        elif duration_unit == "us":
+            data["duration_ms"] /= 1000
         
         # Set the start of the computation equal to 0;
         data["start_ms"] -= data["start_ms"].iloc[0]
-        
         
         # Set the end of the computation;
         data["end_ms"] = data["duration_ms"] + data["start_ms"]
@@ -367,14 +395,15 @@ if __name__ == "__main__":
         
         # Remove page faults;
         data = data[data["name"] != "[Unified Memory GPU page faults]"].reset_index(drop=True)
+        data = data[data["name"] != "[Unified Memory page throttle]"].reset_index(drop=True)
         
         # Keep just the name of kernels;
         data["name"] = data["name"].apply(lambda x: x.split("(")[0])
         
         # 960
-        merge_dict = {"b1": 0.1, "b5": 0.1, "b6": 0.1, "b7": 0.1, "b8": 0.1, "b10": 0.1}
+        # merge_dict = {"b1": 0.1, "b5": 0.1, "b6": 0.1, "b7": 0.1, "b8": 0.1, "b10": 0.1}
         # P100
-        merge_dict = {"b1": 0.1, "b5": 0.1, "b6": 0.1, "b7": 0.1, "b8": 0.1, "b10": 0.1}
+        # merge_dict = {"b1": 0.1, "b5": 0.1, "b6": 0.1, "b7": 0.1, "b8": 0.1, "b10": 0.1}
         
         # Create a summary data-set where contiguous operations are merged;
         data["group"] = -1
@@ -383,7 +412,7 @@ if __name__ == "__main__":
         for i, row in data.iterrows():
             tmp_operation = row["name"]
             # Keep adding to the current operation, if the time difference between the 2 operations is small enough to consider them as contiguous;
-            if tmp_operation == current_operation and tmp_operation in OPERATIONS_TO_MERGE and i > 0 and (row["start_ms"] - data.at[i - 1, "end_ms"] < merge_dict[b]):
+            if tmp_operation == current_operation and tmp_operation in OPERATIONS_TO_MERGE and i > 0: # and (row["start_ms"] - data.at[i - 1, "end_ms"] < merge_dict[b]):
                data.at[i, "group"] = current_group
             else:
                 # New group of operations;
@@ -399,16 +428,17 @@ if __name__ == "__main__":
             "end_ms": np.max,
             "group": lambda x: x.iloc[0],
             })
-        print(b, len(summary))
         
         # Ignore the first iteration;
-        summary = summary.iloc[SKIP_SUMMARY_ROWS[b]:, :].reset_index(drop=True)
+        # summary = summary.iloc[SKIP_SUMMARY_ROWS[b]:, :].reset_index(drop=True)
         # # Set the start of the computation equal to 0;
         # summary["end_ms"] -= summary["start_ms"].iloc[0]
         # summary["start_ms"] -= summary["start_ms"].iloc[0]
         
         summary["end_ms"] = summary["duration_ms"] + summary["start_ms"]
-        
+        # Filter operations that last too little to be useful;
+        # summary = summary[(summary["end_ms"] - summary["start_ms"]) > 0.001].reset_index(drop=True)
+        print(b, len(summary))
         #%%
         
         # Compute 3 types of overlap: 
@@ -440,7 +470,7 @@ if __name__ == "__main__":
         # total_overlap_perc = 0
         
         print(f"Benchmark={b}; CT={100 *ct_overlap_perc:.2f}%; TC={100 * tc_overlap_perc:.2f}%; CC={100 * cc_overlap_perc:.2f}%; TOTAL={100 * total_overlap_perc:.2f}%")
-        output_res += [[b, ct_overlap_perc, tc_overlap_perc, cc_overlap_perc, total_overlap_perc]]
+        output_res += [[b.split("_")[0], ct_overlap_perc, tc_overlap_perc, cc_overlap_perc, total_overlap_perc]]
         
     # Store the DataFrame;
     out_df = pd.DataFrame(output_res)
