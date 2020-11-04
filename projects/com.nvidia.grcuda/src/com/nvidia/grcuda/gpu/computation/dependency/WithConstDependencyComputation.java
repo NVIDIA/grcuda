@@ -1,6 +1,6 @@
 package com.nvidia.grcuda.gpu.computation.dependency;
 
-import com.nvidia.grcuda.ParameterWithValue;
+import com.nvidia.grcuda.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
 import java.util.ArrayList;
@@ -12,17 +12,17 @@ import java.util.List;
  */
 public class WithConstDependencyComputation extends DependencyComputation {
 
-    WithConstDependencyComputation(List<ParameterWithValue> argumentList) {
+    WithConstDependencyComputation(List<ComputationArgumentWithValue> argumentList) {
         activeArgumentSet = new ArrayList<>(argumentList);
     }
 
     @Override
-    public List<ParameterWithValue> computeDependencies(GrCUDAComputationalElement other) {
-        List<ParameterWithValue> dependencies = new ArrayList<>();
-        List<ParameterWithValue> newArgumentSet = new ArrayList<>();
-        for (ParameterWithValue arg : activeArgumentSet) {
+    public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {
+        List<ComputationArgumentWithValue> dependencies = new ArrayList<>();
+        List<ComputationArgumentWithValue> newArgumentSet = new ArrayList<>();
+        for (ComputationArgumentWithValue arg : activeArgumentSet) {
             boolean dependencyFound = false;
-            for (ParameterWithValue otherArg : other.getDependencyComputation().getActiveArgumentSet()) {
+            for (ComputationArgumentWithValue otherArg : other.getDependencyComputation().getActiveArgumentSet()) {
                 // If both arguments are const, we skip the dependency;
                 if (arg.equals(otherArg) && !(arg.isConst() && otherArg.isConst())) {
                     dependencies.add(arg);
@@ -54,7 +54,7 @@ public class WithConstDependencyComputation extends DependencyComputation {
      * @return if this argument visibility should be reset or not
      */
     @Override
-    public boolean streamResetAttachFilter(ParameterWithValue arg) {
+    public boolean streamResetAttachFilter(ComputationArgumentWithValue arg) {
         return arg.isConst();
     }
 }

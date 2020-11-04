@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public abstract class Binding {
     protected final boolean hasCxxMangledName;
     protected final String name;
-    protected final Parameter[] parameters;
+    protected final ComputationArgument[] computationArguments;
     protected String[] namespaceList;
     protected String mangledName;
     protected String libraryFileName;
@@ -45,19 +45,19 @@ public abstract class Binding {
      *
      * @param name a C style name or as fully qualified C++ name (e.g.,
      *            `namespace1::namespace2::name`).
-     * @param parameterList list of parameter names, types, and directions
+     * @param computationArgumentList list of parameter names, types, and directions
      * @param hasCxxMangledName true if `name` is a C++ name and the symbol name is therefore
      *            mangled.
      */
-    public Binding(String name, ArrayList<Parameter> parameterList, boolean hasCxxMangledName) {
+    public Binding(String name, ArrayList<ComputationArgument> computationArgumentList, boolean hasCxxMangledName) {
         String[] identifierList = name.trim().split("::");
         this.name = identifierList[identifierList.length - 1];
         this.namespaceList = new String[identifierList.length - 1];
         if (identifierList.length > 1) {
             System.arraycopy(identifierList, 0, namespaceList, 0, identifierList.length - 1);
         }
-        Parameter[] params = new Parameter[parameterList.size()];
-        this.parameters = parameterList.toArray(params);
+        ComputationArgument[] params = new ComputationArgument[computationArgumentList.size()];
+        this.computationArguments = computationArgumentList.toArray(params);
         this.hasCxxMangledName = hasCxxMangledName;
     }
 
@@ -91,14 +91,14 @@ public abstract class Binding {
             mangled += name.length() + name;
         }
         // add arguments
-        if (parameters.length == 0) {
+        if (computationArguments.length == 0) {
             mangled += 'v';     // f() -> f(void) -> void
         } else {
-            ArrayList<Parameter> processedSymbolParameters = new ArrayList<>(parameters.length);
-            ArrayList<Integer> referencePositions = new ArrayList<>(parameters.length);
+            ArrayList<ComputationArgument> processedSymbolComputationArguments = new ArrayList<>(computationArguments.length);
+            ArrayList<Integer> referencePositions = new ArrayList<>(computationArguments.length);
             int lastReference = 0;
-            for (Parameter currentParam : parameters) {
-                if (currentParam.getKind() == Parameter.Kind.BY_VALUE) {
+            for (ComputationArgument currentParam : computationArguments) {
+                if (currentParam.getKind() == ComputationArgument.Kind.BY_VALUE) {
                     // parameter of primitive type passed by-value: is not a symbol parameter
                     mangled += currentParam.getMangledType();
                 } else {
@@ -106,8 +106,8 @@ public abstract class Binding {
                     // -> check whether we've emitted a pointer of this (kind, type) already seen
 
                     boolean paramProcessed = false;
-                    for (int i = 0; i < processedSymbolParameters.size(); i++) {
-                        Parameter p = processedSymbolParameters.get(i);
+                    for (int i = 0; i < processedSymbolComputationArguments.size(); i++) {
+                        ComputationArgument p = processedSymbolComputationArguments.get(i);
                         if (p.getKind() == currentParam.getKind() && p.getType() == currentParam.getType()) {
                             // found repetition -> apply substitution rule
                             int occurrencePos = referencePositions.get(i);
@@ -122,8 +122,8 @@ public abstract class Binding {
                         mangled += currentParam.getMangledType();
 
                         // count "T*" as 1 symbol and "const T*" as 2 symbols
-                        lastReference += currentParam.getKind() == Parameter.Kind.POINTER_IN ? 2 : 1;
-                        processedSymbolParameters.add(currentParam);
+                        lastReference += currentParam.getKind() == ComputationArgument.Kind.POINTER_IN ? 2 : 1;
+                        processedSymbolComputationArguments.add(currentParam);
                         referencePositions.add(lastReference - 1);
                     }
                 }
@@ -146,7 +146,7 @@ public abstract class Binding {
     }
 
     public String getNIDLParameterSignature() {
-        return Arrays.stream(parameters).map(Parameter::toNFISignatureElement).collect(Collectors.joining(", "));
+        return Arrays.stream(computationArguments).map(ComputationArgument::toNFISignatureElement).collect(Collectors.joining(", "));
     }
 
     public String toNIDLString() {
@@ -155,7 +155,7 @@ public abstract class Binding {
 
     @Override
     public String toString() {
-        String argString = Arrays.stream(parameters).map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
+        String argString = Arrays.stream(computationArguments).map(Object::toString).collect(Collectors.joining(", ", "[", "]"));
         return "Binding(name=" + name + ", argumentList=" + argString +
                         ", cxxnamespace=" + String.join("::", namespaceList) +
                         ", hasCxxMangledName=" + hasCxxMangledName + ", symbol=" + getSymbolName() + ")";

@@ -28,12 +28,12 @@
  */
 package com.nvidia.grcuda.functions;
 
+import com.nvidia.grcuda.ComputationArgument;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import java.util.ArrayList;
 
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.KernelBinding;
-import com.nvidia.grcuda.Parameter;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.gpu.Kernel;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -85,7 +85,7 @@ public final class BindKernelFunction extends Function {
             String symbolName = expectString(arguments[1], "argument 2 of bindkernel must be string (symbol name)").trim();
             String signature = expectString(arguments[2], "argument 3 of bind must be string (signature of kernel)").trim();
             try {
-                ArrayList<Parameter> paramList = Parameter.parseParameterSignature(signature);
+                ArrayList<ComputationArgument> paramList = ComputationArgument.parseParameterSignature(signature);
                 binding = KernelBinding.newCBinding(symbolName, paramList);
             } catch (TypeException e) {
                 throw new GrCUDAException("invalid type: " + e.getMessage());
@@ -131,7 +131,7 @@ public final class BindKernelFunction extends Function {
         String parenSignature = s.substring(firstLParenPos + 1, lastRParenPos).trim();
 
         try {
-            ArrayList<Parameter> paramList = Parameter.parseParameterSignature(parenSignature);
+            ArrayList<ComputationArgument> paramList = ComputationArgument.parseParameterSignature(parenSignature);
             if (isCxxSymbol) {
                 return KernelBinding.newCxxBinding(name, paramList);
             } else {

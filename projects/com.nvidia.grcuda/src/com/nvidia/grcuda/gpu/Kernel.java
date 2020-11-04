@@ -38,7 +38,7 @@ import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.nvidia.grcuda.Parameter;
+import com.nvidia.grcuda.ComputationArgument;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.TypeException;
@@ -57,8 +57,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-import java.util.List;
-
 @ExportLibrary(InteropLibrary.class)
 public class Kernel implements TruffleObject {
 
@@ -67,7 +65,7 @@ public class Kernel implements TruffleObject {
     private final String kernelSymbol;
     private final long nativeKernelFunctionHandle;
     private final CUModule module;
-    private final Parameter[] kernelParameters;
+    private final ComputationArgument[] kernelComputationArguments;
     private int launchCount = 0;
     private String ptxCode;
 
@@ -102,9 +100,9 @@ public class Kernel implements TruffleObject {
                     long kernelFunction, String kernelSignature, CUModule module, String ptx) {
 //        parseSignature(kernelSignature);
         try {
-            ArrayList<Parameter> paramList = Parameter.parseParameterSignature(kernelSignature);
-            Parameter[] params = new Parameter[paramList.size()];
-            this.kernelParameters = paramList.toArray(params);
+            ArrayList<ComputationArgument> paramList = ComputationArgument.parseParameterSignature(kernelSignature);
+            ComputationArgument[] params = new ComputationArgument[paramList.size()];
+            this.kernelComputationArguments = paramList.toArray(params);
         } catch (TypeException e) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException(e.getMessage());
@@ -126,22 +124,22 @@ public class Kernel implements TruffleObject {
         return grCUDAExecutionContext;
     }
 
-    public Parameter[] getKernelParameters() {
-        return kernelParameters;
+    public ComputationArgument[] getKernelParameters() {
+        return kernelComputationArguments;
     }
 
     KernelArguments createKernelArguments(Object[] args, InteropLibrary booleanAccess,
                     InteropLibrary int8Access, InteropLibrary int16Access,
                     InteropLibrary int32Access, InteropLibrary int64Access, InteropLibrary doubleAccess)
                     throws UnsupportedTypeException, ArityException {
-        if (args.length != kernelParameters.length) {
+        if (args.length != kernelComputationArguments.length) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(kernelParameters.length, args.length);
+            throw ArityException.create(kernelComputationArguments.length, args.length);
         }
-        KernelArguments kernelArgs = new KernelArguments(args, this.kernelParameters);
-        for (int paramIdx = 0; paramIdx < kernelParameters.length; paramIdx++) {
+        KernelArguments kernelArgs = new KernelArguments(args, this.kernelComputationArguments);
+        for (int paramIdx = 0; paramIdx < kernelComputationArguments.length; paramIdx++) {
             Object arg = args[paramIdx];
-            Parameter param = kernelParameters[paramIdx];
+            ComputationArgument param = kernelComputationArguments[paramIdx];
             Type paramType = param.getType();
             try {
                 if (param.isPointer()) {
@@ -269,57 +267,6 @@ public class Kernel implements TruffleObject {
         return kernelArgs;
     }
 
-//    private void parseSignature(String kernelSignature) {
-//        for (String s : kernelSignature.trim().split(",")) {
-//
-//            // Find if the type is const;
-//            String[] typePieces = s.trim().split(" ");
-//            String typeString;
-//            boolean typeIsConst = false;
-//            if (typePieces.length == 1) {
-//                // If only 1 piece is found, the argument is not const;
-//                typeString = typePieces[0].trim();
-//            } else if (typePieces.length == 2) {
-//                // Const can be either before or after the type;
-//                if (typePieces[0].trim().equals("const")) {
-//                    typeIsConst = true;
-//                    typeString = typePieces[1].trim();
-//                } else if (typePieces[1].trim().equals("const")) {
-//                    typeIsConst = true;
-//                    typeString = typePieces[0].trim();
-//                } else {
-//                    throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
-//                }
-//            } else {
-//                throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
-//            }
-//
-//            ArgumentType type;
-//            switch (typeString) {
-//                case "pointer":
-//                    type = ArgumentType.POINTER;
-//                    break;
-//                case "uint64":
-//                case "sint64":
-//                    type = ArgumentType.INT64;
-//                    break;
-//                case "uint32":
-//                case "sint32":
-//                    type = ArgumentType.INT32;
-//                    break;
-//                case "float":
-//                    type = ArgumentType.FLOAT32;
-//                    break;
-//                case "double":
-//                    type = ArgumentType.FLOAT64;
-//                    break;
-//                default:
-//                    throw new IllegalArgumentException("invalid type identifier in kernel signature: " + s);
-//            }
-//            this.arguments.add(new ComputationArgument(type, type.equals(ArgumentType.POINTER), typeIsConst));
-//        }
-//    }
-
     private static GrCUDAException createExceptionValueOutOfRange(Type type, long value) {
         return new GrCUDAException("value " + value + " is out of range for type " + type);
     }
@@ -334,7 +281,7 @@ public class Kernel implements TruffleObject {
 
     @Override
     public String toString() {
-        return "Kernel(" + kernelName + ", " + Arrays.toString(kernelParameters) + ", launchCount=" + launchCount + ")";
+        return "Kernel(" + kernelName + ", " + Arrays.toString(kernelComputationArguments) + ", launchCount=" + launchCount + ")";
     }
 
     public String getPTX() {

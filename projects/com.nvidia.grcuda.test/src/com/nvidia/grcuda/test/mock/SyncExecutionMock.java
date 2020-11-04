@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.test.mock;
 
+import com.nvidia.grcuda.ComputationArgumentWithValue;
 import com.nvidia.grcuda.NoneValue;
-import com.nvidia.grcuda.ParameterWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  */
 public class SyncExecutionMock extends GrCUDAComputationalElement {
 
-    public SyncExecutionMock(GrCUDAExecutionContext grCUDAExecutionContext, List<ParameterWithValue> args) {
+    public SyncExecutionMock(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
         super(grCUDAExecutionContext, args);
     }
 
