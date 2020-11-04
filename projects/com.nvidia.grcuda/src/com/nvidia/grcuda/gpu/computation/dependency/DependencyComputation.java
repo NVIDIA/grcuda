@@ -1,6 +1,6 @@
 package com.nvidia.grcuda.gpu.computation.dependency;
 
-import com.nvidia.grcuda.ParameterWithValue;
+import com.nvidia.grcuda.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
 
 import java.util.Collection;
@@ -20,7 +20,7 @@ public abstract class DependencyComputation {
      * This is conceptually a set, in the sense that every element is unique.
      * Concrete implementations might use other data structures, if required;
      */
-    protected Collection<ParameterWithValue> activeArgumentSet;
+    protected Collection<ComputationArgumentWithValue> activeArgumentSet;
 
     /**
      * Computes if the "other" GrCUDAComputationalElement has dependencies w.r.t. this kernel,
@@ -28,9 +28,9 @@ public abstract class DependencyComputation {
      * @param other kernel for which we want to check dependencies, w.r.t. this kernel
      * @return the list of arguments that the two kernels have in common
      */
-    public abstract Collection<ParameterWithValue> computeDependencies(GrCUDAComputationalElement other);
+    public abstract Collection<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other);
 
-    public Collection<ParameterWithValue> getActiveArgumentSet() {
+    public Collection<ComputationArgumentWithValue> getActiveArgumentSet() {
         return activeArgumentSet;
     }
 
@@ -42,7 +42,7 @@ public abstract class DependencyComputation {
      * @param arg an argument to analyse
      * @return if this argument visibility should be reset or not
      */
-    public boolean streamResetAttachFilter(ParameterWithValue arg) {
+    public boolean streamResetAttachFilter(ComputationArgumentWithValue arg) {
         return false;
     }
 }

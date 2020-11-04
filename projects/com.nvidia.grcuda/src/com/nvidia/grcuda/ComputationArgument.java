@@ -35,10 +35,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 
 /**
  * Defines a {@link GrCUDAComputationalElement} argument representing the elements of a NIDL/NFI signature.
- * For each argument, store its type, if it's a pointer or a value,
+ * For each argument/parameter, store its type, if it's a pointer or a value,
  * and if it's constant (i.e. its content cannot be modified in the computation);
  */
-public class Parameter {
+public class ComputationArgument {
 
     public enum Kind {
         BY_VALUE,
@@ -58,14 +58,14 @@ public class Parameter {
     protected final boolean isConst;
 
     /**
-     * Create new parameter from its components.
+     * Create new argument/parameter from its components.
      *
-     * @param position zero-based position from the left of the parameter list
-     * @param name parameter name
+     * @param position zero-based position from the left of the parameter list. This is useful for debugging, but otherwise non-functional
+     * @param name parameter name. This is useful for debugging, but otherwise non-functional
      * @param type data type of the parameter
      * @param kind kind of the parameter (by-value, pointer with direction)
      */
-    Parameter(int position, String name, Type type, Kind kind) {
+    ComputationArgument(int position, String name, Type type, Kind kind) {
         this.position = position;
         this.name = name;
         this.type = type;
@@ -74,7 +74,7 @@ public class Parameter {
         this.isConst = kind.equals(Kind.POINTER_IN) || kind.equals(Kind.BY_VALUE);
     }
 
-    Parameter(String name, Type type, Kind kind) {
+    ComputationArgument(String name, Type type, Kind kind) {
         this(DEFAULT_POSITION, name, type, kind);
     }
 
@@ -86,9 +86,9 @@ public class Parameter {
      * @param kind direction of pointer parameter (allowed values `POINTER_IN`, `POINTER_OUT` and
      *            `POINTER_INOUT`, must not by `BY_VALUE`)
      */
-    public static Parameter createPointerParameter(String name, Type type, Kind kind) {
+    public static ComputationArgument createPointerComputationArgument(String name, Type type, Kind kind) {
         assert kind != Kind.BY_VALUE : "pointer parameter cannot be by-value";
-        return new Parameter(0, name, type, kind);
+        return new ComputationArgument(0, name, type, kind);
     }
 
     /**
@@ -97,8 +97,8 @@ public class Parameter {
      * @param name parameter name
      * @param type data type of the parameter
      */
-    public static Parameter createByValueParameter(String name, Type type) {
-        return new Parameter(0, name, type, Kind.BY_VALUE);
+    public static ComputationArgument createByValueComputationArgument(String name, Type type) {
+        return new ComputationArgument(0, name, type, Kind.BY_VALUE);
     }
 
     /**
@@ -118,7 +118,7 @@ public class Parameter {
      * @throws TypeException if {@code param} string cannot be parsed successfully
      * @return Parameter
      */
-    private static Parameter parseNIDLOrLegacyParameterString(int position, String param) throws TypeException {
+    private static ComputationArgument parseNIDLOrLegacyParameterString(int position, String param) throws TypeException {
         String paramStr = param.trim();
         if (paramStr.indexOf(':') == -1) {
             // no colon found -> attempt parsing it as a legacy NFI signature
@@ -144,7 +144,7 @@ public class Parameter {
                 // the void is not a legal by-value parameter type
                 throw new TypeException("invalid type \"pointer\" of by-value parameter");
             }
-            return createByValueParameter(name, type);
+            return createByValueComputationArgument(name, type);
         } else {
             if (dirPointerAndType[1].equals("pointer")) {
                 Type type = Type.fromNIDLTypeString(dirPointerAndType[2]);
@@ -154,11 +154,11 @@ public class Parameter {
                 }
                 switch (dirPointerAndType[0]) {
                     case "in":
-                        return createPointerParameter(name, type, Kind.POINTER_IN);
+                        return createPointerComputationArgument(name, type, Kind.POINTER_IN);
                     case "inout":
-                        return createPointerParameter(name, type, Kind.POINTER_INOUT);
+                        return createPointerComputationArgument(name, type, Kind.POINTER_INOUT);
                     case "out":
-                        return createPointerParameter(name, type, Kind.POINTER_OUT);
+                        return createPointerComputationArgument(name, type, Kind.POINTER_OUT);
                     default:
                         throw new TypeException("invalid direction: " + dirPointerAndType[0] + ", expected \"in\", \"inout\", or \"out\"");
                 }
@@ -176,7 +176,7 @@ public class Parameter {
      * @throws TypeException of the specified type cannot be parsed
      * @return PArameter in which the names are "param1", "param2", ...
      */
-    private static Parameter parseLegacyParameterString(int position, String param) throws TypeException {
+    private static ComputationArgument parseLegacyParameterString(int position, String param) throws TypeException {
         String name = "param" + (position + 1);
 
         // Find if the type is const;
@@ -207,7 +207,7 @@ public class Parameter {
         if (typeIsConst && type == Type.NFI_POINTER) {
             kind = Kind.POINTER_IN;
         }
-        return new Parameter(position, name, type, kind);
+        return new ComputationArgument(position, name, type, kind);
     }
 
     private static void assertNonVoidType(Type type, int position, String paramStr) throws TypeException {
@@ -216,9 +216,9 @@ public class Parameter {
         }
     }
 
-    public static ArrayList<Parameter> parseParameterSignature(String parameterSignature) throws TypeException {
+    public static ArrayList<ComputationArgument> parseParameterSignature(String parameterSignature) throws TypeException {
         CompilerAsserts.neverPartOfCompilation();
-        ArrayList<Parameter> params = new ArrayList<>();
+        ArrayList<ComputationArgument> params = new ArrayList<>();
         for (String s : parameterSignature.trim().split(",")) {
             params.add(parseNIDLOrLegacyParameterString(params.size(), s.trim()));
         }

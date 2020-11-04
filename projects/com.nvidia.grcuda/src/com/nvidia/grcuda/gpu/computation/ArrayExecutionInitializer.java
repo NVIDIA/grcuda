@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.gpu.computation;
 
-import com.nvidia.grcuda.Parameter;
-import com.nvidia.grcuda.ParameterWithValue;
+import com.nvidia.grcuda.ComputationArgument;
+import com.nvidia.grcuda.ComputationArgumentWithValue;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.array.AbstractArray;
 
@@ -30,8 +30,8 @@ class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeAr
     }
 
     @Override
-    public List<ParameterWithValue> initialize() {
+    public List<ComputationArgumentWithValue> initialize() {
         return Collections.singletonList(
-                new ParameterWithValue(PARAMETER_NAME, Type.NFI_POINTER, this.readOnly ? Parameter.Kind.POINTER_IN : Parameter.Kind.POINTER_INOUT, this.array));
+                new ComputationArgumentWithValue(PARAMETER_NAME, Type.NFI_POINTER, this.readOnly ? ComputationArgument.Kind.POINTER_IN : ComputationArgument.Kind.POINTER_INOUT, this.array));
     }
 }

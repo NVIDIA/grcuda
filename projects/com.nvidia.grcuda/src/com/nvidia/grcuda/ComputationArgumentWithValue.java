@@ -10,21 +10,16 @@ import java.util.Objects;
  * and if it's constant (i.e. its content cannot be modified in the computation).
  * This class also holds a reference to the actual object associated to the argument;
  */
-public class ParameterWithValue extends Parameter {
+public class ComputationArgumentWithValue extends ComputationArgument {
     private final Object argumentValue;
 
-//    public ParameterWithValue(ArgumentType type, boolean isArray, boolean isConst, Object argumentValue) {
-//        super(type, isArray, isConst);
-//        this.argumentValue = argumentValue;
-//    }
-
-    public ParameterWithValue(String name, Type type, Kind kind, Object argumentValue) {
+    public ComputationArgumentWithValue(String name, Type type, Kind kind, Object argumentValue) {
         super(name, type, kind);
         this.argumentValue = argumentValue;
     }
 
-    public ParameterWithValue(Parameter parameter, Object argumentValue) {
-        super(parameter.getPosition(), parameter.getName(), parameter.getType(), parameter.getKind());
+    public ComputationArgumentWithValue(ComputationArgument computationArgument, Object argumentValue) {
+        super(computationArgument.getPosition(), computationArgument.getName(), computationArgument.getType(), computationArgument.getKind());
         this.argumentValue = argumentValue;
     }
 
@@ -44,7 +39,7 @@ public class ParameterWithValue extends Parameter {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ParameterWithValue that = (ParameterWithValue) o;
+        ComputationArgumentWithValue that = (ComputationArgumentWithValue) o;
         return Objects.equals(argumentValue, that.argumentValue);
     }
 

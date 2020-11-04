@@ -30,10 +30,10 @@ package com.nvidia.grcuda.functions;
 
 import java.util.ArrayList;
 
+import com.nvidia.grcuda.ComputationArgument;
 import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
-import com.nvidia.grcuda.Parameter;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.TypeException;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -124,7 +124,7 @@ public final class BindFunction extends Function {
         String returnTypeString = s.substring(typeColonPos + 1).trim();
         try {
             Type returnType = Type.fromNIDLTypeString(returnTypeString);
-            ArrayList<Parameter> paramList = Parameter.parseParameterSignature(parenSignature);
+            ArrayList<ComputationArgument> paramList = ComputationArgument.parseParameterSignature(parenSignature);
             if (isCxxSymbol) {
                 return FunctionBinding.newCxxBinding(name, paramList, returnType);
             } else {

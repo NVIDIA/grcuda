@@ -36,18 +36,18 @@ public final class FunctionBinding extends Binding {
 
     private final Type returnType;
 
-    private FunctionBinding(String name, ArrayList<Parameter> parameterList,
+    private FunctionBinding(String name, ArrayList<ComputationArgument> computationArgumentList,
                     Type returnType, boolean hasCxxMangledName) {
-        super(name, parameterList, hasCxxMangledName);
+        super(name, computationArgumentList, hasCxxMangledName);
         this.returnType = returnType;
     }
 
-    public static FunctionBinding newCxxBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
-        return new FunctionBinding(name, parameterList, returnType, true);
+    public static FunctionBinding newCxxBinding(String name, ArrayList<ComputationArgument> computationArgumentList, Type returnType) {
+        return new FunctionBinding(name, computationArgumentList, returnType, true);
     }
 
-    public static FunctionBinding newCBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
-        return new FunctionBinding(name, parameterList, returnType, false);
+    public static FunctionBinding newCBinding(String name, ArrayList<ComputationArgument> computationArgumentList, Type returnType) {
+        return new FunctionBinding(name, computationArgumentList, returnType, false);
     }
 
     @Override
@@ -61,6 +61,6 @@ public final class FunctionBinding extends Binding {
     }
 
     public String toNFISignature() {
-        return "(" + Arrays.stream(parameters).map(Parameter::toNFISignatureElement).collect(Collectors.joining(", ")) + "): " + returnType.getNFITypeName();
+        return "(" + Arrays.stream(computationArguments).map(ComputationArgument::toNFISignatureElement).collect(Collectors.joining(", ")) + "): " + returnType.getNFITypeName();
     }
 }

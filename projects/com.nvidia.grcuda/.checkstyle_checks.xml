@@ -168,8 +168,8 @@
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable method name checks"/>
     </module>
     <module name="SuppressionCommentFilter">
-      <property name="offCommentFormat" value="Checkstyle: stop parameter assignment check"/>
-      <property name="onCommentFormat" value="Checkstyle: resume parameter assignment check"/>
+      <property name="offCommentFormat" value="Checkstyle: stop computationArgument assignment check"/>
+      <property name="onCommentFormat" value="Checkstyle: resume computationArgument assignment check"/>
       <property name="checkFormat" value="ParameterAssignment"/>
       <property name="checkC" value="false"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Parameter Assignment"/>
