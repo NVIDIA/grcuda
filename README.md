@@ -300,6 +300,11 @@ Run the CUDA version of all benchmarks
 graalpython --jvm --polyglor benchmark_wrapper.py -d -i 30 -c
 ```
 
+To print the Java Stack Trace in case of exceptions, add the following to Graalpython
+```
+graalpython --python.ExposeInternalSources --python.WithJavaStacktrace=1 --experimental-options
+```
+
 Profile a specific benchmark using `nvprof`. Running `nvprof` as `sudo` might not be required, see [here](https://developer.nvidia.com/nvidia-development-tools-solutions-ERR_NVGPUCTRPERM-permission-issue-performance-counters).
  Note that the `graalpython` benchmark has the `--nvprof` flag, so that only the real computation is profiled (and not the benchmark initialization). 
  Additionally, provide `nvprof` with flags `--csv` to get a CSV output, and `--log-file bench-name_%p.csv"` to store the result.
