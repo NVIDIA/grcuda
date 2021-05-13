@@ -39,8 +39,8 @@ suite = {
     "groupId": "com.nvidia.grcuda",
 
     "developer": {
-        "name": "grCUDA Developers",
-        "organization": "grCUDA Developers",
+        "name": "GrCUDA Developers",
+        "organization": "GrCUDA Developers",
     },
 
 
@@ -109,7 +109,7 @@ suite = {
             "subDir": "projects",
             "license": ["BSD-3"],
             "sourceDirs": ["src"],
-            "javaCompliance": "8",
+            "javaCompliance": "11",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "dependencies": [
                 "truffle:TRUFFLE_API",
@@ -128,7 +128,7 @@ suite = {
                 "truffle:TRUFFLE_TEST",
             ],
             "checkstyle": "com.nvidia.grcuda",
-            "javaCompliance": "8",
+            "javaCompliance": "11",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Truffle,CUDA",
             "testProject": True,
@@ -157,11 +157,11 @@ suite = {
                 "sdk:GRAAL_SDK",
             ],
             "sourcesPath": "grcuda.src.zip",
-            "description": "grCUDA",
+            "description": "GrCUDA",
         },
 
         "GRCUDA_UNIT_TESTS": {
-            "description": "grCUDA unit tests",
+            "description": "GrCUDA unit tests",
             "dependencies": [
                 "com.nvidia.grcuda.test",
             ],

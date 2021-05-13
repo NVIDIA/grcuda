@@ -10,7 +10,6 @@ import com.nvidia.grcuda.test.mock.GrCUDAStreamManagerMock;
 import com.nvidia.grcuda.test.mock.KernelExecutionMock;
 import com.nvidia.grcuda.test.mock.SyncExecutionMock;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.sun.corba.se.impl.orbutil.concurrent.Sync;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
