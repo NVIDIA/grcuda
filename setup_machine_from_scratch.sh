@@ -9,7 +9,7 @@ sudo apt install unzip -y
 # clone repositories (GraalVM, MX, GrCUDA);
 git clone https://github.com/oracle/graal.git
 git clone https://github.com/graalvm/mx.git
-git clone https://github.com/AlbertoParravicini/grcuda.git
+git clone git@github.com:AlbertoParravicini/grcuda.git
 
 # Checkout commit of GraalVM corresponding to the release;
 cd graal
