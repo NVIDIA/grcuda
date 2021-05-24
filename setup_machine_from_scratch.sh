@@ -11,6 +11,11 @@ git clone https://github.com/oracle/graal.git
 git clone https://github.com/graalvm/mx.git
 git clone https://github.com/AlbertoParravicini/grcuda.git
 
+# Checkout commit of GraalVM corresponding to the release;
+cd graal
+git checkout 192eaf62331679907449ee60dad9d6d6661a3dc8
+cd ..
+
 # download the GraalVM release build (21.1.0) and the corresponding JVM;
 wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.1.0/graalvm-ce-java11-linux-amd64-21.1.0.tar.gz
 wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.1-b05/labsjdk-ce-11.0.11+8-jvmci-21.1-b05-linux-amd64.tar.gz
