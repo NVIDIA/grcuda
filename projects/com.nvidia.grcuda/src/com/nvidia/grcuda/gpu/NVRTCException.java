@@ -27,10 +27,9 @@
  */
 package com.nvidia.grcuda.gpu;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-public class NVRTCException extends RuntimeException implements TruffleException {
+public class NVRTCException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 7687673079396178282L;
 
@@ -40,11 +39,5 @@ public class NVRTCException extends RuntimeException implements TruffleException
 
     public NVRTCException(int errorCode, String message, String functionName) {
         super(message + '(' + errorCode + ") in " + functionName);
-    }
-
-    @Override
-    public Node getLocation() {
-        // null = location not available
-        return null;
     }
 }
