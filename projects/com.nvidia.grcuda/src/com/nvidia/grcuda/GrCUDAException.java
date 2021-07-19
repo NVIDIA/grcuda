@@ -31,22 +31,19 @@ package com.nvidia.grcuda;
 import java.util.Arrays;
 import java.util.Optional;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class GrCUDAException extends RuntimeException implements TruffleException {
+public final class GrCUDAException extends AbstractTruffleException {
     private static final long serialVersionUID = 8614211550329856579L;
-
-    private final Node node;
 
     public GrCUDAException(String message) {
         this(message, null);
     }
 
     public GrCUDAException(String message, Node node) {
-        super(message);
-        this.node = node;
+        super(message, node);
     }
 
     public GrCUDAException(InteropException e) {
@@ -62,12 +59,7 @@ public final class GrCUDAException extends RuntimeException implements TruffleEx
     }
 
     public static String format(String... name) {
-        Optional<String> result = Arrays.asList(name).stream().reduce((a, b) -> a + "::" + b);
+        Optional<String> result = Arrays.stream(name).reduce((a, b) -> a + "::" + b);
         return result.orElse("<empty>");
-    }
-
-    @Override
-    public Node getLocation() {
-        return node;
     }
 }

@@ -28,34 +28,22 @@
  */
 package com.nvidia.grcuda;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class GrCUDAInternalException extends RuntimeException implements TruffleException {
+public final class GrCUDAInternalException extends AbstractTruffleException {
     private static final long serialVersionUID = 8614211550329856579L;
-
-    private final Node node;
 
     public GrCUDAInternalException(String message) {
         this(message, null);
     }
 
     public GrCUDAInternalException(String message, Node node) {
-        super(message);
-        this.node = node;
+        super(message, node);
     }
 
     public GrCUDAInternalException(InteropException e) {
         this(e.getMessage());
-    }
-
-    public boolean isInternalError() {
-        return true;
-    }
-
-    @Override
-    public Node getLocation() {
-        return node;
     }
 }

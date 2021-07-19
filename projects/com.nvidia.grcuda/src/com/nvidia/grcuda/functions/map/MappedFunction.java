@@ -33,9 +33,9 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -47,26 +47,15 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 
-final class MapException extends RuntimeException implements TruffleException {
+final class MapException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -1472390370115466332L;
 
     MapException(String message) {
         super(message);
-    }
-
-    public Node getLocation() {
-        return null;
-    }
-
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
     }
 }
 
@@ -519,7 +508,6 @@ final class MapBoundArgObjectElement extends MapBoundArgObjectBase {
     }
 }
 
-@ExportLibrary(InteropLibrary.class)
 final class MapArgObjectMap extends MapArgObjectBase {
     final MapArgObjectBase parent;
     final Object function;
