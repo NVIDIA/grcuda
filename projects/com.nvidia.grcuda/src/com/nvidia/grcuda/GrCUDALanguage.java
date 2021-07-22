@@ -56,15 +56,6 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        if (!(object instanceof TruffleObject)) {
-            return false;
-        }
-        TruffleObject truffleObject = (TruffleObject) object;
-        return truffleObject instanceof DeviceArray;
-    }
-
-    @Override
     protected CallTarget parse(ParsingRequest request) {
         ExpressionNode expression = new ParserAntlr().parse(request.getSource());
         GrCUDARootNode newParserRoot = new GrCUDARootNode(this, expression);
@@ -98,5 +89,4 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     protected void finalizeContext(GrCUDAContext context) {
         context.cleanup();
     }
-
 }

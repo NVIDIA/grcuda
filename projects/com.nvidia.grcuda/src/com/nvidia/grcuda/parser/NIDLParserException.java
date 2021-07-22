@@ -27,10 +27,14 @@
  */
 package com.nvidia.grcuda.parser;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public class NIDLParserException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public class NIDLParserException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -7520277230665801341L;
     private final String message;
@@ -46,19 +50,13 @@ public class NIDLParserException extends RuntimeException implements TruffleExce
         this.column = charPositionInLine;
     }
 
+    @ExportMessage
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
+    }
+
     @Override
     public String getMessage() {
         return "NIDL parse error: [" + filename + " " + line + ":" + column + "] " + message;
-    }
-
-    @Override
-    public Node getLocation() {
-        // null = location not available
-        return null;
-    }
-
-    @Override
-    public boolean isSyntaxError() {
-        return true;
     }
 }
