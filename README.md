@@ -26,6 +26,7 @@ how to bind precompiled kernels to callables, compile and launch kernels.
   November 2019.
 - [grCUDA: A Polyglot Language Binding](https://youtu.be/_lI6ubnG9FY). Presentation at Oracle CodeOne 2019, September 2019.
 - [Simplifying GPU Access](https://developer.nvidia.com/gtc/2020/video/s21269-vid). Presentation at NVIDIA GTC 2020, March 2020.
+- [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491). Paper at IPDPS 2021 on the GrCUDA scheduler, May 2021. [Video](https://youtu.be/QkX0FHDRyxA) of the presentation.
 
 ## Using grCUDA in the GraalVM
 
@@ -127,17 +128,17 @@ Documentation on [polyglot kernel launches](docs/launchkernel.md).
 
 grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases) and manually copied into a GraalVM installation.
 
-1. Download GraalVM CE 20.0.0 for Linux `graalvm-ce-java8-linux-amd64-20.0.0.tar.gz`
-   from [GitHub](https://github.com/oracle/graal/releases) and untar it in your
+1. Download GraalVM CE 21.1.0 for Linux `graalvm-ce-java11-linux-amd64-21.1.0.tar.gz`
+   from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.1.0/graalvm-ce-java11-linux-amd64-21.1.0.tar.gz) and untar it in your
    installation directory.
 
    ```console
    cd <your installation directory>
-   tar xfz graalvm-ce-java8-linux-amd64-20.0.0.tar.gz
-   export GRAALVM_DIR=`pwd`/graalvm-ce-java8-20.0.0
+   tar xfz graalvm-ce-java11-linux-amd64-21.1.0.tar.gz
+   export GRAALVM_DIR=`pwd`/graalvm-ce-java11-21.1.0
    ```
 
-2. Download the grCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases)
+2. Download the grCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases). If using the official release, the latest features (e.g. the asynchronous scheduler) are not available. Instead, follow the guide below to install GrCUDA from the source code.
 
    ```console
    cd $GRAALVM_DIR/jre/languages
@@ -177,7 +178,7 @@ cd <directory containing this README>
 mx build
 ```
 
-Note that this will also checkout the graal repository.
+Note that this will also checkout the GraalVM repository.
 
 To run unit tests:
 
@@ -187,7 +188,7 @@ mx unittest com.nvidia
 
 ## Using grCUDA in a JDK
 
-Make sure that you use the [OpenJDK+JVMCI-0.55](https://github.com/graalvm/openjdk8-jvmci-builder/releases/tag/jvmci-0.55).
+Make sure that you use the [OpenJDK+JVMCI-21.1](https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.1-b05/labsjdk-ce-11.0.11+8-jvmci-21.1-b05-linux-amd64.tar.gz).
 
 To use the CUDA language from Python:
 
@@ -206,21 +207,23 @@ mx --dynamicimports graalpython --cp-sfx `pwd`/mxbuild/dists/jdk1.8/grcuda.jar \
 
 ## Step-by-step development guide
 
-* This section contains all the steps required to setup GrCUDA if your goal is to contribute to its development, or simply hack with it. This guide refers to GraalVM Community Edition JDK8 for Linux with `amd64` architectures, i.e. download releases prefixed with `graalvm-ce-java8-linux-amd64` or something like that. 
+* This section contains all the steps required to setup GrCUDA if your goal is to contribute to its development, or simply hack with it. This guide refers to GraalVM Community Edition JDK8 for Linux with `amd64` architectures, i.e. download releases prefixed with `graalvm-ce-java11-linux-amd64` or something like that. 
+* If installing GrCUDA on a new machine, you can simply run `setup_from_scratch.sh`. Here we repeat the same steps, with additional comments.
 
-1. **Get the source code of GrCUDA, graal, mx**
+
+1. **Get the source code of GrCUDA, GraalVM, mx**
 
 ```
 git clone https://github.com/oracle/graal.git
 git clone https://github.com/graalvm/mx.git
-git clone https://github.com/NVIDIA/grcuda.git (this can be replaced with a fork)
+git clone https://github.com/AlbertoParravicini/grcuda.githttps://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.1-b05/labsjdk-ce-11.0.11+8-jvmci-21.1-b05-linux-amd64.tar.gz
 ```
 
 2. **Download the right JDK**
-* [Here](https://github.com/graalvm/graal-jvmci-8/releases) you can find releases for GraalVM 20.2 or newer, but other versions are available on the same repository
+* [Here](https://github.com/graalvm/labs-openjdk-11/releases) you can find releases for GraalVM 21.1 or newer, but other versions are available on the same repository
 
 3. **Download the right build for GraalVM**
-* [Here](https://github.com/graalvm/graalvm-ce-builds/releases) you can find releases for GraalVM 20.2, and more recent versions once they will become available
+* [Here](hhttps://github.com/graalvm/graalvm-ce-builds/releases) you can find releases for GraalVM 21.1, and more recent versions once they will become available
 
 4. **Setup your CUDA environment**
 * Install CUDA and Nvidia drivers, for example following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=CentOS&target_version=7&target_type=rpmnetwork)
@@ -236,8 +239,8 @@ export PATH=$PATH:$CUDA_DIR/bin
 
 ```
 export PATH=~/mx:$PATH
-export JAVA_HOME=~/openjdk1.8.0_242-jvmci-20.0-b02
-export GRAAL_HOME=~/graalvm-ce-java8-20.0.0
+export JAVA_HOME=~/labsjdk-ce-11.0.11-jvmci-21.1-b05
+export GRAAL_HOME=~/graalvm-ce-java11-21.1.0
 export GRAALVM_HOME=$GRAAL_HOME
 export PATH=$GRAAL_HOME/bin:$PATH
 export PATH=$JAVA_HOME/bin:$PATH
@@ -272,11 +275,11 @@ graalpython -m ginstall install numpy;
 
 8. **Setup your IDE with** `mx ideinit`
 * In IntelliJ Idea, install the Python plugin, then do Project Structure -> SDKs -> Create a new Python 2.7 Virtual Environment, it is used by `mx`
-* In IntelliJ Idea, Project Structures -> Modules -> Set the Module SDK (under Dependencies) of `mx` and submodules to your Java SDK (e.g. `1.8`)
+* In IntelliJ Idea, Project Structures -> Modules -> Set the Module SDK (under Dependencies) of `mx` and submodules to your Java SDK (e.g. `11`)
 * Also update the project SDK and the default JUnit configurations to use the GraalVM SDK in `$GRAAL_HOME`, and update the `PATH` variable so that it can find `nvcc`
-	* Modify the template Junit test configuration adding `-Djava.library.path="/path/to/graalvmbuild/lib` (in Java 11) or -Djava.library.path="graalvm-ce-java8-20.2.0/jre/lib/amd64"to the VM options to find `trufflenfi`
+	* Modify the template Junit test configuration adding `-Djava.library.path="$GRAAL_HOME/lib` (in Java 11) to the VM options to find `trufflenfi`
  and update the environment variables with `PATH=your/path/env/var` to find `nvcc`
-	* In IntelliJ Idea, Run -> Edit Configurations, then create a new JUnit configuration set to "All in package" with `com.nvidia.grcuda` as module and `com.nvidia.grcuda.test` below, add to VM options `-Djava.library.path="/path/to/graalvm-ce-java8-20.0.0/jre/lib/amd64"` (or your version of GraalVM). Specify the SDK by setting the GraalVM JRE in e.g. `/path/to/graalvm-ce-java8-20.0.0`
+	* In IntelliJ Idea, Run -> Edit Configurations, then create a new JUnit configuration set to "All in package" with `com.nvidia.grcuda` as module and `com.nvidia.grcuda.test` below, add to VM options `-Djava.library.path="$GRAAL_HOME/lib"` (or your version of GraalVM). Specify the SDK by setting the GraalVM JRE in e.g. `$GRAAL_HOME`
 	* Environment variables should have PATH identical to what you use in a shell
 9. **Run tests with** `mx unittest com.nvidia`
 * Run a specific test using, for example, `mx unittest com.nvidia.grcuda.test.gpu.ExecutionDAGTest#executionDAGConstructorTest`

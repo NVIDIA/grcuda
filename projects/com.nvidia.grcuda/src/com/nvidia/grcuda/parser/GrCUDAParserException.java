@@ -27,12 +27,17 @@
  */
 package com.nvidia.grcuda.parser;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class GrCUDAParserException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public class GrCUDAParserException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -6653370806148433373L;
     private final Source source;
@@ -48,19 +53,21 @@ public class GrCUDAParserException extends RuntimeException implements TruffleEx
         this.length = length;
     }
 
-    @Override
-    public SourceSection getSourceLocation() {
+    @ExportMessage
+    ExceptionType getExceptionType() {
+        return ExceptionType.PARSE_ERROR;
+    }
+
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return source != null;
+    }
+
+    @ExportMessage(name = "getSourceLocation")
+    SourceSection getSourceSection() throws UnsupportedMessageException {
+        if (source == null) {
+            throw UnsupportedMessageException.create();
+        }
         return source.createSection(line, column, length);
     }
-
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
-    public boolean isSyntaxError() {
-        return true;
-    }
-
 }
