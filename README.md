@@ -274,8 +274,12 @@ graalpython -m ginstall install numpy;
 7. **Install GrCUDA with** `./install.sh`
 
 8. **Setup your IDE with** `mx ideinit`
+* See this [guide](https://github.com/graalvm/mx/blob/master/docs/IDE.md) to configure the syntax checker
 * In IntelliJ Idea, install the Python plugin, then do Project Structure -> SDKs -> Create a new Python 2.7 Virtual Environment, it is used by `mx`
 * In IntelliJ Idea, Project Structures -> Modules -> Set the Module SDK (under Dependencies) of `mx` and submodules to your Java SDK (e.g. `11`)
+    * This is also given by the `configure` option if you try to build the project in IntelliJ Idea before setting these options. Set your project Java SDK (e.g. `11`) for those missing modules
+    * When building for the first time in Intellij Idea, you might get errors like `cannot use --export for target 1.8`, which means that some package is being build with Java 8. For those packages (look at the log to find them), manually specify a more recent SDK (e.g. `11`) as you did in step above
+    * If you get errors of missing symbols, follow IntelliJ's hints and export the requested packages
 * Also update the project SDK and the default JUnit configurations to use the GraalVM SDK in `$GRAAL_HOME`, and update the `PATH` variable so that it can find `nvcc`
 	* Modify the template Junit test configuration adding `-Djava.library.path="$GRAAL_HOME/lib` (in Java 11) to the VM options to find `trufflenfi`
  and update the environment variables with `PATH=your/path/env/var` to find `nvcc`
@@ -320,21 +324,21 @@ sudo /usr/local/cuda/bin/nvprof --profile-from-start off --print-gpu-trace --pro
 and you can create more benchmarks by inheriting from the `Benchmark` class. Single benchmarks are executed from `benchmark_main.py`, while running all benchmark is done through `benchmark_wrapper.py`
 * The output of benchmarks is stored in a JSON (by default, located in `data/results`)
 * The benchmarking suite, through `benchmark_main.py`, supports the following options
-    1. `-d`, `--debug`: print to the console the results and details of each benchmark. False by default
-    2. `-t`, `--num_iter`: number of times that each benchmark is executed, for each combination of options. 30 by default
-    3. `-o`, `--output_path`: full path to the file where results are stored. By default results are stored in `data/results`,
-    and the file name is generated automatically
-    4. `--realloc`: if true, allocate new memory and rebuild the GPU code at each iteration. False by default
-    5. `--reinit`: if true, re-initialize the values used in each benchmark at each iteration. True by default
-    6. `-c`, `--cpu_validation`: if present, validate the result of each benchmark using the CPU (use `--no_cpu_validation` to skip it instead)
-    7. `-b`, `--benchmark`: run the benchmark only for the specified kernel. Otherwise run all benchmarks specified in `benchmark_main.py`
-    8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
-    9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default
-	10. `--block_size_1d`: number of threads per block when using 1D kernels
-	11. `--block_size_2d`: number of threads per block when using 2D kernels
-	12. `-g`, `--number_of_blocks`: number of blocks in the computation
-	13. `-p`, `--time_phases`: measure the execution time of each phase of the benchmark; note that this introduces overheads, and might influence the total execution time. Results for each phase are meaningful only for synchronous execution
-	14. `--nvprof`: if present, enable profiling when using nvprof. For this option to have effect, run graalpython using nvprof, with flag '--profile-from-start off'
+  1. `-d`, `--debug`: print to the console the results and details of each benchmark. False by default
+  2. `-t`, `--num_iter`: number of times that each benchmark is executed, for each combination of options. 30 by default
+  3. `-o`, `--output_path`: full path to the file where results are stored. By default results are stored in `data/results`,
+  and the file name is generated automatically
+  4. `--realloc`: if true, allocate new memory and rebuild the GPU code at each iteration. False by default
+  5. `--reinit`: if true, re-initialize the values used in each benchmark at each iteration. True by default
+  6. `-c`, `--cpu_validation`: if present, validate the result of each benchmark using the CPU (use `--no_cpu_validation` to skip it instead)
+  7. `-b`, `--benchmark`: run the benchmark only for the specified kernel. Otherwise run all benchmarks specified in `benchmark_main.py`
+  8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
+  9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default
+  10. `--block_size_1d`: number of threads per block when using 1D kernels
+  11. `--block_size_2d`: number of threads per block when using 2D kernels
+  12. `-g`, `--number_of_blocks`: number of blocks in the computation
+  13. `-p`, `--time_phases`: measure the execution time of each phase of the benchmark; note that this introduces overheads, and might influence the total execution time. Results for each phase are meaningful only for synchronous execution
+  14. `--nvprof`: if present, enable profiling when using nvprof. For this option to have effect, run graalpython using nvprof, with flag '--profile-from-start off'
 	
 
 ## DAG Scheduling Settings
