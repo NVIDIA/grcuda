@@ -158,6 +158,7 @@ suite = {
             ],
             "sourcesPath": "grcuda.src.zip",
             "description": "GrCUDA",
+            "javaCompliance": "11",
         },
 
         "GRCUDA_UNIT_TESTS": {
@@ -172,6 +173,7 @@ suite = {
             ],
             "sourcesPath": "grcuda.tests.src.zip",
             "testDistribution": True,
+            "javaCompliance": "11",
         },
     },
 }
