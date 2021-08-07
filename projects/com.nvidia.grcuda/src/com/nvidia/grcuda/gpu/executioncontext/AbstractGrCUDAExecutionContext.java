@@ -53,22 +53,27 @@ public abstract class AbstractGrCUDAExecutionContext {
      * Reference to how dependencies between computational elements are computed within this execution context;
      */
     private final DependencyComputationBuilder dependencyBuilder;
+    /**
+     * Identify the policy name associated to this execution context;
+     */
+    private final ExecutionPolicyEnum executionPolicy;
 
     /**
      * Reference to the prefetching strategy to use in this execution context;
      */
     protected final AbstractArrayPrefetcher arrayPrefetcher;
 
-    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy) {
-        this(new CUDARuntime(context, env), dependencyPolicy, PrefetcherEnum.NONE);
+    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, ExecutionPolicyEnum executionPolicy) {
+        this(new CUDARuntime(context, env), dependencyPolicy, PrefetcherEnum.NONE, executionPolicy);
     }
 
-    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
-        this(new CUDARuntime(context, env), dependencyPolicy, inputPrefetch);
+    public AbstractGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch, ExecutionPolicyEnum executionPolicy) {
+        this(new CUDARuntime(context, env), dependencyPolicy, inputPrefetch, executionPolicy);
     }
 
-    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
+    public AbstractGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch, ExecutionPolicyEnum executionPolicy) {
         this.cudaRuntime = cudaRuntime;
+        this.executionPolicy = executionPolicy;
         // Compute the dependency policy to use;
         switch (dependencyPolicy) {
             case WITH_CONST:
@@ -122,6 +127,10 @@ public abstract class AbstractGrCUDAExecutionContext {
 
     public DependencyComputationBuilder getDependencyBuilder() {
         return dependencyBuilder;
+    }
+
+    public ExecutionPolicyEnum getExecutionPolicy() {
+        return executionPolicy;
     }
 
     // Functions used to interface directly with the CUDA runtime;
