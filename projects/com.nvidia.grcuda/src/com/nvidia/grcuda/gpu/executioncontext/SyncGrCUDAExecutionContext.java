@@ -14,15 +14,15 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
     public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
-        super(context, env, dependencyPolicy, inputPrefetch);
+        super(context, env, dependencyPolicy, inputPrefetch, ExecutionPolicyEnum.SYNC);
     }
 
     public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy, PrefetcherEnum.NONE);
+        super(cudaRuntime, dependencyPolicy, PrefetcherEnum.NONE, ExecutionPolicyEnum.SYNC);
     }
 
     public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
-        super(cudaRuntime, dependencyPolicy, inputPrefetch);
+        super(cudaRuntime, dependencyPolicy, inputPrefetch, ExecutionPolicyEnum.SYNC);
     }
 
     /**

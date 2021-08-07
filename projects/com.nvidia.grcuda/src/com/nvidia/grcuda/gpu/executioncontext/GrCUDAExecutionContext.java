@@ -31,12 +31,12 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
     }
 
     public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy, PrefetcherEnum.NONE);
+        super(cudaRuntime, dependencyPolicy, PrefetcherEnum.NONE, ExecutionPolicyEnum.DEFAULT);
         this.streamManager = streamManager;
     }
 
     public GrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAThreadManager threadManager, GrCUDAStreamManager streamManager, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
-        super(cudaRuntime, dependencyPolicy, inputPrefetch);
+        super(cudaRuntime, dependencyPolicy, inputPrefetch, ExecutionPolicyEnum.DEFAULT);
         this.streamManager = streamManager;
     }
 

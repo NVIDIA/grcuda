@@ -95,7 +95,7 @@ public class DeviceArrayCopyFunction implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(1, arguments.length);
         }
-        long pointer = extractPointer(arguments[0], "fromPointer", pointerAccess);
+        long pointer = extractPointer(arguments[0], direction.equals(CopyDirection.FROM_POINTER) ? "fromPointer" : "toPointer", pointerAccess);
         new ArrayReadWriteFunctionExecution(array, direction, pointer, numElements).schedule();
         return array;
     }
