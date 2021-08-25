@@ -25,7 +25,7 @@
 
 const fs = require('fs')
 
-// get grCUDA root namespace and trt namespace object
+// get GrCUDA root namespace and trt namespace object
 const cu = Polyglot.eval('grcuda', 'CU')
 const trt = Polyglot.eval('grcuda', 'CU::TRT')
 

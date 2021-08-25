@@ -1,14 +1,14 @@
-# grCUDA and TensorRT
+# GrCUDA and TensorRT
 
 This directory contains a wrapper library `libtrt.so` for TensorRT.
 It simplifies the use of the TensorRT inference library.
 
 ## Build libtrt
 
-Build that the grCUDA wrapper library `libtrt` for TensorRT.
+Build that the GrCUDA wrapper library `libtrt` for TensorRT.
 
 ```console
-$ cd <grCUDA repo root>../tensorrt
+$ cd <GrCUDA repo root>../tensorrt
 $ mkdir build
 $ cd build
 $ cmake .. -DTENSORRT_DIR=/usr/local/TensorRT-7.0.0.11/
@@ -75,7 +75,7 @@ prediction: 4
 destroying inference runtime...
 ```
 
-## Use libtrt in grCUDA
+## Use libtrt in GrCUDA
 
 ```bash
 GRCUDA_JAR="$GRCUDA_BUILD_DIR/mxbuild/dists/jdk1.8/grcuda.jar"

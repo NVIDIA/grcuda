@@ -1,6 +1,6 @@
 # Type Mapping for C++
 
-grCUDA needs to interact with tree different type systems:
+GrCUDA needs to interact with tree different type systems:
 
 - The Java types of the Truffle interop protocol (`boolean`, `byte`, `short`, `int`, `long`, `float`, `double`, `String`)
   as described in [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
@@ -10,7 +10,7 @@ grCUDA needs to interact with tree different type systems:
 - C interface types from TruffleNFI (`void`, `sint8`, `uint8`, `sint16`, `uint16`, `sint32`, `uint32`, `sint64`, `uint64`,
     `float`, `double`, `pointer`, `object`, `string`).
   [NativeSimpleType.java](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.nfi.spi/src/com/oracle/truffle/nfi/spi/types/NativeSimpleType.java)
-  defines these types. grCUDA uses TruffleNFI to invoke native host functions. While TruffleNFI is designed for C APIs, the C++ types are necessary create the mangled symbols names to invoke with TruffleNFI.
+  defines these types. GrCUDA uses TruffleNFI to invoke native host functions. While TruffleNFI is designed for C APIs, the C++ types are necessary create the mangled symbols names to invoke with TruffleNFI.
 
 Types for clang/gcc under Linux (LP64)
 
@@ -44,7 +44,7 @@ void *             |  8  | Pv  | out pointer void   | pointer  | n/a
 const void *       |  8  | PKv | in pointer void    | pointer  | n/a
 const char *       |  8  | PKc | string             | string   | String
 
-(*) not supported in grCUDA or NFI
+(*) not supported in GrCUDA or NFI
 (+) does not support all values (NFI limitation)
 
 ## Synonymous NIDL types

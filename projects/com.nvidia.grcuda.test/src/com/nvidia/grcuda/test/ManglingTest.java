@@ -80,7 +80,7 @@ public class ManglingTest {
         }
         sourceGen.extractMangledNames(stdout);
 
-        // Check grCUDA-generated mangled names with compiler output
+        // Check GrCUDA-generated mangled names with compiler output
         int idx = 0;
         for (Binding binding : bindings) {
             String expectedMangledName = sourceGen.getMangledName(idx);

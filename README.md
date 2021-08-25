@@ -1,4 +1,4 @@
-# grCUDA: Polyglot GPU Access in GraalVM
+# GrCUDA: Polyglot GPU Access in GraalVM
 
 This Truffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.org). The goal is to
 
@@ -15,23 +15,23 @@ Supported and tested GraalVM languages:
 - Java
 - C and Rust through the Graal Sulong Component
 
-A description of grCUDA and its the features can be found in the [grCUDA documentation](docs/grcuda.md).
+A description of GrCUDA and its the features can be found in the [GrCUDA documentation](docs/grcuda.md).
 
 The [bindings documentation](docs/bindings.md) contains a tutorial that shows
 how to bind precompiled kernels to callables, compile and launch kernels.
 
 **Additional Information:**
 
-- [grCUDA: A Polyglot Language Binding for CUDA in GraalVM](https://devblogs.nvidia.com/grcuda-a-polyglot-language-binding-for-cuda-in-graalvm/). NVIDIA Developer Blog,
+- [GrCUDA: A Polyglot Language Binding for CUDA in GraalVM](https://devblogs.nvidia.com/grcuda-a-polyglot-language-binding-for-cuda-in-graalvm/). NVIDIA Developer Blog,
   November 2019.
-- [grCUDA: A Polyglot Language Binding](https://youtu.be/_lI6ubnG9FY). Presentation at Oracle CodeOne 2019, September 2019.
+- [GrCUDA: A Polyglot Language Binding](https://youtu.be/_lI6ubnG9FY). Presentation at Oracle CodeOne 2019, September 2019.
 - [Simplifying GPU Access](https://developer.nvidia.com/gtc/2020/video/s21269-vid). Presentation at NVIDIA GTC 2020, March 2020.
 - [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491). Paper at IPDPS 2021 on the GrCUDA scheduler, May 2021. [Video](https://youtu.be/QkX0FHDRyxA) of the presentation.
 
-## Using grCUDA in the GraalVM
+## Using GrCUDA in the GraalVM
 
-grCUDA can be used in the binaries of the GraalVM languages (`lli`, `graalpython`,
-`js`, `R`, and `ruby)`. The JAR file containing grCUDA must be appended to the classpath
+GrCUDA can be used in the binaries of the GraalVM languages (`lli`, `graalpython`,
+`js`, `R`, and `ruby)`. The JAR file containing GrCUDA must be appended to the classpath
 or copied into `jre/languages/grcuda` of the Graal installation. Note that `--jvm`
 and `--polyglot` must be specified in both cases as well.
 
@@ -47,7 +47,7 @@ __global__ void increment(int *arr, int n) {
     arr[idx] += 1;
   }
 }`
-const cu = Polyglot.eval('grcuda', 'CU') // get grCUDA namespace object
+const cu = Polyglot.eval('grcuda', 'CU') // get GrCUDA namespace object
 const incKernel = cu.buildkernel(
   kernelSource, // CUDA kernel source code string
   'increment', // kernel name
@@ -126,7 +126,7 @@ Documentation on [polyglot kernel launches](docs/launchkernel.md).
 
 ## Installation
 
-grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases) and manually copied into a GraalVM installation.
+GrCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases) and manually copied into a GraalVM installation.
 
 1. Download GraalVM CE 21.1.0 for Linux `graalvm-ce-java11-linux-amd64-21.1.0.tar.gz`
    from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.1.0/graalvm-ce-java11-linux-amd64-21.1.0.tar.gz) and untar it in your
@@ -138,7 +138,7 @@ grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.c
    export GRAALVM_DIR=`pwd`/graalvm-ce-java11-21.1.0
    ```
 
-2. Download the grCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases). If using the official release, the latest features (e.g. the asynchronous scheduler) are not available. Instead, follow the guide below to install GrCUDA from the source code.
+2. Download the GrCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases). If using the official release, the latest features (e.g. the asynchronous scheduler) are not available. Instead, follow the guide below to install GrCUDA from the source code.
 
    ```console
    cd $GRAALVM_DIR/jre/languages
@@ -146,7 +146,7 @@ grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.c
    cp <download folder>/grcuda-0.1.0.jar grcuda
    ```
 
-3. Test grCUDA in Node.JS from GraalVM.
+3. Test GrCUDA in Node.JS from GraalVM.
 
    ```console
    cd $GRAALVM_DIR/bin
@@ -165,13 +165,13 @@ grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.c
    ./gu install ruby
    ```
 
-## Instructions to build grCUDA from Sources
+## Instructions to build GrCUDA from Sources
 
-grCUDA requires the [mx build tool](https://github.com/graalvm/mx). Clone the mx
+GrCUDA requires the [mx build tool](https://github.com/graalvm/mx). Clone the mx
 repository and add the directory into `$PATH`, such that the `mx` can be invoked from
 the command line.
 
-Build grCUDA and the unit tests:
+Build GrCUDA and the unit tests:
 
 ```console
 cd <directory containing this README>
@@ -186,7 +186,7 @@ To run unit tests:
 mx unittest com.nvidia
 ```
 
-## Using grCUDA in a JDK
+## Using GrCUDA in a JDK
 
 Make sure that you use the [OpenJDK+JVMCI-21.1](https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.1-b05/labsjdk-ce-11.0.11+8-jvmci-21.1-b05-linux-amd64.tar.gz).
 

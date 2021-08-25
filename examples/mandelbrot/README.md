@@ -1,10 +1,10 @@
 # Mandelbrot Web Application with Express
 
-This example demonstrates how grCUDA can be used in a Node.js
+This example demonstrates how GrCUDA can be used in a Node.js
 web application with the Express framework.
 
 The code is described in the
-[NVIDIA Developer Blog on grCUDA](https://devblogs.nvidia.com/grcuda-a-polyglot-language-binding-for-cuda-in-graalvm/).
+[NVIDIA Developer Blog on GrCUDA](https://devblogs.nvidia.com/grcuda-a-polyglot-language-binding-for-cuda-in-graalvm/).
 For more details, see the blog.
 
 ## How to run the Example

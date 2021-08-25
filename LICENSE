@@ -25,5 +25,5 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-grCUDA depends on Truffle APIs licensed under the Universal Permissive
+GrCUDA depends on Truffle APIs licensed under the Universal Permissive
 License (UPL), Version 1.0 (https://opensource.org/licenses/UPL).

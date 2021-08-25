@@ -59,7 +59,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Context for the grCUDA language holds reference to CUDA runtime, a function registry and device
+ * Context for the GrCUDA language holds reference to CUDA runtime, a function registry and device
  * resources.
  */
 public final class GrCUDAContext {

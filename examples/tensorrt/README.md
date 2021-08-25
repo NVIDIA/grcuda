@@ -1,8 +1,8 @@
-# grCUDA and TensorRT
+# GrCUDA and TensorRT
 
 This example uses TensorFlow 1.x to train a LeNet5 model on the MNIST dataset. An inference engine is then created
 from the trained module using TensorRT through its Python API. This engine is serialized to a file.
-The engine is subsequently instantiated from a Node.js application using grCUDA.
+The engine is subsequently instantiated from a Node.js application using GrCUDA.
 
 The serialization of the frozen model to a Protobuf file is only supported in TensorFlow 1.x.
 As per Tensor-RT 7.0, its provided end-to-end examples are only working under TensorFlow 1.x.
@@ -141,7 +141,7 @@ Now, we show how to instantiate the serialized engine in a native
 C++ application (`cpp/load_and_sample.cc`) using the C++ TensorRT
 inference library.
 This is an optional step provided here only for completeness. It
-does not use grCUDA C-wrapper library `libtrt.so` nor grCUDA.
+does not use GrCUDA C-wrapper library `libtrt.so` nor GrCUDA.
 
 ```console
 $ cd cpp
@@ -202,12 +202,12 @@ output tensor: 10 elements
 
 ```
 
-## Instantiation of Inference Engine from grCUDA
+## Instantiation of Inference Engine from GrCUDA
 
-First, build that the grCUDA wrapper library `libtrt` for TensorRT.
+First, build that the GrCUDA wrapper library `libtrt` for TensorRT.
 
 ```console
-$ cd <grCUDA repo root>../tensorrt
+$ cd <GrCUDA repo root>../tensorrt
 $ mkdir build
 $ cd build
 $ cmake .. -DTENSORRT_DIR=/usr/local/TensorRT-7.0.0.11/

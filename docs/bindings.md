@@ -3,7 +3,7 @@
 GPU kernels and host function can be executed as function calls.
 The corresponding functions are callable objects that are bound
 to the respective kernel or host functions.
-grCUDA provides different ways to define these bindings:
+GrCUDA provides different ways to define these bindings:
 
 - `bind(shareLibraryFile, functionNameAndSignature)` returns a callable
   object to the specified host function defined in the shared library (.so file).
@@ -11,20 +11,20 @@ grCUDA provides different ways to define these bindings:
   to specified kernel function defined in PTX or cubin file.
 - `bindall(targetNamespace, fileName, nidlFileName)` registers all functions
   listed in the NIDL (Native Interface Definition Language) for the
-  specified binary file into the target namespace of grCUDA.
+  specified binary file into the target namespace of GrCUDA.
 
 The first two approaches are useful to implement the one-off binding to
 a native function, be it a kernel or a host function. `bindall()` is use
 to bind multiple functions from the same binary or PTX file. This tutorial shows
 how to call existing native host functions and kernels from GraalVM languages
-through grCUDA.
+through GrCUDA.
 
 ## Binding and Invoking prebuilt Host Functions
 
 Host functions can be bound from existing shared libraries by `bind()` or
 `bindall()`. The former returns one single native function as a callable object
 whereas later binds can be used to bind multiple functions into a specified
-namespace within grCUDA.
+namespace within GrCUDA.
 
 This simple example shows how to call two host functions from a shared library.
 One function is defined a C++ namespace. The other function is defined as
@@ -73,7 +73,7 @@ Build the shared library (Linux).
 nvcc -o libincrement.so -std=c++11 --shared -Xcompiler -fPIC increment.cu
 ```
 
-`bind()` can be used to "import" a single function into grCUDA as shown in
+`bind()` can be used to "import" a single function into GrCUDA as shown in
 the following NodeJS/JavaScript example.
 
 ```javascript
@@ -107,7 +107,7 @@ for (const el of deviceArray) {
 
 `bind()` takes the name (or path) of the shared library. The second argument
 specifies the signature in NIDL format. Add the keyword `cxx` for C++ style functions. The C++ namespace can be specified using `::`. Without `cxx`
-grCUDA assumes C linkage of the function and does not apply any name mangling.
+GrCUDA assumes C linkage of the function and does not apply any name mangling.
 `bind()` returns the function objects as callables, i.e., `TruffleObject`
 instances for which `isExecutable()` is `true`.
 
@@ -191,7 +191,7 @@ nvcc -cubin -gencode=arch=compute_75,code=sm_75 \
    -o increment.cubin increment_kernels.cu
 ```
 
-`bindkernel()` "imports" a single kernel function into grCUDA. `bindkernel()`
+`bindkernel()` "imports" a single kernel function into GrCUDA. `bindkernel()`
 returns the kernel as a callable object. It can be called like a function.
 The parameters are the kernel grid size and as optional the amount dynamic shared
 memory. This is analogous to the kernel launch configuration in CUDA that is
@@ -275,7 +275,7 @@ If the a kernel function is not declared with the `extern "C"`
 `nvcc` generates C++ symbols for kernel functions. Such kernels can be enclosed
 in a `kernels` scope in the NIDL file and subsequently bound in one step.
 As in `hostfuncs` for C++ host functions, a C++ namespace can also be
-specified in `kernels`. grCUDA the searches all functions within the scope
+specified in `kernels`. GrCUDA the searches all functions within the scope
 in this namespace.
 
 Kernel function defined with `extern "C"` can bound in a `ckernels` scope.
@@ -288,7 +288,7 @@ e.g., `increment`.
 
 ## Runtime-compilation of GPU Kernels from CUDA C/C++
 
-grCUDA can also compile GPU kernels directly from CUDA C/C++
+GrCUDA can also compile GPU kernels directly from CUDA C/C++
 source code passed as a host-string argument to
 `buildkernel(..)`. The signature of the function is:
 
@@ -339,7 +339,7 @@ print(device_array)
 ## Launching Kernels
 
 Once a kernel function is bound to a callable host-object or registered as
-a function within grCUDA, it can be launched like a function with two argument lists (for exceptions in Ruby and Java and Ruby see the examples below).
+a function within GrCUDA, it can be launched like a function with two argument lists (for exceptions in Ruby and Java and Ruby see the examples below).
 
 ```test
 kernel(num_blocks, block_size)(arg1, ..., argN)
@@ -355,7 +355,7 @@ The first argument list corresponds to the launch configuration, i.e.,
 the kernel grid (number of blocks) and the block sizes (number of
 threads per block).
 
-grCUDA currently only supports synchronous kernel launches,
+GrCUDA currently only supports synchronous kernel launches,
 i.e., there is an implicit `cudaDeviceSynchronize()` after every
 launch.
 
@@ -372,8 +372,8 @@ configured_kernel = kernel(num_blocks, block_size)
 configured_kernel(out_arr, in_ar, num_elements)
 ```
 
-grCUDA also supports 2D and 3D kernel grids that are specified
-with the `dim3` in CUDA C/C++. In grCUDA `num_blocks` and `block_size`
+GrCUDA also supports 2D and 3D kernel grids that are specified
+with the `dim3` in CUDA C/C++. In GrCUDA `num_blocks` and `block_size`
 can be integers for 1-dimensional kernels or host language sequences
 of length 1, 2, or 3 (Lists or Tuples in Python, Arrays in JavaScript
 and Ruby, and vectors in R)
