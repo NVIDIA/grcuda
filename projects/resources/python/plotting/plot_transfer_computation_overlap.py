@@ -19,8 +19,7 @@ import matplotlib.lines as lines
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-DEFAULT_RES_DIR = "../../../../data/nvprof_log"
-
+DEFAULT_RES_DIR = "../../../../grcuda-data/results/scheduling_nvprof_log"
 
 # 960
 INPUT_DATE_960 = "2020_10_07_960"
@@ -30,7 +29,7 @@ INPUT_DATE_P100 = "2020_10_10_P100"
 INPUT_DATE_1660 = "2020_10_10_1660"
 
 OUTPUT_DATE = "2020_10_11"
-PLOT_DIR = "../../../../data/plots"
+PLOT_DIR = "../../../../grcuda-data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S",  "b8": "Images",  "b6": "ML Ensemble", "b7": "HITS","b10": "DL"}
 

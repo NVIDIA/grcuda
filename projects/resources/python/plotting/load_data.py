@@ -13,7 +13,7 @@ import numpy as np
 import functools
 from scipy.stats.mstats import gmean
 
-DEFAULT_RES_DIR = "../../../../data/results"
+DEFAULT_RES_DIR = "../../../../grcuda-data/results/scheduling"
 
 
 def load_data(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=True, benchmark="", phases=None) -> pd.DataFrame:
@@ -227,6 +227,7 @@ def join_tables_baseline(data_cuda_in, data_grcuda_in):
 
 
 if __name__ == "__main__":
+    # Outdated tests;
     input_date = "2020_06_20_20_26_03"
     data = load_data(input_date, skip_iter=3)
     

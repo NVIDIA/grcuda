@@ -26,11 +26,11 @@ import matplotlib.ticker as ticker
 ##############################
 ##############################
 
-DEFAULT_RES_DIR = "../../../../data/results"
+DEFAULT_RES_DIR = "../../../../grcuda-data/results/scheduling"
 
 # INPUT_DATE_GRCUDA = "960/2020_09_29_20_11_01_grcuda_withphases_forceprefetch"
 OUTPUT_DATE = "2020_10_14"
-PLOT_DIR = "../../../../data/plots"
+PLOT_DIR = "../../../../grcuda-data/plots"
 
 INPUT_DATE_GRCUDA_P100 = "P100/2020_10_13_13_47_28_grcuda_with_phases"
 INPUT_DATE_GRCUDA_960 = "960/2020_10_11_19_14_42_grcuda_with_phases"

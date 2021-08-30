@@ -24,7 +24,7 @@ from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_out
 
 # INPUT_DATE = "2020_09_19_grcuda"
 OUTPUT_DATE = "2020_10_14"
-PLOT_DIR = "../../../../data/plots"
+PLOT_DIR = "../../../../grcuda-data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b8": "Images", "b6": "ML Ensemble", "b7": "HITS", "b10": "DL"}
 

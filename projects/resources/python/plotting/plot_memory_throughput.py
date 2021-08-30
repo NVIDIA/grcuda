@@ -23,11 +23,11 @@ import matplotlib.lines as lines
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
-DEFAULT_RES_DIR = "../../../../data/nvprof_log"
+DEFAULT_RES_DIR = "../../../../grcuda-data/results/scheduling_nvprof_log"
 
 INPUT_DATE = "2020_09_23_960"
 OUTPUT_DATE = "2020_09_17"
-PLOT_DIR = "../../../../data/plots"
+PLOT_DIR = "../../../../grcuda-data/plots"
 
 BENCHMARK_NAMES = {
     "b1": "VEC",

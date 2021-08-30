@@ -34,7 +34,7 @@ import matplotlib.ticker as ticker
 # INPUT_DATE_CUDA = "2020_09_22_18_36_21_cuda"
 
 OUTPUT_DATE = "2020_10_14"
-PLOT_DIR = "../../../../data/plots"
+PLOT_DIR = "../../../../grcuda-data/plots"
 
 # INPUT_DATE_GRCUDA_P100 = "2020_09_19_2_grcuda"
 # INPUT_DATE_GRCUDA_960 = "2020_09_22_17_44_41_grcuda_b8baseline"

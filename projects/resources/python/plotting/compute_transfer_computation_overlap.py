@@ -12,31 +12,31 @@ import os
 import numpy as np
 import time
 
-DEFAULT_RES_DIR = "../../../../data/nvprof_log"
+DEFAULT_RES_DIR = "../../../../grcuda-data/results/scheduling_nvprof_log"
 
 # 960
-# INPUT_DATE = "2020_10_07_960"
+# INPUT_DATE =  "2020_10_07_960" # "2020_09_23_960"
 # P100
-# INPUT_DATE = "2020_10_10_P100"
+# INPUT_DATE = "2020_10_10_P100" # "2020_09_19_P100"
 # 1660
-INPUT_DATE = "2020_10_10_1660"
+INPUT_DATE = "2020_10_10_1660" # "2020_10_06_1660"
 
 OUTPUT_DATE = "2020_10_10"
-PLOT_DIR = "../../../../data/plots"
+PLOT_DIR = "../../../../grcuda-data/plots"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b6": "ML Ensemble", "b7": "HITS", "b8": "Images"}
 
-# 960
-DATA_DICT = {
-    "b1": "b1_31343.csv",
-    "b5": "b5_808.csv",
-    "b6": "b6_1989.csv",
-    "b7": "b7_2663.csv",
-    "b8": "b8_default_nometric_20821.csv",
-    "b10": "b10_7753.csv",
-    }
+# 960 - Unused
+# DATA_DICT = {
+#     "b1": "b1_31343.csv",
+#     "b5": "b5_808.csv",
+#     "b6": "b6_1989.csv",
+#     "b7": "b7_2663.csv",
+#     "b8": "b8_default_nometric_20821.csv",
+#     "b10": "b10_7753.csv",
+#     }
 
-# P100
+# P100 - Unused
 # DATA_DICT = {
 #     "b1": "b1_default_nometric_13259.csv",
 #     "b5": "b5_default_nometric_14072.csv",
@@ -46,15 +46,15 @@ DATA_DICT = {
 #     "b10": "b10_default_nometric_17786.csv",
 #     }
 
-# 1660
-DATA_DICT = {
-    "b1": "b1_default_nometric_True_6931.csv",
-    "b5": "b5_default_nometric_True_10628.csv",
-    "b6": "b6_default_nometric_True_14244.csv",
-    "b7": "b7_default_nometric_True_18466.csv",
-    "b8": "b8_default_nometric_True_22913.csv",
-    "b10": "b10_default_nometric_True_25151.csv",
-    }
+# 1660 - Unused
+# DATA_DICT = {
+#     "b1": "b1_default_nometric_True_6931.csv",
+#     "b5": "b5_default_nometric_True_10628.csv",
+#     "b6": "b6_default_nometric_True_14244.csv",
+#     "b7": "b7_default_nometric_True_18466.csv",
+#     "b8": "b8_default_nometric_True_22913.csv",
+#     "b10": "b10_default_nometric_True_25151.csv",
+#     }
 
 # SKIP_SUMMARY_ROWS = {
 #     "b1": 7,
