@@ -18,7 +18,7 @@ public class MultiDimDeviceArrayViewReadExecution extends ArrayAccessExecution<M
 
     @Override
     public Object execute() {
-        Object result = array.readArrayElementImpl(index, elementTypeProfile);
+        Object result = array.readNativeView(index, elementTypeProfile);
         this.setComputationFinished();
         return result;
     }

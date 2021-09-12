@@ -5,12 +5,16 @@ import com.nvidia.grcuda.MemberSet;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
+import com.nvidia.grcuda.gpu.LittleEndianNativeArrayView;
 import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -78,8 +82,7 @@ public abstract class AbstractArray implements TruffleObject {
     }
 
     protected AbstractArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType) {
-        this.grCUDAExecutionContext = grCUDAExecutionContext;
-        this.elementType = elementType;
+        this(grCUDAExecutionContext, elementType, true);
     }
 
     protected AbstractArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType, boolean isLastComputationArrayAccess) {
@@ -121,6 +124,97 @@ public abstract class AbstractArray implements TruffleObject {
     public abstract long getPointer();
     public abstract long getSizeBytes();
     public abstract void freeMemory();
+
+    /**
+     * Access the underlying native memory of the array, as if it were a linear 1D array.
+     * It can be used to copy chunks of the array without having to perform repeated checks,
+     * and for the low-level implementation of array accesses
+     * @param index index used to access the array
+     * @param elementTypeProfile profiling of the element type, to speed up the native view access
+     * @return element of the array
+     */
+    public abstract Object readNativeView(long index, @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile);
+
+    /**
+     * Static method to read the native view of an array. It can be used to implement the innermost access in {@link AbstractArray#readNativeView};
+     * @param nativeView native array representation of the array
+     * @param index index used to access the array
+     * @param elementType type of the array, required to know the size of each element
+     * @param elementTypeProfile profiling of the element type, to speed up the native view access
+     * @return element of the array
+     */
+    protected static Object readArrayElementNative(LittleEndianNativeArrayView nativeView, long index, Type elementType,
+                                                   @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) {
+        switch (elementTypeProfile.profile(elementType)) {
+            case CHAR:
+                return nativeView.getByte(index);
+            case SINT16:
+                return nativeView.getShort(index);
+            case SINT32:
+                return nativeView.getInt(index);
+            case SINT64:
+                return nativeView.getLong(index);
+            case FLOAT:
+                return nativeView.getFloat(index);
+            case DOUBLE:
+                return nativeView.getDouble(index);
+        }
+        return null;
+    }
+
+    /**
+     * Access the underlying native memory of the array, as if it were a linear 1D array.
+     * It can be used to copy chunks of the array without having to perform repeated checks,
+     * and for the low-level implementation of array accesses
+     * @param index index used to access the array
+     * @param value value to write in the array
+     * @param valueLibrary interop access of the value, required to understand its type
+     * @param elementTypeProfile profiling of the element type, to speed up the native view access
+     * @throws UnsupportedTypeException if writing the wrong type in the array
+     */
+    public abstract void writeNativeView(long index, Object value, @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
+                                         @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException;
+
+    /**
+     * Static method to write the native view of an array. It can be used to implement the innermost access in {@link AbstractArray#writeNativeView};
+     * @param nativeView native array representation of the array
+     * @param index index used to access the array
+     * @param value value to write in the array
+     * @param elementType type of the array, required to know the size of each element
+     * @param valueLibrary interop access of the value, required to understand its type
+     * @param elementTypeProfile profiling of the element type, to speed up the native view access
+     * @throws UnsupportedTypeException if writing the wrong type in the array
+     */
+    public static void writeArrayElementNative(LittleEndianNativeArrayView nativeView, long index, Object value, Type elementType,
+                                               @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
+                                               @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException {
+        try {
+            switch (elementTypeProfile.profile(elementType)) {
+                case CHAR:
+                    nativeView.setByte(index, valueLibrary.asByte(value));
+                    break;
+                case SINT16:
+                    nativeView.setShort(index, valueLibrary.asShort(value));
+                    break;
+                case SINT32:
+                    nativeView.setInt(index, valueLibrary.asInt(value));
+                    break;
+                case SINT64:
+                    nativeView.setLong(index, valueLibrary.asLong(value));
+                    break;
+                case FLOAT:
+                    // going via "double" to allow floats to be initialized with doubles
+                    nativeView.setFloat(index, (float) valueLibrary.asDouble(value));
+                    break;
+                case DOUBLE:
+                    nativeView.setDouble(index, valueLibrary.asDouble(value));
+                    break;
+            }
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " + elementType);
+        }
+    }
 
     public boolean isMemoryFreed() {
         return arrayFreed;
@@ -231,7 +325,6 @@ public abstract class AbstractArray implements TruffleObject {
     // TODO: equals must be smarter than checking memory address, as a MultiDimView should be considered as part of its parent,
     //   similarly to what "isLastComputationArrayAccess" is doing.
     //   The hash instead should be different. We might also not touch equals, and have another method "isPartOf"
-
 
     @ExportLibrary(InteropLibrary.class)
     final class DeviceArrayFreeFunction implements TruffleObject {

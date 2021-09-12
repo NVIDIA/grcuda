@@ -200,6 +200,33 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         arrayFreed = true;
     }
 
+    /**
+     * Direct access to the native view underlying the multidimensional array;
+     * @param index index used to access the array
+     * @param elementTypeProfile type of the array
+     * @return value read from the array
+     */
+    @Override
+    public Object readNativeView(long index,
+                                 @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) {
+        return AbstractArray.readArrayElementNative(this.nativeView, index, this.elementType, elementTypeProfile);
+    }
+
+    /**
+     * Direct access to the native view underlying the multidimensional array;
+     * @param index index used to access the array
+     * @param value value to write in the array
+     * @param valueLibrary interop access of the value, required to understand its type
+     * @param elementTypeProfile profiling of the element type, to speed up the native view access
+     * @throws UnsupportedTypeException if writing the wrong type in the array
+     */
+    @Override
+    public void writeNativeView(long index, Object value,
+                                @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
+                                @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException {
+        AbstractArray.writeArrayElementNative(this.nativeView, index, value, this.elementType, valueLibrary, elementTypeProfile);
+    }
+
     //
     // Implementation of InteropLibrary
     //
@@ -208,6 +235,10 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     @SuppressWarnings("static-method")
     @Override
     public long getArraySize() {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         return elementsPerDimension[0];
     }
 
@@ -221,6 +252,10 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     @ExportMessage
     @Override
     Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (arrayFreed) {
+            CompilerDirectives.transferToInterpreter();
+            throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
+        }
         if ((index < 0) || (index >= elementsPerDimension[0])) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);

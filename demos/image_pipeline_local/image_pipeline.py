@@ -2,6 +2,10 @@
 """
 Created on Tue Jul 20 08:39:27 2021
 
+Implement the image processing pipeline using Python and OpenCV, 
+and Python implementations of the CUDA kernels.
+Used for debugging, and to visualize intermediate results.
+
 @author: albyr
 """
 
@@ -122,6 +126,23 @@ def truncate(image, minimum=0, maximum=1):
     return out
 
 
+def scurve(img):
+    img_out = img.copy()
+    lut_b = lambda x: 0.7 * (1 / (1 + np.exp((-x + 0.5) * 10))) + 0.3 if x < 0.5 else 1 / (1 + np.exp((-x + 0.5) * 10))
+    lut_r = lambda x: 0.8 * (1 / (1 + np.exp((-x + 0.5) * 7))) + 0.2 if x < 0.5 else (1 / (1 + np.exp((-x + 0.5) * 7)))
+    lut_g = lambda x: 0.8 * (1 / (1 + np.exp((-x + 0.5) * 10))) + 0.2 if x < 0.5 else  (1 / (1 + np.exp((-x + 0.5) * 9)))
+    lut_g2 = lambda x: x**1.4
+    lut_b2 = lambda x: x**1.6
+    img_out[:, :, 0] = np.vectorize(lut_b)(img[:, :, 0])
+    img_out[:, :, 1] = np.vectorize(lut_g)(img[:, :, 1])
+    img_out[:, :, 2] = np.vectorize(lut_r)(img[:, :, 2])
+    
+    img_out[:, :, 1] = np.vectorize(lut_g2)(img_out[:, :, 1])
+    img_out[:, :, 0] = np.vectorize(lut_b2)(img_out[:, :, 0])
+    
+    return img_out
+# plt.plot(np.linspace(0,1,255), scurve(np.linspace(0,1,255)))
+#%%
 @time_function()
 def pipeline_golden(img):
     multichannel = not BW
@@ -144,7 +165,11 @@ def pipeline_golden(img):
 
     # Part 5: Merge image and medium frequencies;
     result = image2 * edges_small + blurred_small * (1 - edges_small)
-    return result, [blurred_small, edges_small, blurred_large, edges_large, sharpened, image2]
+    
+    # Part 6: Apply LUT;
+    result_lut = scurve(result)
+    
+    return result_lut, [blurred_small, edges_small, blurred_large, edges_large, sharpened, image2, result]
 
 
 @time_function()
@@ -188,20 +213,24 @@ if __name__ == "__main__":
     # Golden pipeline;
     result, other = pipeline_golden(img)
     
-    fig, axes = plt.subplots(2, 2, figsize=(6, 6))
+    fig, axes = plt.subplots(4, 2, figsize=(6, 6))
     ax = axes.ravel()
     
     cmap =  plt.cm.gray if BW else None
     ax[0].imshow(img, cmap=cmap)
-    ax[1].imshow(other[2], cmap=cmap)
-    ax[2].imshow(other[3], cmap=cmap)
-    ax[3].imshow(result, cmap=cmap)
+    ax[1].imshow(other[0], cmap=cmap)
+    ax[2].imshow(np.dot(other[1][...,:3], [0.33, 0.33, 0.33]), cmap='gray') # other[1], cmap=plt.cm.gray)
+    ax[3].imshow(other[2], cmap=cmap)
+    ax[4].imshow(np.dot(other[3][...,:3], [0.33, 0.33, 0.33]), cmap='gray')
+    ax[5].imshow(other[4], cmap=cmap)
+    ax[6].imshow(other[5], cmap=cmap)
+    ax[7].imshow(result, cmap=cmap)
     for i in ax:
         i.axis("off")
     fig.tight_layout()
     plt.show()
     fig.savefig("astronaut_g.jpg")
-    
+       
     # Custom BW pipeline;
     result2 = np.zeros(img.shape)
     other2 = [np.zeros(img.shape) for i in range(len(other))]
@@ -223,4 +252,3 @@ if __name__ == "__main__":
     fig.tight_layout()
     plt.show()
     fig.savefig("astronaut_py.jpg")
-

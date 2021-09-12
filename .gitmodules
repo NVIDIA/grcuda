@@ -1,3 +1,4 @@
 [submodule "grcuda-data"]
 	path = grcuda-data
-	url = git@github.com:AlbertoParravicini/grcuda-data.git
+	url = https://github.com/AlbertoParravicini/grcuda-data.git 
+	branch = master

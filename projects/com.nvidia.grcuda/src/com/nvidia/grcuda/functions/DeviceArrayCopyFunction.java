@@ -28,7 +28,9 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.gpu.computation.ArrayReadWriteFunctionExecution;
+import com.nvidia.grcuda.gpu.computation.ArrayReadWriteFunctionExecutionDefault;
+import com.nvidia.grcuda.gpu.computation.ArrayReadWriteFunctionExecutionMalloc;
+import com.nvidia.grcuda.gpu.computation.DeviceArrayCopyException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -61,42 +63,52 @@ public class DeviceArrayCopyFunction implements TruffleObject {
         return true;
     }
 
-    private static long extractPointer(Object valueObj, String argumentName, InteropLibrary access) throws UnsupportedTypeException {
-        try {
-            if (access.isPointer(valueObj)) {
-                return access.asPointer(valueObj);
-            }
+    private static long extractPointer(Object valueObj, InteropLibrary access) throws UnsupportedMessageException {
+        if (access.isPointer(valueObj)) {
+            return access.asPointer(valueObj);
+        } else {
             return access.asLong(valueObj);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.create(new Object[]{valueObj}, "integer expected for " + argumentName);
         }
     }
 
-    private static int extractNumber(Object valueObj, String argumentName, InteropLibrary access) throws UnsupportedTypeException {
+    private static int extractNumber(Object valueObj, InteropLibrary access) throws UnsupportedTypeException {
         try {
             return access.asInt(valueObj);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.create(new Object[]{valueObj}, "integer expected for " + argumentName);
+            throw UnsupportedTypeException.create(new Object[]{valueObj}, "integer expected for numElements");
         }
     }
 
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedLibrary(limit = "3") InteropLibrary pointerAccess,
-                    @CachedLibrary(limit = "3") InteropLibrary numElementsAccess) throws UnsupportedTypeException, ArityException, IndexOutOfBoundsException {
+                    @CachedLibrary(limit = "3") InteropLibrary numElementsAccess) throws UnsupportedTypeException, ArityException, IndexOutOfBoundsException, DeviceArrayCopyException {
+        // Obtain the number of elements to copy;
         long numElements;
         if (arguments.length == 1) {
             numElements = array.getArraySize();
         } else if (arguments.length == 2) {
-            numElements = extractNumber(arguments[1], "numElements", numElementsAccess);
+            numElements = extractNumber(arguments[1], numElementsAccess);
         } else {
             CompilerDirectives.transferToInterpreter();
             throw ArityException.create(1, arguments.length);
         }
-        long pointer = extractPointer(arguments[0], direction.equals(CopyDirection.FROM_POINTER) ? "fromPointer" : "toPointer", pointerAccess);
-        new ArrayReadWriteFunctionExecution(array, direction, pointer, numElements).schedule();
+        // Obtain what kind of copy (pointer or array) should be executed;
+        try {
+            // Try using the native pointer implementation;
+            long pointer = extractPointer(arguments[0], pointerAccess);
+            new ArrayReadWriteFunctionExecutionMalloc(array, direction, numElements, pointer).schedule();
+        } catch (UnsupportedMessageException e) {
+            // Try using the array implementation;
+            if (pointerAccess.hasArrayElements(arguments[0])) {
+                new ArrayReadWriteFunctionExecutionDefault(array, direction, numElements, pointerAccess, arguments[0]).schedule();
+            } else {
+                // The target object is not an array;
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(new Object[]{arguments[0]}, "integer expected for " + (direction.equals(CopyDirection.FROM_POINTER) ? "fromPointer" : "toPointer"));
+            }
+        }
         return array;
     }
 

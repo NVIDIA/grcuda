@@ -27,7 +27,7 @@ public class DeviceArrayWriteExecution extends ArrayAccessExecution<DeviceArray>
 
     @Override
     public Object execute() throws UnsupportedTypeException {
-        array.writeArrayElementImpl(index, value, valueLibrary, elementTypeProfile);
+        array.writeNativeView(index, value, valueLibrary, elementTypeProfile);
         this.setComputationFinished();
         return NoneValue.get();
     }

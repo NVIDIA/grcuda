@@ -191,14 +191,6 @@ extern "C" __global__ void reset(float *x, int n) {
 }
 """
 
-RESET = """
-extern "C" __global__ void reset(float *x, int n) {
-    for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) { 
-        x[i] = 0.0;
-    }
-}
-"""
-
 ##############################
 ##############################
 

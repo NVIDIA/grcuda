@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SeptemberRSE Demo - GrCUDA</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+  <div id="main-container">
+    <div class="jumbotron container position-sticky">
+      <div class="row">
+        <div class="col-sm-8">
+          <h1 class="display-3">SeptemberRSE</h1>
+          <p class="lead">Image Processing pipeline</p>
+        </div>
+        <div class="col-sm-4 mt-4">
+          <div>
+            <select id="computation-type" class="form-select form-select-sm" aria-label="select computation type"
+              name="Computation Type">
+              <option value="sync">Sync</option>
+              <option value="async">Async</option>
+              <option value="cuda-native">Cuda Native</option>
+              <option value="race-mode">Race Mode!</option>
+            </select>
+            <button id="btn-send-msg-ws" class="btn btn-outline-primary mt-2">Start computation!</button>
+            <div id="progress-bar" class="mt-2"></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-sm-12">
+            <hr class="my-4">
+            <div id="container-info" class="">
+              <div class="row" id="sync-pipeline-description">
+                <div class="col-sm-8">
+                  <h3 class="display-4">Computation Mode: Sync</h3>
+                  <p class="lead">In this demo, we bring your photo collection back in time and give it a nice vintage look that everybody loves!</p>
+                  <p>But there's a lot going on behind the scenes. 
+                  First of all, we make the subject pop! Through a complex pipeline of gaussian blur, edge-detection and sharpening filters, we can identify the subject contour and make it sharper, while slightly blurrying the background and other smooth textures.
+                  Then, we apply a retro touch to the pictures, with a custom vintage LUT. </p>
+                </div>
+                
+
+                <div class="col-sm-4">
+                <img src="./images/description/sync/pipeline-sync.png" class="img-fluid" style="max-width: 100%; height: auto;" alt="Responsive image">
+                </div>
+                </div>
+                
+                <div class="row" id="sync-pipeline-description">
+                <div class="col-sm-8">
+                  <p class="lead">In the <b>Sync</b> pipeline, we adopt the original GrCUDA implementation.</p>
+                  <p> In this version, every computation is executed on the default CUDA stream, meaning that we don't see any overlap between computations and data transfer, or even between multiple image processing requests. 
+                  As a result, a lot of performance is left on the table and most GPU resources are wasted.
+                  </p>
+                </div>
+                
+
+                <div class="col-sm-4">
+                <img src="./images/description/async/1.png" class="img-fluid" style="max-width: 100%; height: auto;" alt="Responsive image">
+                </div>
+                </div>
+                
+                <div class="row" id="sync-pipeline-description">
+                <div class="col-sm-8">
+                  <p class="lead">In the <b>Async</b> pipeline, we show you the power of our new GrCUDA scheduler.</p>
+                  <p>On the surface, the code you write is 100% identical to the SYNC pipeline.
+                  However, all computations happens asynchronously: requests are overlapped, and so are GPU computations and data transfer.
+                  Moreover, we transparently perform many other optimizations, such as prefetching data to the GPU to be even faster.
+                  Just by making better use of wasted resources, we get a large 30% speedup with no code change whatsoever. Pretty impressive, isn't it?</p>
+                </div>
+                
+
+                <div class="col-sm-4">
+                <img src="./images/description/async/2.png" class="img-fluid" style="max-width: 100%; height: auto;" alt="Responsive image">
+                </div>
+                </div>
+                
+                <div class="row" id="sync-pipeline-description">
+                <div class="col-sm-8">
+                  <p class="lead">But how does GrCUDA fare against code written by a ninja programmer in C++, with direct access to the CUDA API?</p>
+                  <p>In the <b>Native</b> pipeline, we build an entirely separate CUDA application to load and process images, and call it from JavaScript. 
+                  It is significantly more complex, with a lot of programming overhead (e.g. to handle input options). 
+                  Is it worth having direct access to all the lowest level CUDA APIs? It turns out that GrCUDA provides the same perfomrance, with much simpler code!</p>
+                </div>
+                
+
+                <div class="col-sm-4">
+                <img src="./images/description/async/3.png" class="img-fluid" style="max-width: 100%; height: auto;" alt="Responsive image">
+                </div>
+                </div>
+            </div>
+
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="container">
+
+      <br>
+      <div id="images"></div>
+    </div>
+
+    <div id="race-mode" class="container">
+      <div class="row">
+        <div class="col-sm-4">
+          <div id="progress-bar-sync" class="justify-content-center"></div>
+          <div class="row d-flex justify-content-center">
+            <div id="image-gallery-sync"></div>
+          </div>
+          
+        </div>
+        <div class="col-sm-4">
+          <div id="progress-bar-async" class="justify-content-center"></div>
+          <div class="row d-flex justify-content-center">
+            <div id="image-gallery-async"></div>
+          </div>
+          
+        </div>
+        <div class="col-sm-4">
+          <div id="progress-bar-cuda-native" class="justify-content-center"></div>
+          <div class="row d-flex justify-content-center">
+            <div id="image-gallery-cuda-native"></div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="overlay">
+  </div>
+ 
+
+
+  </div>
+
+
+
+</body>
+
+<!--
+  File inclusion
+  At the bottom of the page so we are sure that the page is already loaded when we try to access it from javascript
+-->
+<script type="text/javascript" src="js/templates.js"></script>
+<script type="text/javascript" src="js/index.js"></script>
+
+</html>

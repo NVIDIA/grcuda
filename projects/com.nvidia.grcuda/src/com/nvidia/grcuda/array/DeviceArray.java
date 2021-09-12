@@ -190,7 +190,7 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
         try {
             if (this.canSkipScheduling()) {
                 // Fast path, skip the DAG scheduling;
-                return readArrayElementImpl(index, elementTypeProfile);
+                return AbstractArray.readArrayElementNative(this.nativeView, index, this.elementType, elementTypeProfile);
             } else {
                 return new DeviceArrayReadExecution(this, index, elementTypeProfile).schedule();
             }
@@ -200,22 +200,9 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
         }
     }
 
-    public Object readArrayElementImpl(long index, ValueProfile elementTypeProfile) {
-        switch (elementTypeProfile.profile(elementType)) {
-            case CHAR:
-                return nativeView.getByte(index);
-            case SINT16:
-                return nativeView.getShort(index);
-            case SINT32:
-                return nativeView.getInt(index);
-            case SINT64:
-                return nativeView.getLong(index);
-            case FLOAT:
-                return nativeView.getFloat(index);
-            case DOUBLE:
-                return nativeView.getDouble(index);
-        }
-        return null;
+    @Override
+    public Object readNativeView(long index, @Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) {
+        return AbstractArray.readArrayElementNative(this.nativeView, index, this.elementType, elementTypeProfile);
     }
 
     @ExportMessage
@@ -232,41 +219,16 @@ public final class DeviceArray extends AbstractArray implements TruffleObject {
         }
         if (this.canSkipScheduling()) {
             // Fast path, skip the DAG scheduling;
-            writeArrayElementImpl(index, value, valueLibrary, elementTypeProfile);
+            AbstractArray.writeArrayElementNative(this.nativeView, index, value, elementType, valueLibrary, elementTypeProfile);
         } else {
             new DeviceArrayWriteExecution(this, index, value, valueLibrary, elementTypeProfile).schedule();
         }
     }
 
-    public void writeArrayElementImpl(long index, Object value,
-                                      InteropLibrary valueLibrary,
-                                      ValueProfile elementTypeProfile) throws UnsupportedTypeException {
-        try {
-            switch (elementTypeProfile.profile(elementType)) {
-                case CHAR:
-                    nativeView.setByte(index, valueLibrary.asByte(value));
-                    break;
-                case SINT16:
-                    nativeView.setShort(index, valueLibrary.asShort(value));
-                    break;
-                case SINT32:
-                    nativeView.setInt(index, valueLibrary.asInt(value));
-                    break;
-                case SINT64:
-                    nativeView.setLong(index, valueLibrary.asLong(value));
-                    break;
-                case FLOAT:
-                    // going via "double" to allow floats to be initialized with doubles
-                    nativeView.setFloat(index, (float) valueLibrary.asDouble(value));
-                    break;
-                case DOUBLE:
-                    nativeView.setDouble(index, valueLibrary.asDouble(value));
-                    break;
-            }
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.create(new Object[]{value}, "value cannot be coerced to " + elementType);
-        }
+    @Override
+    public void writeNativeView(long index, Object value, @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
+                                @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException {
+        AbstractArray.writeArrayElementNative(this.nativeView, index, value, elementType, valueLibrary, elementTypeProfile);
     }
 
     @ExportMessage

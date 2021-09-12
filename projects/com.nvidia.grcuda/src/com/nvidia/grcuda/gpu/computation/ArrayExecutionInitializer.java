@@ -12,7 +12,7 @@ import java.util.List;
  * The only argument in {@link com.nvidia.grcuda.array.AbstractArray} computations is the array itself.
  * Note that in {@link com.nvidia.grcuda.array.MultiDimDeviceArrayView} the array is the parent {@link com.nvidia.grcuda.array.MultiDimDeviceArray},
  * while in {@link com.nvidia.grcuda.array.MultiDimDeviceArray} there is currently no need to explicitly represent computations,
- * as they cannot directly the underlying memory;
+ * as they cannot directly access the underlying memory;
  */
 class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeArgumentList {
 

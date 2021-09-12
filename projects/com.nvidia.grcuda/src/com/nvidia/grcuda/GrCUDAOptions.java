@@ -73,6 +73,9 @@ public final class GrCUDAOptions {
     @Option(category = OptionCategory.USER, help = "Always prefetch input arrays to GPU if possible (e.g. post-Pascal GPUs)", stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> InputPrefetch = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.USER, help = "Enable the option to set the current GPU in use", stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> EnableMultiGPU = new OptionKey<>(false);
+
     @Option(category = OptionCategory.USER, help = "Enable TensorRT support.", stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> TensorRTEnabled = new OptionKey<>(true);
 
