@@ -2,7 +2,7 @@ package com.nvidia.grcuda.gpu.stream;
 
 public enum RetrieveNewStreamPolicyEnum {
     FIFO("fifo"),
-    ALWAYS_NEW("always_new");
+    ALWAYS_NEW("always-new");
 
     private final String name;
 

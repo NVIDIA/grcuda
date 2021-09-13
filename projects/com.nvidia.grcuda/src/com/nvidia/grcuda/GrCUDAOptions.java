@@ -32,9 +32,9 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
-import com.nvidia.grcuda.cublas.CUBLASRegistry;
-import com.nvidia.grcuda.cuml.CUMLRegistry;
-import com.nvidia.grcuda.tensorrt.TensorRTRegistry;
+import com.nvidia.grcuda.cudalibraries.cublas.CUBLASRegistry;
+import com.nvidia.grcuda.cudalibraries.cuml.CUMLRegistry;
+import com.nvidia.grcuda.cudalibraries.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.Option;
 
 @Option.Group(GrCUDALanguage.ID)
@@ -77,7 +77,7 @@ public final class GrCUDAOptions {
     public static final OptionKey<Boolean> EnableMultiGPU = new OptionKey<>(false);
 
     @Option(category = OptionCategory.USER, help = "Enable TensorRT support.", stability = OptionStability.STABLE) //
-    public static final OptionKey<Boolean> TensorRTEnabled = new OptionKey<>(true);
+    public static final OptionKey<Boolean> TensorRTEnabled = new OptionKey<>(false);
 
     @Option(category = OptionCategory.USER, help = "Set the location of the TensorRT library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> TensorRTLibrary = new OptionKey<>(TensorRTRegistry.DEFAULT_LIBRARY);

@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.cuml;
+package com.nvidia.grcuda.cudalibraries.cuml;
 
 import static com.nvidia.grcuda.functions.Function.expectInt;
 
@@ -39,9 +39,11 @@ import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.Namespace;
+import com.nvidia.grcuda.cudalibraries.CUDALibraryFunction;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
+import com.nvidia.grcuda.gpu.computation.CUDALibraryExecution;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -56,9 +58,10 @@ public class CUMLRegistry {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    public static final String DEFAULT_LIBRARY = "libcuml.so";
+    public static final String DEFAULT_LIBRARY = (System.getenv("LIBCUML_DIR") != null ? System.getenv("LIBCUML_DIR") : "") + "libcuml.so";
+
     public static final String DEFAULT_LIBRARY_HINT = " (CuML library location can be set via the --grcuda.CuMLLibrary= option. " +
-                    "CuML support can be disabled via --grcuda.CuMLEnabled=false.";
+            "CuML support can be disabled via --grcuda.CuMLEnabled=false.";
     public static final String NAMESPACE = "ML";
 
     private final GrCUDAContext context;
@@ -154,7 +157,7 @@ public class CUMLRegistry {
         List<CUMLFunctionNFI> hiddenFunctions = Arrays.asList(CUMLFunctionNFI.CUML_CUMLCREATE, CUMLFunctionNFI.CUML_CUMLDESTROY);
         EnumSet.allOf(CUMLFunctionNFI.class).stream().filter(func -> !hiddenFunctions.contains(func)).forEach(func -> {
             final ExternalFunctionFactory factory = func.getFunctionFactory();
-            final Function wrapperFunction = new Function(factory.getName()) {
+            final Function wrapperFunction = new CUDALibraryFunction(factory.getName(), factory.getNFISignature()) {
 
                 private Function nfiFunction;
 
@@ -163,18 +166,12 @@ public class CUMLRegistry {
                 public Object call(Object[] arguments) {
                     ensureInitialized();
 
-                    // Argument 0 is the function name in the frame, removing argument 0 and
-                    // replacing
-                    // it with the handle argument does not change the size of the argument array.
-                    Object[] argsWithHandle = new Object[arguments.length + 1];
-                    System.arraycopy(arguments, 0, argsWithHandle, 1, arguments.length);
-                    argsWithHandle[0] = cumlHandle;
                     try {
                         if (nfiFunction == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
                         }
-                        Object result = INTEROP.execute(nfiFunction, argsWithHandle);
+                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, this.createComputationArgumentWithValueList(arguments, (long) cumlHandle)).schedule();
                         checkCUMLReturnCode(result, nfiFunction.getName());
                         return result;
                     } catch (InteropException e) {

@@ -7,6 +7,7 @@ import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
+import com.nvidia.grcuda.test.GrCUDATestUtil;
 import com.nvidia.grcuda.test.mock.ArgumentMock;
 import com.nvidia.grcuda.test.mock.GrCUDAExecutionContextMockBuilder;
 import com.nvidia.grcuda.test.mock.GrCUDAStreamManagerMock;
@@ -29,30 +30,10 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class ComplexExecutionDAGTest {
 
-    public static Collection<Object[]> crossProduct(List<Object[]> sets) {
-        int solutions = 1;
-        List<Object[]> combinations = new ArrayList<>();
-        for (Object[] objects : sets) {
-            solutions *= objects.length;
-        }
-        for(int i = 0; i < solutions; i++) {
-            int j = 1;
-            List<Object> current = new ArrayList<>();
-            for(Object[] set : sets) {
-                current.add(set[(i / j) % set.length]);
-                j *= set.length;
-            }
-            combinations.add(current.toArray(new Object[0]));
-            System.out.println(current);
-        }
-        return combinations;
-    }
-
-
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
 
-        return crossProduct(Arrays.asList(new Object[][]{
+        return GrCUDATestUtil.crossProduct(Arrays.asList(new Object[][]{
                 {RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveNewStreamPolicyEnum.FIFO},
                 {RetrieveParentStreamPolicyEnum.DISJOINT, RetrieveParentStreamPolicyEnum.DEFAULT},
                 {DependencyPolicyEnum.WITH_CONST, DependencyPolicyEnum.DEFAULT}

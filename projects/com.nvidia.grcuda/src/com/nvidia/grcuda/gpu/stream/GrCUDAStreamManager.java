@@ -81,7 +81,7 @@ public class GrCUDAStreamManager {
             CUDAStream stream;
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
-                stream = retrieveNewStream.retrieve();
+                stream = this.retrieveNewStream.retrieve();
             } else {
                 // Else, compute the streams used by the parent computations.
                 stream = this.retrieveParentStream.retrieve(vertex);

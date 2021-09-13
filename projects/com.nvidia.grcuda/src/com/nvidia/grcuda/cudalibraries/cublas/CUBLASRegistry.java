@@ -26,21 +26,24 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.cublas;
+package com.nvidia.grcuda.cudalibraries.cublas;
 
 import static com.nvidia.grcuda.functions.Function.INTEROP;
 import static com.nvidia.grcuda.functions.Function.expectLong;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.Namespace;
+import com.nvidia.grcuda.cudalibraries.CUDALibraryFunction;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.gpu.UnsafeHelper;
+import com.nvidia.grcuda.gpu.computation.CUDALibraryExecution;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -73,7 +76,7 @@ public class CUBLASRegistry {
         libraryPath = context.getOption(GrCUDAOptions.CuBLASLibrary);
     }
 
-    private void ensureInitialized() {
+    public void ensureInitialized() {
         if (cublasHandle == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
@@ -142,10 +145,9 @@ public class CUBLASRegistry {
     }
 
     public void registerCUBLASFunctions(Namespace namespace) {
-        // Create function wrappers (decorators for all functions except handle con- and
-        // destruction)
+        // Create function wrappers (decorators for all functions except handle con- and destruction);
         for (ExternalFunctionFactory factory : functions) {
-            final Function wrapperFunction = new Function(factory.getName()) {
+            final Function wrapperFunction = new CUDALibraryFunction(factory.getName(), factory.getNFISignature()) {
 
                 private Function nfiFunction;
 
@@ -154,17 +156,12 @@ public class CUBLASRegistry {
                 protected Object call(Object[] arguments) {
                     ensureInitialized();
 
-                    Object[] argsWithHandle = new Object[arguments.length + 1];
-                    System.arraycopy(arguments, 0, argsWithHandle, 1, arguments.length);
-                    argsWithHandle[0] = cublasHandle;
-
                     try {
                         if (nfiFunction == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
                         }
-                        Object result = INTEROP.execute(nfiFunction, argsWithHandle);
-                        context.getCUDARuntime().cudaDeviceSynchronize();
+                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, this.createComputationArgumentWithValueList(arguments, cublasHandle)).schedule();
                         checkCUBLASReturnCode(result, nfiFunction.getName());
                         return result;
                     } catch (InteropException e) {
@@ -182,7 +179,7 @@ public class CUBLASRegistry {
         try {
             returnCode = InteropLibrary.getFactory().getUncached().asInt(result);
         } catch (UnsupportedMessageException e) {
-            throw new GrCUDAInternalException("expected return code as Integer object in " + function + ", got " + result.getClass().getName());
+            throw new GrCUDAInternalException("expected return code as Integer object in " + Arrays.toString(function) + ", got " + result.getClass().getName());
         }
         if (returnCode != 0) {
             throw new GrCUDAException(returnCode, cublasReturnCodeToString(returnCode), function);

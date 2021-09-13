@@ -2,7 +2,7 @@ package com.nvidia.grcuda.gpu.computation.dependency;
 
 public enum DependencyPolicyEnum {
     DEFAULT("default"),
-    WITH_CONST("with_const");
+    WITH_CONST("with-const");
 
     private final String name;
 

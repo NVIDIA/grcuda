@@ -79,7 +79,21 @@ public class ComputationArgument {
     }
 
     /**
-     * Create new pointer parameter from its components (with position 0).
+     * Create new pointer parameter from its components;
+     *
+     * @param name parameter name
+     * @param type data type of the value to which the pointer points
+     * @param kind direction of pointer parameter (allowed values `POINTER_IN`, `POINTER_OUT` and
+     *            `POINTER_INOUT`, must not by `BY_VALUE`)
+     * @param position index of the parameter, used only for debugging purposes
+     */
+    public static ComputationArgument createPointerComputationArgument(String name, Type type, Kind kind, int position) {
+        assert kind != Kind.BY_VALUE : "pointer parameter cannot be by-value";
+        return new ComputationArgument(position, name, type, kind);
+    }
+
+    /**
+     * Create new pointer parameter from its components, with position 0;
      *
      * @param name parameter name
      * @param type data type of the value to which the pointer points
@@ -92,7 +106,18 @@ public class ComputationArgument {
     }
 
     /**
-     * Create new by-value parameter from its components (with position 0).
+     * Create new by-value parameter from its components.
+     *
+     * @param name parameter name
+     * @param type data type of the parameter
+     * @param position index of the parameter, used only for debugging purposes
+     */
+    public static ComputationArgument createByValueComputationArgument(String name, Type type, int position) {
+        return new ComputationArgument(position, name, type, Kind.BY_VALUE);
+    }
+
+    /**
+     * Create new by-value parameter from its components, with position 0;
      *
      * @param name parameter name
      * @param type data type of the parameter
@@ -144,7 +169,7 @@ public class ComputationArgument {
                 // the void is not a legal by-value parameter type
                 throw new TypeException("invalid type \"pointer\" of by-value parameter");
             }
-            return createByValueComputationArgument(name, type);
+            return createByValueComputationArgument(name, type, position);
         } else {
             if (dirPointerAndType[1].equals("pointer")) {
                 Type type = Type.fromNIDLTypeString(dirPointerAndType[2]);
@@ -154,11 +179,11 @@ public class ComputationArgument {
                 }
                 switch (dirPointerAndType[0]) {
                     case "in":
-                        return createPointerComputationArgument(name, type, Kind.POINTER_IN);
+                        return createPointerComputationArgument(name, type, Kind.POINTER_IN, position);
                     case "inout":
-                        return createPointerComputationArgument(name, type, Kind.POINTER_INOUT);
+                        return createPointerComputationArgument(name, type, Kind.POINTER_INOUT, position);
                     case "out":
-                        return createPointerComputationArgument(name, type, Kind.POINTER_OUT);
+                        return createPointerComputationArgument(name, type, Kind.POINTER_OUT, position);
                     default:
                         throw new TypeException("invalid direction: " + dirPointerAndType[0] + ", expected \"in\", \"inout\", or \"out\"");
                 }
@@ -216,9 +241,45 @@ public class ComputationArgument {
         }
     }
 
+    /**
+     * Count the occurrences of "c" in "s", and return the position of the first occurrence.
+     * If no occurrence is found, the position is -1;
+     * @param s the string to inspect
+     * @param c the character to search for
+     * @return a size-2 array with count and location
+     */
+    private static int[] countCharAndReturnFirstOccurrence(String s, char c) {
+        int[] result = {0, -1};  // Store count and first occurrence location of "c" in "s";
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) {
+                if (count == 0) result[1] = i;
+                count++;
+            }
+        }
+        result[0] = count;
+        return result;
+    }
+
+    /**
+     * Parse the signature of the function, and create a list of {@link ComputationArgument} from it
+     * @param parameterSignature the signature of the function
+     * @return a list of {@link ComputationArgument}
+     * @throws TypeException if the signature is not well-formed
+     */
     public static ArrayList<ComputationArgument> parseParameterSignature(String parameterSignature) throws TypeException {
         CompilerAsserts.neverPartOfCompilation();
         ArrayList<ComputationArgument> params = new ArrayList<>();
+        // If the function is wrapped in parentheses, remove them. It also means that the output is specified,
+        // but (currently) we don't care about it;
+        int[] leftParLoc = countCharAndReturnFirstOccurrence(parameterSignature, '(');
+        int[] rightParLoc = countCharAndReturnFirstOccurrence(parameterSignature, ')');
+        // Check that we have exactly 0 or 1 "()", and split the string to retrieve the part inside ();
+        if ((leftParLoc[0] == 1 && rightParLoc[0] == 1) && (leftParLoc[1] <= rightParLoc[1])) {
+            parameterSignature = parameterSignature.split("\\(")[1].split("\\)")[0];
+        } else if (leftParLoc[0] != 0 || rightParLoc[0] != 0) {
+            throw new TypeException("malformed parentheses in signature = " + parameterSignature);
+        }
         for (String s : parameterSignature.trim().split(",")) {
             params.add(parseNIDLOrLegacyParameterString(params.size(), s.trim()));
         }

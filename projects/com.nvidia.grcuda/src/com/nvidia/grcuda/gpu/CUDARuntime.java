@@ -168,12 +168,10 @@ public final class CUDARuntime {
         this.nvrtc = new NVRuntimeCompiler(this);
         context.addDisposable(this::shutdown);
 
-        // Check if the GPU available in the system has Compute Capability >= 6.0 (Pascal
-        // architecture)
+        // Check if the GPU available in the system has Compute Capability >= 6.0 (Pascal architecture);
         this.architectureIsPascalOrNewer = cudaDeviceGetAttribute(CUDADeviceAttribute.COMPUTE_CAPABILITY_MAJOR, 0) >= 6;
 
-        // Use pre-Pascal stream attachment policy if the CC is < 6 or if the attachment is forced
-        // by options;
+        // Use pre-Pascal stream attachment policy if the CC is < 6 or if the attachment is forced by options;
         this.arrayStreamArchitecturePolicy = (!this.architectureIsPascalOrNewer || context.isForceStreamAttach()) ? new PrePascalArrayStreamAssociation() : new PostPascalArrayStreamAssociation();
     }
 

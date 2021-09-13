@@ -2,7 +2,7 @@ package com.nvidia.grcuda.gpu.stream;
 
 public enum RetrieveParentStreamPolicyEnum {
     DEFAULT("default"),
-    DISJOINT("disjoiint");
+    DISJOINT("disjoint");
 
     private final String name;
 

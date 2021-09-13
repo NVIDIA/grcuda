@@ -61,7 +61,7 @@ public abstract class CallNode extends ExpressionNode {
         String[] functionName = identifier.getIdentifierName();
         Namespace namespace = context.getRootNamespace();
         Optional<Object> maybeFunction = namespace.lookup(functionName);
-        if (!maybeFunction.isPresent() || !(maybeFunction.get() instanceof Function)) {
+        if (maybeFunction.isEmpty() || !(maybeFunction.get() instanceof Function)) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException("function '" + GrCUDAException.format(functionName) + "' not found", this);
         }

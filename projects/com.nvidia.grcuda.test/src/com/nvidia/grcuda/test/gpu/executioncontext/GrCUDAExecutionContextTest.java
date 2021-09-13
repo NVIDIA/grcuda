@@ -1,16 +1,13 @@
 package com.nvidia.grcuda.test.gpu.executioncontext;
 
-import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
-import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
-import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
-import com.nvidia.grcuda.test.gpu.ComplexExecutionDAGTest;
+import com.nvidia.grcuda.test.GrCUDATestOptionsStruct;
+import com.nvidia.grcuda.test.GrCUDATestUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.Arrays;
 import java.util.Collection;
 
 import static org.junit.Assert.assertEquals;
@@ -23,29 +20,16 @@ public class GrCUDAExecutionContextTest {
      * Tests are executed for each of the {@link com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext} values;
      * @return the current stream policy
      */
-//    @Parameterized.Parameters
-//    public static Collection<Object[]> data() {
-//        return Arrays.asList(new Object[][]{
-//                {"sync"},
-//                {"default"}
-//        });
-//    }
 
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
-
-        return ComplexExecutionDAGTest.crossProduct(Arrays.asList(new Object[][]{
-                {"sync", "default"},
-                {true, false}
-        }));
+        return GrCUDATestUtil.getAllOptionCombinations();
     }
 
-    private final String policy;
-    private final boolean inputPrefetch;
+    private final GrCUDATestOptionsStruct options;
 
-    public GrCUDAExecutionContextTest(String policy, boolean inputPrefetch) {
-        this.policy = policy;
-        this.inputPrefetch = inputPrefetch;
+    public GrCUDAExecutionContextTest(GrCUDATestOptionsStruct options) {
+        this.options = options;
     }
 
     private static final int NUM_THREADS_PER_BLOCK = 32;
@@ -98,8 +82,7 @@ public class GrCUDAExecutionContextTest {
     @Test
     public void dependencyKernelSimpleTest() {
 
-        try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -126,9 +109,7 @@ public class GrCUDAExecutionContextTest {
     @Test
     public void dependency2KernelsSimpleTest() {
 
-        try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
-
+        try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -159,9 +140,7 @@ public class GrCUDAExecutionContextTest {
     @Test
     public void dependencyPipelineSimple2Test() {
 
-        try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
-
+        try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
             // FIXME: this test fails randomly with small values (< 100000, more or less),
             //  but the same computation doesn't fail in Graalpython.
             final int numElements = 100000;
@@ -210,9 +189,7 @@ public class GrCUDAExecutionContextTest {
     @Test
     public void dependencyPipelineSimple3Test() {
 
-        try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
-
+        try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
             final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -248,9 +225,7 @@ public class GrCUDAExecutionContextTest {
     @Test
     public void dependencyPipelineSimple4Test() throws InterruptedException {
 
-        try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
-
+        try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
             final int numElements = 100;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -281,9 +256,7 @@ public class GrCUDAExecutionContextTest {
     @Test
     public void dependencyPipelineWithArrayCopyTest() {
 
-        try (Context context = Context.newBuilder().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
-
+        try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
             final int numElements = 100000;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");

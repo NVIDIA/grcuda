@@ -8,6 +8,8 @@ import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.DefaultStream;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.Collection;
@@ -148,7 +150,7 @@ public abstract class GrCUDAComputationalElement {
 
     /**
      * Find whether this computation should be done on a user-specified {@link com.nvidia.grcuda.gpu.stream.CUDAStream};
-     * If not, the stream will be provided internally using the specified execution policy. By default return false;
+     * If not, the stream will be provided internally using the specified execution policy. By default, return false;
      * @return if the computation is done on a custom CUDA stream;
      */
     public boolean useManuallySpecifiedStream() { return false; }
@@ -160,6 +162,18 @@ public abstract class GrCUDAComputationalElement {
      * @return if this computation can be executed on a customized stream
      */
     public boolean canUseStream() { return false; }
+
+    // TODO: currently not supported. It is not clear what the synchronization semantic for the default stream is.
+    //  It is better to just always execute computations on the default stream synchronously.
+//    /**
+//     * Some computational elements, like some CUDA library functions, do not expose the option to use arbitrary streams.
+//     * In these cases, we still allow asynchronous execution using events etc., but the computation
+//     * is always executed on the default stream.
+//     * If this function returns true, {@link GrCUDAComputationalElement#canUseStream()} must also be true.
+//     * Otherwise, returning true has no effect;
+//     * @return if this computation must be executed on the default stream;
+//     */
+//    public boolean mustUseDefaultStream() { return false; }
 
     /**
      * Provide a way to associate input arrays allocated using managed memory to the stream
