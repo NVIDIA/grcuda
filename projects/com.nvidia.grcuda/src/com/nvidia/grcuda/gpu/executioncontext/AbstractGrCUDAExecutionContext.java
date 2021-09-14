@@ -79,7 +79,7 @@ public abstract class AbstractGrCUDAExecutionContext {
             case WITH_CONST:
                 this.dependencyBuilder = new WithConstDependencyComputationBuilder();
                 break;
-            case DEFAULT:
+            case NO_CONST:
                 this.dependencyBuilder = new DefaultDependencyComputationBuilder();
                 break;
             default:
@@ -88,7 +88,7 @@ public abstract class AbstractGrCUDAExecutionContext {
         // Compute the prefetcher to use;
         boolean pascalGpu;
         switch (inputPrefetch) {
-            case DEFAULT:
+            case ASYNC:
                 pascalGpu = this.cudaRuntime.isArchitectureIsPascalOrNewer();
                 arrayPrefetcher = pascalGpu ? new DefaultArrayPrefetcher(this.cudaRuntime) : new NoneArrayPrefetcher(this.cudaRuntime);
                 break;

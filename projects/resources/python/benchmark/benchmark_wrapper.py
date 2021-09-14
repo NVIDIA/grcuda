@@ -57,9 +57,9 @@ num_elem = {
 #     "b10": [6000, 7000, 10000, 12000, 14000],
 #}
 
-exec_policies = ["default"]#, "sync"]
+exec_policies = ["async"]#, "sync"]
 
-cuda_exec_policies = ["default", "sync", "cudagraph", "cudagraphmanual", "cudagraphsingle"]
+cuda_exec_policies = ["async", "sync", "cudagraph", "cudagraphmanual", "cudagraphsingle"]
 
 new_stream_policies = ["always-new"]
 

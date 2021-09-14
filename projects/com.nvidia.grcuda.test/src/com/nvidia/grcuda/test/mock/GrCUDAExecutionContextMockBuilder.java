@@ -1,15 +1,14 @@
 package com.nvidia.grcuda.test.mock;
 
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
-import com.nvidia.grcuda.gpu.computation.prefetch.PrefetcherEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 
 public class GrCUDAExecutionContextMockBuilder {
 
-    DependencyPolicyEnum dependencyPolicy = DependencyPolicyEnum.DEFAULT;
+    DependencyPolicyEnum dependencyPolicy = DependencyPolicyEnum.NO_CONST;
     RetrieveNewStreamPolicyEnum retrieveStreamPolicy = RetrieveNewStreamPolicyEnum.FIFO;
-    RetrieveParentStreamPolicyEnum parentStreamPolicyEnum = RetrieveParentStreamPolicyEnum.DEFAULT;
+    RetrieveParentStreamPolicyEnum parentStreamPolicyEnum = RetrieveParentStreamPolicyEnum.SAME_AS_PARENT;
 
     public GrCUDAExecutionContextMock build() {
         return new GrCUDAExecutionContextMock(dependencyPolicy, retrieveStreamPolicy, parentStreamPolicyEnum);

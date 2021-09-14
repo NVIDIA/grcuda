@@ -2,7 +2,7 @@ package com.nvidia.grcuda.gpu.executioncontext;
 
 public enum ExecutionPolicyEnum {
     SYNC("sync"),
-    DEFAULT("default");
+    ASYNC("async");
 
     private final String name;
 

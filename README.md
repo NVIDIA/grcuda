@@ -113,7 +113,7 @@ for i in range(num_elements):
 ```
 
 ```console
-nvcc --cubin  --generate-code arch=compute_75,code=sm_75 kernel.cu
+nvcc --cubin --generate-code arch=compute_75,code=sm_75 kernel.cu
 $GRAALVM_DIR/bin/graalpython --polyglot --jvm example.py
 1
 2
@@ -208,7 +208,7 @@ mx --dynamicimports graalpython --cp-sfx `pwd`/mxbuild/dists/jdk1.8/grcuda.jar \
 ## Step-by-step development guide
 
 * This section contains all the steps required to setup GrCUDA if your goal is to contribute to its development, or simply hack with it. This guide refers to GraalVM Community Edition JDK8 for Linux with `amd64` architectures, i.e. download releases prefixed with `graalvm-ce-java11-linux-amd64` or something like that. 
-* If installing GrCUDA on a new machine, you can simply run `setup_from_scratch.sh`. Here we repeat the same steps, with additional comments.
+* If installing GrCUDA on a new machine, you can simply follow along `setup_from_scratch.sh`. Here we repeat the same steps, with additional comments.
 
 
 1. **Get the source code of GrCUDA, GraalVM, mx**
@@ -273,18 +273,29 @@ graalpython -m ginstall install numpy;
 
 7. **Install GrCUDA with** `./install.sh`
 
-8. **Setup your IDE with** `mx ideinit`
-* See this [guide](https://github.com/graalvm/mx/blob/master/docs/IDE.md) to configure the syntax checker
-* In IntelliJ Idea, install the Python plugin, then do Project Structure -> SDKs -> Create a new Python 2.7 Virtual Environment, it is used by `mx`
-* In IntelliJ Idea, Project Structures -> Modules -> Set the Module SDK (under Dependencies) of `mx` and submodules to your Java SDK (e.g. `11`)
-    * This is also given by the `configure` option if you try to build the project in IntelliJ Idea before setting these options. Set your project Java SDK (e.g. `11`) for those missing modules
-    * When building for the first time in Intellij Idea, you might get errors like `cannot use --export for target 1.8`, which means that some package is being build with Java 8. For those packages (look at the log to find them), manually specify a more recent SDK (e.g. `11`) as you did in step above
-    * If you get errors of missing symbols, follow IntelliJ's hints and export the requested packages
-* Also update the project SDK and the default JUnit configurations to use the GraalVM SDK in `$GRAAL_HOME`, and update the `PATH` variable so that it can find `nvcc`
-	* Modify the template Junit test configuration adding `-Djava.library.path="$GRAAL_HOME/lib` (in Java 11) to the VM options to find `trufflenfi`
- and update the environment variables with `PATH=your/path/env/var` to find `nvcc`
-	* In IntelliJ Idea, Run -> Edit Configurations, then create a new JUnit configuration set to "All in package" with `com.nvidia.grcuda` as module and `com.nvidia.grcuda.test` below, add to VM options `-Djava.library.path="$GRAAL_HOME/lib"` (or your version of GraalVM). Specify the SDK by setting the GraalVM JRE in e.g. `$GRAAL_HOME`
-	* Environment variables should have PATH identical to what you use in a shell
+8. **Setup your IDE**
+    1. `mx ideinit` from `$GRCUDA_HOME`, to setup the IDE
+    2. Open Idea and select *"open project"*, then open GrCUDA
+    3. See this [guide](https://github.com/graalvm/mx/blob/master/docs/IDE.md) to configure the syntax checker
+    4. In IntelliJ Idea, install the Python plugin with `Settings -> Plugin -> Search "Python"`, then do `Project Structure -> SDKs -> Create a new Python 3.8 Virtual Environment`, it is used by `mx`
+    5. Select the right JVM. It should select automatically your `$JAVA_HOME`. Othewise, `Project Structures -> Modules -> Set the Module SDK (under Dependencies)` of `mx` and submodules to your Java SDK (e.g. `11`). You can pick either the `labsjdk` or `graalvm`.
+        * This is also given by the `configure` option if you try to build the project in IntelliJ Idea before setting these options. Set your project Java SDK (e.g. `11`) for those missing modules
+        * When building for the first time in Intellij Idea, you might get errors like `cannot use --export for target 1.8`, which means that some package is being build with Java 8.
+        * For these packages, there are two possible solutions. Try either of them, and stick to the one that works for you
+
+            a. For those packages (look at the log to find them), manually specify a more recent SDK (e.g. `11`) as you did in step above. If you get errors of missing symbols, follow IntelliJ's hints and export the requested packages
+
+            b. Remove the exports. `File -> Settings -> Build ... -> Java Compiler`, then remove all the `--export` flags.
+    7. To run tests:
+
+        a. Go to `Run (top bar) -> Edit Configurations -> Edit configuration templates -> Junit`
+
+        b. (Not always necessary) By default, Idea should use your `env`. If not, make sure to have the same. Update the `PATH` variable so that it can find `nvcc`, and export `$GRAAL_HOME`. See `setup_machine_from_scratch.sh` to find all the environment variables.
+
+        c. Modify the template Junit test configuration adding `-Djava.library.path="$GRAAL_HOME/lib` (in Java 11) to the VM options to find `trufflenfi`
+
+        d. In IntelliJ Idea, `Run -> Edit Configurations`. Create a new JUnit configuration set to `All in package` with `com.nvidia.grcuda` as module and `com.nvidia.grcuda.test` selected below. Add `-Djava.library.path="$GRAAL_HOME/lib"` (or your version of GraalVM) if it's not already in VM options. Specify the SDK by setting the GraalVM JRE in e.g. `$GRAAL_HOME`, if not specified already.   
+        
 9. **Run tests with** `mx unittest com.nvidia`
 * Run a specific test using, for example, `mx unittest com.nvidia.grcuda.test.gpu.ExecutionDAGTest#executionDAGConstructorTest`
 
@@ -294,7 +305,7 @@ graalpython -m ginstall install numpy;
 
 Run a specific benchmark with custom settings
 ```
-graalpython --jvm --polyglot --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10
+graalpython --jvm --polyglot --experimental-options --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=async --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10
 ```
 
 Run all benchmarks
@@ -304,7 +315,7 @@ graalpython --jvm --polyglot benchmark_wrapper.py -d -i 30
 
 Run the CUDA version of all benchmarks
 ```
-graalpython --jvm --polyglor benchmark_wrapper.py -d -i 30 -c
+graalpython --jvm --polyglot benchmark_wrapper.py -d -i 30 -c
 ```
 
 To print the Java Stack Trace in case of exceptions, add the following to Graalpython
@@ -317,7 +328,7 @@ Profile a specific benchmark using `nvprof`. Running `nvprof` as `sudo` might no
  Additionally, provide `nvprof` with flags `--csv` to get a CSV output, and `--log-file bench-name_%p.csv"` to store the result.
   Not using the flag `--print-gpu-trace` will print aggregated results. Additional metrics can be collected by `nvprof` with e.g. `--metrics "achieved_occupancy,sm_efficiency"` ([full list](https://docs.nvidia.com/cuda/profiler-users-guide/index.html#metrics-reference)). GPUs with architecture starting from Turing (e.g. GTX 1660 Super) no longer allow collecting metrics with `nvprof`, but `ncu` ([link](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)) and Nsight Compute ([link](https://developer.nvidia.com/nsight-compute)).
 ```
-sudo /usr/local/cuda/bin/nvprof --profile-from-start off --print-gpu-trace --profile-child-processes  /path/to/graalpython --jvm --polyglot --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10d --block_size_1d 256 --block_size_2d 16 --nvprof
+sudo /usr/local/cuda/bin/nvprof --profile-from-start off --print-gpu-trace --profile-child-processes  /path/to/graalpython --jvm --polyglot --experimental-options --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=default --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10d --block_size_1d 256 --block_size_2d 16 --nvprof
 ```
 
 * Benchmarks are defined in the `projects/resources/python/benchmark/bench` folder, 
@@ -340,17 +351,16 @@ and you can create more benchmarks by inheriting from the `Benchmark` class. Sin
   13. `-p`, `--time_phases`: measure the execution time of each phase of the benchmark; note that this introduces overheads, and might influence the total execution time. Results for each phase are meaningful only for synchronous execution
   14. `--nvprof`: if present, enable profiling when using nvprof. For this option to have effect, run graalpython using nvprof, with flag '--profile-from-start off'
 	
-
 ## DAG Scheduling Settings
 The automatic DAG scheduling of GrCUDA supports different settings that can be used for debugging or to simplify the dependency computation in some circumstances
 
 * `ExecutionPolicy`: this regulates the global scheduling policy;
- `default` uses the DAG for asynchronous parallel execution, while `sync` executes each computation synchronously and can be used for debugging or to measure the execution time of each kernel
+ `async` uses the DAG for asynchronous parallel execution, while `sync` executes each computation synchronously and can be used for debugging or to measure the execution time of each kernel
 * `DependencyPolicy`: choose how data dependencies between GrCUDA computations are computed;
-`with_const` considers read-only parameter, while `default` assumes that all arguments can be modified in a computation
+`with-const` considers read-only parameter, while `no-const` assumes that all arguments can be modified in a computation
 * `RetrieveNewStreamPolicy`: choose how streams for new GrCUDA computations are created;
- `fifo` (the default) reuses free streams whenever possible, while `always_new` creates new streams every time a computation should use a stream different from its parent
+ `fifo` (the default) reuses free streams whenever possible, while `always-new` creates new streams every time a computation should use a stream different from its parent
 * `RetrieveParentStreamPolicy`: choose how streams for new GrCUDA computations are obtained from parent computations;
-`default` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint
+`same-as-parent` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint
 * `--grcuda.InputPrefetch`: if present, prefetch the data on GPUs with architecture starting from Pascal. In most cases, it improves performance.
 * `--grcuda.ForceStreamAttach`: if present, force association between arrays and CUDA streams. True by default on architectures older than Pascal, to allow concurrent CPU/GPU computation. On architectures starting from Pascal, it can improve performance.

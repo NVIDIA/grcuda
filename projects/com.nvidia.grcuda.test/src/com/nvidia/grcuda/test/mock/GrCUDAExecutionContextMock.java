@@ -15,7 +15,7 @@ public class GrCUDAExecutionContextMock extends GrCUDAExecutionContext {
 
     public GrCUDAExecutionContextMock() {
         super(null, null,
-                new GrCUDAStreamManagerMock(null), DependencyPolicyEnum.DEFAULT, PrefetcherEnum.NONE);
+                new GrCUDAStreamManagerMock(null), DependencyPolicyEnum.NO_CONST, PrefetcherEnum.NONE);
     }
 
     public GrCUDAExecutionContextMock(DependencyPolicyEnum dependencyPolicy) {

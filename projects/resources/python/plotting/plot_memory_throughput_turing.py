@@ -37,8 +37,10 @@ BENCHMARK_NAMES = {
     "b7": "HITS", 
     "b10": "DL"
     }
-POLICIES = ["sync", "default"]
-POLICIES_DICT = {"default": "Parallel Scheduler", "sync": "Serial Scheduler"}
+# ASYNC_POLICY_NAME = "async"   # If parsing new results;
+ASYNC_POLICY_NAME = "default"  # If parsing older results;
+POLICIES = ["sync", ASYNC_POLICY_NAME]
+POLICIES_DICT = {ASYNC_POLICY_NAME: "Parallel Scheduler", "sync": "Serial Scheduler"}
 
 NVPROF_HEADER_NOMETRIC = ["start_ms", "duration_ms", "Grid X", "Grid Y", "Grid Z", "Block X", "Block Y", "Block Z",
                  "Registers Per Thread"," Static SMem", "Dynamic SMem", "Device", "Context", "Stream",
@@ -119,7 +121,7 @@ def load_data(b, p, files):
     # Process file with memory access information;
     ##############################
     
-    input_file = os.path.join(DEFAULT_RES_DIR, INPUT_DATE, files_dict[(b, p, "metric", "True" if p == "default" else "False")])
+    input_file = os.path.join(DEFAULT_RES_DIR, INPUT_DATE, files_dict[(b, p, "metric", "True" if p == ASYNC_POLICY_NAME else "False")])
     print(b, p)
     data_metric = pd.read_csv(input_file, skiprows=3, names=NVPROF_HEADER_METRIC)
     # Keep only a subset of columns;
@@ -250,10 +252,10 @@ def barplot(data, ax, title, y_column, y_limit, annotation_title, y_ticks=6, y_t
     
     # Obtain y;
     y_sync = data[data["policy"] == "sync"][y_column]
-    y_default = data[data["policy"] == "default"][y_column]
+    y_async = data[data["policy"] == ASYNC_POLICY_NAME][y_column]
 
     rects1 = ax.bar(x - bar_width / 2, y_sync, bar_width, label="sync", color=palette[0], edgecolor=edgecolor)
-    rects2 = ax.bar(x + bar_width / 2, y_default, bar_width, label="default", color=palette[1], edgecolor=edgecolor)
+    rects2 = ax.bar(x + bar_width / 2, y_async, bar_width, label=ASYNC_POLICY_NAME, color=palette[1], edgecolor=edgecolor)
     
     ax.set_xticks(x)
     ax.set_xticklabels(x_labels, fontsize=8, va="center")

@@ -40,7 +40,7 @@ num_elem = {
     "b10": [7000],
 }
 
-exec_policies = ["default", "sync"]
+exec_policies = ["async", "sync"]
 
 new_stream_policies = ["always-new"]
 

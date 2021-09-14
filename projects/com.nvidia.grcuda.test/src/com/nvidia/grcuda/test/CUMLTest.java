@@ -1,5 +1,6 @@
 package com.nvidia.grcuda.test;
 
+import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -18,7 +19,7 @@ public class CUMLTest {
     public static Collection<Object[]> data() {
 
         return GrCUDATestUtil.crossProduct(Arrays.asList(new Object[][]{
-                {"sync", "default"},
+                {ExecutionPolicyEnum.SYNC.getName(), ExecutionPolicyEnum.ASYNC.getName()},
                 {true, false},
                 {'S', 'D'}
         }));

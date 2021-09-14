@@ -586,7 +586,7 @@ if __name__ == "__main__":
     # save_plot(PLOT_DIR, "speedup_baseline_multigpu_{}.{}", OUTPUT_DATE)
     
     
-    #%% Plot speedup with prefetching of sync and default w.r.t. sync baseline;
+    #%% Plot speedup with prefetching of sync and async w.r.t. sync baseline;
     
     data_960 = load_data(INPUT_DATE_960, skip_iter=3)
     data_p100 = load_data(INPUT_DATE_P100, skip_iter=3)
@@ -606,7 +606,7 @@ if __name__ == "__main__":
     # Ignore synchronous execution;
     data = data[data["exec_policy_full"] != "sync"]
     # Skip no-prefetch;
-    data = data[(data["exec_policy_full"] != "default") | (data["gpu"] == "GTX960")]
+    data = data[(data["exec_policy_full"] != ASYNC_POLICY_NAME) | (data["gpu"] == "GTX960")]
     data = data[(data["exec_policy_full"] != "sync_f") | (data["gpu"] == "GTX960")]
     
     # sns.set_style("whitegrid", {"xtick.bottom": True, "ytick.left": True, "xtick.color": ".8", "ytick.color": ".8"})

@@ -22,7 +22,6 @@ from load_data import load_data, load_data_cuda, join_tables, join_tables_baseli
 from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, update_width, add_labels, get_upper_ci_size, remove_outliers_df_grouped
 import matplotlib.ticker as ticker
 
-
 ##############################
 ##############################
 
@@ -47,6 +46,9 @@ INPUT_DATE_GRCUDA_P100 = "P100/2020_10_13_10_03_48_grcuda_baseline" # "P100/2020
 INPUT_DATE_GRCUDA_1660 = "1660/2020_10_13_18_21_04_grcuda_baseline"
 
 BENCHMARK_NAMES = {"b1": "Vector Squares", "b5": "B&S", "b8": "Images", "b6": "ML Ensemble", "b7": "HITS", "b10": "DL"}
+
+# ASYNC_POLICY_NAME = "async"   # If parsing new results;
+ASYNC_POLICY_NAME = "default"  # If parsing older results;
 
 ##############################
 ##############################
@@ -318,7 +320,7 @@ def build_exec_time_plot_grcuda_cuda_2rows_multigpu(data, gridspec, x, y, exec_p
     #     var_name="versus", value_name="speedup")
     # data["size_str"] = data["size"].astype(str)
     
-    if exec_policy == "default":
+    if exec_policy == ASYNC_POLICY_NAME:
         data = data[~data["versus"].isin(["speedup_sync", "speedup_cudagraphsingle"])]
         if len(data) == 0:
             return
@@ -359,7 +361,7 @@ def build_exec_time_plot_grcuda_cuda_2rows_multigpu(data, gridspec, x, y, exec_p
     if exec_policy == "sync":
         ax.set_ylim((0.5, 1.5))
         num_y_ticks = 5
-    elif exec_policy == "default" and x == 3:
+    elif exec_policy == ASYNC_POLICY_NAME and x == 3:
         ax.set_ylim((0.5, 2.0))
         num_y_ticks = 4
     else:
@@ -529,7 +531,7 @@ def build_exec_time_plot_grcuda_cuda_2rows_multigpu3(data, gridspec, x, y, exec_
     #     var_name="versus", value_name="speedup")
     # data["size_str"] = data["size"].astype(str)
     
-    if exec_policy == "default":
+    if exec_policy == ASYNC_POLICY_NAME:
         data = data[~data["versus"].isin(["speedup_sync", "speedup_cudagraphsingle", "speedup_cudagraph"])]
         if len(data) == 0:
             return
@@ -574,7 +576,7 @@ def build_exec_time_plot_grcuda_cuda_2rows_multigpu3(data, gridspec, x, y, exec_
     if exec_policy == "sync":
         ax.set_ylim((0.5, 1.5))
         num_y_ticks = 5
-    elif exec_policy == "default" and x == 3:
+    elif exec_policy == ASYNC_POLICY_NAME and x == 3:
         ax.set_ylim((0.5, 2.0))
         num_y_ticks = 4
     else:
@@ -666,8 +668,8 @@ def ridgeplot(data):
     plt.rcParams["font.family"] = ["Latin Modern Roman Demi"]
     
     # Plot only some data, for now;
-    data = data[(data["block_size_1d"] == 256) & (data["exec_policy"] == "default")].copy()
-    # data = data[(data["exec_policy"] == "default")].copy()
+    data = data[(data["block_size_1d"] == 256) & (data["exec_policy"] == ASYNC_POLICY_NAME)].copy()
+    # data = data[(data["exec_policy"] ==ASYNC_POLICY_NAME)].copy()
 
     # For each benchmark, keep the data relative to the largest data size;
     biggest_sizes = data.groupby(["benchmark"])["size"].max().to_dict()
@@ -936,8 +938,8 @@ if __name__ == "__main__":
     #     var_name="versus", value_name="speedup")
     # data["size_str"] = data["size"].astype(str)
     
-    # palette = {"speedup_default": COLORS["peach1"], "speedup_cudagraph": COLORS["b2"], "speedup_sync":  COLORS["b8"], "speedup_cudagraphmanual":  COLORS["b4"],  "speedup_cudagraphsingle":  COLORS["b8"]}
-    # markers = {"speedup_default": "o", "speedup_cudagraph": "X", "speedup_sync": "D", "speedup_cudagraphmanual": "P", "speedup_cudagraphsingle": "D"}
+    # palette = {f"speedup_{ASYNC_POLICY_NAME}": COLORS["peach1"], "speedup_cudagraph": COLORS["b2"], "speedup_sync":  COLORS["b8"], "speedup_cudagraphmanual":  COLORS["b4"],  "speedup_cudagraphsingle":  COLORS["b8"]}
+    # markers = {f"speedup_{ASYNC_POLICY_NAME}": "o", "speedup_cudagraph": "X", "speedup_sync": "D", "speedup_cudagraphmanual": "P", "speedup_cudagraphsingle": "D"}
     
     # #%%
     
@@ -970,7 +972,7 @@ if __name__ == "__main__":
         
     # # Legend; 
     # versus = [l for l in data["versus"].unique() if l != "speedup_sync"]
-    # names = {"speedup_default": "Hand-tuned CUDA events", "speedup_cudagraph": "CUDA Graphs + events", "speedup_sync": "CUDA synchronous", "speedup_cudagraphmanual": "CUDA Graphs, manual dep.", "speedup_cudagraphsingle": "CUDA Graphs, single stream"}
+    # names = {f"speedup_{ASYNC_POLICY_NAME}": "Hand-tuned CUDA events", "speedup_cudagraph": "CUDA Graphs + events", "speedup_sync": "CUDA synchronous", "speedup_cudagraphmanual": "CUDA Graphs, manual dep.", "speedup_cudagraphsingle": "CUDA Graphs, single stream"}
     # legend_labels = [names[l] for l in versus]
     # custom_lines = [
     #     lines.Line2D([], [], color="white", marker=markers[l], markersize=10, label=names[l], markerfacecolor=palette[l], markeredgecolor="#2f2f2f") 
@@ -1021,7 +1023,7 @@ if __name__ == "__main__":
     # gmean_horizontal_values = []
     # for data_c in [data_cuda_1660, data_cuda_p100]:
     #     data_cuda_2 = remove_outliers_df_grouped(data_c, column="computation_speedup", group=["benchmark", "exec_policy_full", "block_size_str", "size", "gpu"])
-    #     cuda_summary = data_cuda_2[data_cuda_2["exec_policy_full"] == "default"].groupby(["benchmark", "block_size_str", "size", "gpu"], sort=False)["computation_speedup"].apply(gmean).reset_index(drop=False)
+    #     cuda_summary = data_cuda_2[data_cuda_2["exec_policy_full"] == ASYNC_POLICY_NAME].groupby(["benchmark", "block_size_str", "size", "gpu"], sort=False)["computation_speedup"].apply(gmean).reset_index(drop=False)
     #     cuda_summary = cuda_summary.sort_values(by=["benchmark"], key=lambda x: x.apply(lambda y: int(y[1:])))              
         
     #     # Add geomean;
@@ -1157,8 +1159,8 @@ if __name__ == "__main__":
     #     var_name="versus", value_name="speedup")
     # data["size_str"] = data["size"].astype(str)
     
-    # palette = {"speedup_default": COLORS["peach1"], "speedup_cudagraph": COLORS["b2"], "speedup_sync":  COLORS["b8"], "speedup_cudagraphmanual":  COLORS["b4"],  "speedup_cudagraphsingle":  COLORS["b8"]}
-    # # markers = {"speedup_default": "o", "speedup_cudagraph": "X", "speedup_sync": "D", "speedup_cudagraphmanual": "P", "speedup_cudagraphsingle": "D"}
+    # palette = {f"speedup_{ASYNC_POLICY_NAME}": COLORS["peach1"], "speedup_cudagraph": COLORS["b2"], "speedup_sync":  COLORS["b8"], "speedup_cudagraphmanual":  COLORS["b4"],  "speedup_cudagraphsingle":  COLORS["b8"]}
+    # # markers = {f"speedup_{ASYNC_POLICY_NAME}": "o", "speedup_cudagraph": "X", "speedup_sync": "D", "speedup_cudagraphmanual": "P", "speedup_cudagraphsingle": "D"}
     # markers = {"GTX960": "o", "GTX1660 Super": "X", "P100": "D"}
 
     # # Lists of benchmarks and block sizes;
@@ -1190,7 +1192,7 @@ if __name__ == "__main__":
         
     # # Legend; 
     # # versus = [l for l in data["versus"].unique() if l not in ["speedup_sync", "speedup_cudagraph"]]
-    # # names = {"speedup_default": "Hand-tuned CUDA events", "speedup_cudagraph": "CUDA Graphs + events", "speedup_sync": "CUDA synchronous", "speedup_cudagraphmanual": "CUDA Graphs, manual dep.", "speedup_cudagraphsingle": "CUDA Graphs, single stream"}
+    # # names = {f"speedup_{ASYNC_POLICY_NAME}": "Hand-tuned CUDA events", "speedup_cudagraph": "CUDA Graphs + events", "speedup_sync": "CUDA synchronous", "speedup_cudagraphmanual": "CUDA Graphs, manual dep.", "speedup_cudagraphsingle": "CUDA Graphs, single stream"}
     # # legend_labels = [names[l] for l in versus]
     # # custom_lines = [
     # #     lines.Line2D([], [], color="white", marker=markers[l], markersize=10, label=names[l], markerfacecolor=palette[l], markeredgecolor="#2f2f2f") 
@@ -1261,10 +1263,10 @@ if __name__ == "__main__":
     data = data[~data["versus"].isin(["speedup_sync", "speedup_cudagraphsingle"])]
     data["size_str"] = data["size"].astype(str)
     
-    data = data[data["exec_policy"] == "default"]
+    data = data[data["exec_policy"] == ASYNC_POLICY_NAME]
     
-    palette = {"speedup_default": COLORS["peach1"], "speedup_cudagraph": COLORS["b2"], "speedup_sync":  COLORS["b8"], "speedup_cudagraphmanual":  COLORS["b4"],  "speedup_cudagraphsingle":  COLORS["b8"]}
-    markers = {"speedup_default": "o", "speedup_cudagraph": "X", "speedup_sync": "D", "speedup_cudagraphmanual": "P", "speedup_cudagraphsingle": "D"}
+    palette = {f"speedup_{ASYNC_POLICY_NAME}": COLORS["peach1"], "speedup_cudagraph": COLORS["b2"], "speedup_sync":  COLORS["b8"], "speedup_cudagraphmanual":  COLORS["b4"],  "speedup_cudagraphsingle":  COLORS["b8"]}
+    markers = {f"speedup_{ASYNC_POLICY_NAME}": "o", "speedup_cudagraph": "X", "speedup_sync": "D", "speedup_cudagraphmanual": "P", "speedup_cudagraphsingle": "D"}
     
     #%%
     
@@ -1300,7 +1302,7 @@ if __name__ == "__main__":
         
     # Legend; 
     versus = [l for l in data["versus"].unique() if l != "speedup_sync"]
-    names = {"speedup_default": "Hand-tuned CUDA events", "speedup_cudagraph": "CUDA Graphs + events", "speedup_sync": "CUDA synchronous", "speedup_cudagraphmanual": "CUDA Graphs, manual dep.", "speedup_cudagraphsingle": "CUDA Graphs, single stream"}
+    names = {f"speedup_{ASYNC_POLICY_NAME}": "Hand-tuned CUDA events", "speedup_cudagraph": "CUDA Graphs + events", "speedup_sync": "CUDA synchronous", "speedup_cudagraphmanual": "CUDA Graphs, manual dep.", "speedup_cudagraphsingle": "CUDA Graphs, single stream"}
     legend_labels = [names[l] for l in versus]
     custom_lines = [
         lines.Line2D([], [], color="white", marker=markers[l], markersize=10, label=names[l], markerfacecolor=palette[l], markeredgecolor="#2f2f2f") 

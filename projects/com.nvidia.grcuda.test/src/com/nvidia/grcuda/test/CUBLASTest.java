@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Function;
 
+import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.test.gpu.ComplexExecutionDAGTest;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -49,7 +50,7 @@ public class CUBLASTest {
     public static Collection<Object[]> data() {
 
         return GrCUDATestUtil.crossProduct(Arrays.asList(new Object[][]{
-                {"sync", "default"},
+                {ExecutionPolicyEnum.SYNC.getName(), ExecutionPolicyEnum.ASYNC.getName()},
                 {true, false},
                 {'S', 'D', 'C', 'Z'}
         }));

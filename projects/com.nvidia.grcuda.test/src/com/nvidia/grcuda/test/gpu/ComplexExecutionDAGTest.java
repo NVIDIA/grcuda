@@ -1,8 +1,6 @@
 package com.nvidia.grcuda.test.gpu;
 
-import com.nvidia.grcuda.gpu.computation.KernelExecution;
 import com.nvidia.grcuda.gpu.computation.dependency.DependencyPolicyEnum;
-import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.nvidia.grcuda.gpu.stream.RetrieveNewStreamPolicyEnum;
@@ -18,11 +16,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -35,8 +31,8 @@ public class ComplexExecutionDAGTest {
 
         return GrCUDATestUtil.crossProduct(Arrays.asList(new Object[][]{
                 {RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveNewStreamPolicyEnum.FIFO},
-                {RetrieveParentStreamPolicyEnum.DISJOINT, RetrieveParentStreamPolicyEnum.DEFAULT},
-                {DependencyPolicyEnum.WITH_CONST, DependencyPolicyEnum.DEFAULT}
+                {RetrieveParentStreamPolicyEnum.DISJOINT, RetrieveParentStreamPolicyEnum.SAME_AS_PARENT},
+                {DependencyPolicyEnum.WITH_CONST, DependencyPolicyEnum.NO_CONST}
         }));
     }
 
@@ -128,7 +124,7 @@ public class ComplexExecutionDAGTest {
         if (retrieveParentStreamPolicy.equals(RetrieveParentStreamPolicyEnum.DISJOINT) && dependencyPolicy.equals(DependencyPolicyEnum.WITH_CONST)) {
             numStreams = 4;
         }
-        else if (retrieveParentStreamPolicy.equals(RetrieveParentStreamPolicyEnum.DEFAULT) && dependencyPolicy.equals(DependencyPolicyEnum.DEFAULT)) {
+        else if (retrieveParentStreamPolicy.equals(RetrieveParentStreamPolicyEnum.SAME_AS_PARENT) && dependencyPolicy.equals(DependencyPolicyEnum.NO_CONST)) {
             numStreams = 1;
         }
         assertEquals(numStreams, context.getStreamManager().getNumberOfStreams());

@@ -16,7 +16,7 @@
 #define DEFAULT_NUM_BLOCKS 64
 #define DEFAULT_SKIP 3
 #define DEFAULT_BENCHMARK "b1"
-#define DEFAULT_POLICY "default"
+#define DEFAULT_POLICY "async"
 
 //////////////////////////////
 //////////////////////////////
@@ -96,7 +96,7 @@ struct Options
 
     Options(int argc, char *argv[])
     {
-        map_init(policy_map)(Policy::Sync, "sync")(Policy::Async, "default")(Policy::CudaGraph, "cudagraph")(Policy::CudaGraphAsync, "cudagraph_manual");
+        map_init(policy_map)(Policy::Sync, "sync")(Policy::Async, "async")(Policy::CudaGraph, "cudagraph")(Policy::CudaGraphAsync, "cudagraph_manual");
         map_init(benchmark_map)(BenchmarkEnum::B1, "b1")(BenchmarkEnum::B5, "b5")(BenchmarkEnum::B6, "b6")(BenchmarkEnum::B7, "b7")(BenchmarkEnum::B8, "b8")(BenchmarkEnum::B10, "b10");
 
         int opt;

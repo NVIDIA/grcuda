@@ -15,6 +15,8 @@ from scipy.stats.mstats import gmean
 
 DEFAULT_RES_DIR = "../../../../grcuda-data/results/scheduling"
 
+# ASYNC_POLICY_NAME = "async"   # If parsing new results;
+ASYNC_POLICY_NAME = "default"  # If parsing older results;
 
 def load_data(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=True, benchmark="", phases=None) -> pd.DataFrame:
     """
@@ -53,7 +55,7 @@ def load_data(input_date: str, skip_iter=0, remove_inf=True, remove_time_zero=Tr
         total_iterations = v["num_iterations"]
         cpu_validation = v["cpu_validation"]
         random_init = v["random_init"]
-        size_dict = v["benchmarks"][benchmark]["default"]
+        size_dict = v["benchmarks"][benchmark][ASYNC_POLICY_NAME]
         row += [int(total_iterations), bool(cpu_validation), bool(random_init)]
 
         # Parse data for each input data size, and other settings;;

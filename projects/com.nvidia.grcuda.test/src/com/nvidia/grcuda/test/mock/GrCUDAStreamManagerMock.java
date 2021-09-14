@@ -1,6 +1,5 @@
 package com.nvidia.grcuda.test.mock;
 
-import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
@@ -12,7 +11,6 @@ import com.nvidia.grcuda.gpu.stream.RetrieveParentStreamPolicyEnum;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,11 +24,11 @@ public class GrCUDAStreamManagerMock extends GrCUDAStreamManager {
 
     GrCUDAStreamManagerMock(CUDARuntime runtime,
                             RetrieveNewStreamPolicyEnum retrieveStreamPolicy) {
-        super(runtime, retrieveStreamPolicy, RetrieveParentStreamPolicyEnum.DEFAULT);
+        super(runtime, retrieveStreamPolicy, RetrieveParentStreamPolicyEnum.SAME_AS_PARENT);
     }
 
     GrCUDAStreamManagerMock(CUDARuntime runtime) {
-        super(runtime, RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveParentStreamPolicyEnum.DEFAULT);
+        super(runtime, RetrieveNewStreamPolicyEnum.ALWAYS_NEW, RetrieveParentStreamPolicyEnum.SAME_AS_PARENT);
     }
 
     int numStreams = 0;

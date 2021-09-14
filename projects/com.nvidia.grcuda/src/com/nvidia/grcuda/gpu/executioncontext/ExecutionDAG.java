@@ -37,7 +37,7 @@ public class ExecutionDAG implements TruffleObject {
             case WITH_CONST:
                 this.keepDependency = new WithConstKeepDependency();
                 break;
-            case DEFAULT:
+            case NO_CONST:
                 this.keepDependency = new DefaultKeepDependency();
                 break;
             default:

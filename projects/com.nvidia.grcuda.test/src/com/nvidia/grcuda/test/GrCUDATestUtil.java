@@ -37,19 +37,19 @@ public class GrCUDATestUtil {
      */
     public static Collection<Object[]> getAllOptionCombinations() {
         Collection<Object[]> options = GrCUDATestUtil.crossProduct(Arrays.asList(new Object[][]{
-                {"sync", "default"},        // ExecutionPolicy
-                {true, false},              // InputPrefetch
-                {"fifo", "always-new"},     // RetrieveNewStreamPolicy
-                {"default", "disjoint"},    // RetrieveParentStreamPolicy
-                {"default", "with-const"},  // DependencyPolicy
-                {true, false},              // ForceStreamAttach
+                {ExecutionPolicyEnum.SYNC, ExecutionPolicyEnum.ASYNC},
+                {true, false},  // InputPrefetch
+                {RetrieveNewStreamPolicyEnum.FIFO, RetrieveNewStreamPolicyEnum.ALWAYS_NEW},
+                {RetrieveParentStreamPolicyEnum.SAME_AS_PARENT, RetrieveParentStreamPolicyEnum.DISJOINT},
+                {DependencyPolicyEnum.NO_CONST, DependencyPolicyEnum.WITH_CONST},
+                {true, false},  // ForceStreamAttach
         }));
         List<Object[]> combinations = new ArrayList<>();
         options.forEach(optionArray -> {
             GrCUDATestOptionsStruct newStruct = new GrCUDATestOptionsStruct(
-                    (String) optionArray[0], (boolean) optionArray[1],
-                    (String) optionArray[2], (String) optionArray[3],
-                    (String) optionArray[4], (boolean) optionArray[5]);
+                    (ExecutionPolicyEnum) optionArray[0], (boolean) optionArray[1],
+                    (RetrieveNewStreamPolicyEnum) optionArray[2], (RetrieveParentStreamPolicyEnum) optionArray[3],
+                    (DependencyPolicyEnum) optionArray[4], (boolean) optionArray[5]);
             if (!isOptionRedundantForSync(newStruct)) {
                 combinations.add(new GrCUDATestOptionsStruct[]{newStruct});
             }
@@ -61,11 +61,11 @@ public class GrCUDATestUtil {
 
     public static Context createContextFromOptions(GrCUDATestOptionsStruct options) {
         return Context.newBuilder().allowExperimentalOptions(true)
-                .option("grcuda.ExecutionPolicy", options.policy)
+                .option("grcuda.ExecutionPolicy", options.policy.getName())
                 .option("grcuda.InputPrefetch", String.valueOf(options.inputPrefetch))
-                .option("grcuda.RetrieveNewStreamPolicy", options.retrieveNewStreamPolicy)
-                .option("grcuda.RetrieveParentStreamPolicy", options.retrieveParentStreamPolicy)
-                .option("grcuda.DependencyPolicy", options.dependencyPolicy)
+                .option("grcuda.RetrieveNewStreamPolicy", options.retrieveNewStreamPolicy.getName())
+                .option("grcuda.RetrieveParentStreamPolicy", options.retrieveParentStreamPolicy.getName())
+                .option("grcuda.DependencyPolicy", options.dependencyPolicy.getName())
                 .option("grcuda.ForceStreamAttach", String.valueOf(options.forceStreamAttach))
                 .allowAllAccess(true).build();
     }
@@ -78,10 +78,10 @@ public class GrCUDATestUtil {
      * @return if the option combination is redundant for the sync scheduler
      */
     private static boolean isOptionRedundantForSync(GrCUDATestOptionsStruct options) {
-        if (options.policy.equals(ExecutionPolicyEnum.SYNC.getName())) {
-            return options.retrieveNewStreamPolicy.equals(RetrieveNewStreamPolicyEnum.ALWAYS_NEW.getName()) ||
-                    options.retrieveParentStreamPolicy.equals(RetrieveParentStreamPolicyEnum.DISJOINT.getName()) ||
-                    options.dependencyPolicy.equals(DependencyPolicyEnum.WITH_CONST.getName());
+        if (options.policy.equals(ExecutionPolicyEnum.SYNC)) {
+            return options.retrieveNewStreamPolicy.equals(RetrieveNewStreamPolicyEnum.ALWAYS_NEW) ||
+                    options.retrieveParentStreamPolicy.equals(RetrieveParentStreamPolicyEnum.DISJOINT) ||
+                    options.dependencyPolicy.equals(DependencyPolicyEnum.WITH_CONST);
         }
         return false;
     }

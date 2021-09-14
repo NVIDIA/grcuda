@@ -61,7 +61,7 @@ public class GrCUDAStreamManager {
             case DISJOINT:
                 this.retrieveParentStream = new DisjointRetrieveParentStream(this.retrieveNewStream);
                 break;
-            case DEFAULT:
+            case SAME_AS_PARENT:
                 this.retrieveParentStream = new DefaultRetrieveParentStream();
                 break;
             default:

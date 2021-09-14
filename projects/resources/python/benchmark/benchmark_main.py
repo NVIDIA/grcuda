@@ -44,16 +44,16 @@ num_elem = {
 }
 
 policies = {
-    "b1": ["default"],
-    "b2": ["default"],
-    "b3": ["default"],
-    "b4": ["default"],
-    "b5": ["default"],
-    "b6": ["default"],
-    "b7": ["default"],
-    "b8": ["default"],
-    "b9": ["default"],
-    "b10": ["default"],
+    "b1": ["async"],
+    "b2": ["async"],
+    "b3": ["async"],
+    "b4": ["async"],
+    "b5": ["async"],
+    "b6": ["async"],
+    "b7": ["async"],
+    "b8": ["async"],
+    "b9": ["async"],
+    "b10": ["async"],
 }
 
 ##############################

@@ -24,7 +24,7 @@ public class ExecutionDAGTest {
 
     @Test
     public void executionDAGConstructorTest() {
-        ExecutionDAG dag = new ExecutionDAG(DependencyPolicyEnum.DEFAULT);
+        ExecutionDAG dag = new ExecutionDAG(DependencyPolicyEnum.NO_CONST);
         assertTrue(dag.getVertices().isEmpty());
         assertTrue(dag.getEdges().isEmpty());
         assertTrue(dag.getFrontier().isEmpty());
@@ -147,7 +147,7 @@ public class ExecutionDAGTest {
 
     @Test
     public void complexFrontierWithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.DEFAULT,
+        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.NO_CONST,
                 RetrieveNewStreamPolicyEnum.FIFO, RetrieveParentStreamPolicyEnum.DISJOINT);
 
         // This time, simulate the synchronization process between kernels;

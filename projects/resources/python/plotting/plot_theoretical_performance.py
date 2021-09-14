@@ -49,6 +49,9 @@ BENCHMARK_PHASES = {
     "b10": ["conv_x1", "pool_x1", "conv_x2", "conv_y1", "pool_y1", "conv_y2", "concat", "dot_product"],
     }
 
+# ASYNC_POLICY_NAME = "async"   # If parsing new results;
+ASYNC_POLICY_NAME = "default"  # If parsing older results;
+
 ##############################
 ##############################
 
@@ -769,7 +772,7 @@ if __name__ == "__main__":
     #         baselines += [np.median(tmp_data[tmp_data["size"] == int(l)]["theoretical_time_sec"])]
     #     baselines_dict[b] = baselines
     
-    # policy_list = ["default"]  # Skip sync policy;
+    # policy_list = [ASYNC_POLICY_NAME]  # Skip sync policy;
     # for p_i, p in enumerate(policy_list): 
     #     for b_i, b in enumerate(benchmark_list):
     #         index_tot = (len(benchmark_list) * p_i + b_i)
@@ -824,7 +827,7 @@ if __name__ == "__main__":
                 baselines[l] = np.median(tmp_data[tmp_data["size"] == int(l)]["theoretical_time_sec"])
             baselines_dict[g][b] = baselines
     
-    policy_list = ["default"]  # Skip sync policy;
+    policy_list = [ASYNC_POLICY_NAME]  # Skip sync policy;
     for p_i, p in enumerate(policy_list): 
         for b_i, b in enumerate(benchmark_list):
             index_tot = (len(benchmark_list) * p_i + b_i)
@@ -846,8 +849,8 @@ if __name__ == "__main__":
     # slowdown = gmean(data["grcuda_cuda_speedup"])
     # print(slowdown)
     
-    # slowdown_dict = {"sync": [], "default": []}
+    # slowdown_dict = {"sync": [], ASYNC_POLICY_NAME: []}
     # for i, g in data.groupby(["benchmark", "exec_policy"]):
     #     max_size = g["size"].max()
     #     slowdown_dict[i[1]] += [gmean(g[g["size"] == max_size]["grcuda_cuda_speedup"])]
-    # print(gmean(slowdown_dict["sync"]), gmean(slowdown_dict["default"]))
+    # print(gmean(slowdown_dict["sync"]), gmean(slowdown_dict[ASYNC_POLICY_NAME]))

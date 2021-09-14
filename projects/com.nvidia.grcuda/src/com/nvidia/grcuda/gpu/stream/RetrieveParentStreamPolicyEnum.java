@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.gpu.stream;
 
 public enum RetrieveParentStreamPolicyEnum {
-    DEFAULT("default"),
+    SAME_AS_PARENT("same-as-parent"),
     DISJOINT("disjoint");
 
     private final String name;
