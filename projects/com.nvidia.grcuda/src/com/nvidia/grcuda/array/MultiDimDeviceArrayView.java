@@ -29,6 +29,7 @@
 package com.nvidia.grcuda.array;
 
 import com.nvidia.grcuda.GrCUDAException;
+import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewReadExecution;
 import com.nvidia.grcuda.gpu.computation.MultiDimDeviceArrayViewWriteExecution;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
@@ -38,7 +39,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -46,14 +46,28 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public final class MultiDimDeviceArrayView extends AbstractArray implements TruffleObject {
+public class MultiDimDeviceArrayView extends AbstractArray implements TruffleObject {
 
     private final MultiDimDeviceArray mdDeviceArray;
     private final int thisDimension;
     private final long offset;
     private final long stride;
 
-    MultiDimDeviceArrayView(MultiDimDeviceArray mdDeviceArray, int dim, long offset, long stride) {
+    /**
+     * A (N - 1)-dimensional view of an N-dimensional dense array.
+     * From the host language perspective (i.e. from the user perspective), an array view should be no different than
+     * a standard (N - 1)-dimensional array.
+     * From the internal implementation of GrCUDA, it should always be considered that the view is part of a larger memory
+     * chunk managed (also) by the GPU. Some CUDA APIs do not allow operating on memory chunks, but require access to the full array.
+     * As such, array views also provide access to information about the full array they belong to.
+     * For example, let's assume that the original array has 4 dimensions. We can create 3, 2, 1 dimensional views from it (in this order).
+     * Let's say that we are creating a 2-dimensional view
+     * @param mdDeviceArray the full array from which this view is created (the 4-dimensional array, in the example)
+     * @param dim the dimension identifier of this view (e.g. 2, in the example)
+     * @param offset the index (in the full array) at which this array view start
+     * @param stride value used to jump to consecutive values in the array, and determined by the slice that has been extracted
+     */
+    public MultiDimDeviceArrayView(MultiDimDeviceArray mdDeviceArray, int dim, long offset, long stride) {
         super(mdDeviceArray.grCUDAExecutionContext, mdDeviceArray.elementType, mdDeviceArray.isLastComputationArrayAccess());
         this.mdDeviceArray = mdDeviceArray;
         this.thisDimension = dim;
@@ -75,10 +89,19 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
         return stride;
     }
 
-    // FIXME: when column-major, low-level memcpy is accessing columns instead of rows!
     @Override
     public long getPointer() {
         return mdDeviceArray.getPointer() + offset * elementType.getSizeBytes();
+    }
+
+    @Override
+    public long getFullArrayPointer() {
+        return mdDeviceArray.getFullArrayPointer();
+    }
+
+    @Override
+    public boolean isColumnMajorFormat() {
+        return mdDeviceArray.isColumnMajorFormat();
     }
 
     /**
@@ -120,6 +143,11 @@ public final class MultiDimDeviceArrayView extends AbstractArray implements Truf
             throw new GrCUDAException(ACCESSED_FREED_MEMORY_MESSAGE);
         }
         return mdDeviceArray.getElementsInDimension(thisDimension) * elementType.getSizeBytes();
+    }
+
+    @Override
+    public long getFullArraySizeBytes() {
+        return mdDeviceArray.getFullArraySizeBytes();
     }
 
     @Override

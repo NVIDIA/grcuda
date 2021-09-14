@@ -50,8 +50,6 @@ import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.array.DeviceArray;
-import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.functions.CUDAFunction;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer32Object;
 import com.nvidia.grcuda.gpu.UnsafeHelper.Integer64Object;
@@ -437,7 +435,7 @@ public final class CUDARuntime {
             // Book-keeping of the stream attachment within the array;
             array.setStreamMapping(stream);
 
-            Object result = INTEROP.execute(callable, stream.getRawPointer(), array.getPointer(), array.getSizeBytes(), flag);
+            Object result = INTEROP.execute(callable, stream.getRawPointer(), array.getFullArrayPointer(), array.getFullArraySizeBytes(), flag);
             checkCUDAReturnCode(result, "cudaStreamAttachMemAsync");
         } catch (InteropException e) {
             throw new GrCUDAException(e);
@@ -461,7 +459,7 @@ public final class CUDARuntime {
     public void cudaMemPrefetchAsync(AbstractArray array, CUDAStream stream) {
         try {
             Object callable = CUDARuntimeFunction.CUDA_MEMPREFETCHASYNC.getSymbol(this);
-            Object result = INTEROP.execute(callable, array.getPointer(), array.getSizeBytes(), 0, stream.getRawPointer());
+            Object result = INTEROP.execute(callable, array.getFullArrayPointer(), array.getFullArraySizeBytes(), 0, stream.getRawPointer());
             checkCUDAReturnCode(result, "cudaMemPrefetchAsync");
         } catch (InteropException e) {
             throw new GrCUDAException(e);
@@ -1059,10 +1057,8 @@ public final class CUDARuntime {
                 return ((GPUPointer) array).getRawPointer();
             } else if (array instanceof LittleEndianNativeArrayView) {
                 return ((LittleEndianNativeArrayView) array).getStartAddress();
-            } else if (array instanceof DeviceArray) {
-                return ((DeviceArray) array).getPointer();
-            } else if (array instanceof MultiDimDeviceArray) {
-                return ((MultiDimDeviceArray) array).getPointer();
+            } else if (array instanceof AbstractArray) {
+                return ((AbstractArray) array).getFullArrayPointer();
             } else {
                 throw new GrCUDAException("expected GPUPointer or LittleEndianNativeArrayView or DeviceArray");
             }

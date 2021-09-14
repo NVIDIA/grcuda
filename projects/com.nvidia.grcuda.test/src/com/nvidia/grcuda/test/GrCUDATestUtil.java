@@ -71,7 +71,8 @@ public class GrCUDATestUtil {
     }
 
     public static Context.Builder buildTestContext() {
-        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).logHandler(new TestLogHandler()).option("log.grcuda.level", "SEVERE");
+        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).logHandler(new TestLogHandler())
+                .option("log.grcuda.com.nvidia.grcuda.level", "WARNING").option("log.grcuda.com.nvidia.grcuda.GrCUDAContext.level", "SEVERE");
     }
 
     /**

@@ -22,10 +22,6 @@ public class DefaultDependencyComputation extends DependencyComputation {
         activeArgumentSet = new HashSet<>(argumentList);
     }
 
-    static DefaultDependencyComputation initialize(List<ComputationArgumentWithValue> argumentList) {
-        return new DefaultDependencyComputation(argumentList);
-    }
-
     @CompilerDirectives.TruffleBoundary
     @Override
     public List<ComputationArgumentWithValue> computeDependencies(GrCUDAComputationalElement other) {

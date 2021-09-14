@@ -74,6 +74,8 @@ public final class GrCUDAContext {
 
     private static final String ROOT_NAMESPACE = "CU";
 
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(GrCUDALanguage.ID, "com.nvidia.grcuda.GrCUDAContext");
+
     private final Env env;
     private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
     private final Namespace rootNamespace;
@@ -109,7 +111,7 @@ public final class GrCUDAContext {
 
         // Retrieve the dependency computation policy;
         DependencyPolicyEnum dependencyPolicy = parseDependencyPolicy(env.getOptions().get(GrCUDAOptions.DependencyPolicy));
-        GrCUDALanguage.LOGGER.fine("using " + dependencyPolicy.getName() + " dependency policy");
+        LOGGER.fine("using " + dependencyPolicy.getName() + " dependency policy");
 
         // Retrieve the execution policy;
         ExecutionPolicyEnum executionPolicy = parseExecutionPolicy(env.getOptions().get(GrCUDAOptions.ExecutionPolicy));
@@ -118,12 +120,12 @@ public final class GrCUDAContext {
         // FIXME: TensorRT is currently incompatible with the async scheduler. TensorRT is supported in CUDA 11.4, and we cannot test it. 
         //  Once Nvidia adds support for it, we want to remove this limitation;
         if (this.getOption(GrCUDAOptions.TensorRTEnabled) && executionPolicy == ExecutionPolicyEnum.ASYNC) {
-            GrCUDALanguage.LOGGER.warning("TensorRT and the asynchronous scheduler are not compatible. Switching to the synchronous scheduler.");
+            LOGGER.warning("TensorRT and the asynchronous scheduler are not compatible. Switching to the synchronous scheduler.");
             executionPolicy = ExecutionPolicyEnum.SYNC;
         }
         
         // Initialize the execution policy;
-        GrCUDALanguage.LOGGER.fine("using" + executionPolicy.getName() + " execution policy");
+        LOGGER.fine("using" + executionPolicy.getName() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
                 this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch ? PrefetcherEnum.SYNC : PrefetcherEnum.NONE);
@@ -153,7 +155,7 @@ public final class GrCUDAContext {
                 namespace.addNamespace(ml);
                 new CUMLRegistry(this).registerCUMLFunctions(ml);
             } else {
-                GrCUDALanguage.LOGGER.warning("cuML is supported only on GPUs with compute capability >= 6.0 (Pascal and newer). It cannot be enabled.");
+                LOGGER.warning("cuML is supported only on GPUs with compute capability >= 6.0 (Pascal and newer). It cannot be enabled.");
             }
         }
         if (this.getOption(GrCUDAOptions.CuBLASEnabled)) {
@@ -245,7 +247,7 @@ public final class GrCUDAContext {
         if (policyString.equals(ExecutionPolicyEnum.SYNC.getName())) return ExecutionPolicyEnum.SYNC;
         else if (policyString.equals(ExecutionPolicyEnum.ASYNC.getName())) return ExecutionPolicyEnum.ASYNC;
         else {
-            GrCUDALanguage.LOGGER.warning("unknown execution policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_EXECUTION_POLICY);
+            LOGGER.warning("unknown execution policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_EXECUTION_POLICY);
             return GrCUDAContext.DEFAULT_EXECUTION_POLICY;
         }
     }
@@ -254,7 +256,7 @@ public final class GrCUDAContext {
         if (policyString.equals(DependencyPolicyEnum.WITH_CONST.getName())) return DependencyPolicyEnum.WITH_CONST;
         else if (policyString.equals(DependencyPolicyEnum.NO_CONST.getName())) return DependencyPolicyEnum.NO_CONST;
         else {
-            GrCUDALanguage.LOGGER.warning("Warning: unknown dependency policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_DEPENDENCY_POLICY);
+            LOGGER.warning("Warning: unknown dependency policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_DEPENDENCY_POLICY);
             return GrCUDAContext.DEFAULT_DEPENDENCY_POLICY;
         }
     }
@@ -263,7 +265,7 @@ public final class GrCUDAContext {
         if (policyString.equals(RetrieveNewStreamPolicyEnum.FIFO.getName())) return RetrieveNewStreamPolicyEnum.FIFO;
         else if (policyString.equals(RetrieveNewStreamPolicyEnum.ALWAYS_NEW.getName())) return RetrieveNewStreamPolicyEnum.ALWAYS_NEW;
         else {
-            GrCUDALanguage.LOGGER.warning("Warning: unknown new stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY);
+            LOGGER.warning("Warning: unknown new stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY);
             return GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY;
         }
     }
@@ -272,7 +274,7 @@ public final class GrCUDAContext {
         if (Objects.equals(policyString, RetrieveParentStreamPolicyEnum.DISJOINT.getName())) return RetrieveParentStreamPolicyEnum.DISJOINT;
         else if (Objects.equals(policyString, RetrieveParentStreamPolicyEnum.SAME_AS_PARENT.getName())) return RetrieveParentStreamPolicyEnum.SAME_AS_PARENT;
         else {
-            GrCUDALanguage.LOGGER.warning("Warning: unknown parent stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY);
+            LOGGER.warning("Warning: unknown parent stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY);
             return GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY;
         }
     }

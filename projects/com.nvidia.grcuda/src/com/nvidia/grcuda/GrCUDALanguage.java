@@ -48,7 +48,7 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     public static final String ID = "grcuda";
 
-    public static final TruffleLogger LOGGER = TruffleLogger.getLogger(ID);
+    public static final TruffleLogger LOGGER = TruffleLogger.getLogger(ID, "com.nvidia.grcuda");
 
     @Override
     protected GrCUDAContext createContext(Env env) {

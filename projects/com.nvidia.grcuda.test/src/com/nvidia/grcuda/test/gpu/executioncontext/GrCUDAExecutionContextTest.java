@@ -81,7 +81,6 @@ public class GrCUDAExecutionContextTest {
 
     @Test
     public void dependencyKernelSimpleTest() {
-
         try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
             final int numElements = 10;
             final int numBlocks = (numElements + NUM_THREADS_PER_BLOCK - 1) / NUM_THREADS_PER_BLOCK;

@@ -64,7 +64,7 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     private final long numElements;
 
     /** true if data is stored in column-major format (Fortran), false row-major (C). */
-    private boolean columnMajor;
+    private final boolean columnMajor;
 
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
@@ -72,10 +72,30 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     public MultiDimDeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType, long[] dimensions,
                                boolean useColumnMajor) {
         super(grCUDAExecutionContext, elementType);
+        this.numElements = obtainTotalSize(dimensions);
+        this.columnMajor = useColumnMajor;
+        this.elementsPerDimension = new long[dimensions.length];
+        System.arraycopy(dimensions, 0, this.elementsPerDimension, 0, dimensions.length);
+        this.stridePerDimension = computeStride(dimensions, columnMajor);
+        // Allocate the GPU memory;
+        this.nativeView = allocateMemory();
+        // Register the array in the GrCUDAExecutionContext;
+        this.registerArray();
+    }
+
+    /**
+     * Allocate the GPU memory. It can be overridden to mock the array;
+     * @return a reference to the GPU memory
+     */
+    protected LittleEndianNativeArrayView allocateMemory() {
+        return this.grCUDAExecutionContext.getCudaRuntime().cudaMallocManaged(getSizeBytes());
+    }
+
+    private long obtainTotalSize(long[] dimensions) {
         if (dimensions.length < 2) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException(
-                            "MultiDimDeviceArray requires at least two dimension, use DeviceArray instead");
+                    "MultiDimDeviceArray requires at least two dimension, use DeviceArray instead");
         }
         // check arguments
         long prod = 1;
@@ -86,14 +106,7 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
             }
             prod *= n;
         }
-        this.columnMajor = useColumnMajor;
-        this.elementsPerDimension = new long[dimensions.length];
-        System.arraycopy(dimensions, 0, this.elementsPerDimension, 0, dimensions.length);
-        this.stridePerDimension = computeStride(dimensions, columnMajor);
-        this.numElements = prod;
-        this.nativeView = grCUDAExecutionContext.getCudaRuntime().cudaMallocManaged(getSizeBytes());
-        // Register the array in the GrCUDAExecutionContext;
-        this.registerArray();
+        return prod;
     }
 
     private static long[] computeStride(long[] dimensions, boolean columnMajor) {
@@ -144,7 +157,8 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         return (index > 0) && (index < numElementsInDim);
     }
 
-    final boolean isColumnMajorFormat() {
+    @Override
+    public final boolean isColumnMajorFormat() {
         return columnMajor;
     }
 
@@ -262,16 +276,5 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         }
         long offset = index * stridePerDimension[0];
         return new MultiDimDeviceArrayView(this, 1, offset, stridePerDimension[1]);
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return getPointer();
     }
 }
