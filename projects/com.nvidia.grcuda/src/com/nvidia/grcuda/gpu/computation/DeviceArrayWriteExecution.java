@@ -18,7 +18,7 @@ public class DeviceArrayWriteExecution extends ArrayAccessExecution<DeviceArray>
                                      Object value,
                                      InteropLibrary valueLibrary,
                                      ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array, false), array);
+        super(array.getGrCUDAExecutionContext(), new ArrayAccessExecutionInitializer<>(array, false), array);
         this.index = index;
         this.value = value;
         this.valueLibrary = valueLibrary;

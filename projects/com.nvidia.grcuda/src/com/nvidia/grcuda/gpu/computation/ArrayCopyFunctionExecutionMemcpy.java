@@ -9,14 +9,14 @@ import com.oracle.truffle.api.CompilerDirectives;
  * This implementation is used when copying data between AbstractArrays, or when copying data from/to an array backed
  * by native memory, such as numpy arrays;
  */
-public class ArrayReadWriteFunctionExecutionMalloc extends ArrayReadWriteFunctionExecution {
+public class ArrayCopyFunctionExecutionMemcpy extends ArrayCopyFunctionExecution {
     /**
      * A memory pointer from which data copied to the array are retrieved, or memory pointer to which data are written;
      */
     private final long pointer;
 
-    public ArrayReadWriteFunctionExecutionMalloc(AbstractArray array, DeviceArrayCopyFunction.CopyDirection direction, long numElements, long pointer) {
-        super(array, direction, numElements);
+    public ArrayCopyFunctionExecutionMemcpy(AbstractArray array, DeviceArrayCopyFunction.CopyDirection direction, long numElements, long pointer, ArrayCopyFunctionExecutionInitializer dependencyInitializer) {
+        super(array, direction, numElements, dependencyInitializer);
         this.pointer = pointer;
     }
 

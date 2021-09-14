@@ -2,7 +2,7 @@ package com.nvidia.grcuda.gpu.computation.dependency;
 
 import com.nvidia.grcuda.ComputationArgumentWithValue;
 import com.nvidia.grcuda.gpu.computation.GrCUDAComputationalElement;
-import com.nvidia.grcuda.gpu.computation.InitializeArgumentList;
+import com.nvidia.grcuda.gpu.computation.InitializeDependencyList;
 import com.oracle.truffle.api.CompilerDirectives;
 
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import java.util.Set;
 
 /**
  * By default, consider all dependencies in the active argument set,
- * initially specified by the {@link InitializeArgumentList} interface.
+ * initially specified by the {@link InitializeDependencyList} interface.
  * Also update the active argument set, by adding all arguments that were not included in a dependency relation;
  */
 public class DefaultDependencyComputation extends DependencyComputation {

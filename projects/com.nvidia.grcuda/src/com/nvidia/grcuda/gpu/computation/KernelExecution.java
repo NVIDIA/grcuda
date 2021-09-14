@@ -111,7 +111,7 @@ public class KernelExecution extends GrCUDAComputationalElement {
                 "]" + "; stream=" + this.getStream().getStreamNumber() + "; event=" + event;
     }
 
-    static class KernelExecutionInitializer implements InitializeArgumentList {
+    static class KernelExecutionInitializer implements InitializeDependencyList {
         private final Kernel kernel;
         private final KernelArguments args;
 

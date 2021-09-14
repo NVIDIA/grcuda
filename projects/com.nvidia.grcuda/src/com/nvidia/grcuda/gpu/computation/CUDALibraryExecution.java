@@ -56,7 +56,7 @@ public class CUDALibraryExecution extends GrCUDAComputationalElement {
         return result;
     }
 
-    static class CUDALibraryExecutionInitializer implements InitializeArgumentList {
+    static class CUDALibraryExecutionInitializer implements InitializeDependencyList {
         private final List<ComputationArgumentWithValue> args;
 
         CUDALibraryExecutionInitializer(List<ComputationArgumentWithValue> args) {

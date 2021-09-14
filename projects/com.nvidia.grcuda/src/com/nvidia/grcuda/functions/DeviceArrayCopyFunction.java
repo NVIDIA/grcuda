@@ -30,11 +30,10 @@ package com.nvidia.grcuda.functions;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.array.DeviceArray;
-import com.nvidia.grcuda.array.MultiDimDeviceArray;
 import com.nvidia.grcuda.array.MultiDimDeviceArrayView;
-import com.nvidia.grcuda.gpu.computation.ArrayReadWriteFunctionExecutionDefault;
-import com.nvidia.grcuda.gpu.computation.ArrayReadWriteFunctionExecutionMemcpy;
+import com.nvidia.grcuda.gpu.computation.ArrayCopyFunctionExecutionDefault;
+import com.nvidia.grcuda.gpu.computation.ArrayCopyFunctionExecutionInitializer;
+import com.nvidia.grcuda.gpu.computation.ArrayCopyFunctionExecutionMemcpy;
 import com.nvidia.grcuda.gpu.computation.DeviceArrayCopyException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
@@ -102,28 +101,31 @@ public class DeviceArrayCopyFunction implements TruffleObject {
         // Obtain what kind of copy (pointer or array) should be executed.
         // By default, see if we can use the fast CUDA memcpy: we cannot use it if the source and target arrays
         // are stored with incompatible memory layouts.
-        boolean useFastCopy = canUseMemcpy(arguments[0]);
-        Long pointer = null;
-        try {
-            // Try using the native pointer implementation;
-            pointer = extractPointer(arguments[0], pointerAccess);
-        } catch (UnsupportedMessageException e) {
-            GrCUDALanguage.LOGGER.warning("cannot extract a native pointer; falling back to slow copy");
-        }
-        if (pointer != null && useFastCopy) {
-            // Fast array copy;
-            new ArrayReadWriteFunctionExecutionMemcpy(array, direction, numElements, pointer).schedule();
-        } else {
-            // Slow array copy, suitable for generic arrays or incompatible memory layouts;
-            if (pointerAccess.hasArrayElements(arguments[0])) {
-                new ArrayReadWriteFunctionExecutionDefault(array, direction, numElements, pointerAccess, arguments[0]).schedule();
-            } else {
-                // The target object is not an array;
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{arguments[0]}, "array or pointer expected for " + (direction.equals(CopyDirection.FROM_POINTER) ? "fromPointer" : "toPointer"));
+        ArrayCopyFunctionExecutionInitializer dependencyInitializer = new ArrayCopyFunctionExecutionInitializer(array, arguments[0], direction);
+        if (canUseMemcpy(arguments[0])) {
+            try {
+                // Try using the native pointer implementation;
+                long pointer = extractPointer(arguments[0], pointerAccess);
+                // Fast memcpy path;
+                return new ArrayCopyFunctionExecutionMemcpy(array, direction, numElements, pointer, dependencyInitializer).schedule();
+            } catch (UnsupportedMessageException e) {
+                GrCUDALanguage.LOGGER.info("cannot extract a native pointer; falling back to slow copy");
             }
         }
-        return NoneValue.get();
+        // Perform the slow memcpy, if no other option is available;
+        return slowCopyPath(pointerAccess, arguments[0], numElements, dependencyInitializer);
+    }
+
+    private Object slowCopyPath(@CachedLibrary(limit = "3") InteropLibrary pointerAccess, Object otherArray,
+                                long numElements, ArrayCopyFunctionExecutionInitializer dependencyInitializer) throws UnsupportedTypeException {
+        // Slow array copy, suitable for generic arrays or incompatible memory layouts;
+        if (pointerAccess.hasArrayElements(otherArray)) {
+            return new ArrayCopyFunctionExecutionDefault(array, direction, numElements, pointerAccess, otherArray, dependencyInitializer).schedule();
+        } else {
+            // The target object is not an array;
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{otherArray}, "array or pointer expected for " + (direction.equals(CopyDirection.FROM_POINTER) ? "fromPointer" : "toPointer"));
+        }
     }
 
     /**

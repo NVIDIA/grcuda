@@ -11,7 +11,7 @@ public class MultiDimDeviceArrayViewReadExecution extends ArrayAccessExecution<M
     public MultiDimDeviceArrayViewReadExecution(MultiDimDeviceArrayView array,
                                                 long index,
                                                 ValueProfile elementTypeProfile) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array.getMdDeviceArray(), true), array);
+        super(array.getGrCUDAExecutionContext(), new ArrayAccessExecutionInitializer<>(array.getMdDeviceArray(), true), array);
         this.index = index;
         this.elementTypeProfile = elementTypeProfile;
     }

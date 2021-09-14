@@ -3,7 +3,6 @@ package com.nvidia.grcuda.gpu.computation;
 import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -15,7 +14,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
  * Slow-path implementation of the copy function on {@link AbstractArray}, it copies data using a simple loop.
  * It is not as fast as a memcpy, but it avoids some overheads of doing the copy in the host language;
  */
-public class ArrayReadWriteFunctionExecutionDefault extends ArrayReadWriteFunctionExecution {
+public class ArrayCopyFunctionExecutionDefault extends ArrayCopyFunctionExecution {
     /**
      * InteropLibrary object used to access the other array's elements;
      */
@@ -25,10 +24,10 @@ public class ArrayReadWriteFunctionExecutionDefault extends ArrayReadWriteFuncti
      */
     private final Object otherArray;
 
-    public ArrayReadWriteFunctionExecutionDefault(AbstractArray array, DeviceArrayCopyFunction.CopyDirection direction, long numElements,
-                                                  @CachedLibrary(limit = "3") InteropLibrary pointerAccess,
-                                                  Object otherArray) {
-        super(array, direction, numElements);
+    public ArrayCopyFunctionExecutionDefault(AbstractArray array, DeviceArrayCopyFunction.CopyDirection direction, long numElements,
+                                             @CachedLibrary(limit = "3") InteropLibrary pointerAccess,
+                                             Object otherArray, ArrayCopyFunctionExecutionInitializer dependencyInitializer) {
+        super(array, direction, numElements, dependencyInitializer);
         this.pointerAccess = pointerAccess;
         this.otherArray = otherArray;
     }

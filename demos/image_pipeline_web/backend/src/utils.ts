@@ -73,7 +73,6 @@ export const _getDelayJitter = (computationType: string) => {
 export async function loadImage(imgName: string | number, resizeWidth = RESIZED_IMG_WIDTH, resizeHeight = RESIZED_IMG_WIDTH, fileFormat = ".jpg") {
   const imagePath = `${IMAGE_IN_DIRECTORY}/${imgName}${fileFormat}`
   const image = await cv.imreadAsync(imagePath, BW ? cv.IMREAD_GRAYSCALE : cv.IMREAD_COLOR)
-  //return image.resize(resizeWidth, resizeWidth);
   return image
 }
 

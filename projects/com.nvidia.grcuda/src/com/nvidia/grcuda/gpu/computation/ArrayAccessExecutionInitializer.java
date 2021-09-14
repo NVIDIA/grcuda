@@ -14,17 +14,13 @@ import java.util.List;
  * while in {@link com.nvidia.grcuda.array.MultiDimDeviceArray} there is currently no need to explicitly represent computations,
  * as they cannot directly access the underlying memory;
  */
-class ArrayExecutionInitializer<T extends AbstractArray> implements InitializeArgumentList {
+class ArrayAccessExecutionInitializer<T extends AbstractArray> implements InitializeDependencyList {
 
     private final T array;
     private final boolean readOnly;
     private final static String PARAMETER_NAME = "array_access";
 
-    ArrayExecutionInitializer(T array) {
-        this(array, false);
-    }
-
-    ArrayExecutionInitializer(T array, boolean readOnly) {
+    ArrayAccessExecutionInitializer(T array, boolean readOnly) {
         this.array = array;
         this.readOnly = readOnly;
     }

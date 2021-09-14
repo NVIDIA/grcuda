@@ -74,6 +74,7 @@ public class DeviceArray extends AbstractArray implements TruffleObject {
 
     /**
      * Allocate the GPU memory. It can be overridden to mock the array;
+     * 
      * @return a reference to the GPU memory
      */
     protected LittleEndianNativeArrayView allocateMemory() {
@@ -210,7 +211,7 @@ public class DeviceArray extends AbstractArray implements TruffleObject {
 
     @Override
     public void writeNativeView(long index, Object value, @CachedLibrary(limit = "3") InteropLibrary valueLibrary,
-                                @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException {
+                    @Cached.Shared("elementType") @Cached("createIdentityProfile()") ValueProfile elementTypeProfile) throws UnsupportedTypeException {
         AbstractArray.writeArrayElementNative(this.nativeView, index, value, elementType, valueLibrary, elementTypeProfile);
     }
 }

@@ -5,16 +5,13 @@ import com.nvidia.grcuda.array.AbstractArray;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 import java.util.Optional;
 
 /**
  * Computational elements that represents a low-level memory copy from/to a {@link AbstractArray}
  */
-public abstract class ArrayReadWriteFunctionExecution extends GrCUDAComputationalElement {
+public abstract class ArrayCopyFunctionExecution extends GrCUDAComputationalElement {
 
     /**
      * The {@link AbstractArray} used in the copy;
@@ -31,8 +28,10 @@ public abstract class ArrayReadWriteFunctionExecution extends GrCUDAComputationa
 
     protected boolean isComputationArrayAccess = true;
 
-    public ArrayReadWriteFunctionExecution(AbstractArray array, DeviceArrayCopyFunction.CopyDirection direction, long numElements) {
-        super(array.getGrCUDAExecutionContext(), new ArrayExecutionInitializer<>(array, direction.equals(DeviceArrayCopyFunction.CopyDirection.TO_POINTER)));
+    //FIXME: create constructor with executioninitiaizer as argument, then in the function that craete this class, use the constructor with iitializer if we have a second device array, else use default initializer
+
+    public ArrayCopyFunctionExecution(AbstractArray array, DeviceArrayCopyFunction.CopyDirection direction, long numElements, ArrayCopyFunctionExecutionInitializer dependencyInitializer) {
+        super(array.getGrCUDAExecutionContext(), dependencyInitializer);
         this.array = array;
         this.direction = direction;
         this.numElements = numElements;
