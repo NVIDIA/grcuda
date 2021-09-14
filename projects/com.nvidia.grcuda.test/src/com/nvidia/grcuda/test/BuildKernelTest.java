@@ -57,7 +57,7 @@ public class BuildKernelTest {
     @Test
     public void testBuildKernelwithNFILegacytSignature() {
         // See if inc_kernel can be built
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, "inc_kernel<int>", INCREMENT_KERNEL_NFI_LEGACY_SIGNATURE);
             assertNotNull(incrKernel);
@@ -70,7 +70,7 @@ public class BuildKernelTest {
     @Test
     public void testBuildKernelwithNIDLSignature() {
         // See if inc_kernel can be built
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, INCREMENT_KERNEL_NIDL_SIGNATURE);
             assertNotNull(incrKernel);
@@ -83,7 +83,7 @@ public class BuildKernelTest {
     @Test
     public void testBuild1DKernelAndLaunch() {
         // Build inc_kernel, launch it, and check results.
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             final int numElements = 1000;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value buildkernel = context.eval("grcuda", "buildkernel");
@@ -165,7 +165,7 @@ public class BuildKernelTest {
     @Test
     public void testBuild2DKernelAndLaunch() {
         // build matmult kernel, launch it on 2D grid, and check results
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value matmultKernel = buildkernel.execute(MATMULT_KERNEL_SOURCE, MATMULT_KERNEL_SIGNATURE);
             assertNotNull(matmultKernel);

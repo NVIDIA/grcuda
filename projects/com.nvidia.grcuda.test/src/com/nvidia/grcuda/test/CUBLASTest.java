@@ -34,12 +34,9 @@ import java.util.Collection;
 import java.util.function.Function;
 
 import com.nvidia.grcuda.gpu.executioncontext.ExecutionPolicyEnum;
-import com.nvidia.grcuda.test.gpu.ComplexExecutionDAGTest;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
@@ -75,7 +72,7 @@ public class CUBLASTest {
         // y = (0, -2, -4, ..., -2*numDim-2)
         // y := -1 * x + y
         // y = (0, 1, 2, ..., numDim-1)
-        try (Context polyglot = Context.newBuilder().allowExperimentalOptions(true).option("grcuda.ExecutionPolicy", this.policy)
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy)
                 .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             boolean isComplex = (typeChar == 'C') || (typeChar == 'Z');
@@ -107,7 +104,7 @@ public class CUBLASTest {
      */
     @Test
     public void testTgemv() {
-        try (Context polyglot = Context.newBuilder().allowExperimentalOptions(true).option("grcuda.ExecutionPolicy", this.policy)
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy)
                 .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             int numDim = 10;
@@ -162,7 +159,7 @@ public class CUBLASTest {
      */
     @Test
     public void testTgemm() {
-        try (Context polyglot = Context.newBuilder().allowExperimentalOptions(true).option("grcuda.ExecutionPolicy", this.policy)
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy)
                 .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             int numDim = 10;

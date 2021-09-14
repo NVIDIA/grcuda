@@ -19,7 +19,7 @@ public class StreamAttachTest {
      */
     @Test
     public void attachStreamSimpleTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream = createStream.execute();
 
@@ -47,7 +47,7 @@ public class StreamAttachTest {
     public void attachManyStreamsTest() {
         int numStreams = 8;
         Set<Value> streamSet = new HashSet<>();
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
 
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -77,7 +77,7 @@ public class StreamAttachTest {
     public void attachManyArraysToStreamTest() {
         int numArrays = 4;
 
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
 
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -106,7 +106,7 @@ public class StreamAttachTest {
         int numStreams = 4;
         Set<Value> streamSet = new HashSet<>();
 
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
 
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
@@ -143,7 +143,7 @@ public class StreamAttachTest {
      */
     @Test
     public void useAttachedStreamTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value streamAttach = context.eval("grcuda", "cudaStreamAttachMemAsync");
@@ -185,7 +185,7 @@ public class StreamAttachTest {
      */
     @Test
     public void useTwoStreamsTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value streamAttach = context.eval("grcuda", "cudaStreamAttachMemAsync");
@@ -242,7 +242,7 @@ public class StreamAttachTest {
      */
     @Test
     public void syncStreamsTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream1 = createStream.execute();
             Value stream2 = createStream.execute();
@@ -282,7 +282,7 @@ public class StreamAttachTest {
      */
     @Test
     public void useDefaultAttachedStreamTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value streamAttach = context.eval("grcuda", "cudaStreamAttachMemAsync");

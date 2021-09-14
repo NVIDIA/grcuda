@@ -29,6 +29,7 @@
 package com.nvidia.grcuda;
 
 
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionDescriptors;
 
 import com.nvidia.grcuda.nodes.ExpressionNode;
@@ -46,6 +47,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     public static final String ID = "grcuda";
+
+    public static final TruffleLogger LOGGER = TruffleLogger.getLogger(ID);
 
     @Override
     protected GrCUDAContext createContext(Env env) {

@@ -88,7 +88,7 @@ public class BindKernelTest {
 
     void testWithSignature(String... bindArgs) {
         // Build inc_kernel symbol, launch it, and check results.
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value bindkernel = context.eval("grcuda", "bindkernel");
             Value incKernel = bindArgs.length > 1 ? bindkernel.execute(BindKernelTest.ptxFileName, bindArgs[0], bindArgs[1])

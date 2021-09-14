@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 @RunWith(Parameterized.class)
-public class GrCUDAStreamManagerTest {
+public class GrCUDAStreamManagerMockTest {
     /**
      * Tests are executed for each of the {@link RetrieveNewStreamPolicyEnum} values;
      *
@@ -38,7 +38,7 @@ public class GrCUDAStreamManagerTest {
 
     private final RetrieveNewStreamPolicyEnum policy;
 
-    public GrCUDAStreamManagerTest(RetrieveNewStreamPolicyEnum policy) {
+    public GrCUDAStreamManagerMockTest(RetrieveNewStreamPolicyEnum policy) {
         this.policy = policy;
     }
 

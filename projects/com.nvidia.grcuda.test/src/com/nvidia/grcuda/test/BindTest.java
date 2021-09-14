@@ -106,7 +106,7 @@ public class BindTest {
     }
 
     public void callWithInAndOutArguments(String... bindArgs) {
-        try (Context polyglot = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             Value inDeviceArray = cu.getMember("DeviceArray").execute("int", numElements);
             Value outDeviceArray = cu.getMember("DeviceArray").execute("float", numElements);
@@ -134,7 +134,7 @@ public class BindTest {
     }
 
     public void callWithInoutArgument(String... bindArgs) {
-        try (Context polyglot = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             Value inoutDeviceArray = cu.getMember("DeviceArray").execute("int", numElements);
             for (int i = 0; i < numElements; i++) {

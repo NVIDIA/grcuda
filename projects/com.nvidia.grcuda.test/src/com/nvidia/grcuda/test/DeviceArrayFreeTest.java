@@ -42,7 +42,7 @@ public class DeviceArrayFreeTest {
 
     @Test
     public void testCanInvokeFreeDeviceArray() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             // create DeviceArray
             Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
             Value deviceArray = createDeviceArray.execute("int", 1000);
@@ -56,7 +56,7 @@ public class DeviceArrayFreeTest {
 
     @Test(expected = PolyglotException.class)
     public void testDeviceArrayAccessAfterFreeThrows() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             // create DeviceArray
             Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
             Value deviceArray = createDeviceArray.execute("int", 1000);
@@ -67,7 +67,7 @@ public class DeviceArrayFreeTest {
 
     @Test(expected = PolyglotException.class)
     public void testDeviceArrayDoubleFreeThrows() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             // create DeviceArray
             Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
             Value deviceArray = createDeviceArray.execute("int", 1000);
@@ -82,7 +82,7 @@ public class DeviceArrayFreeTest {
 
     @Test
     public void testCanInvokeFreeMultiDimDeviceArray() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             // create DeviceArray
             Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
             Value deviceArray = createDeviceArray.execute("int", 100, 100);
@@ -96,7 +96,7 @@ public class DeviceArrayFreeTest {
 
     @Test(expected = PolyglotException.class)
     public void testMultiDimDeviceArrayAccessAfterFreeThrows() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             // create DeviceArray
             Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
             Value deviceArray = createDeviceArray.execute("int", 100, 100);
@@ -107,7 +107,7 @@ public class DeviceArrayFreeTest {
 
     @Test(expected = PolyglotException.class)
     public void testMultiDimDeviceArrayDoubleFreeThrows() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             // create DeviceArray
             Value createDeviceArray = ctx.eval("grcuda", "DeviceArray");
             Value deviceArray = createDeviceArray.execute("int", 100, 100);

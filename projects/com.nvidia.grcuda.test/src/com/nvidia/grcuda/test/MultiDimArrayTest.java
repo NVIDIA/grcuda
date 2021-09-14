@@ -38,7 +38,7 @@ public class MultiDimArrayTest {
     @Test
     public void test2DimArrayRowMajorFromConstructor() {
         // 2-dimensional array through DeviceArray constructor (row-major)
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayContructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 19;
             final int numDim2 = 53;
@@ -61,7 +61,7 @@ public class MultiDimArrayTest {
     @Test
     public void test2DimArrayRowMajorFromPolyglotExpr() {
         // 2-dimensional array through polyglot expression "int[19][53]"
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             final int numDim1 = 19;
             final int numDim2 = 53;
             String code = String.format("int[%d][%d]", numDim1, numDim2);
@@ -84,7 +84,7 @@ public class MultiDimArrayTest {
     @Test
     public void test2DimArrayColMajorFromConstructor() {
         // 2-dimensional array through DeviceArray constructor (column-major)
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 19;
             final int numDim2 = 53;
@@ -106,7 +106,7 @@ public class MultiDimArrayTest {
 
     @Test
     public void test3DimArrayRowMajorFromConstructor() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             // 3-dimensional array through DeviceArray constructor (row-major)
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 5;
@@ -137,7 +137,7 @@ public class MultiDimArrayTest {
     @Test
     public void test3DimArrayColMajorFromConstructor() {
         // 3-dimensional array through DeviceArray constructor (column-major)
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 5;
             final int numDim2 = 3;
@@ -167,7 +167,7 @@ public class MultiDimArrayTest {
     @Test
     public void test4DimArrayRowMajorFromConstructor() {
         // 4-dimensional array through DeviceArray constructor (row-major)
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 7;
             final int numDim2 = 5;
@@ -204,7 +204,7 @@ public class MultiDimArrayTest {
     @Test
     public void test4DimArrayColMajorFromConstructor() {
         // 4-dimensional array through DeviceArray constructor (column-major)
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 7;
             final int numDim2 = 5;
@@ -240,7 +240,7 @@ public class MultiDimArrayTest {
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void test2DimArrayOutOfBoundsOnReadAccess() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 19;
             final int numDim2 = 53;
@@ -254,7 +254,7 @@ public class MultiDimArrayTest {
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void test2DimArrayOutOfBoundsOnWriteAccess() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 19;
             final int numDim2 = 53;
@@ -280,7 +280,7 @@ public class MultiDimArrayTest {
 
     @Test
     public void test2DimArrayAsKernelArgument() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             final Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             final int numDim1 = 19;
             final int numDim2 = 53;

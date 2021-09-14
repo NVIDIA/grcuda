@@ -38,7 +38,7 @@ public class DeviceTest {
 
     @Test
     public void testDeviceCount() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceCount = ctx.eval("grcuda", "cudaGetDeviceCount()");
             assertTrue(deviceCount.isNumber());
             assertTrue(deviceCount.asInt() > 0);
@@ -47,7 +47,7 @@ public class DeviceTest {
 
     @Test
     public void testGetDevicesLengthsMatchesDeviceCount() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceCount = ctx.eval("grcuda", "cudaGetDeviceCount()");
             assertTrue(deviceCount.isNumber());
             assertTrue(deviceCount.asInt() > 0);
@@ -58,7 +58,7 @@ public class DeviceTest {
 
     @Test
     public void testGetDevicesMatchesAllGetDevice() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value devices = ctx.eval("grcuda", "getdevices()");
             Value getDevice = ctx.eval("grcuda", "getdevice");
             for (int i = 0; i < devices.getArraySize(); ++i) {
@@ -72,7 +72,7 @@ public class DeviceTest {
 
     @Test
     public void testCanReadSomeDeviceProperties() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value devices = ctx.eval("grcuda", "getdevices()");
             for (int i = 0; i < devices.getArraySize(); ++i) {
                 Value device = devices.getArrayElement(i);
@@ -95,7 +95,7 @@ public class DeviceTest {
 
     @Test
     public void testCanSelectDevice() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value devices = ctx.eval("grcuda", "getdevices()");
             if (devices.getArraySize() > 1) {
                 Value firstDevice = devices.getArrayElement(0);
@@ -118,7 +118,7 @@ public class DeviceTest {
 
     @Test
     public void testDeviceMemoryAllocationReducesReportedFreeMemory() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value device = ctx.eval("grcuda", "getdevice(0)");
             Value props = device.getMember("properties");
             device.invokeMember("setCurrent");

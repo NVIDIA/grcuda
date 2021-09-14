@@ -60,14 +60,18 @@ public class GrCUDATestUtil {
     }
 
     public static Context createContextFromOptions(GrCUDATestOptionsStruct options) {
-        return Context.newBuilder().allowExperimentalOptions(true)
+        return buildTestContext()
                 .option("grcuda.ExecutionPolicy", options.policy.getName())
                 .option("grcuda.InputPrefetch", String.valueOf(options.inputPrefetch))
                 .option("grcuda.RetrieveNewStreamPolicy", options.retrieveNewStreamPolicy.getName())
                 .option("grcuda.RetrieveParentStreamPolicy", options.retrieveParentStreamPolicy.getName())
                 .option("grcuda.DependencyPolicy", options.dependencyPolicy.getName())
                 .option("grcuda.ForceStreamAttach", String.valueOf(options.forceStreamAttach))
-                .allowAllAccess(true).build();
+                .build();
+    }
+
+    public static Context.Builder buildTestContext() {
+        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).logHandler(new TestLogHandler()).option("log.grcuda.level", "SEVERE");
     }
 
     /**

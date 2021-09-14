@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
-public class ComplexExecutionDAGTest {
+public class ComplexExecutionDAGMockTest {
 
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
@@ -40,9 +40,9 @@ public class ComplexExecutionDAGTest {
     private final RetrieveParentStreamPolicyEnum retrieveParentStreamPolicy;
     private final DependencyPolicyEnum dependencyPolicy;
 
-    public ComplexExecutionDAGTest(RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy,
-                                   RetrieveParentStreamPolicyEnum retrieveParentStreamPolicy,
-                                   DependencyPolicyEnum dependencyPolicy) {
+    public ComplexExecutionDAGMockTest(RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy,
+                                       RetrieveParentStreamPolicyEnum retrieveParentStreamPolicy,
+                                       DependencyPolicyEnum dependencyPolicy) {
         this.retrieveNewStreamPolicy = retrieveNewStreamPolicy;
         this.retrieveParentStreamPolicy = retrieveParentStreamPolicy;
         this.dependencyPolicy = dependencyPolicy;

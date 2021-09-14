@@ -29,16 +29,12 @@ package com.nvidia.grcuda.test;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Function;
 
-import com.nvidia.grcuda.test.gpu.ComplexExecutionDAGTest;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 

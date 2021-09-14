@@ -19,7 +19,7 @@ public class CreateStreamTest {
      */
     @Test
     public void createStreamSimpleTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream = createStream.execute();
             assertNotNull(stream);
@@ -34,7 +34,7 @@ public class CreateStreamTest {
     public void createManyStreamsTest() {
         int numStreams = 8;
         Set<Long> streamSet = new HashSet<>();
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             IntStream.range(0, numStreams).forEach(i -> {
                 Value createStream = context.eval("grcuda", "cudaStreamCreate");
                 Value stream = createStream.execute();
@@ -61,7 +61,7 @@ public class CreateStreamTest {
      */
     @Test
     public void useStreamTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream = createStream.execute();
             assertNotNull(stream);
@@ -95,7 +95,7 @@ public class CreateStreamTest {
      */
     @Test
     public void useTwoStreamsTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream1 = createStream.execute();
             Value stream2 = createStream.execute();
@@ -134,7 +134,7 @@ public class CreateStreamTest {
      */
     @Test
     public void syncStreamsTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream1 = createStream.execute();
             Value stream2 = createStream.execute();
@@ -172,7 +172,7 @@ public class CreateStreamTest {
     @Test
     public void streamDestroyTest() {
         int numStreams = 8;
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Set<Value> streamSet = new HashSet<>();
             IntStream.range(0, numStreams).forEach(i -> {
                 Value createStream = context.eval("grcuda", "cudaStreamCreate");

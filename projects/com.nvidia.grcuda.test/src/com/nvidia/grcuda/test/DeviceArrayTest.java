@@ -64,7 +64,7 @@ public class DeviceArrayTest {
 
     @Test
     public void testDeviceArrayCreationFromArrayExpression() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArray = context.eval("grcuda", dataTypeString + "[" + arrayLength + "]");
             assertTrue(deviceArray.hasArrayElements());
             assertEquals(arrayLength, deviceArray.getArraySize());
@@ -73,7 +73,7 @@ public class DeviceArrayTest {
 
     @Test
     public void testDeviceArrayCreationFromDeviceArrayConstructor() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArrayFunc = context.eval("grcuda", "DeviceArray");
             Value deviceArray = deviceArrayFunc.execute(dataTypeString, arrayLength);
             assertTrue(deviceArray.hasArrayElements());
@@ -139,7 +139,7 @@ public class DeviceArrayTest {
 
     @Test
     public void testDeviceArrayGetValue() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArray = context.eval("grcuda", dataTypeString + "[" + arrayLength + "]");
             assertTrue(deviceArray.hasArrayElements());
             assertEquals(arrayLength, deviceArray.getArraySize());
@@ -150,7 +150,7 @@ public class DeviceArrayTest {
 
     @Test
     public void testDeviceArraySetAndGetsSetValue() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceArray = context.eval("grcuda", dataTypeString + "[" + arrayLength + "]");
             assertTrue(deviceArray.hasArrayElements());
             assertEquals(arrayLength, deviceArray.getArraySize());

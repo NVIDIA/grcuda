@@ -10,8 +10,7 @@ import {
   IMAGE_OUT_BIG_DIRECTORY,
   IMAGE_OUT_SMALL_DIRECTORY,
   MOCK_OPTIONS,
-  CDEPTH,
-  FACTOR
+  CDEPTH
 } from "./options"
 
 
@@ -172,5 +171,5 @@ function lut_b(lut: any) {
 // Initialize LUTs;
 export const LUT = [new Array(CDEPTH).fill(0), new Array(CDEPTH).fill(0), new Array(CDEPTH).fill(0)];
 lut_r(LUT[0]);
-lut_r(LUT[1]);
-lut_r(LUT[2]);
+lut_g(LUT[1]);
+lut_b(LUT[2]);

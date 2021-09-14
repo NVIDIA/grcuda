@@ -19,7 +19,7 @@ public class CUDAEventTest {
      */
     @Test
     public void createEventSimpleTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createEvent = context.eval("grcuda", "cudaEventCreate");
             Value event = createEvent.execute();
             assertNotNull(event);
@@ -34,7 +34,7 @@ public class CUDAEventTest {
     public void createManyEventsTest() {
         int numEvents = 8;
         Set<Long> eventSet = new HashSet<>();
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createEvent = context.eval("grcuda", "cudaEventCreate");
             IntStream.range(0, numEvents).forEach(i -> {
                 Value event = createEvent.execute();
@@ -50,7 +50,7 @@ public class CUDAEventTest {
     public void eventDestroyTest() {
         int numEvents = 8;
         Set<Value> eventSet = new HashSet<>();
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createEvent = context.eval("grcuda", "cudaEventCreate");
             Value destroyEvent = context.eval("grcuda", "cudaEventDestroy");
             IntStream.range(0, numEvents).forEach(i -> {
@@ -87,7 +87,7 @@ public class CUDAEventTest {
      */
     @Test
     public void syncStreamsTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream1 = createStream.execute();
             Value stream2 = createStream.execute();
@@ -136,7 +136,7 @@ public class CUDAEventTest {
      */
     @Test
     public void joinComputationsTest() {
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value createStream = context.eval("grcuda", "cudaStreamCreate");
             Value stream1 = createStream.execute();
             Value stream2 = createStream.execute();
