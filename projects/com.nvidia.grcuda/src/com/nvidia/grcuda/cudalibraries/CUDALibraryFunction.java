@@ -1,7 +1,7 @@
 package com.nvidia.grcuda.cudalibraries;
 
-import com.nvidia.grcuda.ComputationArgument;
-import com.nvidia.grcuda.ComputationArgumentWithValue;
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
+import com.nvidia.grcuda.runtime.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.functions.Function;
@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Wrapper class to CUDA library functions. It holds the signature of the function being wrapped,
- * and creates {@link com.nvidia.grcuda.ComputationArgument} for the signature and inputs;
+ * and creates {@link ComputationArgument} for the signature and inputs;
  */
 public abstract class CUDALibraryFunction extends Function {
 
@@ -20,7 +20,7 @@ public abstract class CUDALibraryFunction extends Function {
 
     /**
      * Constructor, it takes the name of the wrapped function and its NFI signature,
-     * and creates a list of {@link com.nvidia.grcuda.ComputationArgument} from it;
+     * and creates a list of {@link ComputationArgument} from it;
      * @param name name of the function
      * @param nfiSignature NFI signature of the function
      */

@@ -28,14 +28,14 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.ComputationArgument;
-import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
+import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import java.util.ArrayList;
 
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.KernelBinding;
 import com.nvidia.grcuda.TypeException;
-import com.nvidia.grcuda.gpu.Kernel;
+import com.nvidia.grcuda.runtime.Kernel;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;

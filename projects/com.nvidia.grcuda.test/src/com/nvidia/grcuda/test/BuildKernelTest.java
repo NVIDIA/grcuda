@@ -27,6 +27,7 @@
  */
 package com.nvidia.grcuda.test;
 
+import com.nvidia.grcuda.test.util.GrCUDATestUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;

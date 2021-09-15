@@ -30,7 +30,7 @@ package com.nvidia.grcuda.functions;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.nvidia.grcuda.array.DeviceArray;
+import com.nvidia.grcuda.runtime.array.DeviceArray;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -38,8 +38,7 @@ import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.TypeException;
-import com.nvidia.grcuda.array.DeviceArray;
-import com.nvidia.grcuda.gpu.executioncontext.AbstractGrCUDAExecutionContext;
+import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -67,8 +66,6 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This node is conceptually a simple memcpy operation, but it can take arbitrary Truffle objects as

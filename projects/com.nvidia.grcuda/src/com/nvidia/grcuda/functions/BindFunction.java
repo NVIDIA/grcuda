@@ -30,7 +30,7 @@ package com.nvidia.grcuda.functions;
 
 import java.util.ArrayList;
 
-import com.nvidia.grcuda.ComputationArgument;
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
 import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;

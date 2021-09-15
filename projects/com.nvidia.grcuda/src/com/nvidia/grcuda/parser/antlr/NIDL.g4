@@ -37,7 +37,7 @@ import java.util.Optional;
 import com.nvidia.grcuda.Binding;
 import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.KernelBinding;
-import com.nvidia.grcuda.ComputationArgument;
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.parser.NIDLParserException;

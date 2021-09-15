@@ -36,6 +36,8 @@ import java.io.PrintWriter;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
+
+import com.nvidia.grcuda.test.util.GrCUDATestUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.BeforeClass;

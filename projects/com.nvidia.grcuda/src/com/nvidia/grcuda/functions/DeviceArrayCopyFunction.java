@@ -28,13 +28,12 @@
 package com.nvidia.grcuda.functions;
 
 import com.nvidia.grcuda.GrCUDALanguage;
-import com.nvidia.grcuda.NoneValue;
-import com.nvidia.grcuda.array.AbstractArray;
-import com.nvidia.grcuda.array.MultiDimDeviceArrayView;
-import com.nvidia.grcuda.gpu.computation.ArrayCopyFunctionExecutionDefault;
-import com.nvidia.grcuda.gpu.computation.ArrayCopyFunctionExecutionInitializer;
-import com.nvidia.grcuda.gpu.computation.ArrayCopyFunctionExecutionMemcpy;
-import com.nvidia.grcuda.gpu.computation.DeviceArrayCopyException;
+import com.nvidia.grcuda.runtime.array.AbstractArray;
+import com.nvidia.grcuda.runtime.array.MultiDimDeviceArrayView;
+import com.nvidia.grcuda.runtime.computation.arraycomputation.ArrayCopyFunctionExecutionDefault;
+import com.nvidia.grcuda.runtime.computation.arraycomputation.ArrayCopyFunctionExecutionInitializer;
+import com.nvidia.grcuda.runtime.computation.arraycomputation.ArrayCopyFunctionExecutionMemcpy;
+import com.nvidia.grcuda.runtime.computation.arraycomputation.DeviceArrayCopyException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;

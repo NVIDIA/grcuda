@@ -239,8 +239,8 @@ if __name__ == "__main__":
         for j, x in enumerate(tmp):
             other2[j][:, :, i] = x
     
-    fig, axes = plt.subplots(2, 2, figsize=(6, 6))
-    ax = axes.ravel()
+    # fig, axes = plt.subplots(2, 2, figsize=(6, 6))
+    # ax = axes.ravel()
     
     cmap =  plt.cm.gray if BW else None
     ax[0].imshow(img, cmap=cmap)

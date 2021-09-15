@@ -1,6 +1,5 @@
 package com.nvidia.grcuda;
 
-import com.nvidia.grcuda.gpu.stream.CUDAStream;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -12,7 +11,7 @@ public class CUDAEvent extends GPUPointer {
 
     private final long eventNumber;
     /**
-     * Keep track of whether this event has been destroyed by {@link com.nvidia.grcuda.gpu.CUDARuntime#cudaEventDestroy}
+     * Keep track of whether this event has been destroyed by {@link com.nvidia.grcuda.runtime.CUDARuntime#cudaEventDestroy}
      */
     private boolean isAlive = true;
 
@@ -28,7 +27,7 @@ public class CUDAEvent extends GPUPointer {
     public boolean isDefaultStream() { return false; }
 
     /**
-     * Keep track of whether this event has been destroyed by {@link com.nvidia.grcuda.gpu.CUDARuntime#cudaEventDestroy}
+     * Keep track of whether this event has been destroyed by {@link com.nvidia.grcuda.runtime.CUDARuntime#cudaEventDestroy}
      */
     public boolean isAlive() {
         return isAlive;

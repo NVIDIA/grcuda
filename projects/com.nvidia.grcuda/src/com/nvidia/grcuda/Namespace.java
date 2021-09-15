@@ -31,9 +31,8 @@ package com.nvidia.grcuda;
 import java.util.Optional;
 import java.util.TreeMap;
 
-import com.nvidia.grcuda.MemberSet;
 import com.nvidia.grcuda.functions.Function;
-import com.nvidia.grcuda.gpu.LazyKernel;
+import com.nvidia.grcuda.runtime.LazyKernel;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;

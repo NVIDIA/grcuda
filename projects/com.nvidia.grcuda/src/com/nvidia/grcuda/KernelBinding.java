@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda;
 
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
+
 import java.util.ArrayList;
 
 public final class KernelBinding extends Binding {

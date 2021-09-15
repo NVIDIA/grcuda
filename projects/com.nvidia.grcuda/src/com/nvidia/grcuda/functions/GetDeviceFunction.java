@@ -28,8 +28,8 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.Device;
+import com.nvidia.grcuda.runtime.CUDARuntime;
+import com.nvidia.grcuda.runtime.Device;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;

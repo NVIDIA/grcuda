@@ -28,6 +28,8 @@
  */
 package com.nvidia.grcuda;
 
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
