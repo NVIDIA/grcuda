@@ -219,7 +219,7 @@ if __name__ == "__main__":
     cmap =  plt.cm.gray if BW else None
     ax[0].imshow(img, cmap=cmap)
     ax[1].imshow(other[0], cmap=cmap)
-    ax[2].imshow(np.dot(other[1][...,:3], [0.33, 0.33, 0.33]), cmap='gray') # other[1], cmap=plt.cm.gray)
+    ax[2].imshow(np.dot(other[1][...,:3], [0.33, 0.33, 0.33]), cmap='gray') 
     ax[3].imshow(other[2], cmap=cmap)
     ax[4].imshow(np.dot(other[3][...,:3], [0.33, 0.33, 0.33]), cmap='gray')
     ax[5].imshow(other[4], cmap=cmap)
@@ -239,8 +239,8 @@ if __name__ == "__main__":
         for j, x in enumerate(tmp):
             other2[j][:, :, i] = x
     
-    # fig, axes = plt.subplots(2, 2, figsize=(6, 6))
-    # ax = axes.ravel()
+    fig, axes = plt.subplots(2, 2, figsize=(6, 6))
+    ax = axes.ravel()
     
     cmap =  plt.cm.gray if BW else None
     ax[0].imshow(img, cmap=cmap)

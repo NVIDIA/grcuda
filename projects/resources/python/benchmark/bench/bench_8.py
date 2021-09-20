@@ -202,6 +202,8 @@ class Benchmark8(Benchmark):
     and softer everywhere else: this filter is common, for example, in portrait retouching, where a photographer desires
     to enhance the clarity of facial features while smoothing the subject' skin and the background;
 
+    The input is a random square single-channel image with floating-point values between 0 and 1, with side of length size.
+
     BLUR(image,blur1) ─> SOBEL(blur1,mask1) ───────────────────────────────────────────────────────────────────────────────┐
     BLUR(image,blur2) ─> SOBEL(blur2,mask2) ┬─> MAX(mask2) ──┬─> EXTEND(mask2) ──┐                                         │
                                             └─> MIN(mask2) ──┘                   │                                         │

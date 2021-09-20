@@ -5,7 +5,7 @@ import numpy as np
 
 class BenchmarkResult:
 
-    DEFAULT_RES_FOLDER = "../../../../data/results"
+    DEFAULT_RES_FOLDER = "../../../../grcuda-data/results/scheduling"
     DEFAULT_NUM_ITER = 30
     DEFAULT_DEBUG = False
     DEFAULT_CPU_VALIDATION = True

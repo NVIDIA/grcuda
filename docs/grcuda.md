@@ -235,6 +235,10 @@ NIDL              | C++
 `out pointer T`   | `T*`
 `inout pointer T` | `T*`
 
+With the `async` execution policy and the `with-const` DependencyPolicy, using the `const` and `in` signals that the input will not be modified by the kernel.
+As such, the scheduler will optimize its execution, for example by overlapping it with other kernels that access the same data but do not modify them.
+GrCUDA does not currently check that the arrays are actually unmodified! It is responsibility of the user to use `const/in` correctly.
+
 **Example Host Function Signatures:**
 
 ```text

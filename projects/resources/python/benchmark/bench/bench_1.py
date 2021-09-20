@@ -55,11 +55,18 @@ __global__ void reduce(float *x, float *y, float* z, int N) {
 
 class Benchmark1(Benchmark):
     """
-    Compute the sum of difference of squares of 2 vectors, using multiple GrCUDA kernels.
+    Compute the sum of difference of squares of 2 vectors, using multiple GrCUDA kernels. 
+    It's a fairly artificial benchmark that measures a simple case of parallelism.
+    Most of the execution time is spent in the reduction computation, limiting the amount of parallelism available, 
+    especially on large input data.
+    Speedups are achievable by overlapping data-transfer and computations, 
+    although the data-transfer takes about 4x-5x longer than the square computation, limiting the maximum achievable speedup.
+
     Structure of the computation:
-       A: x^2 ──┐
-                ├─> C: z=sum(x-y)
-       B: x^2 ──┘
+
+    A: x^2 ──┐
+            ├─> C: z=sum(x-y)
+    B: x^2 ──┘
     """
 
     def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):

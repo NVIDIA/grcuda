@@ -11,8 +11,6 @@ from benchmark_result import BenchmarkResult
 ##############################
 ##############################
 
-
-
 NB_KERNEL = """   
     extern "C" __global__ void nb_1(const int* x, float* y, float* z, int size, int n_feat, int n_classes) {
         for(int i = blockIdx.x * blockDim.x + threadIdx.x; i < size; i += blockDim.x * gridDim.x) {
@@ -127,10 +125,16 @@ ENSEMBLE_KERNEL = """
 
 class Benchmark6(Benchmark):
     """
-    Compute a an ensemble of Categorical Naive Bayes and Ridge Regression classifiers.
+    Compute an ensemble of Categorical Naive Bayes and Ridge Regression classifiers. 
     Predictions are aggregated averaging the class scores after softmax normalization.
     The computation is done on mock data and parameters, but is conceptually identical to a real ML pipeline.
-    In the DAG below, input arguments that are not involved in the computation of dependencies are omitted;
+    In the DAG below, input arguments that are not involved in the computation of dependencies are omitted.
+
+    The size of the benchmark is the number of rows in the matrix (each representing a document with 200 features).
+    Predictions are done by choosing among 10 classes.
+    The Ridge Regression classifier takes about 2x the time of the Categorical Naive Bayes classifier.
+
+    Structure of the computation:
 
     RR-1: standard normalization
     RR-2: matrix multiplication
@@ -140,10 +144,10 @@ class Benchmark6(Benchmark):
     NB-3: log of sum of exponential, row-wise
     NB-4: exponential, element-wise
 
-         ┌─> RR-1(const X,Z) ─> RR-2(const Z,R2) ─> RR-3(R2) ─> SOFTMAX(R1) ─────────────┐
-        ─┤                                                                               ├─> ARGMAX(const R1,const R2,R)
-         └─> NB-1(const X,R1) ─> NB-2(const R1,AMAX) ─> (...)                            │
-               (...) -> NB-3(const R1,const AMAX,L) ─> NB-4(R1,const L) ─> SOFTMAX(R2) ──┘
+     ┌─> RR-1(const X,Z) ─> RR-2(const Z,R2) ─> RR-3(R2) ─> SOFTMAX(R1) ─────────────┐
+    ─┤                                                                               ├─> ARGMAX(const R1,const R2,R)
+     └─> NB-1(const X,R1) ─> NB-2(const R1,AMAX) ─> (...)                            │
+           (...) -> NB-3(const R1,const AMAX,L) ─> NB-4(R1,const L) ─> SOFTMAX(R2) ──┘
     """
 
     def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):

@@ -1,8 +1,13 @@
 #!/bin/bash
 
-# Installation flags;
+# You can use this script to setup a clean machine with Ubuntu 20.04 to use GrCUDA. 
+# We install GraalVM, Nvidia's drivers, CUDA, conda, and download GrCUDA.
+# To install GrCUDA, run `cd $GRCUDA_HOME/install.sh` after running this script.
+
+# Installation flags (change them to customize your installation);
 INSTALL_CUML=false
 INSTALL_RECENT_CMAKE=false
+ACTIVATE_GRAALPYTHON_ENV=true
 
 # basic update on a newly created machine;
 sudo apt update
@@ -20,25 +25,25 @@ git clone https://github.com/oracle/graal.git
 git clone https://github.com/graalvm/mx.git
 git clone https://github.com/AlbertoParravicini/grcuda.git
 
-# checkout commit of GraalVM corresponding to the release (21.1);
+# checkout commit of GraalVM corresponding to the release (21.2);
 cd graal
-git checkout  192eaf62331679907449ee60dad9d6d6661a3dc8
+git checkout e9c54823b71cdca08e392f6b8b9a283c01c96571
 cd ..
 
 # checkout commit of mx compatible with versions of other tools;
 cd mx
-git checkout dcfdd847c5b808ffd1a519713e0598242f28ecd1
+git checkout d6831ca0130e21b55b2675f7c931da7da10266cb
 cd ..
 
-# download the GraalVM release build (21.1.0) and the corresponding JVM;
-wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.1.0/graalvm-ce-java11-linux-amd64-21.1.0.tar.gz
-wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.1-b05/labsjdk-ce-11.0.11+8-jvmci-21.1-b05-linux-amd64.tar.gz
+# download the GraalVM release build (21.2.0) and the corresponding JVM;
+wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.2.0/graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
+wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.2-b08/labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
 # extract them;
-tar xfz labsjdk-ce-11.0.11+8-jvmci-21.1-b05-linux-amd64.tar.gz
-tar xfz graalvm-ce-java11-linux-amd64-21.1.0.tar.gz
+tar xfz labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
+tar xfz graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
 # remove temporary files;
-rm labsjdk-ce-11.0.11+8-jvmci-21.1-b05-linux-amd64.tar.gz
-rm graalvm-ce-java11-linux-amd64-21.1.0.tar.gz
+rm labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
+rm graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
 
 # install CUDA and Nvidia drivers;
 
@@ -49,8 +54,8 @@ rm graalvm-ce-java11-linux-amd64-21.1.0.tar.gz
 # -> option 2 (from Nvidia's website).
 wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
 sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-wget https://developer.download.nvidia.com/compute/cuda/11.4.1/local_installers/cuda-repo-ubuntu2004-11-4-local_11.4.1-470.57.02-1_amd64.deb
-sudo dpkg -i cuda-repo-ubuntu2004-11-4-local_11.4.1-470.57.02-1_amd64.deb
+wget https://developer.download.nvidia.com/compute/cuda/11.4.2/local_installers/cuda-repo-ubuntu2004-11-4-local_11.4.2-470.57.02-1_amd64.deb
+sudo dpkg -i cuda-repo-ubuntu2004-11-4-local_11.4.2-470.57.02-1_amd64.deb
 sudo apt-key add /var/cuda-repo-ubuntu2004-11-4-local/7fa2af80.pub
 sudo apt-get update
 sudo apt-get -y install cuda
@@ -67,8 +72,8 @@ echo 'export CUDA_DIR=/usr/local/cuda' >> ~/.bashrc
 echo 'export PATH=$CUDA_DIR/bin:$PATH' >> ~/.bashrc
 echo '# GraalVM and GrCUDA;' >> ~/.bashrc
 echo 'export PATH=~/mx:$PATH' >> ~/.bashrc
-echo 'export JAVA_HOME=~/labsjdk-ce-11.0.11-jvmci-21.1-b05' >> ~/.bashrc
-echo 'export GRAAL_HOME=~/graalvm-ce-java11-21.1.0' >> ~/.bashrc
+echo 'export JAVA_HOME=~/labsjdk-ce-11.0.12-jvmci-21.2-b08' >> ~/.bashrc
+echo 'export GRAAL_HOME=~/graalvm-ce-java11-21.2.0' >> ~/.bashrc
 echo 'export PATH=$GRAAL_HOME/bin:$PATH' >> ~/.bashrc
 echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
 echo 'export GRCUDA_HOME=~/grcuda' >> ~/.bashrc
@@ -90,6 +95,11 @@ source ~/graalpython_venv/bin/activate
 graalpython -m ginstall install setuptools
 graalpython -m ginstall install Cython
 graalpython -m ginstall install numpy
+
+if [ "$ACTIVATE_GRAALPYTHON_ENV" = true ] ; then
+    echo 'source ~/graalpython_venv/bin/activate' >> ~/.bashrc
+    source  ~/.bashrc
+fi
 
 # install miniconda (Python is required to build with mx);
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
@@ -142,9 +152,8 @@ sudo reboot
 # wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.2-b08/labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
 # tar -xzf labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
 # rm labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-# # checkout commit of GraalVM corresponding to the release (21.1);
 # cd graal
-# git checkout e9c54823b71cdca08e392f6b8b9a283c01c96571 # 21.2:
+# git checkout e9c54823b71cdca08e392f6b8b9a283c01c96571
 # cd ..
 # # checkout commit of mx compatible with versions of other tools;
 # cd mx

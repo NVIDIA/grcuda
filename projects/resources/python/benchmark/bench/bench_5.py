@@ -64,7 +64,17 @@ extern "C" __global__ void bs(double *x, double *y, int N, double R, double V, d
 
 class Benchmark5(Benchmark):
     """
-    Black & Scholes equation benchmark, executed concurrently on different input vectors;
+    Compute the Black & Scholes equation for European call options, for 10 different underlying types of stocks,
+    and for each stock a vector of prices at time 0.
+    The main computation is taken from Nvidia's CUDA code samples (link),
+    and adapted to use double precision arithmetic to create a more computationally intensive kernel. 
+    The idea of this benchmark is to simulate a streaming computation in which data-transfer 
+    and computation of multiple kernels can be overlapped efficiently, without data-dependencies between kernels. 
+    To the contrary of bench_1, computation, and not data transfer, is the main limiting factor for parallel execution.
+
+    Structure of the computation:
+
+    BS(x[1]) -> ... -> BS(x[10])
     """
 
     def __init__(self, benchmark: BenchmarkResult, nvprof_profile: bool = False):

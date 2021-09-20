@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+For each benchmark, we can measure how much overlap is present in the computation. We measure 4 different types of overlap:
+
+CT, computation w.r.t transfer: percentage of GPU kernel computation that overlaps with any data transfer (host-to-device or viceversa)
+TC, transfer w.r.t computation: percentage of data transfer that overlaps with (one or more) GPU kernel computation(s)
+CC, computation w.r.t computation: percentage of GPU kernel computation that overlaps with any other GPU kernel computation
+TOT, any type of overlap: here we consider any type of overlap between data-transfer and/or computations. Note that if a computation/data-transfer overlaps more than one computation/data-transfer, the overlap is counted only once (we consider the union of the overlap intervals)
+
+Measures are taken for the largest data-size in the evaluation (for each benchmark), 
+for the block size that results in higher speedup, to obtain a clearer understanding of what type of overlap is providing the speedup. 
+In general, the TOT overlap is a good proxy of the achieved speedup, although it is sometimes inflated by high CC overlap: 
+in fact, overlapping computations does not always translates to faster execution, 
+especially if kernels are large enough (in terms of threads/blocks) to fill the GPU processors on their own.
+
 Created on Mon Jul 20 10:36:56 2020
 
 @author: alberto.parravicini

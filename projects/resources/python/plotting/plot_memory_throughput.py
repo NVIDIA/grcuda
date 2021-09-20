@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Using nvprof we measure the total amount of bytes read/written by each kernel,
+and analyse how the GPU memory throughput is affected by space-sharing. 
+Note that nvprof affects the kernel execution and limits the execution of concurrent kernels due to the
+high overhead introduced by collecting memory access metrics for each kernel.
+Instead, we measure the execution times obtained without metric collection 
+(so that nvprof influence over the execution times is minimal) and combine them with memory access metrics collected in a separate run.
+The assumption here is the total amount of memory accesses is not significantly impacted by nvprof profiling,
+and this evaluation is still useful to obtain performance insights.
+
 Created on Tue Jul 28 09:10:07 2020
 
 @author: alberto.parravicini

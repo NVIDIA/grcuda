@@ -193,10 +193,11 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
     benchmark_cmd = GRAALPYTHON_CMD.format(HEAP_SIZE, new_stream_policy, "--grcuda.InputPrefetch" if prefetch else "", exec_policy, dependency_policy, parent_stream_policy,
                                            num_iter, size, num_blocks, benchmark, b1d_size, b2d_size,
                                            "-d" if debug else "",  "-p" if time_phases else "", output_path)
+    print(benchmark_cmd)                                   
     start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
-                            stdout=subprocess.STDOUT,
+                            stdout=None,
                             cwd=f"{os.getenv('GRCUDA_HOME')}/projects/resources/python/benchmark")
     result.check_returncode()
     end = System.nanoTime()
