@@ -222,9 +222,9 @@ We checkout the commit corresponding to the current GraalVM release.
   ```console
   cd <directory containing this README>
   mx build
-  # Install it for Java 11
-  mkdir -p $GRAAL_HOME/languages/grcuda;
-  cp mxbuild/dists/jdk11/grcuda.jar $GRAAL_HOME/languages/grcuda/.;
+  # Install it for Java 8+;
+  mkdir -p $GRAAL_HOME/jre/languages/grcuda;
+  cp mxbuild/dists/jdk1.8/grcuda.jar $GRAAL_HOME/languages/grcuda/.;
   ```
 
 * `./install.sh` does this sequence of command for you, if you need to rebuild GrCUDA.
