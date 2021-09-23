@@ -1,3 +1,32 @@
+// Copyright (c) 2021, NECSTLab, Politecnico di Milano. All rights reserved.
+
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+//  * Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+//  * Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//  * Neither the name of NECSTLab nor the names of its
+//    contributors may be used to endorse or promote products derived
+//    from this software without specific prior written permission.
+//  * Neither the name of Politecnico di Milano nor the names of its
+//    contributors may be used to endorse or promote products derived
+//    from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import WebSocket from 'ws'
 import {
   _sleep,
@@ -156,7 +185,7 @@ export class GrCUDAProxy {
 
     const lut = cu.DeviceArray("int", CDEPTH);
 
-    // Initialize the right LUT;
+    // Load the right LUT;
     copyFrom(LUT[channel], lut);
     // Fill the image data;
     const s1 = System.nanoTime();
@@ -208,7 +237,6 @@ export class GrCUDAProxy {
     if (debug) console.log("--cuda time=" + _intervalToMs(start, end) + " ms");
     const s2 = System.nanoTime();
     img.set(image3);
-    //image3.copyTo(img, size * size);
     const e2 = System.nanoTime();
     if (debug) console.log("--device array to image=" + _intervalToMs(s2, e2) + " ms");
 
@@ -266,8 +294,9 @@ export class GrCUDAProxy {
     }
 
     const endComputeAllImages = System.nanoTime()
-
-    console.log(`[${this.computationType}] Whole computation took ${_intervalToMs(beginComputeAllImages, endComputeAllImages)}`)
+    const executionTime = _intervalToMs(beginComputeAllImages, endComputeAllImages)
+    this.communicateExecTime(executionTime, computationType)
+    console.log(`[${this.computationType}] Whole computation took ${executionTime}`)
   }
 
   /*
@@ -307,8 +336,20 @@ export class GrCUDAProxy {
     const endComputeAllImages = System.nanoTime()
 
     this.communicateAll(MAX_PHOTOS, computationType)
+    const executionTime = _intervalToMs(beginComputeAllImages, endComputeAllImages)
+    this.communicateExecTime(executionTime, computationType)
 
-    console.log(`[${this.computationType}] Whole computation took ${_intervalToMs(beginComputeAllImages, endComputeAllImages)}`)
+    console.log(`[${this.computationType}] Whole computation took ${executionTime}`)
+  }
+
+  private async communicateExecTime(executionTime: number, computationType: string) {
+
+    this.ws.send(JSON.stringify({
+      type: "time",
+      data: executionTime,
+      computationType
+    }))
+
   }
 
   /* Mock the computation of the kernels 
@@ -337,10 +378,6 @@ export class GrCUDAProxy {
   }
 
   private communicateProgress(data: number, computationType: string) {
-    const {
-      MAX_PHOTOS
-    } = CONFIG_OPTIONS
-
     this.ws.send(JSON.stringify({
       type: "progress",
       data: data,

@@ -8,8 +8,8 @@
   "scripts": {
     "build": "tsc",
     "start": "tsc & node .",
-    "dev": "tsc -w & nodemon --polyglot --jvm --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.ExecutionPolicy=default dist/index.js 8080",
-    "runall": "node --polyglot --jvm --grcuda.EnableMultiGPU --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.ExecutionPolicy=sync dist/index.js 8080 2 & node --polyglot --jvm --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.EnableMultiGPU --grcuda.ExecutionPolicy=default --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint --grcuda.InputPrefetch dist/index.js 8083 0 & node --polyglot --jvm --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.EnableMultiGPU --grcuda.ExecutionPolicy=default dist/index.js 8082 3"
+    "dev": "tsc -w & nodemon --polyglot --jvm --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.ExecutionPolicy=async dist/index.js 8080",
+    "runall": "node --polyglot --jvm --grcuda.EnableMultiGPU --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.ExecutionPolicy=sync dist/index.js 8080 2 & node --polyglot --jvm --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.EnableMultiGPU --grcuda.ExecutionPolicy=async --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint --grcuda.InputPrefetch dist/index.js 8083 0 & node --polyglot --jvm --vm.Dtruffle.class.path.append=$GRAAL_HOME/languages/grcuda/grcuda.jar --experimental-options --grcuda.EnableMultiGPU --grcuda.ExecutionPolicy=sync dist/index.js 8082 3"
   },
   "dependencies": {
     "express": "^4.17.1",
