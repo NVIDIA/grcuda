@@ -288,7 +288,7 @@ mx unittest com.nvidia
 mx unittest com.nvidia.grcuda.test.BuildKernelTest#testBuildKernelwithNFILegacytSignature
 ```
 
-5. **Setup the grcuda-data sumbodule**
+5. **Setup the grcuda-data submodule**
 The `grcuda-data` repository is used as a `git` submodule to store data, results, and plots for demos, benchmarks, and publications. You will need this submodule to run the full benchmark suite, and some of the demos. To setup the submodule, follow this [`README`](https://github.com/AlbertoParravicini/grcuda-data/tree/master).
 
 ### Setup your IDE
@@ -325,6 +325,7 @@ Here, we explain how to setup IntelliJ Idea.
 
 To measure the performance of GrCUDA on complex GPU applications, we have developed a custom benchmark suite, found in `projects/resources/python/benchmark`.
 These are the same benchmarks used in the [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491) paper.
+All commands are executed from `$GRCUDA_HOME/projects/resources/python/benchmark`;
 
 Run a single benchmark with custom settings
 ```console
@@ -334,6 +335,13 @@ graalpython --jvm --polyglot --experimental-options --grcuda.InputPrefetch --grc
 Run all benchmarks
 ```console
 graalpython --jvm --polyglot benchmark_wrapper.py -d -i 30 
+```
+
+To run the CUDA version of all benchmarks, build it as follows. You might want to update the GPU architecture (the `-arch` flag) inside `$GRCUDA_HOME/projects/resources/cuda/Makefile` to reflect the hardware at your disposal.
+```console
+cd $GRCUDA_HOME/projects/resources/cuda;
+make
+cd -;
 ```
 
 Run the CUDA version of all benchmarks

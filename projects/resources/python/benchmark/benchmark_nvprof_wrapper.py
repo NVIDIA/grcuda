@@ -35,6 +35,7 @@ from datetime import datetime
 from benchmark_result import BenchmarkResult
 from benchmark_main import create_block_size_list
 from java.lang import System
+from pathlib import Path
 
 ##############################
 ##############################
@@ -124,18 +125,18 @@ GRCUDA_HOME = "/home/users/alberto.parravicini/Documents/grcuda"
 
 if POST_TURING:
     GRAALPYTHON_CMD_METRICS = """/usr/local/cuda/bin/ncu -f --print-units base --csv --log-file "{}" --profile-from-start off --target-processes all {} \
-    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
+    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --experimental-options --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
     --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} --grcuda.RetrieveParentStreamPolicy={} benchmark_main.py \
     -i {} -n {} --reinit false --realloc false -g {} -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} --nvprof
     """
     GRAALPYTHON_CMD_TRACE = """/usr/local/cuda/bin/nvprof --csv --log-file "{}" --print-gpu-trace {} --profile-from-start off --profile-child-processes \
-    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
+    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --experimental-options --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
     --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} --grcuda.RetrieveParentStreamPolicy={} benchmark_main.py \
     -i {} -n {} --reinit false --realloc false -g {} -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} --nvprof
     """
 else:
     GRAALPYTHON_CMD = """/usr/local/cuda/bin/nvprof --csv --log-file "{}" --print-gpu-trace {} --profile-from-start off --profile-child-processes \
-    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
+    {}/graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --experimental-options --grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach \
     --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} --grcuda.RetrieveParentStreamPolicy={} benchmark_main.py \
     -i {} -n {} --reinit false --realloc false -g {} -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} --nvprof
     """
@@ -169,7 +170,7 @@ def execute_grcuda_benchmark(benchmark, size, exec_policy, new_stream_policy,
         if not os.path.exists(output_folder_path):
             if debug:
                 BenchmarkResult.log_message(f"creating result folder: {output_folder_path}")
-            os.mkdir(output_folder_path)
+            Path(output_folder_path).mkdir(parents=True, exist_ok=True)
         file_name = f"{b}_{exec_policy}_{'metric' if m else 'nometric'}_{prefetch}{'' if (POST_TURING and m) else '_%p'}.csv"
         output_path = os.path.join(output_folder_path, file_name)
 

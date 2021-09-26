@@ -35,6 +35,7 @@ from datetime import datetime
 from benchmark_result import BenchmarkResult
 from benchmark_main import create_block_size_list
 from java.lang import System
+from pathlib import Path
 
 ##############################
 ##############################
@@ -160,7 +161,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
     if not os.path.exists(output_folder_path):
         if debug:
             BenchmarkResult.log_message(f"creating result folder: {output_folder_path}")
-        os.mkdir(output_folder_path)
+        Path(output_folder_path).mkdir(parents=True, exist_ok=True)
     output_path = os.path.join(output_folder_path, file_name)
 
     benchmark_cmd = CUDA_CMD.format(benchmark, exec_policy, size, block_size["block_size_1d"],
@@ -168,7 +169,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
     start = System.nanoTime()
     result = subprocess.run(benchmark_cmd,
                             shell=True,
-                            stdout=subprocess.STDOUT,
+                            stdout=None,
                             cwd=f"{os.getenv('GRCUDA_HOME')}/projects/resources/cuda/bin")
     result.check_returncode()
     end = System.nanoTime()
@@ -179,7 +180,7 @@ def execute_cuda_benchmark(benchmark, size, block_size, exec_policy, num_iter, d
 ##############################
 ##############################
 
-GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot " \
+GRAALPYTHON_CMD = "graalpython --vm.XX:MaxHeapSize={}G --jvm --polyglot --experimental-options " \
                   "--grcuda.RetrieveNewStreamPolicy={} {} --grcuda.ForceStreamAttach --grcuda.ExecutionPolicy={} --grcuda.DependencyPolicy={} " \
                   "--grcuda.RetrieveParentStreamPolicy={} benchmark_main.py  -i {} -n {} -g {} " \
                   "--reinit false --realloc false  -b {} --block_size_1d {} --block_size_2d {} --no_cpu_validation {} {} -o {}"
@@ -214,7 +215,7 @@ def execute_grcuda_benchmark(benchmark, size, block_sizes, exec_policy, new_stre
     if not os.path.exists(output_folder_path):
         if debug:
             BenchmarkResult.log_message(f"creating result folder: {output_folder_path}")
-        os.mkdir(output_folder_path)
+        Path(output_folder_path).mkdir(parents=True, exist_ok=True)
     output_path = os.path.join(output_folder_path, file_name)
     b1d_size = " ".join([str(b['block_size_1d']) for b in block_sizes])
     b2d_size = " ".join([str(b['block_size_2d']) for b in block_sizes])
