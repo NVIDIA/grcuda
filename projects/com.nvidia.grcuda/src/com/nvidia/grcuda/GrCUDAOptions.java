@@ -88,4 +88,7 @@ public final class GrCUDAOptions {
 
     @Option(category = OptionCategory.USER, help = "Set the location of the TensorRT library.", stability = OptionStability.STABLE) //
     public static final OptionKey<String> TensorRTLibrary = new OptionKey<>(TensorRTRegistry.DEFAULT_LIBRARY);
+
+    @Option(category = OptionCategory.USER, help = "Logs the kernels execution time.", stability = OptionStability.STABLE) //
+    public static final OptionKey<Boolean> LogExecTimeEnabled = new OptionKey<>(false);
 }
