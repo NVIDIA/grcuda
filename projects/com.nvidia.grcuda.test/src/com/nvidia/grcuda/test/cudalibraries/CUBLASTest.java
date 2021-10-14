@@ -55,9 +55,9 @@ public class CUBLASTest {
     public static Collection<Object[]> data() {
 
         return GrCUDATestUtil.crossProduct(Arrays.asList(new Object[][]{
-                {ExecutionPolicyEnum.SYNC.getName(), ExecutionPolicyEnum.ASYNC.getName()},
-                {true, false},
-                {'S', 'D', 'C', 'Z'}
+                        {ExecutionPolicyEnum.SYNC.getName(), ExecutionPolicyEnum.ASYNC.getName()},
+                        {true, false},
+                        {'S', 'D', 'C', 'Z'}
         }));
     }
 
@@ -80,8 +80,8 @@ public class CUBLASTest {
         // y = (0, -2, -4, ..., -2*numDim-2)
         // y := -1 * x + y
         // y = (0, 1, 2, ..., numDim-1)
-        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy).option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(
+                        true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             boolean isComplex = (typeChar == 'C') || (typeChar == 'Z');
             String cudaType = ((typeChar == 'D') || (typeChar == 'Z')) ? "double" : "float";
@@ -112,8 +112,8 @@ public class CUBLASTest {
      */
     @Test
     public void testTgemv() {
-        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy).option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(
+                        true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             int numDim = 10;
             boolean isComplex = (typeChar == 'C') || (typeChar == 'Z');
@@ -137,7 +137,8 @@ public class CUBLASTest {
             // A: identity matrix
             for (int j = 0; j < numDim; j++) {
                 for (int i = 0; i < numElements; i++) {
-                    // complex types require two elements along 1st dimension (since column-major order)
+                    // complex types require two elements along 1st dimension (since column-major
+                    // order)
                     Value row = matrixA.getArrayElement(i);
                     row.setArrayElement(j, ((!isComplex & (i == j)) || (isComplex && (i == (2 * j)))) ? 1.0 : 0.0);
                 }
@@ -153,11 +154,11 @@ public class CUBLASTest {
             Value tgemv = polyglot.eval("grcuda", "BLAS::cublas" + typeChar + "gemv");
             final int cublasOpN = 0;
             tgemv.execute(cublasOpN, numDim, numDim,
-                    alpha,
-                    matrixA, numDim,
-                    x, 1,
-                    beta,
-                    y, 1);
+                            alpha,
+                            matrixA, numDim,
+                            x, 1,
+                            beta,
+                            y, 1);
             assertOutputVectorIsCorrect(numElements, y, (Integer i) -> i);
         }
     }
@@ -167,8 +168,8 @@ public class CUBLASTest {
      */
     @Test
     public void testTgemm() {
-        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy)
-                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy).option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(
+                        true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             int numDim = 10;
             boolean isComplex = (typeChar == 'C') || (typeChar == 'Z');
@@ -192,7 +193,8 @@ public class CUBLASTest {
             // A: identity matrix
             for (int j = 0; j < numDim; j++) {
                 for (int i = 0; i < numElements; i++) {
-                    // complex types require two elements along 1st dimension (since column-major order)
+                    // complex types require two elements along 1st dimension (since column-major
+                    // order)
                     Value row = matrixA.getArrayElement(i);
                     row.setArrayElement(j, ((!isComplex & (i == j)) || (isComplex && (i == (2 * j)))) ? 1.0 : 0.0);
                 }
@@ -213,11 +215,11 @@ public class CUBLASTest {
             Value tgemm = polyglot.eval("grcuda", "BLAS::cublas" + typeChar + "gemm");
             final int cublasOpN = 0;
             tgemm.execute(cublasOpN, cublasOpN, numDim, numDim, numDim,
-                    alpha,
-                    matrixA, numDim,
-                    matrixB, numDim,
-                    beta,
-                    matrixC, numDim);
+                            alpha,
+                            matrixA, numDim,
+                            matrixB, numDim,
+                            beta,
+                            matrixC, numDim);
             assertOutputMatrixIsCorrect(numDim, numElements, matrixC, (Integer i) -> i);
         }
     }
@@ -242,7 +244,7 @@ public class CUBLASTest {
     }
 
     private void assertOutputVectorIsCorrect(int len, Value deviceArray,
-                                                    Function<Integer, Integer> outFunc) {
+                    Function<Integer, Integer> outFunc) {
         CUBLASTest.assertOutputVectorIsCorrect(len, deviceArray, outFunc, this.typeChar);
     }
 

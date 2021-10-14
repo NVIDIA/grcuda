@@ -35,7 +35,7 @@
  */
 package com.nvidia.grcuda.cudalibraries.cuml;
 
-import static com.nvidia.grcuda.functions.Function.expectInt;
+import static com.nvidia.grcuda.functions.Function.expectLong;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -47,10 +47,12 @@ import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.cudalibraries.CUDALibraryFunction;
+import com.nvidia.grcuda.runtime.stream.CUMLSetStreamFunction;
+import com.nvidia.grcuda.runtime.computation.CUDALibraryExecution;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.runtime.UnsafeHelper;
-import com.nvidia.grcuda.runtime.computation.CUDALibraryExecution;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStreamFunction;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -68,7 +70,7 @@ public class CUMLRegistry {
     public static final String DEFAULT_LIBRARY = (System.getenv("LIBCUML_DIR") != null ? System.getenv("LIBCUML_DIR") : "") + "libcuml.so";
 
     public static final String DEFAULT_LIBRARY_HINT = " (CuML library location can be set via the --grcuda.CuMLLibrary= option. " +
-            "CuML support can be disabled via --grcuda.CuMLEnabled=false.";
+                    "CuML support can be disabled via --grcuda.CuMLEnabled=false.";
     public static final String NAMESPACE = "ML";
 
     private final GrCUDAContext context;
@@ -78,24 +80,31 @@ public class CUMLRegistry {
 
     @CompilationFinal private TruffleObject cumlDestroyFunction;
 
+    @CompilationFinal private TruffleObject cumlSetStreamFunction;
+
     @CompilationFinal private TruffleObject cumlCreateFunctionNFI;
 
     @CompilationFinal private TruffleObject cumlDestroyFunctionNFI;
 
-    private Integer cumlHandle = null;
+    @CompilationFinal private TruffleObject cumlSetStreamFunctionNFI;
+
+    private LibrarySetStreamFunction cumlLibrarySetStreamFunction;
+
+    private Long cumlHandle = null;
 
     public CUMLRegistry(GrCUDAContext context) {
         this.context = context;
         libraryPath = context.getOption(GrCUDAOptions.CuMLLibrary);
     }
 
-    private void ensureInitialized() {
+    public void ensureInitialized() {
         if (cumlHandle == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             // create NFI function objects for handle creation and destruction
             cumlCreateFunctionNFI = CUMLFunctionNFI.CUML_CUMLCREATE.getFunctionFactory().makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
             cumlDestroyFunctionNFI = CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
+            cumlSetStreamFunctionNFI = CUMLFunctionNFI.CUML_CUMLSETSTREAM.getFunctionFactory().makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
 
             // create wrapper for cumlCreate: cumlError_t cumlCreate(int* handle) -> int
             // cumlCreate()
@@ -104,7 +113,7 @@ public class CUMLRegistry {
                 @TruffleBoundary
                 public Object call(Object[] arguments) throws ArityException {
                     checkArgumentLength(arguments, 0);
-                    try (UnsafeHelper.Integer32Object handle = UnsafeHelper.createInteger32Object()) {
+                    try (UnsafeHelper.Integer64Object handle = UnsafeHelper.createInteger64Object()) {
                         Object result = INTEROP.execute(cumlCreateFunctionNFI, handle.getAddress());
                         checkCUMLReturnCode(result, "cumlCreate");
                         return handle.getValue();
@@ -115,14 +124,33 @@ public class CUMLRegistry {
                 }
             };
 
-            // create wrapper for cumlDestroy: cumlError_t cumlDestroy(int handle) -> void
+            cumlSetStreamFunction = new Function(CUMLFunctionNFI.CUML_CUMLSETSTREAM.getFunctionFactory().getName()) {
+                @Override
+                @TruffleBoundary
+                public Object call(Object[] arguments) throws ArityException {
+                    checkArgumentLength(arguments, 2);
+                    try (UnsafeHelper.Integer64Object handle = UnsafeHelper.createInteger64Object()) {
+                        long stream_handle = expectLong(arguments[0]);
+                        long streamID = expectLong(arguments[1]);
+                        Object result = INTEROP.execute(cumlSetStreamFunctionNFI, stream_handle, streamID);
+                        checkCUMLReturnCode(result, "cumlSetStream");
+                        return result;
+                    } catch (InteropException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new GrCUDAInternalException(e);
+                    }
+                }
+            };
+
+            // create wrapper for cumlDestroy: cumlError_t cumlDestroy(int handle) -> void // must
+            // be long
             // cumlDestroy(int handle)
             cumlDestroyFunction = new Function(CUMLFunctionNFI.CUML_CUMLDESTROY.getFunctionFactory().getName()) {
                 @Override
                 @TruffleBoundary
                 public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
                     checkArgumentLength(arguments, 1);
-                    Object handle = expectInt(arguments[0]);
+                    long handle = expectLong(arguments[0]);
                     try {
                         Object result = INTEROP.execute(cumlDestroyFunctionNFI, handle);
                         checkCUMLReturnCode(result, "cumlDestroy");
@@ -136,13 +164,14 @@ public class CUMLRegistry {
 
             try {
                 Object result = INTEROP.execute(cumlCreateFunction);
-                cumlHandle = expectInt(result);
+                cumlHandle = expectLong(result);
                 context.addDisposable(this::cuMLShutdown);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new GrCUDAInternalException(e);
             }
         }
+        cumlLibrarySetStreamFunction = new CUMLSetStreamFunction((Function) cumlSetStreamFunctionNFI, cumlHandle);
     }
 
     private void cuMLShutdown() {
@@ -161,7 +190,7 @@ public class CUMLRegistry {
     public void registerCUMLFunctions(Namespace namespace) {
         // Create function wrappers (decorators for all functions except handle con- and
         // destruction)
-        List<CUMLFunctionNFI> hiddenFunctions = Arrays.asList(CUMLFunctionNFI.CUML_CUMLCREATE, CUMLFunctionNFI.CUML_CUMLDESTROY);
+        List<CUMLFunctionNFI> hiddenFunctions = Arrays.asList(CUMLFunctionNFI.CUML_CUMLCREATE, CUMLFunctionNFI.CUML_CUMLDESTROY, CUMLFunctionNFI.CUML_CUMLSETSTREAM);
         EnumSet.allOf(CUMLFunctionNFI.class).stream().filter(func -> !hiddenFunctions.contains(func)).forEach(func -> {
             final ExternalFunctionFactory factory = func.getFunctionFactory();
             final Function wrapperFunction = new CUDALibraryFunction(factory.getName(), factory.getNFISignature()) {
@@ -178,7 +207,8 @@ public class CUMLRegistry {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
                         }
-                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, this.createComputationArgumentWithValueList(arguments, (long) cumlHandle)).schedule();
+                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, cumlLibrarySetStreamFunction,
+                                        this.createComputationArgumentWithValueList(arguments, cumlHandle)).schedule();
                         checkCUMLReturnCode(result, nfiFunction.getName());
                         return result;
                     } catch (InteropException e) {
@@ -220,9 +250,10 @@ public class CUMLRegistry {
 
     public enum CUMLFunctionNFI {
         CUML_CUMLCREATE(new ExternalFunctionFactory("cumlCreate", "cumlCreate", "(pointer): sint32")),
-        CUML_CUMLDESTROY(new ExternalFunctionFactory("cumlDestroy", "cumlDestroy", "(sint32): sint32")),
-        CUML_DBSCANFITDOUBLE(new ExternalFunctionFactory("cumlDpDbscanFit", "cumlDpDbscanFit", "(sint32, pointer, sint32, sint32, double, sint32, pointer, uint64, sint32): sint32")),
-        CUML_DBSCANFITFLOAT(new ExternalFunctionFactory("cumlSpDbscanFit", "cumlSpDbscanFit", "(sint32, pointer, sint32, sint32, float, sint32, pointer, uint64, sint32): sint32"));
+        CUML_CUMLDESTROY(new ExternalFunctionFactory("cumlDestroy", "cumlDestroy", "(sint64): sint32")),
+        CUML_CUMLSETSTREAM(new ExternalFunctionFactory("cumlSetStream", "cumlSetStream", "(sint64, sint64): sint32")),
+        CUML_DBSCANFITDOUBLE(new ExternalFunctionFactory("cumlDpDbscanFit", "cumlDpDbscanFit", "(sint64, pointer, sint32, sint32, double, sint32, pointer, uint64, sint32): sint32")),
+        CUML_DBSCANFITFLOAT(new ExternalFunctionFactory("cumlSpDbscanFit", "cumlSpDbscanFit", "(sint64, pointer, sint32, sint32, float, sint32, pointer, uint64, sint32): sint32"));
 
         private final ExternalFunctionFactory factory;
 

@@ -52,8 +52,7 @@ public class CUBLASWithScheduleTest {
 
     private static final int NUM_THREADS_PER_BLOCK = 32;
 
-    private static final String SCALE_KERNEL =
-            "extern \"C\" __global__ void scale(double* y, const double* x, double alpha, int n) {\n" +
+    private static final String SCALE_KERNEL = "extern \"C\" __global__ void scale(double* y, const double* x, double alpha, int n) {\n" +
                     "    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n" +
                     "    if (idx < n) {\n" +
                     "       y[idx] = alpha * x[idx];\n" +
@@ -127,7 +126,7 @@ public class CUBLASWithScheduleTest {
     /**
      * Test a BLAS kernel followed by 2 independent kernels;
      * A--->B
-     *  \-->C
+     * \-->C
      */
     @Test
     public void testTaxpyForkPattern() {
@@ -236,7 +235,7 @@ public class CUBLASWithScheduleTest {
     /**
      * Test a BLAS kernel followed by 2 independent kernels followed by a BLAS kernel;
      * A--->B--->D
-     *  \-->C---/
+     * \-->C---/
      */
     @Test
     public void testTaxpyForkJoinPattern() {
@@ -291,7 +290,7 @@ public class CUBLASWithScheduleTest {
      * Test a BLAS kernel followed by 2 independent kernels followed by a BLAS kernel;
      *       /-->E-->F
      * A--->B--->D
-     *  \-->C---/
+     * \-->C---/
      */
     @Test
     public void testTaxpyIndependentCompPattern() {
@@ -348,14 +347,103 @@ public class CUBLASWithScheduleTest {
     }
 
     /**
+     * BLAS Level-3 Test, doing 2 matrix computations on independent data, and syncing them
+     * afterwards with an axpy kernel;
+     */
+    @Test
+    public void testGemmScheduling() {
+        try (Context context = GrCUDATestUtil.createContextFromOptions(this.options)) {
+            Value cu = context.eval("grcuda", "CU");
+            int numDim = 100;
+            String cudaType = "double";
+            Value alpha = cu.invokeMember("DeviceArray", cudaType, 1);
+            Value beta = cu.invokeMember("DeviceArray", cudaType, 1);
+            Value alpha2 = cu.invokeMember("DeviceArray", cudaType, 1);
+            Value beta2 = cu.invokeMember("DeviceArray", cudaType, 1);
+            Value alpha3 = cu.invokeMember("DeviceArray", cudaType, 1);
+            alpha.setArrayElement(0, -1);
+            beta.setArrayElement(0, 2);
+            alpha2.setArrayElement(0, -1);
+            beta2.setArrayElement(0, 2);
+            alpha3.setArrayElement(0, -2);
+
+            Value matrixA = cu.invokeMember("DeviceArray", cudaType, numDim, numDim, "F");
+            Value matrixB = cu.invokeMember("DeviceArray", cudaType, numDim, numDim, "F");
+            Value matrixC = cu.invokeMember("DeviceArray", cudaType, numDim, numDim, "F");
+            Value matrixE = cu.invokeMember("DeviceArray", cudaType, numDim, numDim, "F");
+            Value matrixF = cu.invokeMember("DeviceArray", cudaType, numDim, numDim, "F");
+            Value matrixG = cu.invokeMember("DeviceArray", cudaType, numDim, numDim, "F");
+
+            // Initialize matrices
+            // A, E: identity matrix
+            for (int j = 0; j < numDim; j++) {
+                for (int i = 0; i < numDim; i++) {
+                    Value row = matrixA.getArrayElement(i);
+                    row.setArrayElement(j, (i == j) ? 1.0 : 0.0);
+                    row = matrixE.getArrayElement(i);
+                    row.setArrayElement(j, (i == j) ? 1.0 : 0.0);
+                }
+            }
+            // B == C == F == G
+            for (int j = 0; j < numDim; j++) {
+                for (int i = 0; i < numDim; i++) {
+                    Value row = matrixB.getArrayElement(i);
+                    row.setArrayElement(j, i + numDim * j);
+                    row = matrixC.getArrayElement(i);
+                    row.setArrayElement(j, i + numDim * j);
+                    row = matrixF.getArrayElement(i);
+                    row.setArrayElement(j, i + numDim * j);
+                    row = matrixG.getArrayElement(i);
+                    row.setArrayElement(j, i + numDim * j);
+                }
+            }
+            Value tgemm = context.eval("grcuda", "BLAS::cublas" + typeChar + "gemm");
+            Value taxpy = context.eval("grcuda", "BLAS::cublas" + typeChar + "axpy");
+            final int cublasOpN = 0;
+            // Schedule 2 GEMMs;
+            tgemm.execute(cublasOpN, cublasOpN, numDim, numDim, numDim,
+                            alpha,
+                            matrixA, numDim,
+                            matrixB, numDim,
+                            beta,
+                            matrixC, numDim);
+            // Schedule 1 axpy;
+            tgemm.execute(cublasOpN, cublasOpN, numDim, numDim, numDim,
+                            alpha2,
+                            matrixE, numDim,
+                            matrixF, numDim,
+                            beta2,
+                            matrixG, numDim);
+            taxpy.execute(numDim * numDim, alpha3, matrixC, 1, matrixG, 1);
+            assertOutputMatrixIsCorrect(numDim, numDim, matrixC, (Integer i) -> i);
+            assertOutputMatrixIsCorrect(numDim, numDim, matrixG, (Integer i) -> -i);
+        }
+    }
+
+    /**
      * Validation function for vectors.
      */
     private void assertOutputVectorIsCorrect(int len, Value deviceArray,
-                                             Function<Integer, Integer> outFunc) {
+                    Function<Integer, Integer> outFunc) {
         for (int i = 0; i < len; i++) {
             double expected = outFunc.apply(i);
             double actual = deviceArray.getArrayElement(i).asDouble();
             assertEquals(expected, actual, 1e-5);
+        }
+    }
+
+    /**
+     * Validation function for matrix.
+     */
+    private void assertOutputMatrixIsCorrect(int numDim, int numElements, Value matrix,
+                    Function<Integer, Integer> outFunc) {
+        for (int j = 0; j < numDim; j++) {
+            for (int i = 0; i < numElements; i++) {
+                int idx = i + numElements * j;
+                double expected = outFunc.apply(idx);
+                double actual = matrix.getArrayElement(i).getArrayElement(j).asDouble();
+                assertEquals(expected, actual, 1e-5);
+            }
         }
     }
 }

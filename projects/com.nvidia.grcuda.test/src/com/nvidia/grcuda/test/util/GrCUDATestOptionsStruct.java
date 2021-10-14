@@ -59,4 +59,16 @@ public class GrCUDATestOptionsStruct {
         this.dependencyPolicy = dependencyPolicy;
         this.forceStreamAttach = forceStreamAttach;
     }
+
+    @Override
+    public String toString() {
+        return "GrCUDATestOptionsStruct{" +
+                "policy=" + policy +
+                ", inputPrefetch=" + inputPrefetch +
+                ", retrieveNewStreamPolicy=" + retrieveNewStreamPolicy +
+                ", retrieveParentStreamPolicy=" + retrieveParentStreamPolicy +
+                ", dependencyPolicy=" + dependencyPolicy +
+                ", forceStreamAttach=" + forceStreamAttach +
+                '}';
+    }
 }

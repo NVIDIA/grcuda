@@ -32,7 +32,7 @@ package com.nvidia.grcuda.runtime.computation;
 
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
-import com.nvidia.grcuda.runtime.stream.DefaultStream;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStreamFunction;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -49,10 +49,12 @@ public class CUDALibraryExecution extends GrCUDAComputationalElement {
 
     private final Function nfiFunction;
     private final Object[] argsWithHandle;
+    private final LibrarySetStreamFunction setStreamFunctionNFI;
 
-    public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, List<ComputationArgumentWithValue> args) {
+    public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, LibrarySetStreamFunction setStreamFunctionNFI, List<ComputationArgumentWithValue> args) {
         super(context, new CUDALibraryExecutionInitializer(args));
         this.nfiFunction = nfiFunction;
+        this.setStreamFunctionNFI = setStreamFunctionNFI;
 
         // Array of [libraryHandle + arguments], required by CUDA libraries for execution;
         this.argsWithHandle = new Object[args.size()];
@@ -62,25 +64,21 @@ public class CUDALibraryExecution extends GrCUDAComputationalElement {
     }
 
     @Override
-    public boolean canUseStream() { return false; }
-
-    // TODO: See note in parent class;
-//    @Override
-//    public boolean mustUseDefaultStream() { return true; }
+    public boolean canUseStream() {
+        return true;
+    }
 
     @Override
     public Object execute() throws UnsupportedTypeException {
         // Execution happens on the default stream;
         Object result = null;
         try {
+            this.setStreamFunctionNFI.setStream(this.getStream());
             result = INTEROP.execute(this.nfiFunction, this.argsWithHandle);
         } catch (ArityException | UnsupportedMessageException e) {
-            System.out.println("error in execution of cuBLAS function");
+            System.out.println("error in execution of the function");
             e.printStackTrace();
         }
-        // Synchronize only the default stream;
-        this.grCUDAExecutionContext.getCudaRuntime().cudaStreamSynchronize(DefaultStream.get());
-        this.setComputationFinished();
         return result;
     }
 
@@ -94,8 +92,8 @@ public class CUDALibraryExecution extends GrCUDAComputationalElement {
         @Override
         public List<ComputationArgumentWithValue> initialize() {
             // Consider only arrays as dependencies;
-            // FIXME: should the library handle be considered a dependency?
-            //  The CUDA documentation is not clear on whether you can have concurrent computations with the same handle;
+            // The CUDA documentation is not clear on whether you can have concurrent computations
+            // with the same handle;
             return this.args.stream().filter(ComputationArgument::isArray).collect(Collectors.toList());
         }
     }
