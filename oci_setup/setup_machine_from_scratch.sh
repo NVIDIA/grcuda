@@ -31,12 +31,13 @@
 
 # You can use this script to setup a clean machine with Ubuntu 20.04 to use GrCUDA. 
 # We install GraalVM, Nvidia's drivers, CUDA, conda, and download GrCUDA.
-# To install GrCUDA, run `cd $GRCUDA_HOME/install.sh` after running this script.
+# To install GrCUDA, run `cd $GRCUDA_HOME; ./install.sh` after running this script.
 
 # Installation flags (change them to customize your installation);
 INSTALL_CUML=false
 INSTALL_RECENT_CMAKE=false
 ACTIVATE_GRAALPYTHON_ENV=true
+INSTALL_ON_NVSWITCH_SYSTEM=false
 
 # basic update on a newly created machine;
 sudo apt update
@@ -89,6 +90,14 @@ sudo dpkg -i cuda-repo-ubuntu2004-11-4-local_11.4.2-470.57.02-1_amd64.deb
 sudo apt-key add /var/cuda-repo-ubuntu2004-11-4-local/7fa2af80.pub
 sudo apt-get update
 sudo apt-get -y install cuda
+
+# Systems with NVSwitch require Nvidia's fabric manager. 
+# See https://docs.nvidia.com/datacenter/tesla/pdf/fabric-manager-user-guide.pdf
+if [ "$INSTALL_ON_NVSWITCH_SYSTEM" = true ] ; then
+    sudo apt-get install cuda-drivers-fabricmanager-470
+    sudo systemctl start nvidia-fabricmanager
+    sudo systemctl enable nvidia-fabricmanager
+fi
 
 # symlink for python (use it with care! some system tools require Python 2.7);
 # sudo ln -s /usr/bin/python3 /usr/bin/python
