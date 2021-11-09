@@ -31,6 +31,7 @@
 package com.nvidia.grcuda.runtime.executioncontext;
 
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDALogger;
 import com.nvidia.grcuda.runtime.CUDARuntime;
 import com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.runtime.computation.dependency.DependencyPolicyEnum;
@@ -91,7 +92,7 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
         // Associate a CUDA event to this computation, if performed asynchronously;
         streamManager.assignEvent(vertex);
 
-//        System.out.println("-- running " + vertex.getComputation());
+        GrCUDALogger.getLogger(GrCUDALogger.EXECUTIONCONTEXT_LOGGER).finest("-- running " + vertex.getComputation());
 
         return result;
     }

@@ -30,6 +30,7 @@
  */
 package com.nvidia.grcuda.runtime.computation.streamattach;
 
+import com.nvidia.grcuda.GrCUDALogger;
 import com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement;
 import com.nvidia.grcuda.runtime.stream.CUDAStream;
 import com.nvidia.grcuda.runtime.stream.DefaultStream;
@@ -55,7 +56,7 @@ public class PrePascalStreamAttachPolicy implements StreamAttachArchitecturePoli
         try {
             return callable.call();
         } catch(Exception e) {
-            System.out.println("WARNING: failed to compute stream dependency, returning default stream");
+            GrCUDALogger.getLogger(GrCUDALogger.COMPUTATION_LOGGER).warning("failed to compute stream dependency, returning default stream");
             return Optional.of(DefaultStream.get());
         }
     }

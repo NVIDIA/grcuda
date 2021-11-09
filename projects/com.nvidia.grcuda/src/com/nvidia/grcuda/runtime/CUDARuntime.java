@@ -45,6 +45,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.nvidia.grcuda.GrCUDALogger;
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.collections.Pair;
 
 import com.nvidia.grcuda.Binding;
@@ -89,6 +91,8 @@ public final class CUDARuntime {
 
     private final List<GPUPointer> innerCudaContexts = new ArrayList<>();
     private final int numDevices;
+
+    public static final TruffleLogger RUNTIME_LOGGER = GrCUDALogger.getLogger(GrCUDALogger.RUNTIME_LOGGER);
 
     /**
      * Users can manually create streams that are not managed directly by a {@link com.nvidia.grcuda.runtime.stream.GrCUDAStreamManager}.
@@ -338,7 +342,7 @@ public final class CUDARuntime {
         try {
             Object callable = CUDARuntimeFunction.CUDA_SETDEVICE.getSymbol(this);
             Object result = INTEROP.execute(callable, device);
-            // System.out.println("[TRUFFLE] cudaSetDevice got called with arg " + device);
+            RUNTIME_LOGGER.finest("[TRUFFLE] cudaSetDevice got called with arg " + device);
             checkCUDAReturnCode(result, "cudaSetDevice");
         } catch (InteropException e) {
             throw new GrCUDAException(e);
@@ -433,8 +437,7 @@ public final class CUDARuntime {
         try {
             Object callable = CUDARuntimeFunction.CUDA_STREAMATTACHMEMASYNC.getSymbol(this);
             int flag = stream.isDefaultStream() ? MEM_ATTACH_GLOBAL : MEM_ATTACH_SINGLE;
-// System.out.println("\t* attach array=" + System.identityHashCode(array) + " to " + stream + ";
-// flag=" + flag);
+            RUNTIME_LOGGER.finest("\t* attach array=" + System.identityHashCode(array) + " to " + stream + "; flag=" + flag);
 
             // Book-keeping of the stream attachment within the array;
             array.setStreamMapping(stream);
@@ -1141,7 +1144,7 @@ public final class CUDARuntime {
 
     @TruffleBoundary
     public Kernel buildKernel(AbstractGrCUDAExecutionContext grCUDAExecutionContext, String code, String kernelName, String signature) {
-        // System.out.println("buildKernel device:" + cudaGetDevice());
+        RUNTIME_LOGGER.finest("buildKernel device:" + cudaGetDevice());
         String moduleName = "truffle" + context.getNextModuleId();
         PTXKernel ptx = nvrtc.compileKernel(code, kernelName, moduleName, "--std=c++14");
         if (this.context.isEnableMultiGPU()) {
@@ -1434,7 +1437,7 @@ public final class CUDARuntime {
             context.setCUDAInitialized();
         }
     }
-
+    
     @SuppressWarnings("static-method")
     private static void checkCUReturnCode(Object result, String... function) {
         int returnCode;
@@ -1447,8 +1450,9 @@ public final class CUDARuntime {
                                             result.getClass().getName());
         }
         if (returnCode != 0) {
-            System.out.println("ERROR CODE=" + returnCode);
+            RUNTIME_LOGGER.severe("ERROR CODE=" + returnCode);
             throw new GrCUDAException(returnCode, DriverAPIErrorMessages.getString(returnCode), function);
+
         }
     }
 

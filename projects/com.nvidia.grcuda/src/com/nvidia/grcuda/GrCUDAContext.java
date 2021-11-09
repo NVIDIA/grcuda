@@ -37,6 +37,7 @@ package com.nvidia.grcuda;
 
 import com.nvidia.grcuda.cudalibraries.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cudalibraries.cuml.CUMLRegistry;
+import com.nvidia.grcuda.cudalibraries.tensorrt.TensorRTRegistry;
 import com.nvidia.grcuda.functions.BindAllFunction;
 import com.nvidia.grcuda.functions.BindFunction;
 import com.nvidia.grcuda.functions.BindKernelFunction;
@@ -55,7 +56,6 @@ import com.nvidia.grcuda.runtime.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.runtime.executioncontext.SyncGrCUDAExecutionContext;
 import com.nvidia.grcuda.runtime.stream.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.runtime.stream.RetrieveParentStreamPolicyEnum;
-import com.nvidia.grcuda.cudalibraries.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -81,7 +81,7 @@ public final class GrCUDAContext {
 
     private static final String ROOT_NAMESPACE = "CU";
 
-    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(GrCUDALanguage.ID, "com.nvidia.grcuda.GrCUDAContext");
+    private static final TruffleLogger LOGGER = GrCUDALogger.getLogger(GrCUDALogger.GRCUDA_LOGGER);
 
     private final Env env;
     private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
@@ -132,7 +132,7 @@ public final class GrCUDAContext {
         }
         
         // Initialize the execution policy;
-        LOGGER.fine("using" + executionPolicy.getName() + " execution policy");
+        LOGGER.fine("using " + executionPolicy.getName() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
                 this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch ? PrefetcherEnum.SYNC : PrefetcherEnum.NONE);
@@ -263,7 +263,7 @@ public final class GrCUDAContext {
         if (policyString.equals(DependencyPolicyEnum.WITH_CONST.getName())) return DependencyPolicyEnum.WITH_CONST;
         else if (policyString.equals(DependencyPolicyEnum.NO_CONST.getName())) return DependencyPolicyEnum.NO_CONST;
         else {
-            LOGGER.warning("Warning: unknown dependency policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_DEPENDENCY_POLICY);
+            LOGGER.warning("unknown dependency policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_DEPENDENCY_POLICY);
             return GrCUDAContext.DEFAULT_DEPENDENCY_POLICY;
         }
     }
@@ -272,7 +272,7 @@ public final class GrCUDAContext {
         if (policyString.equals(RetrieveNewStreamPolicyEnum.FIFO.getName())) return RetrieveNewStreamPolicyEnum.FIFO;
         else if (policyString.equals(RetrieveNewStreamPolicyEnum.ALWAYS_NEW.getName())) return RetrieveNewStreamPolicyEnum.ALWAYS_NEW;
         else {
-            LOGGER.warning("Warning: unknown new stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY);
+            LOGGER.warning("unknown new stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY);
             return GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY;
         }
     }
@@ -281,10 +281,15 @@ public final class GrCUDAContext {
         if (Objects.equals(policyString, RetrieveParentStreamPolicyEnum.DISJOINT.getName())) return RetrieveParentStreamPolicyEnum.DISJOINT;
         else if (Objects.equals(policyString, RetrieveParentStreamPolicyEnum.SAME_AS_PARENT.getName())) return RetrieveParentStreamPolicyEnum.SAME_AS_PARENT;
         else {
-            LOGGER.warning("Warning: unknown parent stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY);
+            LOGGER.warning("unknown parent stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY);
             return GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY;
         }
     }
+
+    /* public void parseLoggingLevel(String loggingLevel){
+        //
+           ???.logHandler("log.grcuda.level",loggingLevel);
+    } */
 
     /**
      * Cleanup the GrCUDA context at the end of the execution;

@@ -30,6 +30,7 @@
  */
 package com.nvidia.grcuda.runtime.computation;
 
+import com.nvidia.grcuda.GrCUDALogger;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.runtime.stream.LibrarySetStreamFunction;
@@ -76,7 +77,7 @@ public class CUDALibraryExecution extends GrCUDAComputationalElement {
             this.setStreamFunctionNFI.setStream(this.getStream());
             result = INTEROP.execute(this.nfiFunction, this.argsWithHandle);
         } catch (ArityException | UnsupportedMessageException e) {
-            System.out.println("error in execution of the function");
+            GrCUDALogger.getLogger(GrCUDALogger.COMPUTATION_LOGGER).severe("error in execution of the function");
             e.printStackTrace();
         }
         return result;
