@@ -40,7 +40,8 @@ public enum ExecutionPolicyEnum {
         this.name = name;
     }
 
-    public final String getName() {
+    @Override
+    public final String toString() {
         return name;
     }
 }

@@ -86,7 +86,7 @@ public class CUBLASRegistry {
 
     public CUBLASRegistry(GrCUDAContext context) {
         this.context = context;
-        libraryPath = context.getOption(GrCUDAOptions.CuBLASLibrary);
+        libraryPath = context.getOptions().getCuBLASLibrary();
     }
 
     public void ensureInitialized() {

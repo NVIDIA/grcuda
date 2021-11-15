@@ -28,20 +28,47 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.nvidia.grcuda.runtime.stream;
+package com.nvidia.grcuda.test.util.mock;
 
-public enum RetrieveParentStreamPolicyEnum {
-    SAME_AS_PARENT("same-as-parent"),
-    DISJOINT("disjoint");
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
-    private final String name;
+import java.util.HashMap;
+import java.util.Map;
 
-    RetrieveParentStreamPolicyEnum(String name) {
-        this.name = name;
+public class OptionValuesMock implements OptionValues {
+
+    private final Map<OptionKey<?>, Object> values;
+    private final Map<OptionKey<?>, String> unparsedValues;
+
+    public OptionValuesMock() {
+        this.values =  new HashMap<>();
+        this.unparsedValues =  new HashMap<>();
     }
 
     @Override
-    public String toString() {
-        return name;
+    public OptionDescriptors getDescriptors() {
+        return null;
+    }
+
+    @Override
+    public <T> void set(OptionKey<T> optionKey, T value) {
+        this.values.put(optionKey, value);
+    }
+
+    @Override
+    public <T> T get(OptionKey<T> optionKey) {
+        return (T) this.values.get(optionKey);
+    }
+
+    @Override
+    public boolean hasBeenSet(OptionKey<?> optionKey) {
+        return values.containsKey(optionKey) || unparsedValues.containsKey(optionKey);
+    }
+
+    @Override
+    public boolean hasSetOptions() {
+        return OptionValues.super.hasSetOptions();
     }
 }

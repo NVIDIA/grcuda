@@ -91,11 +91,11 @@ public class GrCUDATestUtil {
 
     public static Context createContextFromOptions(GrCUDATestOptionsStruct options) {
         return buildTestContext()
-                .option("grcuda.ExecutionPolicy", options.policy.getName())
+                .option("grcuda.ExecutionPolicy", options.policy.toString())
                 .option("grcuda.InputPrefetch", String.valueOf(options.inputPrefetch))
-                .option("grcuda.RetrieveNewStreamPolicy", options.retrieveNewStreamPolicy.getName())
-                .option("grcuda.RetrieveParentStreamPolicy", options.retrieveParentStreamPolicy.getName())
-                .option("grcuda.DependencyPolicy", options.dependencyPolicy.getName())
+                .option("grcuda.RetrieveNewStreamPolicy", options.retrieveNewStreamPolicy.toString())
+                .option("grcuda.RetrieveParentStreamPolicy", options.retrieveParentStreamPolicy.toString())
+                .option("grcuda.DependencyPolicy", options.dependencyPolicy.toString())
                 .option("grcuda.ForceStreamAttach", String.valueOf(options.forceStreamAttach))
                 .build();
     }

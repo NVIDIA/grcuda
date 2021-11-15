@@ -70,7 +70,7 @@ public class TensorRTRegistry {
 
     public TensorRTRegistry(GrCUDAContext context) {
         this.context = context;
-        libraryPath = context.getOption(GrCUDAOptions.TensorRTLibrary);
+        libraryPath = context.getOptions().getTensorRTLibrary();
         context.addDisposable(this::shutdown);
     }
 

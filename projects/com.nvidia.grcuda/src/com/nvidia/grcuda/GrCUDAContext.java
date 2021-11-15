@@ -45,6 +45,7 @@ import com.nvidia.grcuda.functions.BuildKernelFunction;
 import com.nvidia.grcuda.functions.DeviceArrayFunction;
 import com.nvidia.grcuda.functions.GetDeviceFunction;
 import com.nvidia.grcuda.functions.GetDevicesFunction;
+import com.nvidia.grcuda.functions.GetOptionsFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.runtime.CUDARuntime;
@@ -54,16 +55,12 @@ import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext
 import com.nvidia.grcuda.runtime.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.runtime.executioncontext.GrCUDAExecutionContext;
 import com.nvidia.grcuda.runtime.executioncontext.SyncGrCUDAExecutionContext;
-import com.nvidia.grcuda.runtime.stream.RetrieveNewStreamPolicyEnum;
-import com.nvidia.grcuda.runtime.stream.RetrieveParentStreamPolicyEnum;
+import com.nvidia.grcuda.cudalibraries.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import org.graalvm.options.OptionKey;
 
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -73,15 +70,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class GrCUDAContext {
 
-    public static final ExecutionPolicyEnum DEFAULT_EXECUTION_POLICY = ExecutionPolicyEnum.ASYNC;
-    public static final DependencyPolicyEnum DEFAULT_DEPENDENCY_POLICY = DependencyPolicyEnum.NO_CONST;
-    public static final RetrieveNewStreamPolicyEnum DEFAULT_RETRIEVE_STREAM_POLICY = RetrieveNewStreamPolicyEnum.FIFO;
-    public static final RetrieveParentStreamPolicyEnum DEFAULT_PARENT_STREAM_POLICY = RetrieveParentStreamPolicyEnum.SAME_AS_PARENT;
-    public static final boolean DEFAULT_FORCE_STREAM_ATTACH = false;
-
     private static final String ROOT_NAMESPACE = "CU";
 
     private static final TruffleLogger LOGGER = GrCUDALogger.getLogger(GrCUDALogger.GRCUDA_LOGGER);
+
+    private final GrCUDAOptionMap grCUDAOptionMap;
 
     private final Env env;
     private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
@@ -89,50 +82,32 @@ public final class GrCUDAContext {
     private final ArrayList<Runnable> disposables = new ArrayList<>();
     private final AtomicInteger moduleId = new AtomicInteger(0);
     private volatile boolean cudaInitialized = false;
-    private final RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy;
-    private final RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum;
-    private final boolean forceStreamAttach;
-    private final boolean inputPrefetch;
-    private final boolean enableMultiGPU;
 
     // this is used to look up pre-existing call targets for "map" operations, see MapArrayNode
     private final ConcurrentHashMap<Class<?>, CallTarget> uncachedMapCallTargets = new ConcurrentHashMap<>();
 
     public GrCUDAContext(Env env) {
         this.env = env;
-        
-        // Retrieve if we should force array stream attachment;
-        forceStreamAttach = env.getOptions().get(GrCUDAOptions.ForceStreamAttach);
 
-        // Retrieve if we should prefetch input data to GPU;
-        inputPrefetch = env.getOptions().get(GrCUDAOptions.InputPrefetch);
-
-        // See if we allow the use of multiple GPUs in the system;
-        enableMultiGPU = env.getOptions().get(GrCUDAOptions.EnableMultiGPU);
-
-        // Retrieve the stream retrieval policy;
-        retrieveNewStreamPolicy = parseRetrieveStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveNewStreamPolicy));
-        
-        // Retrieve how streams are obtained from parent computations;
-        retrieveParentStreamPolicyEnum = parseParentStreamPolicy(env.getOptions().get(GrCUDAOptions.RetrieveParentStreamPolicy));
+        this.grCUDAOptionMap = GrCUDAOptionMap.getInstance(env.getOptions());
 
         // Retrieve the dependency computation policy;
-        DependencyPolicyEnum dependencyPolicy = parseDependencyPolicy(env.getOptions().get(GrCUDAOptions.DependencyPolicy));
-        LOGGER.fine("using " + dependencyPolicy.getName() + " dependency policy");
+        DependencyPolicyEnum dependencyPolicy = grCUDAOptionMap.getDependencyPolicy();
 
         // Retrieve the execution policy;
-        ExecutionPolicyEnum executionPolicy = parseExecutionPolicy(env.getOptions().get(GrCUDAOptions.ExecutionPolicy));
-        
-        
+        ExecutionPolicyEnum executionPolicy = grCUDAOptionMap.getExecutionPolicy();
+
         // FIXME: TensorRT is currently incompatible with the async scheduler. TensorRT is supported in CUDA 11.4, and we cannot test it. 
         //  Once Nvidia adds support for it, we want to remove this limitation;
-        if (this.getOption(GrCUDAOptions.TensorRTEnabled) && executionPolicy == ExecutionPolicyEnum.ASYNC) {
+        if (grCUDAOptionMap.isTensorRTEnabled() && (executionPolicy == ExecutionPolicyEnum.ASYNC)) {
             LOGGER.warning("TensorRT and the asynchronous scheduler are not compatible. Switching to the synchronous scheduler.");
             executionPolicy = ExecutionPolicyEnum.SYNC;
         }
-        
+
+        Boolean inputPrefetch = grCUDAOptionMap.isInputPrefetch();
+
         // Initialize the execution policy;
-        LOGGER.fine("using " + executionPolicy.getName() + " execution policy");
+        LOGGER.fine("using" + executionPolicy.toString() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
                 this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch ? PrefetcherEnum.SYNC : PrefetcherEnum.NONE);
@@ -155,8 +130,9 @@ public final class GrCUDAContext {
         namespace.addFunction(new BuildKernelFunction(this.grCUDAExecutionContext));
         namespace.addFunction(new GetDevicesFunction(this.grCUDAExecutionContext.getCudaRuntime()));
         namespace.addFunction(new GetDeviceFunction(this.grCUDAExecutionContext.getCudaRuntime()));
+        namespace.addFunction(new GetOptionsFunction(grCUDAOptionMap));
         this.grCUDAExecutionContext.getCudaRuntime().registerCUDAFunctions(namespace);
-        if (this.getOption(GrCUDAOptions.CuMLEnabled)) {
+        if (grCUDAOptionMap.isCuMLEnabled()) {
             if (this.getCUDARuntime().isArchitectureIsPascalOrNewer()) {
                 Namespace ml = new Namespace(CUMLRegistry.NAMESPACE);
                 namespace.addNamespace(ml);
@@ -165,12 +141,12 @@ public final class GrCUDAContext {
                 LOGGER.warning("cuML is supported only on GPUs with compute capability >= 6.0 (Pascal and newer). It cannot be enabled.");
             }
         }
-        if (this.getOption(GrCUDAOptions.CuBLASEnabled)) {
+        if (grCUDAOptionMap.isCuBLASEnabled()) {
                 Namespace blas = new Namespace(CUBLASRegistry.NAMESPACE);
                 namespace.addNamespace(blas);
                 new CUBLASRegistry(this).registerCUBLASFunctions(blas);
         }
-        if (this.getOption(GrCUDAOptions.TensorRTEnabled)) {
+        if (grCUDAOptionMap.isTensorRTEnabled()) {
             Namespace trt = new Namespace(TensorRTRegistry.NAMESPACE);
             namespace.addNamespace(trt);
             new TensorRTRegistry(this).registerTensorRTFunctions(trt);
@@ -220,22 +196,6 @@ public final class GrCUDAContext {
         return uncachedMapCallTargets;
     }
 
-    public RetrieveNewStreamPolicyEnum getRetrieveNewStreamPolicy() {
-        return retrieveNewStreamPolicy;
-    }
-    
-    public RetrieveParentStreamPolicyEnum getRetrieveParentStreamPolicyEnum() {
-        return retrieveParentStreamPolicyEnum;
-    }
-
-    public boolean isForceStreamAttach() {
-        return forceStreamAttach;
-    }
-
-    public boolean isEnableMultiGPU() {
-        return enableMultiGPU;
-    }
-
     /**
      * Compute the maximum number of concurrent threads that can be spawned by GrCUDA.
      * This value is usually smaller or equal than the number of logical CPU threads available on the machine.
@@ -245,51 +205,9 @@ public final class GrCUDAContext {
         return Runtime.getRuntime().availableProcessors();
     }
 
-    @TruffleBoundary
-    public <T> T getOption(OptionKey<T> key) {
-        return env.getOptions().get(key);
+    public GrCUDAOptionMap getOptions() {
+        return grCUDAOptionMap;
     }
-
-    private static ExecutionPolicyEnum parseExecutionPolicy(String policyString) {
-        if (policyString.equals(ExecutionPolicyEnum.SYNC.getName())) return ExecutionPolicyEnum.SYNC;
-        else if (policyString.equals(ExecutionPolicyEnum.ASYNC.getName())) return ExecutionPolicyEnum.ASYNC;
-        else {
-            LOGGER.warning("unknown execution policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_EXECUTION_POLICY);
-            return GrCUDAContext.DEFAULT_EXECUTION_POLICY;
-        }
-    }
-
-    private static DependencyPolicyEnum parseDependencyPolicy(String policyString) {
-        if (policyString.equals(DependencyPolicyEnum.WITH_CONST.getName())) return DependencyPolicyEnum.WITH_CONST;
-        else if (policyString.equals(DependencyPolicyEnum.NO_CONST.getName())) return DependencyPolicyEnum.NO_CONST;
-        else {
-            LOGGER.warning("unknown dependency policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_DEPENDENCY_POLICY);
-            return GrCUDAContext.DEFAULT_DEPENDENCY_POLICY;
-        }
-    }
-
-    private static RetrieveNewStreamPolicyEnum parseRetrieveStreamPolicy(String policyString) {
-        if (policyString.equals(RetrieveNewStreamPolicyEnum.FIFO.getName())) return RetrieveNewStreamPolicyEnum.FIFO;
-        else if (policyString.equals(RetrieveNewStreamPolicyEnum.ALWAYS_NEW.getName())) return RetrieveNewStreamPolicyEnum.ALWAYS_NEW;
-        else {
-            LOGGER.warning("unknown new stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY);
-            return GrCUDAContext.DEFAULT_RETRIEVE_STREAM_POLICY;
-        }
-    }
-
-    private static RetrieveParentStreamPolicyEnum parseParentStreamPolicy(String policyString) {
-        if (Objects.equals(policyString, RetrieveParentStreamPolicyEnum.DISJOINT.getName())) return RetrieveParentStreamPolicyEnum.DISJOINT;
-        else if (Objects.equals(policyString, RetrieveParentStreamPolicyEnum.SAME_AS_PARENT.getName())) return RetrieveParentStreamPolicyEnum.SAME_AS_PARENT;
-        else {
-            LOGGER.warning("unknown parent stream retrieval policy=" + policyString + "; using default=" + GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY);
-            return GrCUDAContext.DEFAULT_PARENT_STREAM_POLICY;
-        }
-    }
-
-    /* public void parseLoggingLevel(String loggingLevel){
-        //
-           ???.logHandler("log.grcuda.level",loggingLevel);
-    } */
 
     /**
      * Cleanup the GrCUDA context at the end of the execution;

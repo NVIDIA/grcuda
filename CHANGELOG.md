@@ -1,3 +1,7 @@
+# 2021-11-15
+
+* Added read-only polyglot map to retrieve grcuda options. Retrieve it with `getoptions`. Option names and values are provided as strings. Find the full list of options in `GrCUDAOptions`.
+
 # 2021-11-04
 
 * Enabled the usage of TruffleLoggers for logging the execution of grcuda code

@@ -71,7 +71,7 @@ public class GrCUDAStreamManager {
     public static final TruffleLogger STREAM_LOGGER = GrCUDALogger.getLogger(GrCUDALogger.STREAM_LOGGER);
 
     public GrCUDAStreamManager(CUDARuntime runtime) { 
-        this(runtime, runtime.getContext().getRetrieveNewStreamPolicy(), runtime.getContext().getRetrieveParentStreamPolicyEnum());
+        this(runtime, runtime.getContext().getOptions().getRetrieveNewStreamPolicy(), runtime.getContext().getOptions().getRetrieveParentStreamPolicy());
     }
 
     public GrCUDAStreamManager(
