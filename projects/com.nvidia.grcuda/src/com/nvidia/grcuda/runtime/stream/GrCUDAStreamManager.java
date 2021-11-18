@@ -61,6 +61,10 @@ public class GrCUDAStreamManager {
      */
     protected final CUDARuntime runtime;
     /**
+     * Logging of kernel execution times option
+     */
+    protected final Boolean isTimeComputation;
+    /**
      * Track the active computations each stream has, excluding the default stream;
      */
     protected final Map<CUDAStream, Set<ExecutionDAG.DAGVertex>> activeComputationsPerStream = new HashMap<>();
@@ -71,14 +75,19 @@ public class GrCUDAStreamManager {
     public static final TruffleLogger STREAM_LOGGER = GrCUDALogger.getLogger(GrCUDALogger.STREAM_LOGGER);
 
     public GrCUDAStreamManager(CUDARuntime runtime) { 
-        this(runtime, runtime.getContext().getOptions().getRetrieveNewStreamPolicy(), runtime.getContext().getOptions().getRetrieveParentStreamPolicy());
+        this(runtime,
+             runtime.getContext().getOptions().getRetrieveNewStreamPolicy(),
+             runtime.getContext().getOptions().getRetrieveParentStreamPolicy(),
+             runtime.getContext().getOptions().isTimeComputation());
     }
 
     public GrCUDAStreamManager(
             CUDARuntime runtime,
             RetrieveNewStreamPolicyEnum retrieveNewStreamPolicyEnum,
-            RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum) {
+            RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum,
+            boolean isTimeComputation) {
         this.runtime = runtime;
+        this.isTimeComputation = isTimeComputation;
         // Get how streams are retrieved for computations without parents;
         switch(retrieveNewStreamPolicyEnum) {
             case FIFO:
@@ -112,6 +121,7 @@ public class GrCUDAStreamManager {
 
         // If the computation cannot use customized streams, return immediately;
         if (vertex.getComputation().canUseStream()) {
+            
             CUDAStream stream;
             if (vertex.isStart()) {
                 // Else, if the computation doesn't have parents, provide a new stream to it;
@@ -136,15 +146,33 @@ public class GrCUDAStreamManager {
     /**
      * Associate a new {@link CUDAEvent} to this computation, if the computation is done on a {@link CUDAStream}.
      * The event is created and recorded on the stream where the computation is running,
+     * and can be used to time the execution of the computation;
+     * @param vertex an input computation for which we want to assign an event
+     */
+    public void assignEventStart(ExecutionDAG.DAGVertex vertex) {
+        // If the computation cannot use customized streams, return immediately;
+
+        if (isTimeComputation && vertex.getComputation().canUseStream()) {
+            // cudaEventRecord is sensitive to the ctx of the device that is currently set, so we call cudaSetDevice
+            runtime.cudaSetDevice(vertex.getComputation().getStream().getStreamDeviceId());
+            CUDAEvent event = runtime.cudaEventCreate();
+            runtime.cudaEventRecord(event, vertex.getComputation().getStream());
+            vertex.getComputation().setEventStart(event);
+        }
+    }
+
+    /**
+     * Associate a new {@link CUDAEvent} to this computation, if the computation is done on a {@link CUDAStream}.
+     * The event is created and recorded on the stream where the computation is running,
      * and can be used for precise synchronization of children computation;
      * @param vertex an input computation for which we want to assign an event
      */
-    public void assignEvent(ExecutionDAG.DAGVertex vertex) {
+    public void assignEventStop(ExecutionDAG.DAGVertex vertex) {
         // If the computation cannot use customized streams, return immediately;
         if (vertex.getComputation().canUseStream()) {
             CUDAEvent event = runtime.cudaEventCreate();
             runtime.cudaEventRecord(event, vertex.getComputation().getStream());
-            vertex.getComputation().setEvent(event);
+            vertex.getComputation().setEventStop(event);
         }
     }
 
@@ -198,8 +226,8 @@ public class GrCUDAStreamManager {
             //   as operations scheduled on a stream are executed in order;
             if (!vertex.getComputation().getStream().equals(stream)) {
                 // Synchronize on the events associated to the parents;
-                if (parent.getEvent().isPresent()) {
-                    CUDAEvent event = parent.getEvent().get();
+                if (parent.getEventStop().isPresent()) {
+                    CUDAEvent event = parent.getEventStop().get();
                     runtime.cudaStreamWaitEvent(vertex.getComputation().getStream(), event);
 
                     STREAM_LOGGER.finest("\t* wait event on stream; stream to sync=" + stream.getStreamNumber()
@@ -246,9 +274,19 @@ public class GrCUDAStreamManager {
 
     protected void setComputationFinishedInner(GrCUDAComputationalElement computation) {
         computation.setComputationFinished();
-        // Destroy the event associated to this computation;
-        if (computation.getEvent().isPresent()) {
-            runtime.cudaEventDestroy(computation.getEvent().get());
+        if (computation.getEventStop().isPresent()) {
+            if(isTimeComputation && computation.getEventStart().isPresent()) {
+                // Switch to the device where the computation has been done, otherwise we cannot call the cudaEventElapsedTime API;
+                runtime.cudaSetDevice(computation.getStream().getStreamDeviceId());
+                float timeMilliseconds = runtime.cudaEventElapsedTime(computation.getEventStart().get(), computation.getEventStop().get());
+                STREAM_LOGGER.info("Kernel (" + computation + ") Execution time: " + timeMilliseconds + "ms");
+                computation.setExecutionTime(computation.getStream().getStreamDeviceId(), timeMilliseconds);
+                // Destroy the start event associated to this computation:
+                runtime.cudaEventDestroy(computation.getEventStart().get());
+            }
+            // Destroy the stop event associated to this computation:
+            runtime.cudaEventDestroy(computation.getEventStop().get());
+
         } else {
             STREAM_LOGGER.warning("\t* missing event to destroy for computation=" + computation);
         }

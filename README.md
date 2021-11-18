@@ -399,6 +399,7 @@ The automatic DAG scheduling of GrCUDA supports different settings that can be u
 `same-as-parent` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint
 * `InputPrefetch`: if present, prefetch the data on GPUs with architecture starting from Pascal. In most cases, it improves performance.
 * `ForceStreamAttach`: if present, force association between arrays and CUDA streams. True by default on architectures older than Pascal, to allow concurrent CPU/GPU computation. On architectures starting from Pascal, it can improve performance.
+* `--grcuda.TimeComputation`: Enable time computation to get execution time of the kernels, default is false;
 
 ## Publications
 

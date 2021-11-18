@@ -527,6 +527,25 @@ public final class CUDARuntime {
     }
 
     /**
+     * Computes the elapsed time between events.
+     * @param start Starting event
+     * @param end Ending event
+     */
+    @TruffleBoundary
+    public float cudaEventElapsedTime(CUDAEvent start, CUDAEvent end) {
+
+        try(UnsafeHelper.Float32Object outPointer = UnsafeHelper.createFloat32Object()) {
+            Object callable = CUDARuntimeFunction.CUDA_EVENTELAPSEDTIME.getSymbol(this);
+            Object result = INTEROP.execute(callable, outPointer.getAddress(),start.getRawPointer(), end.getRawPointer());
+            checkCUDAReturnCode(result, "cudaEventElapsedTime");
+            float time = outPointer.getValue();
+            return time;
+        } catch (InteropException e) {
+            throw new GrCUDAException(e);
+        }
+    }
+
+    /**
      * Add a given event to a stream. The event is a stream-ordered checkpoint on which we can
      * perform synchronization, or force another stream to wait for the event to occur before
      * executing any other scheduled operation queued on that stream;
@@ -978,6 +997,37 @@ public final class CUDARuntime {
                 }
                 callSymbol(cudaRuntime, addr);
                 return NoneValue.get();
+            }
+        },
+        CUDA_EVENTELAPSEDTIME("cudaEventElapsedTime", "(pointer, pointer, pointer): sint32") {
+            @Override
+            @TruffleBoundary
+            public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
+                checkArgumentLength(args, 3);
+
+                Object pointerFloat = args[0];
+                Object pointerStartEvent = args[1];
+                Object pointerEndEvent = args[2];
+                long addrStart;
+                long addrEnd;
+                long addrFloat;
+
+                if (pointerStartEvent instanceof CUDAEvent) {
+                    addrStart = ((CUDAEvent) pointerStartEvent).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAEvent object");
+                }
+                if (pointerEndEvent instanceof CUDAEvent) {
+                    addrEnd = ((CUDAEvent) pointerEndEvent).getRawPointer();
+                } else {
+                    throw new GrCUDAException("expected CUDAEvent object");
+                }
+
+                try (UnsafeHelper.Float32Object floatPointer = UnsafeHelper.createFloat32Object()) {
+                    callSymbol(cudaRuntime, floatPointer.getAddress(), addrStart, addrEnd );
+                    return NoneValue.get();
+                }
+
             }
         },
         CUDA_EVENTRECORD("cudaEventRecord", "(pointer, pointer): sint32") {

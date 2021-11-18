@@ -67,10 +67,15 @@ public abstract class GrCUDAComputationalElement {
     private CUDAStream stream = DefaultStream.get();
     /**
      * Reference to the event associated to this computation, and recorded on the stream where this computation is executed,
+     * before the computation is started. It is used in order to time the execution.
+     */
+    private CUDAEvent eventStart;
+    /**
+     * Reference to the event associated to this computation, and recorded on the stream where this computation is executed,
      * after the computation is started. It offers a precise synchronization point for children computations.
      * If the computation is not executed on a stream, the event is null;
      */
-    private CUDAEvent event;
+    private CUDAEvent eventStop;
     /**
      * Keep track of whether this computation has already been executed, and represents a "dead" vertex in the DAG.
      * Computations that are already executed will not be considered when computing dependencies;
@@ -112,6 +117,23 @@ public abstract class GrCUDAComputationalElement {
     public List<ComputationArgumentWithValue> getArgumentList() {
         return argumentList;
     }
+
+    /**
+     * Set in Profilable Element the elapsed time between start event of the computation and the end event
+     *
+     * @param deviceId
+     * @param time
+     *
+     */
+    public void setExecutionTime(int deviceId, float time){ }
+
+    /**
+     * Get execution time of the computation on the device deviceId,
+     * if computation has not yet been executed on the device then it returns null.
+     * @param deviceId
+     * @return execution time
+     */
+    public float getExecutionTimeOnDevice(int deviceId){ return 0; }
 
     /**
      * Return if this computation could lead to dependencies with future computations.
@@ -164,16 +186,28 @@ public abstract class GrCUDAComputationalElement {
         this.computationStarted = true;
     }
 
-    public Optional<CUDAEvent> getEvent() {
-        if (event != null) {
-            return Optional.of(event);
+    public Optional<CUDAEvent> getEventStop() {
+        if (eventStop != null) {
+            return Optional.of(eventStop);
         } else {
             return Optional.empty();
         }
     }
 
-    public void setEvent(CUDAEvent event) {
-        this.event = event;
+    public Optional<CUDAEvent> getEventStart() {
+        if (eventStart != null) {
+            return Optional.of(eventStart);
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    public void setEventStop(CUDAEvent eventStop) {
+        this.eventStop = eventStop;
+    }
+
+    public void setEventStart(CUDAEvent eventStart) {
+        this.eventStart = eventStart;
     }
 
     /**

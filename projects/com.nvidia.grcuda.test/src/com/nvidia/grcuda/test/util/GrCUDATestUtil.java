@@ -30,6 +30,7 @@
  */
 package com.nvidia.grcuda.test.util;
 
+import com.nvidia.grcuda.GrCUDALogger;
 import com.nvidia.grcuda.runtime.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.runtime.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.runtime.stream.RetrieveNewStreamPolicyEnum;
@@ -73,19 +74,20 @@ public class GrCUDATestUtil {
                 {RetrieveParentStreamPolicyEnum.SAME_AS_PARENT, RetrieveParentStreamPolicyEnum.DISJOINT},
                 {DependencyPolicyEnum.NO_CONST, DependencyPolicyEnum.WITH_CONST},
                 {true, false},  // ForceStreamAttach
+                {true, false},  // With and without logging
         }));
         List<Object[]> combinations = new ArrayList<>();
         options.forEach(optionArray -> {
             GrCUDATestOptionsStruct newStruct = new GrCUDATestOptionsStruct(
                     (ExecutionPolicyEnum) optionArray[0], (boolean) optionArray[1],
                     (RetrieveNewStreamPolicyEnum) optionArray[2], (RetrieveParentStreamPolicyEnum) optionArray[3],
-                    (DependencyPolicyEnum) optionArray[4], (boolean) optionArray[5]);
+                    (DependencyPolicyEnum) optionArray[4], (boolean) optionArray[5], (boolean) optionArray[6]);
             if (!isOptionRedundantForSync(newStruct)) {
                 combinations.add(new GrCUDATestOptionsStruct[]{newStruct});
             }
         });
-        // Check that the number of options is correct;
-        assert(combinations.size() == (2 * 2 + 2 * 2 * 2 * 2 * 2));
+        // Check that the number of options is correct <(sync + async) * logging>;
+        assert(combinations.size() == (2 * 2 + 2 * 2 * 2 * 2 * 2) * 2);
         return combinations;
     }
 
@@ -97,12 +99,16 @@ public class GrCUDATestUtil {
                 .option("grcuda.RetrieveParentStreamPolicy", options.retrieveParentStreamPolicy.toString())
                 .option("grcuda.DependencyPolicy", options.dependencyPolicy.toString())
                 .option("grcuda.ForceStreamAttach", String.valueOf(options.forceStreamAttach))
+                .option("grcuda.TimeComputation", String.valueOf(options.timeComputation))
                 .build();
     }
 
     public static Context.Builder buildTestContext() {
         return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).logHandler(new TestLogHandler())
-                .option("log.grcuda.com.nvidia.grcuda.level", "WARNING").option("log.grcuda.com.nvidia.grcuda.GrCUDAContext.level", "SEVERE");
+                .option("log.grcuda.com.nvidia.grcuda.level", "WARNING")
+                .option("log.grcuda.com.nvidia.grcuda.GrCUDAContext.level", "SEVERE")
+//                .option("log.grcuda." + GrCUDALogger.STREAM_LOGGER + ".level", "INFO")  // Uncomment to print kernel log;
+                ;
     }
 
     /**

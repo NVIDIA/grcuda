@@ -1,3 +1,15 @@
+# 2021-11-17
+
+* Added the support of precise timing of kernels, for debugging and complex scheduling policies
+  * Associated a CUDA event to the start of the computation in order to get the Elapsed time from start to the end
+  * Added ElapsedTime function to compute the elapsed time between events, aka the total execution time
+  * Logging of kernel timers is controlled by the grcuda.TimeComputation option, which is false by default
+  * Implemented with the ProfilableElement class to store timing values in a hash table and support future business logic
+* Updated documentation for the use of the new TimeComputation option in README
+* Considerations:
+  * ProfilableElement is profilable (=true) by default, and any ConfiguredKernel is initialized with this configuration. To date, there isn't any usage for a ProfilableElement that is not profilable (=false)
+  * To date, we are tracking only the last execution of a ConfiguredKernel on each device. It will be useful in the future to track all the executions and leverage this information in our scheduler
+  
 # 2021-11-15
 
 * Added read-only polyglot map to retrieve grcuda options. Retrieve it with `getoptions`. Option names and values are provided as strings. Find the full list of options in `GrCUDAOptions`.
@@ -18,7 +30,7 @@
 * Set TensorRT support to experimental
   * TensorRT is currently not supported on CUDA 11.4, making it impossible to use along a recent version of cuML
   * **Known limitation:** due to this incompatibility, TensorRT is currently not available on the async scheduler
-  
+
 # 2021-09-30, Release 1
 
 ## API Changes

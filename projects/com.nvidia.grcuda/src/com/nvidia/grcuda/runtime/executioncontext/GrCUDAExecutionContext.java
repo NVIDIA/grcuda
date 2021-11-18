@@ -90,7 +90,7 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
         Object result = executeComputationSync(vertex);
 
         // Associate a CUDA event to this computation, if performed asynchronously;
-        streamManager.assignEvent(vertex);
+        streamManager.assignEventStop(vertex);
 
         GrCUDALogger.getLogger(GrCUDALogger.EXECUTIONCONTEXT_LOGGER).finest("-- running " + vertex.getComputation());
 
@@ -121,6 +121,10 @@ public class GrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
         // Perform the computation;
         vertex.getComputation().setComputationStarted();
         vertex.getComputation().updateIsComputationArrayAccess();
+
+        // Associate a CUDA event to the starting phase of the computation in order to get the Elapsed time from start to the end
+        streamManager.assignEventStart(vertex);
+
         return vertex.getComputation().execute();
     }
 }
