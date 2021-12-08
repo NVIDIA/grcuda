@@ -37,6 +37,7 @@ package com.nvidia.grcuda;
 
 import com.nvidia.grcuda.cudalibraries.cublas.CUBLASRegistry;
 import com.nvidia.grcuda.cudalibraries.cuml.CUMLRegistry;
+import com.nvidia.grcuda.cudalibraries.cusparse.CUSPARSERegistry;
 import com.nvidia.grcuda.cudalibraries.tensorrt.TensorRTRegistry;
 import com.nvidia.grcuda.functions.BindAllFunction;
 import com.nvidia.grcuda.functions.BindFunction;
@@ -151,6 +152,11 @@ public final class GrCUDAContext {
             namespace.addNamespace(trt);
             new TensorRTRegistry(this).registerTensorRTFunctions(trt);
         }
+        if (grCUDAOptionMap.isCuSPARSEEnabled()) {
+            Namespace sparse = new Namespace(CUSPARSERegistry.NAMESPACE);
+            namespace.addNamespace(sparse);
+            new CUSPARSERegistry(this).registerCUSPARSEFunctions(sparse);
+        }
         this.rootNamespace = namespace;
     }
 
@@ -195,6 +201,7 @@ public final class GrCUDAContext {
     public ConcurrentHashMap<Class<?>, CallTarget> getMapCallTargets() {
         return uncachedMapCallTargets;
     }
+
 
     /**
      * Compute the maximum number of concurrent threads that can be spawned by GrCUDA.

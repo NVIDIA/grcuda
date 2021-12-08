@@ -8,25 +8,25 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 /**
- * Class of functions to manage streams in the CUBLAS library
+ * Class of functions to avoid managing streams in the CUSPARSE library
  */
 
-public class CUBLASSetStreamFunction extends LibrarySetStreamFunction {
+public class CUSPARSESetStreamFunction extends LibrarySetStreamFunction {
 
     private final long handle;
 
-    public CUBLASSetStreamFunction(Function setStreamFunctionNFI, long handle) {
+    public CUSPARSESetStreamFunction(Function setStreamFunctionNFI, long handle) {
         super(setStreamFunctionNFI);
         this.handle = handle;
     }
 
     @Override
     public void setStream(CUDAStream stream) {
-        Object[] cublasSetStreamArgs = {this.handle, stream.getRawPointer()};
+        Object[] cusparseSetStreamArgs = {this.handle, stream.getRawPointer()};
         try {
-            INTEROP.execute(this.setStreamFunctionNFI, cublasSetStreamArgs);
+            INTEROP.execute(this.setStreamFunctionNFI, cusparseSetStreamArgs);
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
-            System.out.println("failed to set CUBLAS stream");
+            System.out.println("failed to set CUSPARSE stream");
             e.printStackTrace();
         }
     }

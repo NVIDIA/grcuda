@@ -30,12 +30,12 @@
  */
 package com.nvidia.grcuda.runtime.stream;
 
+import java.util.Objects;
+
 import com.nvidia.grcuda.GPUPointer;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-
-import java.util.Objects;
 
 @ExportLibrary(InteropLibrary.class)
 public class CUDAStream extends GPUPointer {
@@ -55,7 +55,7 @@ public class CUDAStream extends GPUPointer {
         this.deviceId = 0;
     }
 
-    public int getStreamDeviceId(){
+    public int getStreamDeviceId() {
         return this.deviceId;
     }
 
@@ -67,7 +67,9 @@ public class CUDAStream extends GPUPointer {
         this.deviceId = deviceId;
     }
 
-    public boolean isDefaultStream() { return false; }
+    public boolean isDefaultStream() {
+        return false;
+    }
 
     @Override
     public String toString() {
@@ -81,9 +83,12 @@ public class CUDAStream extends GPUPointer {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        if (!super.equals(o))
+            return false;
         CUDAStream that = (CUDAStream) o;
         return streamNumber == that.streamNumber && this.getRawPointer() == that.getRawPointer();
     }

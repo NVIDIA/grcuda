@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,17 +50,24 @@ import static com.nvidia.grcuda.functions.Function.INTEROP;
 public class CUDALibraryExecution extends GrCUDAComputationalElement {
 
     private final Function nfiFunction;
-    private final Object[] argsWithHandle;
+    protected Object[] argsWithHandle;
     private final LibrarySetStreamFunction setStreamFunctionNFI;
 
     public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, LibrarySetStreamFunction setStreamFunctionNFI, List<ComputationArgumentWithValue> args) {
+        this(context, nfiFunction, setStreamFunctionNFI, args, 0);
+    }
+
+    public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, LibrarySetStreamFunction setStreamFunctionNFI, List<ComputationArgumentWithValue> args, int extraArguments) {
         super(context, new CUDALibraryExecutionInitializer(args));
         this.nfiFunction = nfiFunction;
         this.setStreamFunctionNFI = setStreamFunctionNFI;
 
-        // Array of [libraryHandle + arguments], required by CUDA libraries for execution;
-        this.argsWithHandle = new Object[args.size()];
-        for (int i = 0; i < args.size(); i++) {
+        // Array of [libraryHandle + arguments], required by CUDA libraries for execution.
+        // Some libraries (such as cuSPARSE) wrap input arrays, making it not possible to directly track them.
+        // We add those arrays at the end of "args" so they are tracked by CUDALibraryExecutionInitializer,
+        // but remove them here so the list of arguments passed to the final CUDA library function is correct;
+        this.argsWithHandle = new Object[args.size() - extraArguments];
+        for (int i = 0; i < args.size() - extraArguments; i++) {
             argsWithHandle[i] = args.get(i).getArgumentValue();
         }
     }

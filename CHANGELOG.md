@@ -1,3 +1,13 @@
+# 2021-11-21
+
+* Enabled support for cuSPARSE
+  * Operations with sparse matrices from cuSPARSE library are now supported
+  * **Known limitation:** Not all data types are supported: in particular Tgemvi does not support double data types 
+  (both complex and not)
+  * Concurrent operations on parallel streams were analyzed using Nvidia Profiler
+
+=======
+
 # 2021-11-17
 
 * Added the support of precise timing of kernels, for debugging and complex scheduling policies
@@ -21,6 +31,7 @@
     * Implemented GrCUDALogger class is in order to have access to loggers of interest when specific features are needed
 * Changed all the print in the source code in log events, with different logging levels
 * Added documentation about logging in docs
+
 
 # 2021-10-13
 

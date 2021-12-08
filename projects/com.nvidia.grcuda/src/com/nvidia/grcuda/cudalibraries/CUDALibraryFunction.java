@@ -46,7 +46,7 @@ import java.util.List;
  */
 public abstract class CUDALibraryFunction extends Function {
 
-    private final List<ComputationArgument> computationArguments;
+    protected final List<ComputationArgument> computationArguments;
 
     /**
      * Constructor, it takes the name of the wrapped function and its NFI signature,

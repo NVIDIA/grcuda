@@ -250,7 +250,7 @@ public class UnsafeHelper {
 
     public static final class Integer64Object extends MemoryObject {
 
-        Integer64Object() {
+        public Integer64Object() {
             super(unsafe.allocateMemory(8));
         }
 
