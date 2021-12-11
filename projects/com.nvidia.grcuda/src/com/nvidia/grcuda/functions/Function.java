@@ -112,7 +112,14 @@ public abstract class Function implements TruffleObject {
     public static void checkArgumentLength(Object[] arguments, int expected) throws ArityException {
         if (arguments.length != expected) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(expected, arguments.length);
+            throw ArityException.create(expected, expected, arguments.length);
+        }
+    }
+
+    public static void checkArgumentLength(Object[] arguments, int minExpected, int maxExpected) throws ArityException {
+        if (arguments.length < minExpected || arguments.length > maxExpected) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(minExpected, maxExpected, arguments.length);
         }
     }
 

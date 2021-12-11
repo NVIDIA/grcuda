@@ -236,7 +236,7 @@ final class MapBoundArgObjectSize extends MapBoundArgObjectBase {
                     @Cached("createEqualityProfile()") PrimitiveValueProfile lengthProfile) throws ArityException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         long size;
         try {
@@ -355,7 +355,7 @@ final class MapBoundArgObjectValue extends MapBoundArgObjectBase {
                     @Cached("createEqualityProfile()") PrimitiveValueProfile lengthProfile) throws ArityException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         int length = lengthProfile.profile(args.length);
         Object[] mappedArgs = new Object[length];
@@ -443,7 +443,7 @@ final class MapBoundArgObjectMember extends MapBoundArgObjectBase {
                     @CachedLibrary(limit = "2") InteropLibrary memberInterop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         Object value = parentInterop.execute(parent, arguments);
         try {
@@ -503,7 +503,7 @@ final class MapBoundArgObjectElement extends MapBoundArgObjectBase {
                     @CachedLibrary(limit = "2") InteropLibrary elementInterop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         Object value = parentInterop.execute(parent, arguments);
         try {
@@ -563,7 +563,7 @@ final class MapBoundArgObjectMap extends MapBoundArgObjectBase {
                     @CachedLibrary("this.function") InteropLibrary mapInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         Object value = parentInterop.execute(parent, arguments);
         try {
@@ -639,7 +639,7 @@ final class MapBoundArgObjectShred extends MapBoundArgObjectBase {
                     @CachedLibrary("this.parent") InteropLibrary parentInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         return new ShreddedObject(parentInterop.execute(parent, arguments));
     }

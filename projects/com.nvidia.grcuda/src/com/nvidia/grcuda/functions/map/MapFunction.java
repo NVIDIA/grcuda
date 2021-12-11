@@ -120,7 +120,7 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
     static void checkArity(Object[] arguments, int expectedArity) throws ArityException {
         if (arguments.length != expectedArity) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(expectedArity, arguments.length);
+            throw ArityException.create(expectedArity, expectedArity, arguments.length);
         }
     }
 
@@ -175,7 +175,9 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
         static MapFunctionBase readMemberSize(MapFunction receiver, String member) {
             return new MapFunctionBase(arguments -> {
                 if (arguments.length == 0) {
-                    throw ArityException.create(1, 0);
+                    // FIXME: the maximum number of arguments is unbound.
+                    //  Truffle currently uses -1 to handle an unbound number of arguments;
+                    throw ArityException.create(1, -1, 0);
                 }
                 try {
                     return receiver.size((MapArgObject) arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length, MapArgObject[].class));
@@ -189,7 +191,9 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
         static MapFunctionBase readMemberValue(MapFunction receiver, String member) {
             return new MapFunctionBase(arguments -> {
                 if (arguments.length < 1) {
-                    throw ArityException.create(1, arguments.length);
+                    // FIXME: the maximum number of arguments is unbound.
+                    //  Truffle currently uses -1 to handle an unbound number of arguments;
+                    throw ArityException.create(1, -1, arguments.length);
                 }
                 String name = checkString(arguments[0], "name of created value expected");
                 if (arguments.length == 1) {
@@ -225,7 +229,9 @@ public final class MapFunction extends com.nvidia.grcuda.functions.Function {
     @TruffleBoundary
     public MappedFunction execute(Object[] arguments) throws ArityException, UnsupportedTypeException {
         if (arguments.length == 0) {
-            throw ArityException.create(1, 0);
+            // FIXME: the maximum number of arguments is unbound.
+            //  Truffle currently uses -1 to handle an unbound number of arguments;
+            throw ArityException.create(1, -1, 0);
         }
         Object function = arguments[0];
         if (!INTEROP.isExecutable(function)) {

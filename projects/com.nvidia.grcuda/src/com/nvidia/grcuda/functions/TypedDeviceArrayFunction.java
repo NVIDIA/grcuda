@@ -61,7 +61,9 @@ public final class TypedDeviceArrayFunction extends Function {
     public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
         if (arguments.length < 1) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
+            // FIXME: the maximum number of arguments is unbound (as each argument is a dimension of a N-dimensional tensor).
+            //  Truffle currently uses -1 to handle an unbound number of arguments;
+            throw ArityException.create(1, -1, arguments.length);
         }
         return DeviceArrayFunction.createArray(arguments, 0, elementType, grCUDAExecutionContext);
     }

@@ -77,7 +77,7 @@ public final class DeviceArrayFunction extends Function {
     @TruffleBoundary
     public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
         if (arguments.length < 1) {
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, 2, arguments.length);
         }
         String typeName = expectString(arguments[0], "first argument of DeviceArray must be string (type name)");
         Type elementType;

@@ -900,7 +900,7 @@ public final class CUDARuntime {
                     }
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    throw ArityException.create(3, args.length);
+                    throw ArityException.create(1, 3, args.length);
                 }
 
                 // Extract pointers;
@@ -944,7 +944,7 @@ public final class CUDARuntime {
                     streamObj = args[3];
                 } else {
                     CompilerDirectives.transferToInterpreter();
-                    throw ArityException.create(4, args.length);
+                    throw ArityException.create(3, 4, args.length);
                 }
 
                 if (args[1] instanceof Long) {
@@ -1005,12 +1005,10 @@ public final class CUDARuntime {
             public Object call(CUDARuntime cudaRuntime, Object[] args) throws ArityException, UnsupportedTypeException, InteropException {
                 checkArgumentLength(args, 3);
 
-                Object pointerFloat = args[0];
                 Object pointerStartEvent = args[1];
                 Object pointerEndEvent = args[2];
                 long addrStart;
                 long addrEnd;
-                long addrFloat;
 
                 if (pointerStartEvent instanceof CUDAEvent) {
                     addrStart = ((CUDAEvent) pointerStartEvent).getRawPointer();
@@ -1022,12 +1020,10 @@ public final class CUDARuntime {
                 } else {
                     throw new GrCUDAException("expected CUDAEvent object");
                 }
-
                 try (UnsafeHelper.Float32Object floatPointer = UnsafeHelper.createFloat32Object()) {
                     callSymbol(cudaRuntime, floatPointer.getAddress(), addrStart, addrEnd );
                     return NoneValue.get();
                 }
-
             }
         },
         CUDA_EVENTRECORD("cudaEventRecord", "(pointer, pointer): sint32") {

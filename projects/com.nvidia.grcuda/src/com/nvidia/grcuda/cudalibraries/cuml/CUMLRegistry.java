@@ -128,7 +128,7 @@ public class CUMLRegistry {
                 @TruffleBoundary
                 public Object call(Object[] arguments) throws ArityException {
                     checkArgumentLength(arguments, 2);
-                    try (UnsafeHelper.Integer64Object handle = UnsafeHelper.createInteger64Object()) {
+                    try {
                         long stream_handle = expectLong(arguments[0]);
                         long streamID = expectLong(arguments[1]);
                         Object result = INTEROP.execute(cumlSetStreamFunctionNFI, stream_handle, streamID);

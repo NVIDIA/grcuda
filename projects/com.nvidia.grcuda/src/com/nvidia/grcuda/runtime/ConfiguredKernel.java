@@ -88,7 +88,7 @@ public class ConfiguredKernel extends ProfilableElement implements TruffleObject
             throws UnsupportedTypeException, ArityException {
         if (args.length != kernel.getKernelParameters().length) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(kernel.getKernelParameters().length, args.length);
+            throw ArityException.create(kernel.getKernelParameters().length, kernel.getKernelParameters().length, args.length);
         }
         KernelArguments kernelArgs = new KernelArguments(args, this.kernel.getKernelParameters());
         for (int paramIdx = 0; paramIdx < kernel.getKernelParameters().length; paramIdx++) {

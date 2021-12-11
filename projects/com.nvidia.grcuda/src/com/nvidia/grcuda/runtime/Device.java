@@ -176,7 +176,9 @@ final class IsCurrentFunction implements TruffleObject {
     public Object execute(Object[] arguments) throws ArityException {
         if (arguments.length != 0) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(0, arguments.length);
+            // FIXME: the maximum number of arguments is unbound (as each argument is a dimension of a N-dimensional tensor).
+            //  Truffle currently uses -1 to handle an unbound number of arguments;
+            throw ArityException.create(0, -1, arguments.length);
         }
         return runtime.cudaGetDevice() == deviceId;
     }
@@ -203,7 +205,7 @@ class SetCurrentFunction implements TruffleObject {
     public Object execute(Object[] arguments) throws ArityException {
         if (arguments.length != 0) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(0, arguments.length);
+            throw ArityException.create(0, 0, arguments.length);
         }
         runtime.cudaSetDevice(deviceId);
         return NoneValue.get();

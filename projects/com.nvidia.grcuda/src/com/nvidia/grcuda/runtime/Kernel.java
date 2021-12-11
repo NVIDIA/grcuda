@@ -281,11 +281,9 @@ public class Kernel implements TruffleObject {
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeAccess,
                     @CachedLibrary(limit = "3") InteropLibrary blockSizeElementAccess,
                     @CachedLibrary(limit = "3") InteropLibrary sharedMemoryAccess) throws UnsupportedTypeException, ArityException {
-        // FIXME: ArityException allows to specify only 1 arity, and cannot be subclassed! We might
-        // want to use a custom exception here;
         if (arguments.length < 2 || arguments.length > 4) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(2, arguments.length);
+            throw ArityException.create(2, 4, arguments.length);
         }
 
         Dim3 gridSize = extractDim3(arguments[0], "gridSize", gridSizeAccess, gridSizeElementAccess);

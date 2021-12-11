@@ -64,7 +64,7 @@ public final class TypedMapDeviceArrayFunction extends Function {
                     @Cached MapArrayNode mapNode) throws ArityException {
         if (arguments.length != 1) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, 1, arguments.length);
         }
         return mapNode.execute(arguments[0], elementType, grCUDAExecutionContext);
     }

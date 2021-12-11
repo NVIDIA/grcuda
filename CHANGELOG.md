@@ -1,12 +1,12 @@
+# 2021-11-29
+
+* Removed deprecation warning for Truffle's ArityException. 
+
 # 2021-11-21
 
 * Enabled support for cuSPARSE
-  * Operations with sparse matrices from cuSPARSE library are now supported
-  * **Known limitation:** Not all data types are supported: in particular Tgemvi does not support double data types 
-  (both complex and not)
-  * Concurrent operations on parallel streams were analyzed using Nvidia Profiler
-
-=======
+  * Added support for CSR and COO `spmv` and `gemvi`.
+  * **Known limitation:** Tgemvi works only with single-precision floating-point arithmetics.
 
 # 2021-11-17
 

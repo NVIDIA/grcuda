@@ -227,7 +227,7 @@ public final class MapDeviceArrayFunction extends Function {
                     @Cached MapArrayNode mapNode) throws ArityException, UnsupportedTypeException {
         if (arguments.length < 1) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, 2, arguments.length);
         }
         String typeName;
         try {
@@ -244,12 +244,11 @@ public final class MapDeviceArrayFunction extends Function {
         }
         if (arguments.length == 1) {
             return new TypedMapDeviceArrayFunction(grCUDAExecutionContext, elementType);
-        } else {
-            if (arguments.length != 2) {
-                CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(2, arguments.length);
-            }
+        } else if (arguments.length == 2) {
             return mapNode.execute(arguments[1], elementType, grCUDAExecutionContext);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(1, 2, arguments.length);
         }
     }
 }

@@ -102,7 +102,7 @@ public class DeviceArrayCopyFunction implements TruffleObject {
             numElements = extractNumber(arguments[1], numElementsAccess);
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, 2, arguments.length);
         }
         // Obtain what kind of copy (pointer or array) should be executed.
         // By default, see if we can use the fast CUDA memcpy: we cannot use it if the source and target arrays

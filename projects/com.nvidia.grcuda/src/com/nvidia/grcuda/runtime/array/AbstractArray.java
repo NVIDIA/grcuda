@@ -406,7 +406,7 @@ public abstract class AbstractArray implements TruffleObject {
         Object execute(Object[] arguments) throws ArityException {
             if (arguments.length != 0) {
                 CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(0, arguments.length);
+                throw ArityException.create(0, 0, arguments.length);
             }
             freeMemory();
             return NoneValue.get();
