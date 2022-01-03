@@ -1,3 +1,8 @@
+# 2021-12-21, Release 2
+
+* Added support for GraalVM 21.3.
+* Removed `ProfilableElement` Boolean flag, as it was always true.
+
 # 2021-11-29
 
 * Removed deprecation warning for Truffle's ArityException. 
@@ -11,14 +16,14 @@
 # 2021-11-17
 
 * Added the support of precise timing of kernels, for debugging and complex scheduling policies
-  * Associated a CUDA event to the start of the computation in order to get the Elapsed time from start to the end
-  * Added ElapsedTime function to compute the elapsed time between events, aka the total execution time
-  * Logging of kernel timers is controlled by the grcuda.TimeComputation option, which is false by default
+  * Associated a CUDA event to the start of the computation in order to get the elapsed time from start to the end
+  * Added` ElapsedTime` function to compute the elapsed time between events, aka the total execution time
+  * Logging of kernel timers is controlled by the `grcuda.TimeComputation` option, which is false by default
   * Implemented with the ProfilableElement class to store timing values in a hash table and support future business logic
-* Updated documentation for the use of the new TimeComputation option in README
+* Updated documentation for the use of the new `TimeComputation` option in README
 * Considerations:
-  * ProfilableElement is profilable (=true) by default, and any ConfiguredKernel is initialized with this configuration. To date, there isn't any usage for a ProfilableElement that is not profilable (=false)
-  * To date, we are tracking only the last execution of a ConfiguredKernel on each device. It will be useful in the future to track all the executions and leverage this information in our scheduler
+  * `ProfilableElement` is profilable (`true`) by default, and any `ConfiguredKernel` is initialized with this configuration. To date, there isn't any use for a `ProfilableElement` that is not profilable (`false`)
+  * To date, we are tracking only the last execution of a `ConfiguredKernel` on each device. It will be useful in the future to track all the executions and leverage this information in our scheduler
   
 # 2021-11-15
 
@@ -31,7 +36,6 @@
     * Implemented GrCUDALogger class is in order to have access to loggers of interest when specific features are needed
 * Changed all the print in the source code in log events, with different logging levels
 * Added documentation about logging in docs
-
 
 # 2021-10-13
 

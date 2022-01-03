@@ -54,27 +54,27 @@ sudo apt install -y curl
 #   At the bottom of this guide, it is explained how to install EE;
 git clone https://github.com/oracle/graal.git
 git clone https://github.com/graalvm/mx.git
-git clone https://github.com/AlbertoParravicini/grcuda.git
+git clone https://github.com/necst/grcuda.git
 
-# checkout commit of GraalVM corresponding to the release (21.2);
+# checkout commit of GraalVM corresponding to the release (21.3);
 cd graal
-git checkout e9c54823b71cdca08e392f6b8b9a283c01c96571
+git checkout 84541b16ae8a8726a0e7d76c7179d94a57ed84ee
 cd ..
 
 # checkout commit of mx compatible with versions of other tools;
 cd mx
-git checkout d6831ca0130e21b55b2675f7c931da7da10266cb
+git checkout 722b86b8ef87fbb297f7e33ee6014bbbd3f4a3a8
 cd ..
 
-# download the GraalVM release build (21.2.0) and the corresponding JVM;
-wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.2.0/graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
-wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.2-b08/labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
+# download the GraalVM release build (21.3.0) and the corresponding JVM;
+wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.3.0/graalvm-ce-java11-linux-amd64-21.3.0.tar.gz
+wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.3-b05/labsjdk-ce-11.0.13+7-jvmci-21.3-b05-linux-amd64.tar.gz
 # extract them;
-tar xfz labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-tar xfz graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
+tar xfz graalvm-ce-java11-linux-amd64-21.3.0.tar.gz
+tar xfz labsjdk-ce-11.0.13+7-jvmci-21.3-b05-linux-amd64.tar.gz
 # remove temporary files;
-rm labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-rm graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
+rm graalvm-ce-java11-linux-amd64-21.3.0.tar.gz
+rm labsjdk-ce-11.0.13+7-jvmci-21.3-b05-linux-amd64.tar.gz
 
 # install CUDA and Nvidia drivers;
 
@@ -111,8 +111,8 @@ echo 'export CUDA_DIR=/usr/local/cuda' >> ~/.bashrc
 echo 'export PATH=$CUDA_DIR/bin:$PATH' >> ~/.bashrc
 echo '# GraalVM and GrCUDA;' >> ~/.bashrc
 echo 'export PATH=~/mx:$PATH' >> ~/.bashrc
-echo 'export JAVA_HOME=~/labsjdk-ce-11.0.12-jvmci-21.2-b08' >> ~/.bashrc
-echo 'export GRAAL_HOME=~/graalvm-ce-java11-21.2.0' >> ~/.bashrc
+echo 'export JAVA_HOME=~/labsjdk-ce-11.0.13-jvmci-21.3-b05' >> ~/.bashrc
+echo 'export GRAAL_HOME=~/graalvm-ce-java11-21.3.0' >> ~/.bashrc
 echo 'export PATH=$GRAAL_HOME/bin:$PATH' >> ~/.bashrc
 echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
 echo 'export GRCUDA_HOME=~/grcuda' >> ~/.bashrc
@@ -185,22 +185,22 @@ sudo reboot
 # # 1. go to https://www.oracle.com/downloads/graalvm-downloads.html?selected_tab=1
 # # 2. download Oracle GraalVM Enterprise Edition Core for Java 11. An Oracle account is required
 # # 3. transfer the tar.gz to your machine, and extract it with
-# tar -xzf graalvm-ee-java11-linux-amd64-21.2.0.1.tar.gz
-# rm graalvm-ee-java11-linux-amd64-21.2.0.1.tar.gz
+# tar -xzf graalvm-ee-java11-linux-amd64-21.3.0.tar.gz
+# rm graalvm-ee-java11-linux-amd64-21.3.0.tar.gz
 # # Install Labs-JDK to build GrCUDA;
-# wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.2-b08/labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-# tar -xzf labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-# rm labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
+# wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.3-b05/labsjdk-ce-11.0.13+7-jvmci-21.3-b05-linux-amd64.tar.gz
+# tar -xzf labsjdk-ce-11.0.13+7-jvmci-21.3-b05-linux-amd64.tar.gz
+# rm labsjdk-ce-11.0.13+7-jvmci-21.3-b05-linux-amd64.tar.gz
 # cd graal
-# git checkout e9c54823b71cdca08e392f6b8b9a283c01c96571
+# git checkout 84541b16ae8a8726a0e7d76c7179d94a57ed84ee
 # cd ..
 # # checkout commit of mx compatible with versions of other tools;
 # cd mx
-# git checkout b39c4a551c4e99909f2e83722472329324ed4e42
+# git checkout 722b86b8ef87fbb297f7e33ee6014bbbd3f4a3a8
 # cd ..
 # echo '# GraalVM EE' >> ~/.bashrc
-# echo 'export JAVA_HOME=~/labsjdk-ce-11.0.12-jvmci-21.2-b08' >> ~/.bashrc
-# echo 'export GRAAL_HOME=~/graalvm-ee-java11-21.2.0.1' >> ~/.bashrc
+# echo 'export JAVA_HOME=~/labsjdk-ce-11.0.13-jvmci-21.3-b05' >> ~/.bashrc
+# echo 'export GRAAL_HOME=~/graalvm-ee-java11-21.3.0' >> ~/.bashrc
 # echo 'export PATH=$GRAAL_HOME/bin:$PATH' >> ~/.bashrc
 # echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
 # # Install components. Note: this requires user interaction, and an email address associated to an Oracle account
