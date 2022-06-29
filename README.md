@@ -206,7 +206,7 @@ We checkout the commit corresponding to the current GraalVM release.
   ```console
   git clone https://github.com/graalvm/mx.git
   cd mx
-  git checkout d6831ca0130e21b55b2675f7c931da7da10266cb
+  git checkout 722b86b8ef87fbb297f7e33ee6014bbbd3f4a3a8
   cd ..
   ```
 
@@ -215,7 +215,7 @@ We checkout the commit corresponding to the current GraalVM release.
   ```console
   git clone https://github.com/oracle/graal.git
   cd graal
-  git checkout da6a62d607552fc958ccb63f4ca1d81e1817cadc
+  git checkout 84541b16ae8a8726a0e7d76c7179d94a57ed84ee
   cd ..
   ```
 
