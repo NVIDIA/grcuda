@@ -52,22 +52,36 @@ HEAP_SIZE = 26
 
 # Benchmark settings;
 benchmarks = [
-    "b1",
-    "b5",
-    "b6",
-    "b7",
-    "b8",
-    "b10",
+    # Single GPU;
+    # "b1",
+    # "b5",
+    # "b6",
+    # "b7",
+    # "b8",
+    # "b10",
+    # Multi GPU;
+    "b1m",
+    "b5m",
+    "b6m",
+    "b9m",
+    "b11m",
 ]
 
 
 num_elem = {
-    "b1": [120_000_000],
-    "b5": [12_000_000],
-    "b6": [1_200_000],
-    "b7": [20_000_000],
-    "b8": [4800],
-    "b10": [7000],
+        # Single GPU;
+        "b1": [160_000_000],
+        "b5": [10_000_000],
+        "b6": [1_600_000],
+        "b7": [25_000_000], 
+        "b8": [6400],
+        "b10": [12000], 
+        # Multi GPU;
+        "b1m": [160_000_000],
+        "b5m": [10_000_000], 
+        "b6m": [1_000_000],
+        "b9m": [20000],
+        "b11m": [20000],
 }
 
 exec_policies = ["async", "sync"]
@@ -97,22 +111,30 @@ block_sizes_2d_dict = {
 }
 
 block_dim_dict = {
+    # Single GPU;
     "b1": DEFAULT_NUM_BLOCKS,
-    "b5": 32,
-    "b6": DEFAULT_NUM_BLOCKS,
+    "b5": DEFAULT_NUM_BLOCKS,
+    "b6": 64,
     "b7": DEFAULT_NUM_BLOCKS,
-    "b8": 16,
-    "b10": 12,
+    "b8": 32,
+    "b10": DEFAULT_NUM_BLOCKS,
+    "b11": DEFAULT_NUM_BLOCKS,
+    # Multi GPU;
+    "b1m": 64,
+    "b5m": 64,
+    "b6m": 64,
+    "b9m": 64,
+    "b11m": 64,
 }
 
-prefetch = [False, True]
+prefetch = [False]
 
 use_metrics = [True, False]
 
 ##############################
 ##############################
 
-LOG_FOLDER = "../../../../data/nvprof_log"
+LOG_FOLDER = f"{os.getenv('GRCUDA_HOME')}/grcuda-data/results/scheduling_multi_gpu/nvprof_log"
 if POST_TURING:
     METRICS = "--metrics 'dram__bytes_read.sum.per_second,dram__bytes_write.sum.per_second,dram__bytes_read.sum,dram__bytes_write.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_atom.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_ld.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_global_op_st.sum,lts__t_bytes_equiv_l1sectormiss_pipe_lsu_mem_local_op_ld.sum,lts__t_sectors_op_read.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,lts__t_sectors_op_write.sum.per_second,lts__t_sectors_op_atom.sum.per_second,lts__t_sectors_op_red.sum.per_second,smsp__inst_executed.sum,smsp__sass_thread_inst_executed_op_dadd_pred_on.sum,smsp__sass_thread_inst_executed_op_dmul_pred_on.sum,smsp__sass_thread_inst_executed_op_dfma_pred_on.sum,smsp__sass_thread_inst_executed_op_fadd_pred_on.sum,smsp__inst_executed.avg.per_cycle_active,smsp__sass_thread_inst_executed_op_fmul_pred_on.sum,smsp__sass_thread_inst_executed_op_ffma_pred_on.sum,sm__inst_executed.sum'"
 else:
@@ -120,8 +142,8 @@ else:
 
 # This path is hard-coded because nvprof is executed as root,
 # and the superuser doesn't have Graalpython in its environment;
-GRAALPYTHON_FOLDER = "/home/users/alberto.parravicini/Documents/graalpython_venv/bin"
-GRCUDA_HOME = "/home/users/alberto.parravicini/Documents/grcuda"
+GRAALPYTHON_FOLDER = "/home/users/ubuntu/graalpython_venv/bin"
+GRCUDA_HOME = f"{os.getenv('GRCUDA_HOME')}"
 
 if POST_TURING:
     GRAALPYTHON_CMD_METRICS = """/usr/local/cuda/bin/ncu -f --print-units base --csv --log-file "{}" --profile-from-start off --target-processes all {} \

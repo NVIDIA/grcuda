@@ -33,7 +33,7 @@ package com.nvidia.grcuda.runtime.computation;
 import com.nvidia.grcuda.GrCUDALogger;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
-import com.nvidia.grcuda.runtime.stream.LibrarySetStreamFunction;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStream;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -51,13 +51,13 @@ public class CUDALibraryExecution extends GrCUDAComputationalElement {
 
     private final Function nfiFunction;
     protected Object[] argsWithHandle;
-    private final LibrarySetStreamFunction setStreamFunctionNFI;
+    private final LibrarySetStream setStreamFunctionNFI;
 
-    public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, LibrarySetStreamFunction setStreamFunctionNFI, List<ComputationArgumentWithValue> args) {
+    public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, LibrarySetStream setStreamFunctionNFI, List<ComputationArgumentWithValue> args) {
         this(context, nfiFunction, setStreamFunctionNFI, args, 0);
     }
 
-    public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, LibrarySetStreamFunction setStreamFunctionNFI, List<ComputationArgumentWithValue> args, int extraArguments) {
+    public CUDALibraryExecution(AbstractGrCUDAExecutionContext context, Function nfiFunction, LibrarySetStream setStreamFunctionNFI, List<ComputationArgumentWithValue> args, int extraArguments) {
         super(context, new CUDALibraryExecutionInitializer(args));
         this.nfiFunction = nfiFunction;
         this.setStreamFunctionNFI = setStreamFunctionNFI;

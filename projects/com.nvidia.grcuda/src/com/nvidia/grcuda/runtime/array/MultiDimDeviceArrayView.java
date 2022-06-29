@@ -51,6 +51,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
+import java.util.Set;
+
 @ExportLibrary(InteropLibrary.class)
 public class MultiDimDeviceArrayView extends AbstractArray implements TruffleObject {
 
@@ -74,12 +76,13 @@ public class MultiDimDeviceArrayView extends AbstractArray implements TruffleObj
      * @param stride value used to jump to consecutive values in the array, and determined by the slice that has been extracted
      */
     public MultiDimDeviceArrayView(MultiDimDeviceArray mdDeviceArray, int dim, long offset, long stride) {
-        super(mdDeviceArray.grCUDAExecutionContext, mdDeviceArray.elementType, mdDeviceArray.isLastComputationArrayAccess());
+        // The up-to-date locations of the view are the same of the parent, along with the context and type;
+        super(mdDeviceArray);
         this.mdDeviceArray = mdDeviceArray;
         this.thisDimension = dim;
         this.offset = offset; // Index at which this array view starts;
         this.stride = stride;
-        // Register the array in the GrCUDAExecutionContext;
+        // Register the array in the AsyncGrCUDAExecutionContext;
         this.registerArray();
     }
 
@@ -111,17 +114,57 @@ public class MultiDimDeviceArrayView extends AbstractArray implements TruffleObj
     }
 
     /**
-     * Propagate the flag to the parent array, so other temporary views are aware of this computation;
-     * @param lastComputationArrayAccess if the last computation on this array is a host read/write
+     * Propagate the array location to the parent array, so other temporary views are aware of this update;
+     * @param deviceId device with an updated view of this array;
      */
     @Override
-    public void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
-        super.setLastComputationArrayAccess(lastComputationArrayAccess);
-        this.mdDeviceArray.setLastComputationArrayAccess(lastComputationArrayAccess);
+    public void resetArrayUpToDateLocations(int deviceId) {
+        // No need to check the isViewLocationUpdated flag, we are clearing all the location lists;
+        this.arrayUpToDateLocations.clear();
+        this.arrayUpToDateLocations.add(deviceId);
+        this.mdDeviceArray.resetArrayUpToDateLocations(deviceId);
+    }
+
+    /**
+     * Propagate the array location to the parent array, so other temporary views are aware of this update;
+     * @param deviceId device with an updated view of this array;
+     */
+    @Override
+    public void addArrayUpToDateLocations(int deviceId) {
+        // Guarantee that the parent list of updated locations is the same as the view;
+        ensureUpdatedListConsistencyWithParent();
+        this.arrayUpToDateLocations.add(deviceId);
+        this.mdDeviceArray.addArrayUpToDateLocations(deviceId);
     }
 
     @Override
-    public boolean isLastComputationArrayAccess() { return this.mdDeviceArray.isLastComputationArrayAccess(); }
+    public boolean isArrayUpdatedInLocation(int deviceId) {
+        // Guarantee that the parent list of updated locations is the same as the view;
+        ensureUpdatedListConsistencyWithParent();
+        return super.isArrayUpdatedInLocation(deviceId);
+    }
+
+    @Override
+    public boolean isArrayUpdatedOnCPU() {
+        // Guarantee that the parent list of updated locations is the same as the view;
+        ensureUpdatedListConsistencyWithParent();
+        return super.isArrayUpdatedOnCPU();
+    }
+
+    @Override
+    public Set<Integer> getArrayUpToDateLocations() {
+        // Guarantee that the parent list of updated locations is the same as the view;
+        ensureUpdatedListConsistencyWithParent();
+        return super.getArrayUpToDateLocations();
+    }
+
+    private void ensureUpdatedListConsistencyWithParent() {
+        if (!this.mdDeviceArray.isViewLocationUpdated()) {
+            this.arrayUpToDateLocations.clear();
+            this.arrayUpToDateLocations.addAll(this.mdDeviceArray.getArrayUpToDateLocations());
+            this.mdDeviceArray.resetViewLocationUpdated();
+        }
+    }
 
     /**
      * Propagate the stream mapping to the parent array, so other temporary views are aware of this mapping;
@@ -226,7 +269,7 @@ public class MultiDimDeviceArrayView extends AbstractArray implements TruffleObj
             throw InvalidArrayIndexException.create(index);
         }
         try {
-            if (this.canSkipScheduling()) {
+            if (this.canSkipSchedulingRead()) {
                 // Fast path, skip the DAG scheduling;
                 return readNativeView(index, elementTypeProfile);
             } else {
@@ -262,7 +305,7 @@ public class MultiDimDeviceArrayView extends AbstractArray implements TruffleObj
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        if (this.canSkipScheduling()) {
+        if (this.canSkipSchedulingWrite()) {
             // Fast path, skip the DAG scheduling;
             writeNativeView(index, value, valueLibrary, elementTypeProfile);
         } else {

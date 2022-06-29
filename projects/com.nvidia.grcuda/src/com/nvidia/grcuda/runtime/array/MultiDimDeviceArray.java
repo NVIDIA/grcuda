@@ -70,6 +70,14 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     /** Mutable view onto the underlying memory buffer. */
     private final LittleEndianNativeArrayView nativeView;
 
+    /**
+     * If we modify the devices where this multi-dimensional array is updated, we also have to update its views.
+     * As this array does not track the views (but views track their parent), we do so lazily.
+     * When the location of this array is changed, we switch this flag. When we access the location of views, we update
+     * their location and reset this flag;
+     */
+    private boolean isViewLocationUpdated = true;
+
     public MultiDimDeviceArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType, long[] dimensions,
                                boolean useColumnMajor) {
         super(grCUDAExecutionContext, elementType);
@@ -80,7 +88,7 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
         this.stridePerDimension = computeStride(dimensions, columnMajor);
         // Allocate the GPU memory;
         this.nativeView = allocateMemory();
-        // Register the array in the GrCUDAExecutionContext;
+        // Register the array in the AsyncGrCUDAExecutionContext;
         this.registerArray();
     }
 
@@ -156,6 +164,36 @@ public class MultiDimDeviceArray extends AbstractArray implements TruffleObject 
     final boolean isIndexValidInDimension(long index, int dimension) {
         long numElementsInDim = getElementsInDimension(dimension);
         return (index > 0) && (index < numElementsInDim);
+    }
+
+    public boolean isViewLocationUpdated() {
+        return isViewLocationUpdated;
+    }
+
+    public void resetViewLocationUpdated() {
+        isViewLocationUpdated = true;
+    }
+
+    /**
+     * If we update the list of locations where this array is located,
+     * we flag this array so that its views will update their list of locations.
+     * The update is done lazily when we access (or update) the location list of a view;
+     */
+    @Override
+    public void resetArrayUpToDateLocations(int deviceId) {
+        super.resetArrayUpToDateLocations(deviceId);
+        this.isViewLocationUpdated = false;
+    }
+
+    /**
+     * If we update the list of locations where this array is located,
+     * we flag this array so that its views will update their list of locations.
+     * The update is done lazily when we access (or update) the location list of a view;
+     */
+    @Override
+    public void addArrayUpToDateLocations(int deviceId) {
+        super.addArrayUpToDateLocations(deviceId);
+        this.isViewLocationUpdated = false;
     }
 
     @Override

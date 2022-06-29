@@ -35,6 +35,7 @@ import com.nvidia.grcuda.MemberSet;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
+import com.nvidia.grcuda.runtime.CPUDevice;
 import com.nvidia.grcuda.runtime.LittleEndianNativeArrayView;
 import com.nvidia.grcuda.runtime.computation.arraycomputation.ArrayAccessExecution;
 import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
@@ -42,8 +43,6 @@ import com.nvidia.grcuda.runtime.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.runtime.stream.CUDAStream;
 import com.nvidia.grcuda.runtime.stream.DefaultStream;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -56,6 +55,9 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ValueProfile;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Simple wrapper around each class that represents device arrays in GrCUDA.
@@ -89,6 +91,7 @@ public abstract class AbstractArray implements TruffleObject {
      * Used to avoid multiple registration;
      */
     private boolean registeredInContext = false;
+
     /**
      * Keep track of whether this array is attached to a specific stream that limits its visibility.
      * By default, every array is attached to the {@link DefaultStream};
@@ -96,28 +99,61 @@ public abstract class AbstractArray implements TruffleObject {
     protected CUDAStream streamMapping = DefaultStream.get();
 
     /**
-     * Tracks whether the last operation done on the native memory underlying this array is a read/write operation
-     * handled by the CPU. If so, we can avoid creating {@link com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement}
-     * for array accesses that are immediately following the last one, as they are performed synchronously and there is no
-     * reason to explicitly model them in the {@link ExecutionDAG};
+     * Function used to compute if we can skip the scheduling of a computational element for a given array read;
      */
-    private boolean isLastComputationArrayAccess = true;
+    private final SkipSchedulingInterface skipScheduleRead;
+    /**
+     * Function used to compute if we can skip the scheduling of a computational element for a given array write;
+     */
+    private final SkipSchedulingInterface skipScheduleWrite;
 
     /** Flag set when underlying off-heap memory has been freed. */
     protected boolean arrayFreed = false;
+
+    /**
+     * List of devices where the array is currently UP-TO-DATE, i.e. it can be accessed without requiring any memory transfer.
+     * On pre-Pascal GPUs, arrays are allocated on the currently active GPU. On devices since Pascal, arrays are allocated on the CPU.
+     * We identify devices using integers. CPU is -1 ({@link com.nvidia.grcuda.runtime.CPUDevice#CPU_DEVICE_ID}, GPUs start from 0;
+     */
+    protected final Set<Integer> arrayUpToDateLocations = new HashSet<>();
 
     public Type getElementType() {
         return elementType;
     }
 
     protected AbstractArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType) {
-        this(grCUDAExecutionContext, elementType, true);
-    }
-
-    protected AbstractArray(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType, boolean isLastComputationArrayAccess) {
         this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.elementType = elementType;
-        this.isLastComputationArrayAccess = isLastComputationArrayAccess;
+
+        // Specify how we can identify if we can skip the scheduling of array accesses;
+        if (this.grCUDAExecutionContext.isArchitecturePascalOrNewer()) {
+            this.skipScheduleRead = this::isArrayUpdatedOnCPU;
+            this.skipScheduleWrite = this::isArrayUpdatedOnlyOnCPU;
+        } else {
+            // On pre-Pascal devices, we cannot access GPU memory while some other computation is active on the default stream;
+            this.skipScheduleRead = () -> isArrayUpdatedOnCPU() && !(streamMapping.isDefaultStream() && grCUDAExecutionContext.isAnyComputationActive());
+            this.skipScheduleWrite = () -> isArrayUpdatedOnlyOnCPU() && !(streamMapping.isDefaultStream() && grCUDAExecutionContext.isAnyComputationActive());
+        }
+        // Initialize the location of an abstract array.
+        // On pre-Pascal devices, the default location is the current GPU. Since Pascal, it is the CPU.
+        if (this.grCUDAExecutionContext.isArchitecturePascalOrNewer()) {
+            this.addArrayUpToDateLocations(CPUDevice.CPU_DEVICE_ID);
+        } else {
+            this.addArrayUpToDateLocations(grCUDAExecutionContext.getCurrentGPU());
+        }
+    }
+
+    protected AbstractArray(AbstractArray otherArray) {
+        this.grCUDAExecutionContext = otherArray.grCUDAExecutionContext;
+        this.elementType = otherArray.elementType;
+        this.skipScheduleRead = otherArray.skipScheduleRead;
+        this.skipScheduleWrite = otherArray.skipScheduleWrite;
+        // Initialize the location of an abstract array, copying the ones specified in the input;
+        this.arrayUpToDateLocations.addAll(otherArray.getArrayUpToDateLocations());
+        this.arrayFreed = otherArray.arrayFreed;
+        this.streamMapping = otherArray.streamMapping;
+        // Registration must be done afterwards;
+        this.registeredInContext = false;
     }
 
     /**
@@ -144,10 +180,59 @@ public abstract class AbstractArray implements TruffleObject {
         this.streamMapping = streamMapping;
     }
 
-    public boolean isLastComputationArrayAccess() { return isLastComputationArrayAccess; }
+    /**
+     * Tracks whether the array is up-to-date on CPU.
+     * This happens if the last operation done on the native memory underlying this array is a read/write operation
+     * handled by the CPU. If so, we can avoid creating {@link com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement}
+     * for array reads that are immediately following the last one, as they are performed synchronously and there is no
+     * reason to explicitly model them in the {@link ExecutionDAG};
+     */
+    // FIXME (check if fixed already): Possible error: Array A is up-to-date on CPU and GPU0. There's an ongoing kernel on GPU0 that uses A read-only.
+    //  If we write A on the CPU, is the scheduling skipped? That's an error.
+    //  In the case of a read, no problem (a kernel that modifies the data would take exclusive ownership),
+    //  while in the case of a write we need to check that arrayUpToDateLocations == CPU
+    public boolean isArrayUpdatedOnCPU() {
+        return this.arrayUpToDateLocations.contains(CPUDevice.CPU_DEVICE_ID);
+    }
 
-    public synchronized void setLastComputationArrayAccess(boolean lastComputationArrayAccess) {
-        isLastComputationArrayAccess = lastComputationArrayAccess;
+    /**
+     * Tracks whether the array is up-to-date only on CPU, and not on other devices.
+     * This happens if the last operation done on the native memory underlying this array is a read/write operation
+     * handled by the CPU. If so, we can avoid creating {@link com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement}
+     * for array accesses that are immediately following the last one, as they are performed synchronously and there is no
+     * reason to explicitly model them in the {@link ExecutionDAG}.
+     * To perform a write on the CPU, we need the array to be updated exclusively on the CPU;
+     */
+    public boolean isArrayUpdatedOnlyOnCPU() {
+        return this.arrayUpToDateLocations.size() == 1 && this.arrayUpToDateLocations.contains(CPUDevice.CPU_DEVICE_ID);
+    }
+
+    public Set<Integer> getArrayUpToDateLocations() {
+        return this.arrayUpToDateLocations;
+    }
+
+    /**
+     * Reset the list of devices where the array is currently up-to-date,
+     * and specify a new device where the array is up-to-date.
+     * Used when the array is modified by some device: there should never be a situation where
+     * the array is not up-to-date on at least one device;
+     */
+    public void resetArrayUpToDateLocations(int deviceId) {
+        this.arrayUpToDateLocations.clear();
+        this.arrayUpToDateLocations.add(deviceId);
+    }
+
+    public void addArrayUpToDateLocations(int deviceId) {
+        this.arrayUpToDateLocations.add(deviceId);
+    }
+
+    /**
+     * True if this array is up-to-date for the input device;
+     * @param deviceId a device for which we want to check if this array is up-to-date;
+     * @return if this array is up-to-date with respect to the input device
+     */
+    public boolean isArrayUpdatedInLocation(int deviceId) {
+        return this.arrayUpToDateLocations.contains(deviceId);
     }
 
     public abstract long getPointer();
@@ -250,13 +335,27 @@ public abstract class AbstractArray implements TruffleObject {
     }
 
     /**
-     * Check if this array can be accessed by the host (read/write) without having to schedule a {@link ArrayAccessExecution}.
-     * This is possible if the last computation on this array was also a host array access,
-     * and the array is not exposed on the default stream while other GPU computations are running.
+     * Check if this array can be accessed by the host for a read without having to schedule a {@link ArrayAccessExecution}.
+     * This is possible if the array is up-to-date on the CPU,
+     * and the array is not exposed on the default stream while other GPU computations are running (on pre-Pascal devices).
      * @return if this array can be accessed by the host without scheduling a computation
      */
-    protected boolean canSkipScheduling() {
-        return this.isLastComputationArrayAccess() && !(this.streamMapping.isDefaultStream() && grCUDAExecutionContext.isAnyComputationActive());
+    public boolean canSkipSchedulingRead() {
+        return this.skipScheduleRead.canSkipScheduling();
+    }
+
+    /**
+     * Check if this array can be accessed by the host for a write without having to schedule a {@link ArrayAccessExecution}.
+     * This is possible if the array is assumed up-to-date only on the CPU,
+     * and the array is not exposed on the default stream while other GPU computations are running (on pre-Pascal devices).
+     * @return if this array can be accessed by the host without scheduling a computation
+     */
+    public boolean canSkipSchedulingWrite() {
+        return this.skipScheduleWrite.canSkipScheduling();
+    }
+
+    protected interface SkipSchedulingInterface {
+        boolean canSkipScheduling();
     }
 
     /**

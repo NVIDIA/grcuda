@@ -135,8 +135,12 @@ class Benchmark(ABC):
         else:
             return function(*args)
 
-    def run(self, num_iter: int, policy: str, size: int, realloc: bool, reinit: bool,
-            time_phases: bool, block_size: dict = None, prevent_reinit=False, number_of_blocks=DEFAULT_NUM_BLOCKS) -> None:
+    def run(self, num_iter: int,size: int, number_of_gpus: int,
+                block_size: dict, exec_policy: str,
+                dependency_policy: str, new_stream_policy: str, parent_stream_policy: str,
+                device_selection: str, mem_advise: str, prefetch: str,
+                stream_attach: str, timing: bool,
+                time_phases: bool, realloc: bool, reinit: bool, prevent_reinit=False, number_of_blocks=DEFAULT_NUM_BLOCKS) -> None:
 
         # Fix missing block size;
         if "block_size_1d" not in block_size:
@@ -146,14 +150,25 @@ class Benchmark(ABC):
         if number_of_blocks:
             self.num_blocks = number_of_blocks
 
-        self.benchmark.start_new_benchmark(name=self.name,
-                                           policy=policy,
-                                           size=size,
-                                           realloc=realloc,
-                                           reinit=reinit,
-                                           block_size=block_size,
-                                           iteration=num_iter,
-                                           time_phases=time_phases)
+        self.benchmark.start_new_benchmark(
+                                        name=self.name,
+                                        size=size,
+                                        number_of_gpus=number_of_gpus,
+                                        block_size=block_size,
+                                        num_blocks=number_of_blocks,
+                                        exec_policy=exec_policy,
+                                        dependency_policy=dependency_policy,
+                                        new_stream_policy=new_stream_policy,
+                                        parent_stream_policy=parent_stream_policy,
+                                        device_selection=device_selection,
+                                        mem_advise=mem_advise,
+                                        prefetch=prefetch,
+                                        stream_attach=stream_attach,
+                                        timing=timing,
+                                        realloc=realloc,
+                                        reinit=reinit,
+                                        iteration=num_iter,
+                                        time_phases=time_phases)
         self.current_iter = num_iter
         self.time_phases = time_phases
         self._block_size = block_size

@@ -50,16 +50,17 @@ import com.nvidia.grcuda.functions.GetOptionsFunction;
 import com.nvidia.grcuda.functions.map.MapFunction;
 import com.nvidia.grcuda.functions.map.ShredFunction;
 import com.nvidia.grcuda.runtime.CUDARuntime;
-import com.nvidia.grcuda.runtime.computation.dependency.DependencyPolicyEnum;
-import com.nvidia.grcuda.runtime.computation.prefetch.PrefetcherEnum;
 import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
+import com.nvidia.grcuda.runtime.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.runtime.executioncontext.ExecutionPolicyEnum;
-import com.nvidia.grcuda.runtime.executioncontext.GrCUDAExecutionContext;
+import com.nvidia.grcuda.runtime.executioncontext.AsyncGrCUDAExecutionContext;
+import com.nvidia.grcuda.runtime.executioncontext.GraphExport;
 import com.nvidia.grcuda.runtime.executioncontext.SyncGrCUDAExecutionContext;
-import com.nvidia.grcuda.cudalibraries.tensorrt.TensorRTRegistry;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.nodes.Node;
 
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,6 +71,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * resources.
  */
 public final class GrCUDAContext {
+
+//    private static final TruffleLanguage.ContextReference<GrCUDAContext> REFERENCE = TruffleLanguage.ContextReference.create(GrCUDALanguage.class);
 
     private static final String ROOT_NAMESPACE = "CU";
 
@@ -92,9 +95,6 @@ public final class GrCUDAContext {
 
         this.grCUDAOptionMap = new GrCUDAOptionMap(env.getOptions());
 
-        // Retrieve the dependency computation policy;
-        DependencyPolicyEnum dependencyPolicy = grCUDAOptionMap.getDependencyPolicy();
-
         // Retrieve the execution policy;
         ExecutionPolicyEnum executionPolicy = grCUDAOptionMap.getExecutionPolicy();
 
@@ -105,19 +105,18 @@ public final class GrCUDAContext {
             executionPolicy = ExecutionPolicyEnum.SYNC;
         }
 
-        Boolean inputPrefetch = grCUDAOptionMap.isInputPrefetch();
-
         // Initialize the execution policy;
-        LOGGER.info("using" + executionPolicy.toString() + " execution policy");
+        LOGGER.info("using " + executionPolicy.toString() + " execution policy");
         switch (executionPolicy) {
             case SYNC:
-                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch ? PrefetcherEnum.SYNC : PrefetcherEnum.NONE);
+                this.grCUDAExecutionContext = new SyncGrCUDAExecutionContext(this, env);
                 break;
             case ASYNC:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env ,dependencyPolicy, inputPrefetch ? PrefetcherEnum.ASYNC : PrefetcherEnum.NONE);
+                this.grCUDAExecutionContext = new AsyncGrCUDAExecutionContext(this, env);
                 break;
             default:
-                this.grCUDAExecutionContext = new GrCUDAExecutionContext(this, env, dependencyPolicy, inputPrefetch ? PrefetcherEnum.ASYNC : PrefetcherEnum.NONE);
+                LOGGER.severe("Cannot create an ExecutionContext. The selected execution policy is not valid: " + executionPolicy);
+                throw new GrCUDAException("selected execution policy is not valid: " + executionPolicy);
         }
 
         Namespace namespace = new Namespace(ROOT_NAMESPACE);
@@ -129,8 +128,8 @@ public final class GrCUDAContext {
         namespace.addFunction(new ShredFunction());
         namespace.addFunction(new BindKernelFunction(this.grCUDAExecutionContext));
         namespace.addFunction(new BuildKernelFunction(this.grCUDAExecutionContext));
-        namespace.addFunction(new GetDevicesFunction(this.grCUDAExecutionContext.getCudaRuntime()));
-        namespace.addFunction(new GetDeviceFunction(this.grCUDAExecutionContext.getCudaRuntime()));
+        namespace.addFunction(new GetDevicesFunction(this.grCUDAExecutionContext));
+        namespace.addFunction(new GetDeviceFunction(this.grCUDAExecutionContext));
         namespace.addFunction(new GetOptionsFunction(grCUDAOptionMap));
         this.grCUDAExecutionContext.getCudaRuntime().registerCUDAFunctions(namespace);
         if (grCUDAOptionMap.isCuMLEnabled()) {
@@ -143,9 +142,13 @@ public final class GrCUDAContext {
             }
         }
         if (grCUDAOptionMap.isCuBLASEnabled()) {
+            if (this.getCUDARuntime().isArchitectureIsPascalOrNewer() || executionPolicy.equals(ExecutionPolicyEnum.SYNC)) {
                 Namespace blas = new Namespace(CUBLASRegistry.NAMESPACE);
                 namespace.addNamespace(blas);
                 new CUBLASRegistry(this).registerCUBLASFunctions(blas);
+            } else {
+                LOGGER.warning("cuBLAS with asynchronous scheduler is supported only on GPUs with compute capability >= 6.0 (Pascal and newer). It cannot be enabled.");
+            }
         }
         if (grCUDAOptionMap.isTensorRTEnabled()) {
             Namespace trt = new Namespace(TensorRTRegistry.NAMESPACE);
@@ -159,6 +162,10 @@ public final class GrCUDAContext {
         }
         this.rootNamespace = namespace;
     }
+
+//    public static GrCUDAContext get(Node node) {
+//        return REFERENCE.get(node);
+//    }
 
     public Env getEnv() {
         return env;
@@ -217,9 +224,18 @@ public final class GrCUDAContext {
     }
 
     /**
-     * Cleanup the GrCUDA context at the end of the execution;
+     * Cleanup the GrCUDA context at the end of the execution. If ExportDAG option is enabled,
+     * scheduling DAG will be dumped before the cleanup.
      */
     public void cleanup() {
+        if (grCUDAOptionMap.getExportDAGPath().equals("true")){
+            System.out.println("Please specify the destination path for the scheduling DAG export");
+        } else if (!grCUDAOptionMap.getExportDAGPath().equals("false")){
+            ExecutionDAG dag = grCUDAExecutionContext.getDag();
+            GraphExport graphExport = new GraphExport(dag);
+            graphExport.graphGenerator(grCUDAOptionMap.getExportDAGPath());
+        }
         this.grCUDAExecutionContext.cleanup();
     }
+
 }

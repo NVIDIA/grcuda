@@ -31,6 +31,7 @@
 package com.nvidia.grcuda.runtime.computation.arraycomputation;
 
 import com.nvidia.grcuda.NoneValue;
+import com.nvidia.grcuda.runtime.CPUDevice;
 import com.nvidia.grcuda.runtime.array.MultiDimDeviceArrayView;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -53,6 +54,16 @@ public class MultiDimDeviceArrayViewWriteExecution extends ArrayAccessExecution<
         this.value = value;
         this.valueLibrary = valueLibrary;
         this.elementTypeProfile = elementTypeProfile;
+    }
+
+    @Override
+    public void updateLocationOfArrays() {
+        if (array.getGrCUDAExecutionContext().isConstAware()) {
+            array.addArrayUpToDateLocations(CPUDevice.CPU_DEVICE_ID);
+        } else {
+            // Clear the list of up-to-date locations: only the CPU has the updated array;
+            array.resetArrayUpToDateLocations(CPUDevice.CPU_DEVICE_ID);
+        }
     }
 
     @Override

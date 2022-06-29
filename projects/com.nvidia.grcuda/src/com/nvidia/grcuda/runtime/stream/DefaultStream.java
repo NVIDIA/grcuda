@@ -30,6 +30,8 @@
  */
 package com.nvidia.grcuda.runtime.stream;
 
+import com.nvidia.grcuda.runtime.CUDARuntime;
+
 public class DefaultStream extends CUDAStream {
     
     static final int DEFAULT_STREAM_NUMBER = -1;
@@ -37,7 +39,7 @@ public class DefaultStream extends CUDAStream {
     private static final DefaultStream defaultStream = new DefaultStream();
     
     private DefaultStream() {
-        super(0, DEFAULT_STREAM_NUMBER);
+        super(0, DEFAULT_STREAM_NUMBER, CUDARuntime.DEFAULT_DEVICE);
     }
 
     public static DefaultStream get() { return defaultStream; }

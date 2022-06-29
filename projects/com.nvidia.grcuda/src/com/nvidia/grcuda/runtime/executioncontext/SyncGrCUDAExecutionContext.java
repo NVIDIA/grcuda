@@ -31,10 +31,12 @@
 package com.nvidia.grcuda.runtime.executioncontext;
 
 import com.nvidia.grcuda.GrCUDAContext;
+import com.nvidia.grcuda.GrCUDAOptionMap;
 import com.nvidia.grcuda.runtime.CUDARuntime;
+import com.nvidia.grcuda.runtime.Device;
+import com.nvidia.grcuda.runtime.DeviceList;
 import com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement;
-import com.nvidia.grcuda.runtime.computation.dependency.DependencyPolicyEnum;
-import com.nvidia.grcuda.runtime.computation.prefetch.PrefetcherEnum;
+import com.nvidia.grcuda.runtime.computation.prefetch.SyncArrayPrefetcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -43,18 +45,19 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  */
 public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
-    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
-        super(context, env, dependencyPolicy, inputPrefetch, ExecutionPolicyEnum.SYNC);
+    public SyncGrCUDAExecutionContext(GrCUDAContext context, TruffleLanguage.Env env) {
+        this(new CUDARuntime(context, env), context.getOptions());
     }
 
-    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy) {
-        super(cudaRuntime, dependencyPolicy, PrefetcherEnum.NONE, ExecutionPolicyEnum.SYNC);
+    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, GrCUDAOptionMap options) {
+        super(cudaRuntime, options);
+        // Compute if we should use a prefetcher;
+        if (options.isInputPrefetch() && this.cudaRuntime.isArchitectureIsPascalOrNewer()) {
+            arrayPrefetcher = new SyncArrayPrefetcher(this.cudaRuntime);
+        }
     }
 
-    public SyncGrCUDAExecutionContext(CUDARuntime cudaRuntime, DependencyPolicyEnum dependencyPolicy, PrefetcherEnum inputPrefetch) {
-        super(cudaRuntime, dependencyPolicy, inputPrefetch, ExecutionPolicyEnum.SYNC);
-    }
-
+    // TODO check correctness
     /**
      * Register this computation for future execution by the {@link SyncGrCUDAExecutionContext},
      * and add it to the current computational DAG.
@@ -68,7 +71,9 @@ public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
 
         // Book-keeping;
         computation.setComputationStarted();
-        computation.updateIsComputationArrayAccess();
+
+        // For all input arrays, update whether this computation is an array access done by the CPU;
+        computation.updateLocationOfArrays();
 
         // Start the computation immediately;
         Object result = computation.execute();
@@ -77,6 +82,18 @@ public class SyncGrCUDAExecutionContext extends AbstractGrCUDAExecutionContext {
         cudaRuntime.cudaDeviceSynchronize();
 
         return result;
+    }
+
+    @Override
+    public DeviceList getDeviceList() {
+        // Create a new device list object when requested;
+        return new DeviceList(cudaRuntime);
+    }
+
+    @Override
+    public Device getDevice(int deviceId) {
+        // Create a new device list object when requested;
+        return new Device(deviceId, cudaRuntime);
     }
 
     /**

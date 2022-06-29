@@ -1,7 +1,8 @@
 # Extending GrCUDA with a dynamic computational DAG
 
 This is an ever-changing design document that tracks the state of the asynchronous GrCUDA scheduler, as published in [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491). 
-We do our best to keep this document updated and reflect the latest changes to GrCUDA. If you find any inconsistency, please report it as a GitHub issue.
+We do our best to keep this document updated and reflect the latest changes to GrCUDA. 
+If you find any inconsistency, please report it as a GitHub issue.
 
 The main idea is to **represent GrCUDA computations as vertices of a DAG**, connected using their dependencies (e.g. the output of a kernel is used as input in another one).
  * The DAG allows scheduling parallel computations on different streams and avoid synchronization when not necessary
@@ -9,9 +10,10 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
  
 **Differences w.r.t. existing techniques** (e.g. TensorFlow or [CUDA Graphs](https://devblogs.nvidia.com/cuda-graphs/)):
  1. The DAG creation is automatic, instead of being built by the user
- 2. The DAG is built at runtime, not at compile time or eagerly. This means that we don't have to worry about the control flow of the host program, but only about data dependencies, 
- as we dynamically add and schedule new vertices/computations as the user provides them. We can also collect profiling information and adjust the DAG creation based on that 
- (e.g. how many CUDA streams we need, or how large each GPU block should be)
+ 2. The DAG is built at runtime, not at compile time or eagerly. 
+ This means that we don't have to worry about the control flow of the host program, but only about data dependencies, 
+ as we dynamically add and schedule new vertices/computations as the user provides them. 
+ We can also collect profiling information and adjust the DAG creation based on that (e.g. how many CUDA streams we need, or how large each GPU block should be)
 
 **How it works, in a few words**    
  * The class `GrCUDAExecutionContext` tracks GPU computational elements (e.g. `kernels`) declarations and invocations
@@ -32,11 +34,19 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
     It provides `GrCUDAExecutionContext` with functions used to compute dependencies or decide if the computation must be done synchronously (e.g. array accesses)
     3. `ExecutionDAG`: the DAG representing the dependencies between computations, it is composed of vertices that wrap each `GrCUDAComputationalElement`
     4. `GrCUDAStreamManager`: class that handles the creation and the assignment of streams to kernels, and the synchronization between different streams or the host thread
+    5. `GrCUDADevicesManager`: class that encapsulates the status of the multi-GPU system.
+    6. `DeviceSelectionPolicy`: class tha tencapsulates new scheduling heuristics to select the best device for each new computation, using information such as data locality and the current load of the device. GrCUDA currently supports 5 scheduling heuristics with increasing complexity:
+        * `ROUND_ROBIN`: simply rotate the scheduling between GPUs. Used as initialization strategy of other policies;
+        * `STREAM_AWARE`: assign the computation to the device with the fewest busy stream, i.e. select the device with fewer ongoing computations;
+        * `MIN_TRANSFER_SIZE`: select the device that requires the least amount of bytes to be transferred, maximizing data locality;
+        * `MINMIN_TRANSFER_TIME`: select the device for which the minimum total transfer time would be minimum; 
+        * `MINMAX_TRANSFER_TIME` select the device for which the maximum total transfer time would be minimum. 
+    
 * **Basic execution flow**
     1. The host language (i.e. the user) calls an `InteropLibrary` object that can be associated to a `GrCUDAComputationalElement`, e.g. a kernel execution or an array access
     2. A new `GrCUDAComputationalElement` is created and registered to the `GrCUDAExecutionContext`, to represent the computation
     3. `GrCUDAExecutionContext` adds the computation to the DAG and computes its dependencies
-    4. Based on the dependencies, the `GrCUDAExecutionContext` associates a stream to the computation through `GrCUDAStreamManager`
+    4. Based on the dependencies, the `GrCUDAExecutionContext` associates a stream to the computation through `GrCUDAStreamManager`. If using multiple GPUs, the choice of the right device on which to execute a given computation is done by the `DeviceSelectionPolicy`, leveraging info from the DAG and the `GrCUDADevicesManager`.
     5. `GrCUDAExecutionContext` executes the computation on the chosen stream, performing synchronization if necessary
     * GPU computations do not require synchronization w.r.t. previous computations on the stream where they executed, as CUDA guarantees stream-ordered execution.
      CUDA streams are synchronized with (asynchronous) CUDA events, without blocking the host. 
@@ -54,7 +64,7 @@ The main idea is to **represent GrCUDA computations as vertices of a DAG**, conn
 * **Streams** are managed internally by the GrCUDA runtime: we keep track of existing streams that are currently empty, and schedule computations on them in a FIFO order.
  New streams are created only if no existing stream is available
 * **Read-only** input arguments can be specified with the `const` keyword; they will be ignored in the dependency computations if possible:
- for example, if there are 2 kernels that use the same read-only input array, they will be executed concurrently 
+ for example, if there are 2 kernels that use the same read-only input array, they will be executed concurrently. 
 
 ## Open questions
 

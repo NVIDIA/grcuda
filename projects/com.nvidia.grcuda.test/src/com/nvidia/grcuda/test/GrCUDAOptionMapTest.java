@@ -56,111 +56,116 @@ import java.util.HashMap;
 
 public class GrCUDAOptionMapTest {
 
-//    private GrCUDAOptionMap optionMap;
-//    private final HashMap<OptionKey<String>, String> unparsedOptions = new HashMap<>();
-//    private final HashMap<OptionKey<Boolean>, Boolean> options = new HashMap<>();
+    private GrCUDAOptionMap optionMap;
+    private OptionValues optionValues;
+    public void initializeDefault() {
+        optionValues = new OptionValuesMock();
+        setOption(GrCUDAOptions.CuBLASEnabled, true);
+        setOption(GrCUDAOptions.CuMLEnabled, true);
+        setOption(GrCUDAOptions.ForceStreamAttach, GrCUDAOptionMap.DEFAULT_FORCE_STREAM_ATTACH);
+        setOption(GrCUDAOptions.InputPrefetch, false);
+        setOption(GrCUDAOptions.TensorRTEnabled, false);
+        setOption(GrCUDAOptions.CuBLASLibrary, CUBLASRegistry.DEFAULT_LIBRARY);
+        setOption(GrCUDAOptions.CuMLLibrary, CUMLRegistry.DEFAULT_LIBRARY);
+        setOption(GrCUDAOptions.ExecutionPolicy, GrCUDAOptionMap.DEFAULT_EXECUTION_POLICY.toString());
+        setOption(GrCUDAOptions.DependencyPolicy, GrCUDAOptionMap.DEFAULT_DEPENDENCY_POLICY.toString());
+        setOption(GrCUDAOptions.RetrieveNewStreamPolicy, GrCUDAOptionMap.DEFAULT_RETRIEVE_STREAM_POLICY.toString());
+        setOption(GrCUDAOptions.RetrieveParentStreamPolicy, GrCUDAOptionMap.DEFAULT_PARENT_STREAM_POLICY.toString());
+        setOption(GrCUDAOptions.TensorRTLibrary, TensorRTRegistry.DEFAULT_LIBRARY);
+        optionMap = new GrCUDAOptionMap(optionValues);
+    }
 
-    // FIXME: getDescriptor() returns null, breaking the initialization of the map. Do we really need these tests?
+    public void initializeNull() {
+        optionValues = new OptionValuesMock();
+        setOption(GrCUDAOptions.ExecutionPolicy, GrCUDAOptionMap.DEFAULT_EXECUTION_POLICY.toString());
+        setOption(GrCUDAOptions.DependencyPolicy, GrCUDAOptionMap.DEFAULT_DEPENDENCY_POLICY.toString());
+        setOption(GrCUDAOptions.RetrieveNewStreamPolicy, GrCUDAOptionMap.DEFAULT_RETRIEVE_STREAM_POLICY.toString());
+        setOption(GrCUDAOptions.RetrieveParentStreamPolicy, GrCUDAOptionMap.DEFAULT_PARENT_STREAM_POLICY.toString());
+        setOption(GrCUDAOptions.TensorRTLibrary, null);
+        optionMap = new GrCUDAOptionMap(optionValues);
+    }
 
-//    public void initializeDefault(){
-//        options.put(GrCUDAOptions.CuBLASEnabled, true);
-//        options.put(GrCUDAOptions.CuMLEnabled, true);
-//        options.put(GrCUDAOptions.ForceStreamAttach, GrCUDAOptionMap.DEFAULT_FORCE_STREAM_ATTACH);
-//        options.put(GrCUDAOptions.InputPrefetch, false);
-//        options.put(GrCUDAOptions.EnableMultiGPU, false);
-//        options.put(GrCUDAOptions.TensorRTEnabled, false);
-//        unparsedOptions.put(GrCUDAOptions.CuBLASLibrary, CUBLASRegistry.DEFAULT_LIBRARY);
-//        unparsedOptions.put(GrCUDAOptions.CuMLLibrary, CUMLRegistry.DEFAULT_LIBRARY);
-//        unparsedOptions.put(GrCUDAOptions.ExecutionPolicy, GrCUDAOptionMap.DEFAULT_EXECUTION_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.DependencyPolicy, GrCUDAOptionMap.DEFAULT_DEPENDENCY_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.RetrieveNewStreamPolicy, GrCUDAOptionMap.DEFAULT_RETRIEVE_STREAM_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.RetrieveParentStreamPolicy, GrCUDAOptionMap.DEFAULT_PARENT_STREAM_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.TensorRTLibrary, TensorRTRegistry.DEFAULT_LIBRARY);
-//
-//        OptionValues optionValues = new OptionValuesMock();
-//        options.forEach(optionValues::set);
-//        unparsedOptions.forEach(optionValues::set);
-//
-//        optionMap = new GrCUDAOptionMap(optionValues);
-//    }
+    private <T> void setOption(OptionKey<T> key, T value) {
+        optionValues.set(key, value);
+    }
 
-//    public void initializeNull(){
-//        unparsedOptions.put(GrCUDAOptions.ExecutionPolicy, GrCUDAOptionMap.DEFAULT_EXECUTION_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.DependencyPolicy, GrCUDAOptionMap.DEFAULT_DEPENDENCY_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.RetrieveNewStreamPolicy, GrCUDAOptionMap.DEFAULT_RETRIEVE_STREAM_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.RetrieveParentStreamPolicy, GrCUDAOptionMap.DEFAULT_PARENT_STREAM_POLICY.toString());
-//        unparsedOptions.put(GrCUDAOptions.TensorRTLibrary, null);
-//
-//        OptionValues optionValues = new OptionValuesMock();
-//        unparsedOptions.forEach(optionValues::set);
-//
-//        optionMap = new GrCUDAOptionMap(optionValues);
-//    }
+    @Test
+    public void testGetOption(){
+        initializeDefault();
+        assertEquals(optionMap.isCuBLASEnabled(), true);
+        assertEquals(optionMap.isForceStreamAttach(), false);
+        assertEquals(optionMap.getCuBLASLibrary(), CUBLASRegistry.DEFAULT_LIBRARY);
+        assertEquals(optionMap.getDependencyPolicy(), GrCUDAOptionMap.DEFAULT_DEPENDENCY_POLICY);
+    }
 
-//    @Test
-//    public void testGetOption(){
-//        initializeDefault();
-//        assertEquals(optionMap.isCuBLASEnabled(), true);
-//        assertEquals(optionMap.isForceStreamAttach(), false);
-//        assertEquals(optionMap.getCuBLASLibrary(), CUBLASRegistry.DEFAULT_LIBRARY);
-//        assertEquals(optionMap.getDependencyPolicy(), GrCUDAOptionMap.DEFAULT_DEPENDENCY_POLICY);
-//    }
+    @Test(expected = UnknownKeyException.class)
+    public void testReadUnknownKey() throws UnsupportedMessageException, UnknownKeyException {
+        initializeDefault();
+        optionMap.readHashValue("NotPresent");
+    }
 
-//    @Test(expected = UnknownKeyException.class)
-//    public void testReadUnknownKey() throws UnsupportedMessageException, UnknownKeyException {
-//        initializeNull();
-//        optionMap.readHashValue("NotPresent");
-//    }
+    @Test(expected = UnsupportedMessageException.class)
+    public void testReadUnsupportedMessage() throws UnsupportedMessageException, UnknownKeyException {
+        initializeDefault();
+        optionMap.readHashValue(null);
+    }
 
-//    @Test(expected = UnsupportedMessageException.class)
-//    public void testReadUnsupportedMessage() throws UnsupportedMessageException, UnknownKeyException {
-//        initializeDefault();
-//        optionMap.readHashValue(null);
-//    }
+    @Test
+    public void testGetHashEntriesIterator(){
+        initializeDefault();
+        GrCUDAOptionMap.EntriesIterator hashIterator = (GrCUDAOptionMap.EntriesIterator) optionMap.getHashEntriesIterator();
+        optionMap.getOptions().forEach((key, value) -> {
+            assertTrue(hashIterator.hasIteratorNextElement());
+            try {
+                GrCUDAOptionMap.GrCUDAOptionTuple elem = hashIterator.getIteratorNextElement();
+                assertEquals(key, elem.readArrayElement(0));
+                assertEquals(value.toString(), elem.readArrayElement(1));
+            } catch (StopIterationException | InvalidArrayIndexException e) {
+                e.printStackTrace();
+            }
+        });
+    }
 
-//    @Test
-//    public void testGetHashEntriesIterator(){
-//        initializeDefault();
-//        GrCUDAOptionMap.EntriesIterator hashIterator = (GrCUDAOptionMap.EntriesIterator) optionMap.getHashEntriesIterator();
-//        optionMap.getOptions().forEach((key, value) -> {
-//            assertTrue(hashIterator.hasIteratorNextElement());
-//            try {
-//                GrCUDAOptionMap.GrCUDAOptionTuple elem = hashIterator.getIteratorNextElement();
-//                assertEquals(key, elem.readArrayElement(0));
-//                assertEquals(value.toString(), elem.readArrayElement(1));
-//            } catch (StopIterationException | InvalidArrayIndexException e) {
-//                e.printStackTrace();
-//            }
-//        });
-//    }
-//
-//    @Test(expected = StopIterationException.class)
-//    public void testGetStopIteration() throws StopIterationException {
-//        initializeNull();
-//        GrCUDAOptionMap.EntriesIterator hashIterator = (GrCUDAOptionMap.EntriesIterator) optionMap.getHashEntriesIterator();
-//        do{
-//            try {
-//                hashIterator.getIteratorNextElement();
-//            } catch(StopIterationException e){ e.printStackTrace(); }
-//        } while(hashIterator.hasIteratorNextElement());
-//        hashIterator.getIteratorNextElement();
-//    }
-//
-//    @Test(expected = InvalidArrayIndexException.class)
-//    public void testGetInvalidIndex() throws InvalidArrayIndexException {
-//        initializeNull();
-//        GrCUDAOptionMap.EntriesIterator hashIterator = (GrCUDAOptionMap.EntriesIterator) optionMap.getHashEntriesIterator();
-//        try{
-//            GrCUDAOptionMap.GrCUDAOptionTuple elem = hashIterator.getIteratorNextElement();
-//            assertEquals(2, elem.getArraySize());
-//            assertFalse(elem.isArrayElementReadable(2));
-//            elem.readArrayElement(2);
-//        }catch(StopIterationException e){e.printStackTrace();}
-//    }
+    @Test(expected = StopIterationException.class)
+    public void testGetStopIteration() throws StopIterationException {
+        initializeDefault();
+        GrCUDAOptionMap.EntriesIterator hashIterator = (GrCUDAOptionMap.EntriesIterator) optionMap.getHashEntriesIterator();
+        do {
+            try {
+                hashIterator.getIteratorNextElement();
+            } catch (StopIterationException e) {
+                e.printStackTrace();
+            }
+        } while (hashIterator.hasIteratorNextElement());
+        hashIterator.getIteratorNextElement();
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testGetNullPointerExceptionWhenRetrievingValue() throws NullPointerException, StopIterationException {
+        initializeNull();
+        GrCUDAOptionMap.EntriesIterator hashIterator = (GrCUDAOptionMap.EntriesIterator) optionMap.getHashEntriesIterator();
+        do {
+            hashIterator.getIteratorNextElement();
+        } while (hashIterator.hasIteratorNextElement());
+    }
+
+    @Test(expected = InvalidArrayIndexException.class)
+    public void testGetInvalidIndex() throws InvalidArrayIndexException {
+        initializeDefault();
+        GrCUDAOptionMap.EntriesIterator hashIterator = (GrCUDAOptionMap.EntriesIterator) optionMap.getHashEntriesIterator();
+        try {
+            GrCUDAOptionMap.GrCUDAOptionTuple elem = hashIterator.getIteratorNextElement();
+            assertEquals(2, elem.getArraySize());
+            assertFalse(elem.isArrayElementReadable(2));
+            elem.readArrayElement(2);
+        } catch (StopIterationException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Test
     public void testGetOptionsFunction() {
-        try (Context ctx = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", ExecutionPolicyEnum.ASYNC.toString()).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", ExecutionPolicyEnum.ASYNC.toString()).option("grcuda.EnableComputationTimers", "true").build()) {
             // Obtain the options map;
             Value options = ctx.eval("grcuda", "getoptions").execute();
             // Check the we have a map;
@@ -168,7 +173,9 @@ public class GrCUDAOptionMapTest {
 
             // Obtain some options;
             assertEquals(ExecutionPolicyEnum.ASYNC.toString(), options.getHashValue("grcuda.ExecutionPolicy").asString());
-            assertEquals(GrCUDAOptionMap.DEFAULT_ENABLE_MULTIGPU, Boolean.valueOf(options.getHashValue("grcuda.EnableMultiGPU").asString()));
+            assertTrue(Boolean.parseBoolean(options.getHashValue("grcuda.EnableComputationTimers").asString()));
+            assertFalse(Boolean.parseBoolean(options.getHashValue("grcuda.ForceStreamAttach").asString()));
+            assertEquals(GrCUDAOptionMap.DEFAULT_NUMBER_OF_GPUs, Integer.valueOf(options.getHashValue("grcuda.NumberOfGPUs").asString()));
         }
     }
 
@@ -199,5 +206,4 @@ public class GrCUDAOptionMapTest {
             assertEquals(options.getHashSize(), optionCount);
         }
     }
-
 }

@@ -355,9 +355,7 @@ The first argument list corresponds to the launch configuration, i.e.,
 the kernel grid (number of blocks) and the block sizes (number of
 threads per block).
 
-GrCUDA currently only supports synchronous kernel launches,
-i.e., there is an implicit `cudaDeviceSynchronize()` after every
-launch.
+GrCUDA now also supports asynchronous kernel launches, thanks to a computation DAG that allows scheduling parallel computations on different streams and avoid synchronization when not necessary.
 
 __Examples:__
 

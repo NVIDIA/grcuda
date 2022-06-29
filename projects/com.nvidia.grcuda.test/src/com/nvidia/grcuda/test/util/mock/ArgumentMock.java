@@ -44,6 +44,6 @@ public class ArgumentMock extends ComputationArgumentWithValue {
 
     @Override
     public String toString() {
-        return this.getArgumentValue().toString() + (isArray ? "" : " - scalar") + (isConst ? " - const" : "");
+        return this.getArgumentValue().toString() + (isArray ? "" : ", scalar") + (isConst ? "-const" : "");
     }
 }

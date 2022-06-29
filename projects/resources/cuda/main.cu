@@ -33,17 +33,25 @@
 #include <cstdlib>  // For srand()
 #include "options.hpp"
 #include "benchmark.cuh"
-#include "b1.cuh"
-#include "b5.cuh"
-#include "b6.cuh"
-#include "b7.cuh"
-#include "b8.cuh"
-#include "b10.cuh"
+
+#include "single_gpu/b1.cuh"
+#include "single_gpu/b5.cuh"
+#include "single_gpu/b6.cuh"
+#include "single_gpu/b7.cuh"
+#include "single_gpu/b8.cuh"
+#include "single_gpu/b10.cuh"
+#include "multi_gpu/b1.cuh"
+#include "multi_gpu/b5.cuh"
+#include "multi_gpu/b6.cuh"
+#include "multi_gpu/b9.cuh"
+#include "multi_gpu/b11.cuh"
+#include "multi_gpu/b12.cuh"
+#include "multi_gpu/b13.cuh"
 
 int main(int argc, char *argv[])
 {
-    srand(time(0));
-//    srand(12);
+    // srand(time(0));
+    srand(12);
     
     Options options = Options(argc, argv);
     BenchmarkEnum benchmark_choice = options.benchmark_choice;
@@ -68,6 +76,27 @@ int main(int argc, char *argv[])
         break;
     case BenchmarkEnum::B10:
         b = new Benchmark10(options);
+        break;
+    case BenchmarkEnum::B1M:
+        b = new Benchmark1M(options);
+        break;
+    case BenchmarkEnum::B5M:
+        b = new Benchmark5M(options);
+        break;
+    case BenchmarkEnum::B6M:
+        b = new Benchmark6M(options);
+        break;
+    case BenchmarkEnum::B9M:
+        b = new Benchmark9M(options);
+        break;
+    case BenchmarkEnum::B11M:
+        b = new Benchmark11M(options);
+        break;
+    case BenchmarkEnum::B12M:
+        b = new Benchmark12M(options);
+        break;
+    case BenchmarkEnum::B13M:
+        b = new Benchmark13M(options);
         break;
     default:
         break;

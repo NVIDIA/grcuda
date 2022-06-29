@@ -30,15 +30,22 @@
  */
 package com.nvidia.grcuda.test.runtime;
 
+import com.nvidia.grcuda.Type;
+import com.nvidia.grcuda.runtime.array.DeviceArray;
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
+import com.nvidia.grcuda.runtime.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.runtime.computation.dependency.DependencyPolicyEnum;
+import com.nvidia.grcuda.runtime.executioncontext.AsyncGrCUDAExecutionContext;
 import com.nvidia.grcuda.runtime.executioncontext.ExecutionDAG;
-import com.nvidia.grcuda.runtime.executioncontext.GrCUDAExecutionContext;
-import com.nvidia.grcuda.runtime.stream.RetrieveNewStreamPolicyEnum;
-import com.nvidia.grcuda.runtime.stream.RetrieveParentStreamPolicyEnum;
+import com.nvidia.grcuda.runtime.stream.policy.RetrieveNewStreamPolicyEnum;
+import com.nvidia.grcuda.runtime.stream.policy.RetrieveParentStreamPolicyEnum;
 import com.nvidia.grcuda.test.util.mock.ArgumentMock;
-import com.nvidia.grcuda.test.util.mock.GrCUDAExecutionContextMock;
+import com.nvidia.grcuda.test.util.mock.AsyncGrCUDAExecutionContextMock;
+import com.nvidia.grcuda.test.util.mock.DeviceArrayMock;
+import com.nvidia.grcuda.test.util.mock.GrCUDAExecutionContextMockBuilder;
 import com.nvidia.grcuda.test.util.mock.KernelExecutionMock;
 import com.nvidia.grcuda.test.util.mock.SyncExecutionMock;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.junit.Test;
 
@@ -64,7 +71,7 @@ public class ExecutionDAGMockTest {
 
     @Test
     public void addVertexToDAGTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
+        AsyncGrCUDAExecutionContext context = new AsyncGrCUDAExecutionContextMock();
         // Create two mock kernel executions;
         new KernelExecutionMock(context,
                 Arrays.asList(new ArgumentMock(1), new ArgumentMock(2), new ArgumentMock(3))).schedule();
@@ -97,7 +104,7 @@ public class ExecutionDAGMockTest {
 
     @Test
     public void dependencyPipelineSimpleMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
+        AsyncGrCUDAExecutionContext context = new AsyncGrCUDAExecutionContextMock();
         // Create 4 mock kernel executions. In this case, kernel 3 requires 1 and 2 to finish,
         //   and kernel 4 requires kernel 3 to finish. The final frontier is composed of kernel 3 (arguments "1" and "2" are active),
         //   and kernel 4 (argument "3" is active);
@@ -139,7 +146,7 @@ public class ExecutionDAGMockTest {
 
     @Test
     public void complexFrontierMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock();
+        AsyncGrCUDAExecutionContext context = new AsyncGrCUDAExecutionContextMock();
 
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
         //    \----> C(2)
@@ -177,8 +184,8 @@ public class ExecutionDAGMockTest {
 
     @Test
     public void complexFrontierWithSyncMockTest() throws UnsupportedTypeException {
-        GrCUDAExecutionContext context = new GrCUDAExecutionContextMock(DependencyPolicyEnum.NO_CONST,
-                RetrieveNewStreamPolicyEnum.FIFO, RetrieveParentStreamPolicyEnum.DISJOINT);
+        AsyncGrCUDAExecutionContext context = new AsyncGrCUDAExecutionContextMock(DependencyPolicyEnum.NO_CONST,
+                RetrieveNewStreamPolicyEnum.REUSE, RetrieveParentStreamPolicyEnum.DISJOINT);
 
         // This time, simulate the synchronization process between kernels;
         // A(1,2) -> B(1) -> D(1,3) -> E(1,4) -> F(4)
@@ -224,5 +231,74 @@ public class ExecutionDAGMockTest {
         assertFalse(dag.getVertices().get(3).isFrontier());
         assertFalse(dag.getVertices().get(4).isFrontier());
         assertFalse(dag.getVertices().get(5).isFrontier());
+    }
+
+    @Test
+    public void concurrentReadMockTest() throws UnsupportedTypeException {
+        AsyncGrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST)
+                .setArchitecturePascalOrNewer(true).build();
+
+        // This time, simulate a computation on the GPU, and a concurrent CPU read.
+        // As the array is not modified, there should be no dependency between them.
+        // However, we have to schedule the write to ensure that the GPU computation has finished before we update data;
+        DeviceArrayMock x = new DeviceArrayMock(context);
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(x, true))).schedule();
+        assertTrue(x.canSkipSchedulingRead());
+        assertFalse(x.canSkipSchedulingWrite());
+    }
+
+    @Test
+    public void concurrentReadMockTest2() throws UnsupportedTypeException {
+        AsyncGrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST)
+                .setArchitecturePascalOrNewer(false).build();
+        // This time, simulate a computation on the GPU, and a concurrent CPU read & write.
+        // As the GPU is pre-pascal, and we are running the kernel on the default stream, we must have a sync;
+        DeviceArrayMock x = new DeviceArrayMock(context);
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(x, true))).schedule();
+        assertFalse(x.canSkipSchedulingRead());
+        assertFalse(x.canSkipSchedulingWrite());
+    }
+
+    @Test
+    public void concurrentReadNoConstMockTest() throws UnsupportedTypeException {
+        AsyncGrCUDAExecutionContext context = new GrCUDAExecutionContextMockBuilder()
+                .setDependencyPolicy(DependencyPolicyEnum.NO_CONST)
+                .setArchitecturePascalOrNewer(true).build();
+        // This time, simulate a computation on the GPU, and a concurrent CPU read & write.
+        // As we are not considering "const", there should be a dependency;
+        DeviceArrayMock x = new DeviceArrayMock(context);
+        new KernelExecutionMock(context, Collections.singletonList(new ArgumentMock(x, true))).schedule();
+        assertFalse(x.canSkipSchedulingRead());
+        assertFalse(x.canSkipSchedulingWrite());
+    }
+
+    // Test that if we have a kernel that uses an array read-only, and we schedule a write on CPU,
+    // the scheduling of the write is not skipped and we have a dependency between the kernel and the write;
+    @Test
+    public void writeIsNotSkippedMockTest() throws UnsupportedTypeException, InvalidArrayIndexException {
+        AsyncGrCUDAExecutionContextMock context = new GrCUDAExecutionContextMockBuilder()
+                .setDependencyPolicy(DependencyPolicyEnum.WITH_CONST)
+                .setRetrieveNewStreamPolicy(RetrieveNewStreamPolicyEnum.REUSE)
+                .setRetrieveParentStreamPolicy(RetrieveParentStreamPolicyEnum.DISJOINT)
+                .setArchitecturePascalOrNewer(true).build();
+
+        DeviceArray array1 = new DeviceArrayMock(context);
+        ExecutionDAG dag = context.getDag();
+        // K1(const A1, A2);
+        KernelExecutionMock k = new KernelExecutionMock(context, Collections.singletonList(new ComputationArgumentWithValue("array1", Type.NFI_POINTER, ComputationArgument.Kind.POINTER_IN, array1)));
+        k.schedule();
+        assertEquals(2, array1.getArrayUpToDateLocations().size());
+        assertTrue(array1.isArrayUpdatedInLocation(0));
+        assertTrue(array1.isArrayUpdatedOnCPU());
+        // Write on the array;
+        array1.writeArrayElement(0, 0, null, null);
+        // Check that the array update status is tracked correctly;
+        assertEquals(1, array1.getArrayUpToDateLocations().size());
+        assertTrue(array1.isArrayUpdatedOnCPU());
+        // Check the existence of a dependency;
+        assertEquals(2, dag.getNumVertices());
+        assertEquals(1, dag.getNumEdges());
     }
 }

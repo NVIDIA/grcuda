@@ -48,7 +48,7 @@ import math
 
 import os
 from load_data import load_data, load_data_cuda, join_tables, join_tables_baseline
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, update_width, add_labels, get_upper_ci_size, remove_outliers_df_grouped
+from segretini_matplottini.src.plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, update_width, add_labels, get_upper_ci_size, remove_outliers_df_grouped
 import matplotlib.ticker as ticker
 
 ##############################

@@ -1,11 +1,82 @@
+# 2022-06-01
+
+* Added scheduling DAG export functionality. It is now possible to retrieve a graphic version of the scheduling DAG of the execution by adding `ExportDAG` in the startup options. The graph will be exported in .dot format in the path specified by the user as option argument.
+* This information can be leveraged to better understand the achieved runtime performance and to compare the schedules derived from different policies. Moreover, poorly written applications will results in DAGs with low-level of task-parallelism independently of the selected policy, suggesting designers to change their applications’ logic.
+
+
+# 2022-04-15
+
+* Updated install.sh to compute the interconnection graph
+* Updated benchmark_wrapper to retrieve connection_graph correctly
+* Enabled min-transfer-size test in benchmark_wrapper
+* Benchmark_wrapper set for V100
+
+# 2022-02-16
+
+* Added logging for multiple computations (List of floats) on the same deviceID. This information could be used in future history-based adaptive scheduling policies.
+
+# 2022-01-26
+
+* Added mocked benchmarks: for each multi-gpu benchmark in our suite, there is a mocked version where we check that the GPU assignment is the one we expect. Added utility functions to easily test mocked benchmarks
+simplified round-robin device selection policy, now it works more or less as before but it is faster to update when using a subset of devices
+* Added threshold parameter for data-aware device selection policies. When using min-transfer-size or minmax/min-transfer-time, consider only devices that have at least 10% (or X %) of the requested data. Basically, if a device only has a very small amount of data already available it is not worth preferring it to other devices, and it can cause scheduling to converge to a unique device. See B9 and B11, for example.
+* Updated python benchmark suite to use new options, and optimized initialization of B1 (it is faster now) and B9 (it didn't work on matrices with 50K rows, as python uses 32-bit array indexing)
+* Fixed performance regression in DeviceArray access. For a simple python code that writes 160M values on a DeviceArray, performance went from 4sec to 20sec by using GraalVM 21.3 instead of 21.2. Reverted GraalVM to 21.2. Using non-static final Logger in GrCUDAComputationalElement increased time from 4sec to 130sec (not sure why, they are not created in repeated array accesses): fixed this regression.
+
+# 2022-01-14
+
+* Modified the "new stream creation policy FIFO" to simply reuse an existing free stream, without using a FIFO policy. Using FIFO did not give any benefit (besides a more predictable stream assignment), but it was more complex (we needed both a set and a FIFO, now we just use a set for the free streams)
+* Added device manager to track devices. This is mostly an abstraction layer over CUDARuntime, and allows retrieving the currently active GPU, or retrieving a specific device.
+  * DeviceManager is only a "getter", it cannot change the state of the system (e.g. it does not allow changing the current GPU)
+  * Compared to the original multi-GPU branch, we have cleaner separation. StreamManager has access to StreamPolicy, StreamPolicy has access to DeviceManager. StreamManager still has access to the runtime (for event creation, sync etc.), but we might completely hide CUDARuntime inside DeviceManager to have even more separation.
+* Re-added script to build connection graph. We might want to call it automatically from grcuda if the output CSV is not found. Otherwise we need to update the documentation to tell users how to use the script
+
+# 2022-01-12
+
+* Modified DeviceSelectionPolicy to select a device from a specified list of GPUs, instead of looking at all GPUs.
+That's useful because when we want to reuse a parent's stream we have to choose among the devices used by the parents, instead of considering all devices.
+* Added new SelectParentStreamPolicy where we find the parents' streams that can be reused, and then looks at the best device among the devices where these streams are, instead of considering all the devices in the system as in the previous policy. The old policy is still available.
+
 # 2021-12-21, Release 2
 
 * Added support for GraalVM 21.3.
 * Removed `ProfilableElement` Boolean flag, as it was always true.
 
+# 2021-12-09
+
+* Replaced old isLastComputationArrayAccess" with new device tracking API
+* The old isLastComputationArrayAccess was a performance optimization used to track if the last computation on an array was an access done by the CPU (the only existing CPU computations), to skip scheduling of further array accesses done by the CPU
+* Implicitly, the API tracked if a certain array was up-to-date on the CPU or on the GPU (for a 1 GPU system).
+* The new API that tracks locations of arrays completely covers the old API, making it redundant. If an array is up-to-date on the CPU, we can perform read/write without any ComputationalElement scheduling.
+* Checking if an array is up-to-date on the CPU requires a hashset lookup. It might be optimized if necessary, using a tracking flag.
+
+# 2021-12-06
+
+* Fixed major bug that prevented CPU reads on read-only arrays in-use by the GPU. The problem appeared only on devices since Pascal.
+* Started integrating API to track on which devices a certain array is currently up-to-date. Slightly modified from the original multi-GPU API.
+
+# 2021-12-05
+
+* Updated options in GrCUDA to support new multi-gpu flags.
+* Improved initialization of ExecutionContext, now it takes GrCUDAOptionMap as parameter.
+* Improved GrCUDAOptionMap testing, and integrated preliminary multi-GPU tests.
+* Renamed GrCUDAExecutionContext to AsyncGrCUDAExecutionContext.
+* Integrated multi-GPU features into CUDARuntime
+* Improved interface to measure execution time of computationalelements (now the role of "ProfilableElement" is clearer, and execution time logging has been moved inside ComputationElement instead of using StreamManager)
+* Improved manual selection of GPU
+* Unsupported tests (e.g. tests for multiGPU if just 1 GPU is available) are properly skipped, instead of failing or completing successfully without info
+temporary fix for GRCUDA-56: cuBLAS is disabled on pre-pascal if async scheduler is selected
+
+# 2021-11-30
+
+* Updated python benchmark suite to integrate multi-gpu code.
+* Minor updates in naming conventions (e.g. using snake_case instead of CamelCase)
+* We might still want to update the python suite (for example the output dict structure), but for now this should work.
+
 # 2021-11-29
 
 * Removed deprecation warning for Truffle's ArityException. 
+* Updated benchmark suite with CUDAs multiGPU benchmarks. Also fixed GPU OOB in B9.
 
 # 2021-11-21
 

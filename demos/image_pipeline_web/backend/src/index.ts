@@ -59,7 +59,7 @@ wss.on('connection', (ws: WebSocket) => {
 })
 
 app.get('/', (req: any, res: any) => {
-  res.send("Everithing is working properly")
+  res.send("Everything is working properly")
 })
 
 server.listen(PORT, () => console.log(`Running on port ${PORT} - Using GPU ${deviceNumber}`))

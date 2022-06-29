@@ -11,7 +11,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  * Class of functions to avoid managing streams in the CUSPARSE library
  */
 
-public class CUSPARSESetStreamFunction extends LibrarySetStreamFunction {
+public class CUSPARSESetStreamFunction extends LibrarySetStream {
 
     private final long handle;
 

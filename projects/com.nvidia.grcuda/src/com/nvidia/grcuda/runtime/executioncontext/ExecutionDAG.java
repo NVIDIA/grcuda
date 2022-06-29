@@ -326,7 +326,7 @@ public class ExecutionDAG implements TruffleObject {
         final private DAGVertex end;
         final private int id;
         /**
-         * Set of objects that represents depenencies between the two vertices;
+         * Set of objects that represents dependencies between the two vertices;
          */
         private Collection<ComputationArgumentWithValue> dependencies;
 
@@ -361,6 +361,10 @@ public class ExecutionDAG implements TruffleObject {
 
         public Collection<ComputationArgumentWithValue> getDependencies() {
             return dependencies;
+        }
+
+        public String toExportGraph(){
+            return "\"CE" + start.getId() + start.getComputation().getArgumentsThatCanCreateDependencies() + "\" -> \"CE" +  + end.getId() + end.getComputation().getArgumentsThatCanCreateDependencies() + "\"";
         }
 
         @Override

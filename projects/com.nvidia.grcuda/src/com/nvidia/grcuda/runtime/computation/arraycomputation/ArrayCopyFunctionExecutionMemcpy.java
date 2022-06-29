@@ -30,6 +30,7 @@
  */
 package com.nvidia.grcuda.runtime.computation.arraycomputation;
 
+import com.nvidia.grcuda.runtime.CPUDevice;
 import com.nvidia.grcuda.runtime.array.AbstractArray;
 import com.nvidia.grcuda.functions.DeviceArrayCopyFunction;
 import com.oracle.truffle.api.CompilerDirectives;

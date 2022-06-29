@@ -56,7 +56,7 @@ import com.nvidia.grcuda.runtime.computation.CUDALibraryExecution;
 import com.nvidia.grcuda.runtime.computation.ComputationArgument;
 import com.nvidia.grcuda.runtime.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.runtime.stream.CUSPARSESetStreamFunction;
-import com.nvidia.grcuda.runtime.stream.LibrarySetStreamFunction;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -77,7 +77,7 @@ public class CUSPARSERegistry {
     private final GrCUDAContext context;
     private final String libraryPath;
 
-    private LibrarySetStreamFunction cusparseLibrarySetStreamFunction;
+    private LibrarySetStream cusparseLibrarySetStream;
 
     @CompilationFinal private TruffleObject cusparseCreateFunction;
     @CompilationFinal private TruffleObject cusparseDestroyFunction;
@@ -211,7 +211,7 @@ public class CUSPARSERegistry {
             }
         }
 
-        cusparseLibrarySetStreamFunction = new CUSPARSESetStreamFunction((Function) cusparseSetStreamFunctionNFI, cusparseHandle);
+        cusparseLibrarySetStream = new CUSPARSESetStreamFunction((Function) cusparseSetStreamFunctionNFI, cusparseHandle);
 
     }
 
@@ -271,7 +271,7 @@ public class CUSPARSERegistry {
                         Object[] formattedArguments = proxy.formatArguments(arguments, cusparseHandle);
                         List<ComputationArgumentWithValue> computationArgumentsWithValue = this.createComputationArgumentWithValueList(formattedArguments, cusparseHandle);
                         int extraArraysToTrack = computationArgumentsWithValue.size() - this.computationArguments.size();  // Both lists also contain the handle;
-                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, cusparseLibrarySetStreamFunction,
+                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, cusparseLibrarySetStream,
                                 computationArgumentsWithValue, extraArraysToTrack).schedule();
 
                         checkCUSPARSEReturnCode(result, nfiFunction.getName());

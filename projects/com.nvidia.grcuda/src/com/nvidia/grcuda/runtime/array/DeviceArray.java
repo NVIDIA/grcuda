@@ -73,7 +73,7 @@ public class DeviceArray extends AbstractArray implements TruffleObject {
         this.sizeBytes = numElements * elementType.getSizeBytes();
         // Allocate the GPU memory;
         this.nativeView = allocateMemory();
-        // Register the array in the GrCUDAExecutionContext;
+        // Register the array in the AsyncGrCUDAExecutionContext;
         this.registerArray();
     }
 
@@ -177,7 +177,7 @@ public class DeviceArray extends AbstractArray implements TruffleObject {
             throw InvalidArrayIndexException.create(index);
         }
         try {
-            if (this.canSkipScheduling()) {
+            if (this.canSkipSchedulingRead()) {
                 // Fast path, skip the DAG scheduling;
                 return AbstractArray.readArrayElementNative(this.nativeView, index, this.elementType, elementTypeProfile);
             } else {
@@ -206,7 +206,7 @@ public class DeviceArray extends AbstractArray implements TruffleObject {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        if (this.canSkipScheduling()) {
+        if (this.canSkipSchedulingWrite()) {
             // Fast path, skip the DAG scheduling;
             AbstractArray.writeArrayElementNative(this.nativeView, index, value, elementType, valueLibrary, elementTypeProfile);
         } else {

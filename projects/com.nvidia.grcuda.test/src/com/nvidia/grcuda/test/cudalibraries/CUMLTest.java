@@ -34,6 +34,7 @@ import com.nvidia.grcuda.runtime.executioncontext.ExecutionPolicyEnum;
 import com.nvidia.grcuda.test.util.GrCUDATestUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -42,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import static org.junit.Assume.assumeNoException;
+import static org.junit.Assume.assumeTrue;
 
 @RunWith(Parameterized.class)
 public class CUMLTest {
@@ -66,10 +68,20 @@ public class CUMLTest {
         this.typeChar = typeChar;
     }
 
+    /**
+     * Set to false if we discover that cuML is not available;
+     */
+    private static boolean cuMLAvailable = true;
+
+    @Before
+    public void skipIfcuMLNotAvailable() {
+        assumeTrue(cuMLAvailable);
+    }
+
     @Test
     public void testDbscan() {
-        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy).option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(
-                        true).build()) {
+        try (Context polyglot = GrCUDATestUtil.buildTestContext().option("grcuda.ExecutionPolicy", this.policy)
+                .option("grcuda.InputPrefetch", String.valueOf(this.inputPrefetch)).allowAllAccess(true).build()) {
             Value cu = polyglot.eval("grcuda", "CU");
             int numRows = 100;
             int numCols = 2;
@@ -93,9 +105,12 @@ public class CUMLTest {
                     CUBLASTest.assertOutputVectorIsCorrect(numRows, labels, (Integer i) -> i / 10, this.typeChar);
                 } catch (Exception e) {
                     System.out.println("warning: failed to launch cuML, skipping test");
+                    cuMLAvailable = false;
+                    assumeNoException(e);
                 }
             } catch (Exception e) {
                 System.out.println("warning: cuML not enabled, skipping test");
+                cuMLAvailable = false;
                 assumeNoException(e);
             }
         }

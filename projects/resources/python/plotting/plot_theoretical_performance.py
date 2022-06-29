@@ -49,7 +49,7 @@ import math
 
 import os
 from load_data import load_data, load_data_cuda, join_tables, compute_speedup
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
+from segretini_matplottini.src.plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
 import matplotlib.ticker as ticker
 
 ##############################

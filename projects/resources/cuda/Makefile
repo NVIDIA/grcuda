@@ -30,20 +30,23 @@
 # Use NVCC.
 # Set the appropriate GPU architecture, check https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
 CXX=nvcc
-FLAGS = -std=c++11 -O3 -arch=sm_70
+#FLAGS = -G -g -std=c++11 -arch=sm_75
+FLAGS = -O3 -std=c++11 -arch=sm_70
 
 # (Experimental) Use Clang;
 # CXX=$(CLANG_DIR)/clang++
 # FLAGS = --cuda-gpu-arch=sm_70 -L/usr/local/cuda/lib64 -lcudart_static -ldl -lrt -pthread -std=c++11 -O3
 
 BIN_FOLDER=bin
-FILES=main.cu benchmark.cu b1.cu b5.cu b6.cu b7.cu b8.cu b10.cu
-
-.PHONY: all clean
+FILES=main.cu mmio.cpp benchmark.cu
+SINGLE_GPU_FILES=single_gpu/b1.cu single_gpu/b5.cu single_gpu/b6.cu single_gpu/b7.cu single_gpu/b8.cu single_gpu/b10.cu
+MULTI_GPU_FILES=multi_gpu/b1.cu multi_gpu/b5.cu multi_gpu/b6.cu multi_gpu/b9.cu multi_gpu/b11.cu multi_gpu/b12.cu multi_gpu/b13.cu
+B12_FILES=multi_gpu/b12.cu
+.PHONY: all graph clean
 
 all:
 	mkdir -p $(BIN_FOLDER);
-	$(CXX) $(FILES) $(FLAGS) -o $(BIN_FOLDER)/b;
+	$(CXX) $(FILES) $(SINGLE_GPU_FILES) $(MULTI_GPU_FILES) $(FLAGS) -o $(BIN_FOLDER)/b;
 
 clean:
 	rm $(BIN_FOLDER)/*;

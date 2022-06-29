@@ -2,7 +2,7 @@
 
 This Truffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.org). The goal is to
 
-1. Make data exchange between the host language and the GPU efficient without burdening the programmer.
+1. Make data exchange between the host language and the GPUs efficient without burdening the programmer.
 2. Allow programmers to invoke _existing_ GPU kernels from their host language.
 
 Supported and tested GraalVM languages:
@@ -127,26 +127,27 @@ In both cases, it is recommended to follow these [extra steps](#additional-insta
 
 ### Installation from an existing release
 
-The original version of GrCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases) and manually copied into a GraalVM installation.
+GrCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/necst/grcuda/releases) and manually copied into a GraalVM installation. The original version of GrCUDA is available [here](https://github.com/NVIDIA/grcuda/releases).
 
-1. Download GraalVM CE 21.2.0 for Linux `graalvm-ce-java11-linux-amd64-21.2.0.tar.gz`
-   from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.2.0/graalvm-ce-java11-linux-amd64-21.2.0.tar.gz) and untar it in your
+1. Download GraalVM CE 22.1.0 for Linux `graalvm-ce-java11-linux-amd64-21.2.0.tar.gz`
+   from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.1.0/graalvm-ce-java11-linux-amd64-22.1.0.tar.gz) and untar it in your
    installation directory.
 
   ```console
   cd <your installation directory>
-  wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.2.0/graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
-  tar xfz graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
-  rm graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
-  export GRAALVM_DIR=`pwd`/graalvm-ce-java11-21.2.0
+  wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.1.0/graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  tar xfz graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  rm graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  export GRAALVM_DIR=`pwd`/graalvm-ce-java11-22.1.0
   ```
 
-2. Download the GrCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases). If using the official release, the latest features (e.g. the asynchronous scheduler) are not available. Instead, follow the guide below to install GrCUDA from the source code.
+2. Download the GrCUDA JAR from [grcuda/releases](https://github.com/necst/grcuda/releases). If using the original release from [NVIDIA](https://github.com/NVIDIA/grcuda/releases), the latest features (e.g. the asynchronous scheduler, multi-GPU support) are not available. 
+<!-- Instead, follow the guide below to install GrCUDA from the source code. -->
 
   ```console
   cd $GRAALVM_DIR/languages
   mkdir grcuda
-  cp <download folder>/grcuda-0.1.0.jar grcuda
+  cp <download folder>/grcuda.jar grcuda
   ```
 
 3. Test GrCUDA in Node.JS from GraalVM.
@@ -174,26 +175,27 @@ If you want to build GrCUDA yourself, instead of using an existing release, you 
 This section contains all the steps required to setup GrCUDA if your goal is to contribute to its development, or simply hack with it.
 For simplicity, let's assume that your installation is done in your home directory, `~`.
 
-If you are installing GrCUDA on a new machine, you can simply follow or execute `oci_setup/setup_from_scratch.sh`. Here we repeat the same steps, with additional comments. 
-The installation process has been validated with CUDA 11.4 and Ubuntu 20.04.
+If you are installing GrCUDA on a new machine, you can simply follow or execute `oci_setup/setup_machine_from_scratch.sh` first, and then `oci_setup/setup_graalvm.sh`. 
+Here we repeat the same steps, with additional comments. 
+The installation process has been validated with CUDA 11.4 - 11.7 and Ubuntu 20.04.
 The same `oci_setup` has a number of useful scripts to configure machines on OCI and easily use GrCUDA.
 
-1. First, download GraalVM as above.
+1. First, download GraalVM 22.1 as above.
 
   ```console
-  wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-21.2.0/graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
-  tar xfz graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
-  rm graalvm-ce-java11-linux-amd64-21.2.0.tar.gz
-  export GRAALVM_DIR=~/graalvm-ce-java11-21.2.0
+  wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.1.0/graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  tar xfz graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  rm graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  export GRAALVM_DIR=~/graalvm-ce-java11-22.1.0
   ```
 
 2. To build GrCUDA, you also need a custom JDK that is used to build GraalVM.
 
   ```console
-  wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-21.2-b08/labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-  tar xfz labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-  rm labsjdk-ce-11.0.12+6-jvmci-21.2-b08-linux-amd64.tar.gz
-  export JAVA_HOME=~/labsjdk-ce-11.0.12-jvmci-21.2-b08
+  wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-22.1-b01/labsjdk-ce-11.0.15+2-jvmci-22.1-b01-linux-amd64.tar.gz
+  tar xfz labsjdk-ce-11.0.15+2-jvmci-22.1-b01-linux-amd64.tar.gz
+  rm labsjdk-ce-11.0.15+2-jvmci-22.1-b01-linux-amd64.tar.gz
+  export JAVA_HOME=~/labsjdk-ce-11.0.15-jvmci-22.1-b01
   ```
   
 3. GrCUDA requires the [mx build tool](https://github.com/graalvm/mx).
@@ -213,7 +215,7 @@ We checkout the commit corresponding to the current GraalVM release.
   ```console
   git clone https://github.com/oracle/graal.git
   cd graal
-  git checkout e9c54823b71cdca08e392f6b8b9a283c01c96571
+  git checkout da6a62d607552fc958ccb63f4ca1d81e1817cadc
   cd ..
   ```
 
@@ -221,18 +223,13 @@ We checkout the commit corresponding to the current GraalVM release.
 
   ```console
   cd <directory containing this README>
-  mx build
-  # Install it for Java 8+;
-  mkdir -p $GRAAL_HOME/jre/languages/grcuda;
-  cp mxbuild/dists/jdk1.8/grcuda.jar $GRAAL_HOME/languages/grcuda/.;
+  ./install.sh
   ```
-
-* `./install.sh` does this sequence of command for you, if you need to rebuild GrCUDA.
 
 ### Additional installations steps
 
 1. **Setup your CUDA environment**
-* Install CUDA and Nvidia drivers, for example following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_local)
+* Install CUDA and Nvidia drivers, for example following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_network)
 * Add the following to your environment (assuming you have installed CUDA in the default `/usr/local` location, and using the `nvcc` compiler. Add these lines to `~/.bashrc` to make them permanent.
 
 ```console
@@ -245,8 +242,8 @@ export PATH=$PATH:$CUDA_DIR/bin
 
 ```console
 export PATH=~/mx:$PATH
-export JAVA_HOME=~/labsjdk-ce-11.0.12-jvmci-21.2-b08
-export GRAAL_HOME=~/graalvm-ce-java11-21.2.0
+export JAVA_HOME=~/labsjdk-ce-11.0.15-jvmci-22.1-b01
+export GRAAL_HOME=~/graalvm-ce-java11-22.1.0
 export GRAALVM_HOME=$GRAAL_HOME
 export PATH=$GRAAL_HOME/bin:$PATH
 export PATH=$JAVA_HOME/bin:$PATH
@@ -324,12 +321,12 @@ Here, we explain how to setup IntelliJ Idea.
 ## Execute performance tests using Graalpython
 
 To measure the performance of GrCUDA on complex GPU applications, we have developed a custom benchmark suite, found in `projects/resources/python/benchmark`.
-These are the same benchmarks used in the [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491) paper.
+The benchmark suite includes those used in the [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491) paper.
 All commands are executed from `$GRCUDA_HOME/projects/resources/python/benchmark`;
 
 Run a single benchmark with custom settings
 ```console
-graalpython --jvm --polyglot --experimental-options --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=async --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10
+graalpython --jvm --polyglot --experimental-options --grcuda.ExecutionPolicy=async --grcuda.DependencyPolicy=with-const --grcuda.RetrieveNewStreamPolicy=always-new  --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10
 ```
 
 Run all benchmarks
@@ -371,7 +368,7 @@ Individual benchmarks are executed from `benchmark_main.py`, while running all b
 * The output of benchmarks is stored in a JSON (by default, located in `data/results`)
 * The benchmarking suite, through `benchmark_main.py`, supports the following options
   1. `-d`, `--debug`: print to the console the results and details of each benchmark. False by default
-  2. `-t`, `--num_iter`: number of times that each benchmark is executed, for each combination of options. 30 by default
+  2. `-i`, `--num_iter`: number of times that each benchmark is executed, for each combination of options. 30 by default
   3. `-o`, `--output_path`: full path to the file where results are stored. By default results are stored in `data/results`,
   and the file name is generated automatically
   4. `--realloc`: if true, allocate new memory and rebuild the GPU code at each iteration. False by default
@@ -380,26 +377,44 @@ Individual benchmarks are executed from `benchmark_main.py`, while running all b
   7. `-b`, `--benchmark`: run the benchmark only for the specified kernel. Otherwise run all benchmarks specified in `benchmark_main.py`
   8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
   9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default
+  9. `--number_of_gpus`: Number of GPU employed for computation
+  9. `--execution_policy`: If present, run the benchmark only with the selected execution policy
+  9. `--dependency_policy`: If present, run the benchmark only with the selected dependency policy
+  9. `--new_stream`: If present, run the benchmark only with the selected new stream policy
+  9. `--parent_stream`: If present, run the benchmark only with the selected parent stream policy
+  9. `--device_selection`: If present and parent policy is data aware, run the benchmark only with the selected device selection heuristic
+  9. `--force_stream_attach`: If present, force association between arrays and CUDA streams.
+  9. `--memory_advise_policy`: Select a managed memory memAdvise flag, if multiple GPUs are available
+  9. `--prefetch`: If true, enable automatic prefetching in the benchmarks
   10. `--block_size_1d`: number of threads per block when using 1D kernels
   11. `--block_size_2d`: number of threads per block when using 2D kernels
   12. `-g`, `--number_of_blocks`: number of blocks in the computation
   13. `-p`, `--time_phases`: measure the execution time of each phase of the benchmark; note that this introduces overheads, and might influence the total execution time. Results for each phase are meaningful only for synchronous execution
+  13. `--timing`: If presentm, measure the execution time of each kernel
   14. `--nvprof`: if present, enable profiling when using nvprof. For this option to have effect, run graalpython using nvprof, with flag '--profile-from-start off'
 	
 ## DAG Scheduling Settings
-The automatic DAG scheduling of GrCUDA supports different settings that can be used for debugging or to simplify the dependency computation in some circumstances. These options are provided at startup, using `--experimental-options --grcuda.OptionName=value`.
+The automatic DAG scheduling of GrCUDA supports different settings that can be used for debugging or to simplify the dependency computation in some circumstances. 
+Starting from release 0.4.0, the automatic scheduler also supports the usage of multiple GPUs available in the system.
+Different options can be provided at startup, using `--experimental-options --grcuda.OptionName=value`:
 
+* `EnableComputationTimers`: measure the execution time of GPU computations; `false` by default;
 * `ExecutionPolicy`: this regulates the global scheduling policy;
  `async` uses the DAG for asynchronous parallel execution, while `sync` executes each computation synchronously and can be used for debugging or to measure the execution time of each kernel
 * `DependencyPolicy`: choose how data dependencies between GrCUDA computations are computed;
-`with-const` considers read-only parameter, while `no-const` assumes that all arguments can be modified in a computation
+`with-const` considers read-only parameter, while `no-const` assumes that all arguments can be modified in a computation;
 * `RetrieveNewStreamPolicy`: choose how streams for new GrCUDA computations are created;
- `fifo` (the default) reuses free streams whenever possible, while `always-new` creates new streams every time a computation should use a stream different from its parent
+ `reuse` (the default) reuses free streams whenever possible, while `always-new` creates new streams every time a computation should use a stream different from its parent
 * `RetrieveParentStreamPolicy`: choose how streams for new GrCUDA computations are obtained from parent computations;
-`same-as-parent` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint
-* `InputPrefetch`: if present, prefetch the data on GPUs with architecture starting from Pascal. In most cases, it improves performance.
-* `ForceStreamAttach`: if present, force association between arrays and CUDA streams. True by default on architectures older than Pascal, to allow concurrent CPU/GPU computation. On architectures starting from Pascal, it can improve performance.
-* `--grcuda.TimeComputation`: Enable time computation to get execution time of the kernels, default is false;
+`same-as-parent` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint; `multigpu-disjoint` extends the previous policy with multi-GPU support and select the best parent device for a given computation, while `multigpu-early-disjoint` first selects the ideal GPU for the input computation, then finds if any of the reusable streams is allocated on that device.
+* `InputPrefetch`: if `true`, prefetch the data on GPUs with architecture starting from Pascal. In most cases, it improves performance. `false` by default;
+* `ForceStreamAttach`: if `true`, force association between arrays and CUDA streams. `true` by default on architectures older than Pascal, to allow concurrent CPU/GPU computation. On architectures starting from Pascal, it can improve performance, but it's `false` by default;
+* `NumberOfGPUs`: set how many GPUs can be used during computation (if available, otherwise use the max number of GPUs in the system). 1 by default;
+* `DeviceSelectionPolicy`: choose the heuristic that manages how GPU computations are mapped to devices, if multiple GPUs are available. `single-gpu` by default, it supports 5 multi-GPU policies: `round-robin` simply rotates the scheduling between GPUs, `stream-aware` selects the device with fewer ongoing computations, `min-transfer-size` maximizes data locality, while `minmin-transfer-time` and `minmax-transfer-time` minimize respectively the minimum and the maximum total transfer time; 
+* `DataThreshold`: When selecting a device with data-aware DeviceSelectionPolicies, such as min-transfer-size, do not give priority to devices that have less than this percentage of data already available. A lower percentage favors exploitation, a high percentage favors exploration. 0.1 by default (10%). 
+* `MemAdvisePolicy`: select a managed memory `memAdvise` flag, if multiple GPUs are available. Options: `read-mostly`, `preferred-location`, `none` (default);
+* `ExportDAG`: if present, dump the scheduling DAG in .dot format. Specify the destination path and the file name as value of the option (e.g. `--grcuda.ExportDAG=../ExecutionDAG`).
+* `BandwidthMatrix`: if present, sets the location of the CSV file that contains the estimated bandwidth between each CPU and GPU in the system, employed by topology-aware DeviceSelectionPolicies. By default, this is taken from  `$GRCUDA_HOME/projects/resouces/connection_graph/datasets/connection_graph.csv`, which is automatically computed during GrCUDA installation.
 
 ## Publications
 

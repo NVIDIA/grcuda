@@ -32,8 +32,9 @@ package com.nvidia.grcuda.test.util;
 
 import com.nvidia.grcuda.runtime.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.runtime.executioncontext.ExecutionPolicyEnum;
-import com.nvidia.grcuda.runtime.stream.RetrieveNewStreamPolicyEnum;
-import com.nvidia.grcuda.runtime.stream.RetrieveParentStreamPolicyEnum;
+import com.nvidia.grcuda.runtime.stream.policy.DeviceSelectionPolicyEnum;
+import com.nvidia.grcuda.runtime.stream.policy.RetrieveNewStreamPolicyEnum;
+import com.nvidia.grcuda.runtime.stream.policy.RetrieveParentStreamPolicyEnum;
 
 public class GrCUDATestOptionsStruct {
     public final ExecutionPolicyEnum policy;
@@ -41,26 +42,32 @@ public class GrCUDATestOptionsStruct {
     public final RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy;
     public final RetrieveParentStreamPolicyEnum retrieveParentStreamPolicy;
     public final DependencyPolicyEnum dependencyPolicy;
+    public final DeviceSelectionPolicyEnum deviceSelectionPolicy;
     public final boolean forceStreamAttach;
     public final boolean timeComputation;
+    public final int numberOfGPUs;
 
     /**
-     * A simple struct that holds a combination of GrCUDA options, extracted from the output of {@link GrCUDATestUtil#getAllOptionCombinations}
+     * A simple struct that holds a combination of GrCUDA options, extracted from the output of {@link GrCUDATestUtil#getAllOptionCombinationsSingleGPU}
      */
     public GrCUDATestOptionsStruct(ExecutionPolicyEnum policy,
                                    boolean inputPrefetch,
                                    RetrieveNewStreamPolicyEnum retrieveNewStreamPolicy,
                                    RetrieveParentStreamPolicyEnum retrieveParentStreamPolicy,
                                    DependencyPolicyEnum dependencyPolicy,
+                                   DeviceSelectionPolicyEnum deviceSelectionPolicy,
                                    boolean forceStreamAttach,
-                                   boolean timeComputation) {
+                                   boolean timeComputation,
+                                   int numberOfGPUs) {
         this.policy = policy;
         this.inputPrefetch = inputPrefetch;
         this.retrieveNewStreamPolicy = retrieveNewStreamPolicy;
         this.retrieveParentStreamPolicy = retrieveParentStreamPolicy;
         this.dependencyPolicy = dependencyPolicy;
+        this.deviceSelectionPolicy = deviceSelectionPolicy;
         this.forceStreamAttach = forceStreamAttach;
         this.timeComputation = timeComputation;
+        this.numberOfGPUs = numberOfGPUs;
     }
 
     @Override
@@ -71,8 +78,10 @@ public class GrCUDATestOptionsStruct {
                 ", retrieveNewStreamPolicy=" + retrieveNewStreamPolicy +
                 ", retrieveParentStreamPolicy=" + retrieveParentStreamPolicy +
                 ", dependencyPolicy=" + dependencyPolicy +
+                ", deviceSelectionPolicy=" + deviceSelectionPolicy +
                 ", forceStreamAttach=" + forceStreamAttach +
                 ", timeComputation=" + timeComputation +
+                ", numberOfGPUs=" + numberOfGPUs +
                 '}';
     }
 }

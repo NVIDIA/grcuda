@@ -40,16 +40,20 @@
 //////////////////////////////
 //////////////////////////////
 
+#define CPU_VALIDATION false
 #define DEBUG false
 #define NUM_ITER 30
 #define DEFAULT_BLOCK_SIZE_1D 32
 #define DEFAULT_BLOCK_SIZE_2D 8
 #define DEFAULT_NUM_BLOCKS 64
 #define DEFAULT_SKIP 3
-#define DEFAULT_BENCHMARK "b1"
 #define DEFAULT_POLICY "async"
 #define DEFAULT_PREFETCH false
 #define DEFAULT_STREAM_ATTACH false
+#define DEFAULT_MAX_DEVICES 1
+#define DEFAULT_NVPROF false
+// In some benchmarks, allow the computation to be split into an arbitrary number of partitions;
+#define DEFAULT_NUM_PARTITIONS 16
 
 //////////////////////////////
 //////////////////////////////
@@ -69,6 +73,13 @@ enum BenchmarkEnum {
     B7,
     B8,
     B10,
+    B1M,
+    B5M,
+    B6M,
+    B9M,
+    B11M,
+    B12M,
+    B13M,
     ERR
 };
 
@@ -101,6 +112,20 @@ inline BenchmarkEnum get_benchmark(std::string benchmark) {
         return BenchmarkEnum::B8;
     else if (benchmark == "b10")
         return BenchmarkEnum::B10;
+    else if (benchmark == "b1m")
+        return BenchmarkEnum::B1M;
+    else if (benchmark == "b5m")
+        return BenchmarkEnum::B5M;
+    else if (benchmark == "b6m")
+        return BenchmarkEnum::B6M;
+    else if (benchmark == "b9m")
+        return BenchmarkEnum::B9M;
+    else if (benchmark == "b11m")
+        return BenchmarkEnum::B11M;
+    else if (benchmark == "b12m")
+        return BenchmarkEnum::B12M;
+    else if (benchmark == "b13m")
+        return BenchmarkEnum::B13M;
     else
         return BenchmarkEnum::ERR;
 }
@@ -113,10 +138,13 @@ struct Options {
     int block_size_2d = DEFAULT_BLOCK_SIZE_2D;
     int num_blocks = DEFAULT_NUM_BLOCKS;
     int N = 0;
+    int max_devices = DEFAULT_MAX_DEVICES;
     int skip_iterations = DEFAULT_SKIP;
     bool prefetch = DEFAULT_PREFETCH;
     bool stream_attach = DEFAULT_STREAM_ATTACH;
-    BenchmarkEnum benchmark_choice = get_benchmark(DEFAULT_BENCHMARK);
+    bool nvprof = DEFAULT_NVPROF;
+    int num_partitions = DEFAULT_NUM_PARTITIONS;
+    BenchmarkEnum benchmark_choice = BenchmarkEnum::ERR;
     Policy policy_choice = get_policy(DEFAULT_POLICY);
 
     // Used for printing;
@@ -128,7 +156,20 @@ struct Options {
 
     Options(int argc, char *argv[]) {
         map_init(policy_map)(Policy::Sync, "sync")(Policy::Async, "async")(Policy::CudaGraph, "cudagraph")(Policy::CudaGraphAsync, "cudagraphmanual")(Policy::CudaGraphSingle, "cudagraphsingle");
-        map_init(benchmark_map)(BenchmarkEnum::B1, "b1")(BenchmarkEnum::B5, "b5")(BenchmarkEnum::B6, "b6")(BenchmarkEnum::B7, "b7")(BenchmarkEnum::B8, "b8")(BenchmarkEnum::B10, "b10");
+        map_init(benchmark_map)
+                (BenchmarkEnum::B1, "b1 - VEC")
+                (BenchmarkEnum::B5, "b5 - B&S")
+                (BenchmarkEnum::B6, "b6 - ML")
+                (BenchmarkEnum::B7, "b7 - HITS")
+                (BenchmarkEnum::B8, "b8 - IMG")
+                (BenchmarkEnum::B10, "b10 - DL")
+                (BenchmarkEnum::B1M, "b1m - VEC")
+                (BenchmarkEnum::B5M, "b5m - B&S")
+                (BenchmarkEnum::B6M, "b6m - ML")
+                (BenchmarkEnum::B9M, "b9m - CG")
+                (BenchmarkEnum::B11M, "b11m - MUL")
+                (BenchmarkEnum::B12M, "b12m - LANCZOS")
+                (BenchmarkEnum::B13M, "b13m - MMUL");
 
         int opt;
         static struct option long_options[] = {{"debug", no_argument, 0, 'd'},
@@ -140,13 +181,16 @@ struct Options {
                                                {"skip_first", required_argument, 0, 's'},
                                                {"benchmark", required_argument, 0, 'k'},
                                                {"policy", required_argument, 0, 'p'},
-                                               {"prefetch", required_argument, 0, 'r'},
-                                               {"attach", required_argument, 0, 'a'},
+                                               {"prefetch", no_argument, 0, 'r'},
+                                               {"attach", no_argument, 0, 'a'},
+                                               {"max_devices", required_argument, 0, 'm'},
+                                               {"nvprof", no_argument, 0, 'v'},
+                                               {"partitions", required_argument, 0, 'P'},
                                                {0, 0, 0, 0}};
         // getopt_long stores the option index here;
         int option_index = 0;
 
-        while ((opt = getopt_long(argc, argv, "dt:n:b:c:g:s:k:p:ra", long_options, &option_index)) != EOF) {
+        while ((opt = getopt_long(argc, argv, "dt:n:b:c:g:s:k:p:ram:vP:", long_options, &option_index)) != EOF) {
             switch (opt) {
                 case 'd':
                     debug = true;
@@ -180,6 +224,15 @@ struct Options {
                     break;
                 case 'a':
                     stream_attach = true;
+                    break;
+                case 'm':
+                    max_devices = atoi(optarg);
+                    break;
+                case 'v':
+                    nvprof = true;
+                    break;
+                case 'P':
+                    num_partitions = atoi(optarg);
                     break;
                 default:
                     break;

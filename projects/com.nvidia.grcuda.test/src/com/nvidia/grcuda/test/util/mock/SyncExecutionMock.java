@@ -33,7 +33,7 @@ package com.nvidia.grcuda.test.util.mock;
 import com.nvidia.grcuda.runtime.computation.ComputationArgumentWithValue;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement;
-import com.nvidia.grcuda.runtime.executioncontext.GrCUDAExecutionContext;
+import com.nvidia.grcuda.runtime.executioncontext.AsyncGrCUDAExecutionContext;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  */
 public class SyncExecutionMock extends GrCUDAComputationalElement {
 
-    public SyncExecutionMock(GrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
+    public SyncExecutionMock(AsyncGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
         super(grCUDAExecutionContext, args);
     }
 
@@ -62,9 +62,9 @@ public class SyncExecutionMock extends GrCUDAComputationalElement {
 
     @Override
     public String toString() {
-        return "sync" + "; args=[" +
-                this.argumentList.stream().map(Object::toString).collect(Collectors.joining(", ")) +
-                "]";
+        return "sync: args={" +
+                this.argumentsThatCanCreateDependencies.stream().map(Object::toString).collect(Collectors.joining(", ")) +
+                "}";
     }
 }
 

@@ -57,12 +57,7 @@ public class ComputationArgumentWithValue extends ComputationArgument {
 
     @Override
     public String toString() {
-        return "ComputationArgumentWithValue(" +
-                "argumentValue=" + argumentValue +
-                ", type=" + type +
-                ", isArray=" + isArray +
-                ", isConst=" + isConst +
-                ')';
+        return name;
     }
 
     @Override

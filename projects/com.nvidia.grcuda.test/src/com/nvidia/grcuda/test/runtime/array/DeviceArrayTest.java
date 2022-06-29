@@ -41,6 +41,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.nvidia.grcuda.test.util.GrCUDATestUtil;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -73,7 +74,7 @@ public class DeviceArrayTest {
 
     @Test
     public void testDeviceArrayCreationFromArrayExpression() {
-        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             Value deviceArray = context.eval("grcuda", dataTypeString + "[" + arrayLength + "]");
             assertTrue(deviceArray.hasArrayElements());
             assertEquals(arrayLength, deviceArray.getArraySize());

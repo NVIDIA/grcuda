@@ -392,6 +392,6 @@ public class ComputationArgument {
 
     @Override
     public String toString() {
-        return "Parameter(position=" + position + ", name=" + name + ", type=" + type + ", kind=" + kind + ")";
+        return name;
     }
 }

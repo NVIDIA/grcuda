@@ -49,7 +49,7 @@ from scipy.stats.mstats import gmean
 from matplotlib.patches import Patch, Rectangle
 from matplotlib.collections import PatchCollection, LineCollection
 import matplotlib.lines as lines
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
+from segretini_matplottini.src.plot_utils import COLORS, get_exp_label, get_ci_size, save_plot
 
 
 DEFAULT_RES_DIR = "../../../../grcuda-data/results/scheduling_nvprof_log"

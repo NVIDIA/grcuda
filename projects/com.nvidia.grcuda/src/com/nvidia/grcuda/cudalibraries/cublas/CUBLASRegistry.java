@@ -44,15 +44,14 @@ import java.util.Arrays;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
-import com.nvidia.grcuda.GrCUDAOptions;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.cudalibraries.CUDALibraryFunction;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.runtime.UnsafeHelper;
-import com.nvidia.grcuda.runtime.stream.CUBLASSetStreamFunction;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStreamCUBLAS;
 import com.nvidia.grcuda.runtime.computation.CUDALibraryExecution;
-import com.nvidia.grcuda.runtime.stream.LibrarySetStreamFunction;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStream;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -73,7 +72,7 @@ public class CUBLASRegistry {
     private final GrCUDAContext context;
     private final String libraryPath;
 
-    private LibrarySetStreamFunction cublasLibrarySetStreamFunction;
+    private LibrarySetStream cublasLibrarySetStream;
 
     @CompilationFinal private TruffleObject cublasCreateFunction;
     @CompilationFinal private TruffleObject cublasDestroyFunction;
@@ -161,7 +160,7 @@ public class CUBLASRegistry {
             }
         }
 
-        cublasLibrarySetStreamFunction = new CUBLASSetStreamFunction((Function) cublasSetStreamFunctionNFI, cublasHandle);
+        cublasLibrarySetStream = new LibrarySetStreamCUBLAS((Function) cublasSetStreamFunctionNFI, cublasHandle);
 
     }
 
@@ -195,7 +194,7 @@ public class CUBLASRegistry {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
                         }
-                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, cublasLibrarySetStreamFunction,
+                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, cublasLibrarySetStream,
                                         this.createComputationArgumentWithValueList(arguments, cublasHandle)).schedule();
                         checkCUBLASReturnCode(result, nfiFunction.getName());
                         return result;

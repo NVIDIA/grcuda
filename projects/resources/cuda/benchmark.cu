@@ -27,10 +27,26 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "cuda_profiler_api.h"
 #include "benchmark.cuh"
 
 namespace chrono = std::chrono;
 using clock_type = chrono::high_resolution_clock;
+
+#define GPU_ORDER_8 {0, 4, 1, 5, 2, 6, 3, 7} 
+#define GPU_ORDER_4 {0, 3, 1, 2}
+
+int Benchmark::select_gpu(int i, int max_devices) {
+    if (max_devices > 4) {
+        int gpu_order[] = GPU_ORDER_8;
+        return gpu_order[i % 8] % max_devices;
+    } else if (max_devices > 2) {
+        int gpu_order[] = GPU_ORDER_4;
+        return gpu_order[i % 4] % max_devices;
+    } else {
+        return i % max_devices;
+    }
+}
 
 int Benchmark::add_node(void **paramarray, cudaKernelNodeParams &param, void *func, dim3 gridsize, dim3 threads, cudaGraph_t &g, cudaGraphNode_t *n, std::vector<cudaGraphNode_t> &dependencies, int shared_memory) {
     param.func = func;
@@ -76,6 +92,7 @@ void Benchmark::run() {
         if (debug) std::cout << "  reset=" << (float)reset_time / 1000 << " ms" << std::endl;
 
         // Execution;
+        if (nvprof) cudaProfilerStart();
         start_tmp = clock_type::now();
         switch (policy) {
             case Policy::Sync:
@@ -96,6 +113,7 @@ void Benchmark::run() {
         if (debug && err) std::cout << "  error=" << err << std::endl;
         end_tmp = clock_type::now();
         auto exec_time = chrono::duration_cast<chrono::microseconds>(end_tmp - start_tmp).count();
+        if (nvprof) cudaProfilerStop();
 
         if (i >= skip_iterations)
             tot_time += exec_time;
@@ -103,6 +121,9 @@ void Benchmark::run() {
         if (debug) {
             std::cout << "  result=" << print_result() << std::endl;
             std::cout << "  execution(" << i << ")=" << (float)exec_time / 1000 << " ms" << std::endl;
+#if CPU_VALIDATION
+            cpu_validation(i);
+#endif
         } else {
             std::cout << i << "," << print_result(true) << "," << (float)(reset_time + exec_time) / 1e6 << "," << (float)reset_time / 1e6 << "," << (float)exec_time / 1e6 << std::endl;
         }
@@ -111,4 +132,28 @@ void Benchmark::run() {
     auto end_time = chrono::duration_cast<chrono::microseconds>(clock_type::now() - start_tot).count();
     if (debug) std::cout << "\ntotal execution time=" << end_time / 1e6 << " sec" << std::endl;
     if (debug) std::cout << "mean exec time=" << (float)tot_time / (1000 * (num_executions - skip_iterations)) << " ms" << std::endl;
+}
+
+void Benchmark::execute_async(int iter) {
+    std::cout << "execution (async) not implemented for " << benchmark_name << std::endl;
+}
+
+void Benchmark::execute_sync(int iter) {
+    std::cout << "execution (sync) not implemented for " << benchmark_name << std::endl;
+}
+
+void Benchmark::execute_cudagraph(int iter) {
+    std::cout << "cudagraph (standard) not implemented for " << benchmark_name << std::endl;
+}
+
+void Benchmark::execute_cudagraph_manual(int iter) {
+    std::cout << "cudagraph (manual) not implemented for " << benchmark_name << std::endl;
+}
+
+void Benchmark::execute_cudagraph_single(int iter) {
+    std::cout << "cudagraph (single) not implemented for " << benchmark_name << std::endl;
+}
+
+void Benchmark::cpu_validation(int iter) {
+    std::cout << "cpu validation not implemented for " << benchmark_name << std::endl;
 }

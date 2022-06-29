@@ -46,15 +46,26 @@ public class KernelExecutionMock extends GrCUDAComputationalElement {
     /**
      * Simulate an execution by forcing a wait that last the given number of milliseconds;
      */
-    private int durationMs = 0;
+    private final int durationMs;
+
+    private final String name;
 
     public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args) {
-        super(grCUDAExecutionContext, args);
+        this(grCUDAExecutionContext, args, "kernel");
     }
 
-    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args, int durationMs) {
+    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args, String name) {
+        this(grCUDAExecutionContext, args, name, 0);
+    }
+
+    public KernelExecutionMock(AbstractGrCUDAExecutionContext grCUDAExecutionContext, List<ComputationArgumentWithValue> args, String name, int durationMs) {
         super(grCUDAExecutionContext, args);
+        this.name = name;
         this.durationMs = durationMs;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override
@@ -78,9 +89,9 @@ public class KernelExecutionMock extends GrCUDAComputationalElement {
 
     @Override
     public String toString() {
-        return "kernel mock" + "; args=[" +
-                this.argumentList.stream().map(Object::toString).collect(Collectors.joining(", ")) +
-                "]" + "; stream=" + this.getStream().getStreamNumber();
+        return this.getName() + ": args={" +
+                this.argumentsThatCanCreateDependencies.stream().map(Object::toString).collect(Collectors.joining(", ")) +
+                "}" + "; stream=" + this.getStream().getStreamNumber() + "; gpu=" + this.getStream().getStreamDeviceId();
     }
 }
 

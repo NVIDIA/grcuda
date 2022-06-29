@@ -53,7 +53,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public class ConfiguredKernel extends ProfilableElement implements TruffleObject {
+public class ConfiguredKernel extends ProfiledComputation implements TruffleObject {
 
     private final Kernel kernel;
 

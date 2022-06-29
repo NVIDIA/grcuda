@@ -86,7 +86,15 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
     }
 
     @Override
-    protected OptionDescriptors getOptionDescriptors() {
+    public OptionDescriptors getOptionDescriptors() {
+        return GrCUDALanguage.getOptionDescriptorsStatic();
+    }
+
+    /**
+     * We make the list of ooption descriptors available statically so it can be used when mocking the language, without having to create a context;
+     * @return the list of option descriptors, with default values available;
+     */
+    public static OptionDescriptors getOptionDescriptorsStatic() {
         return new GrCUDAOptionsOptionDescriptors();
     }
 

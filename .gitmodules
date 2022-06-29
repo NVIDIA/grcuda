@@ -2,3 +2,7 @@
 	path = grcuda-data
 	url = https://github.com/AlbertoParravicini/grcuda-data.git
 	branch = master
+[submodule "projects/resources/python/plotting/segretini_matplottini"]
+	path = projects/resources/python/plotting/segretini_matplottini
+	url = git@github.com:AlbertoParravicini/segretini-matplottini.git
+	branch = master

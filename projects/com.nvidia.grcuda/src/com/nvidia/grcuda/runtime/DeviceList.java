@@ -35,7 +35,10 @@
  */
 package com.nvidia.grcuda.runtime;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -46,15 +49,27 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public final class DeviceList implements TruffleObject, Iterable<Device> {
+public class DeviceList implements TruffleObject, Iterable<Device> {
 
-    private final Device[] devices;
+    protected final List<Device> devices;
+
+    public DeviceList(CUDARuntime runtime) {
+        this(runtime.getNumberOfAvailableGPUs(), runtime);
+    }
 
     public DeviceList(int numDevices, CUDARuntime runtime) {
-        devices = new Device[numDevices];
-        for (int deviceOrdinal = 0; deviceOrdinal < numDevices; ++deviceOrdinal) {
-            devices[deviceOrdinal] = new Device(deviceOrdinal, runtime);
+        devices = Arrays.asList(new Device[numDevices]);
+        this.initializeDeviceList(numDevices, runtime);
+    }
+
+    public void initializeDeviceList(int numDevices, CUDARuntime runtime) {
+        for (int deviceOrdinal = 0; deviceOrdinal < numDevices; deviceOrdinal++) {
+            devices.set(deviceOrdinal, new Device(deviceOrdinal, runtime));
         }
+    }
+
+    public List<Device> getDevices() {
+        return this.devices;
     }
 
     // Java API
@@ -64,12 +79,12 @@ public final class DeviceList implements TruffleObject, Iterable<Device> {
             int nextIndex = 0;
 
             public boolean hasNext() {
-                return nextIndex < devices.length;
+                return nextIndex < devices.size();
             }
 
             public Device next() {
-                if (nextIndex < devices.length) {
-                    return devices[nextIndex++];
+                if (nextIndex < devices.size()) {
+                    return devices.get(nextIndex++);
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw new NoSuchElementException();
@@ -79,15 +94,22 @@ public final class DeviceList implements TruffleObject, Iterable<Device> {
     }
 
     public int size() {
-        return devices.length;
+        return devices.size();
     }
 
     public Device getDevice(int deviceOrdinal) {
-        if ((deviceOrdinal < 0) || (deviceOrdinal >= devices.length)) {
+        if ((deviceOrdinal < 0) || (deviceOrdinal >= devices.size())) {
             CompilerDirectives.transferToInterpreter();
             throw new IndexOutOfBoundsException();
         }
-        return devices[deviceOrdinal];
+        return devices.get(deviceOrdinal);
+    }
+
+    /**
+     * Cleanup and deallocate the streams managed by each device;
+     */
+    public void cleanup() {
+        this.devices.forEach(Device::cleanup);
     }
 
     @Override
@@ -115,20 +137,20 @@ public final class DeviceList implements TruffleObject, Iterable<Device> {
 
     @ExportMessage
     public long getArraySize() {
-        return devices.length;
+        return devices.size();
     }
 
     @ExportMessage
     boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < devices.length;
+        return index >= 0 && index < devices.size();
     }
 
     @ExportMessage
     Object readArrayElement(long index) throws InvalidArrayIndexException {
-        if ((index < 0) || (index >= devices.length)) {
+        if ((index < 0) || (index >= devices.size())) {
             CompilerDirectives.transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
-        return devices[(int) index];
+        return devices.get((int) index);
     }
 }

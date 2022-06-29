@@ -30,6 +30,7 @@
  */
 package com.nvidia.grcuda.runtime.computation.arraycomputation;
 
+import com.nvidia.grcuda.runtime.CPUDevice;
 import com.nvidia.grcuda.runtime.array.MultiDimDeviceArrayView;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
@@ -44,6 +45,16 @@ public class MultiDimDeviceArrayViewReadExecution extends ArrayAccessExecution<M
         super(array.getGrCUDAExecutionContext(), new ArrayAccessExecutionInitializer<>(array.getMdDeviceArray(), true), array);
         this.index = index;
         this.elementTypeProfile = elementTypeProfile;
+    }
+
+    @Override
+    public void updateLocationOfArrays() {
+        if (array.getGrCUDAExecutionContext().isConstAware()) {
+            array.addArrayUpToDateLocations(CPUDevice.CPU_DEVICE_ID);
+        } else {
+            // Clear the list of up-to-date locations: only the CPU has the updated array;
+            array.resetArrayUpToDateLocations(CPUDevice.CPU_DEVICE_ID);
+        }
     }
 
     @Override

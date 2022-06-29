@@ -30,16 +30,21 @@
 import argparse
 from distutils.util import strtobool
 
-from bench.bench_1 import Benchmark1
-from bench.bench_2 import Benchmark2
-from bench.bench_3 import Benchmark3
-from bench.bench_4 import Benchmark4
-from bench.bench_5 import Benchmark5
-from bench.bench_6 import Benchmark6
-from bench.bench_7 import Benchmark7
-from bench.bench_8 import Benchmark8
-from bench.bench_9 import Benchmark9
-from bench.bench_10 import Benchmark10
+from bench.single_gpu.bench_1 import Benchmark1
+from bench.single_gpu.bench_2 import Benchmark2
+from bench.single_gpu.bench_3 import Benchmark3
+from bench.single_gpu.bench_4 import Benchmark4
+from bench.single_gpu.bench_5 import Benchmark5
+from bench.single_gpu.bench_6 import Benchmark6
+from bench.single_gpu.bench_7 import Benchmark7
+from bench.single_gpu.bench_8 import Benchmark8
+from bench.single_gpu.bench_9 import Benchmark9
+from bench.single_gpu.bench_10 import Benchmark10
+from bench.multi_gpu.bench_1 import Benchmark1M
+from bench.multi_gpu.bench_5 import Benchmark5M
+from bench.multi_gpu.bench_6 import Benchmark6M
+from bench.multi_gpu.bench_9 import Benchmark9M
+from bench.multi_gpu.bench_11 import Benchmark11M
 from benchmark_result import BenchmarkResult
 
 ##############################
@@ -47,6 +52,7 @@ from benchmark_result import BenchmarkResult
 
 # Benchmark settings;
 benchmarks = {
+    # Single GPU;
     "b1": Benchmark1,
     "b2": Benchmark2,
     "b3": Benchmark3,
@@ -57,9 +63,16 @@ benchmarks = {
     "b8": Benchmark8,
     "b9": Benchmark9,
     "b10": Benchmark10,
+    # Multi GPU;
+    "b1m": Benchmark1M,
+    "b5m": Benchmark5M,
+    "b6m": Benchmark6M,
+    "b9m": Benchmark9M,
+    "b11m": Benchmark11M,
 }
 
 num_elem = {
+    # Single GPU;
     "b1": [100],
     "b2": [100],
     "b3": [100],
@@ -70,9 +83,16 @@ num_elem = {
     "b8": [100],
     "b9": [100],
     "b10": [100],
+    # Multi GPU;
+    "b1m": [100],
+    "b5m": [100],
+    "b6m": [100],
+    "b9m": [100],
+    "b11m": [100],
 }
 
 policies = {
+    # Single GPU;
     "b1": ["async"],
     "b2": ["async"],
     "b3": ["async"],
@@ -83,6 +103,12 @@ policies = {
     "b8": ["async"],
     "b9": ["async"],
     "b10": ["async"],
+    # Multi GPU;
+    "b1m": ["async"],
+    "b5m": ["async"],
+    "b6m": ["async"],
+    "b9m": ["async"],
+    "b11m": ["async"],
 }
 
 ##############################
@@ -129,10 +155,24 @@ if __name__ == "__main__":
                         help="Validate the result of each benchmark using the CPU")
     parser.add_argument("-b", "--benchmark", nargs="*",
                         help="If present, run the benchmark only for the specified kernel")
-    parser.add_argument("--policy",
-                        help="If present, run the benchmark only with the selected policy")
+    parser.add_argument("--execution_policy",
+                        help="If present, run the benchmark only with the selected execution policy")
+    parser.add_argument("--dependency_policy",
+                        help="If present, run the benchmark only with the selected dependency policy")
+    parser.add_argument("--new_stream",
+                        help="If present, run the benchmark only with the selected new stream policy")
+    parser.add_argument("--parent_stream",
+                        help="If present, run the benchmark only with the selected parent stream policy")
+    parser.add_argument("--device_selection",
+                        help="If present and parent policy is data aware, run the benchmark only with the selected device_selection")
+    parser.add_argument("--memory_advise_policy",
+                        help="Select a managed memory memAdvise flag, if multiple GPUs are available")
+    parser.add_argument("--prefetch",
+                        help="If present run the benchmark only with the selected prefetcher")
     parser.add_argument("-n", "--size", metavar="N", type=int, nargs="*",
                         help="Override the input data size used for the benchmarks")
+    parser.add_argument("--number_of_gpus", metavar="N", type=int, nargs="*",
+                        help="Number of GPU employed for computation")
     parser.add_argument("--block_size_1d", metavar="N", type=int, nargs="*",
                         help="Number of threads per block when using 1D kernels")
     parser.add_argument("--block_size_2d", metavar="N", type=int, nargs="*",
@@ -141,6 +181,10 @@ if __name__ == "__main__":
                         help="Number of blocks in the computation")
     parser.add_argument("-r", "--random", action="store_true",
                         help="Initialize benchmarks randomly whenever possible")
+    parser.add_argument("--force_stream_attach", action="store_true",
+                        help="stream_attach")
+    parser.add_argument("--timing", action="store_true",
+                        help="Measure the execution time of each kernel")
     parser.add_argument("-p", "--time_phases", action="store_true",
                         help="Measure the execution time of each phase of the benchmark;"
                              " note that this introduces overheads, and might influence the total execution time")
@@ -161,7 +205,17 @@ if __name__ == "__main__":
     cpu_validation = args.cpu_validation
     time_phases = args.time_phases
     nvprof_profile = args.nvprof
-
+    timing = args.timing
+    prefetch = args.prefetch 
+    stream_attach = args.force_stream_attach
+    new_stream_policy = args.new_stream
+    parent_stream_policy = args.parent_stream
+    device_selection = args.device_selection
+    dependency_policy = args.dependency_policy
+    number_of_gpus = args.number_of_gpus if args.number_of_gpus else [BenchmarkResult.DEFAULT_NUM_GPU]
+    exec_policy = args.execution_policy if args.execution_policy else BenchmarkResult.DEFAULT_EXEC_POLICY
+    mem_advise = args.memory_advise_policy if args.memory_advise_policy else BenchmarkResult.DEFAULT_MEM_ADVISE
+    
     # Create a new benchmark result instance;
     benchmark_res = BenchmarkResult(debug=debug, num_iterations=num_iter, output_path=output_path,
                                     cpu_validation=cpu_validation, random_init=random_init)
@@ -173,18 +227,13 @@ if __name__ == "__main__":
             BenchmarkResult.log_message(f"using only benchmark: {args.benchmark}")
         benchmarks = {b: benchmarks[b] for b in args.benchmark}
 
-    if args.policy:
-        if benchmark_res.debug:
-            BenchmarkResult.log_message(f"using only type: {args.policy}")
-        policies = {n: [args.policy] for n in policies.keys()}
-
     if args.size:
         if benchmark_res.debug:
             BenchmarkResult.log_message(f"using only size: {args.size}")
         num_elem = {n: args.size for n in num_elem.keys()}
 
     # Setup the block size for each benchmark;
-    block_sizes = create_block_size_list(args.block_size_1d, args.block_size_2d)
+    block_sizes = BenchmarkResult.create_block_size_list(args.block_size_1d, args.block_size_2d)
     number_of_blocks = args.number_of_blocks
     if (args.block_size_1d or args.block_size_2d) and benchmark_res.debug:
         BenchmarkResult.log_message(f"using block sizes: {block_sizes}")
@@ -201,10 +250,15 @@ if __name__ == "__main__":
                     for ri in reinit:
                         for block_size in block_sizes:
                             for i in range(num_iter):
-                                benchmark.run(num_iter=i, policy=p, size=n, realloc=re, reinit=ri,
-                                              block_size=block_size, time_phases=time_phases, prevent_reinit=prevent_reinit, number_of_blocks=number_of_blocks)
+                                benchmark.run(num_iter=i, size=n, number_of_gpus=number_of_gpus[0], block_size=block_size, exec_policy=exec_policy,
+                                          dependency_policy=dependency_policy, new_stream_policy=new_stream_policy, parent_stream_policy=parent_stream_policy, device_selection=device_selection,
+                                          mem_advise=mem_advise, prefetch=prefetch, stream_attach=stream_attach, timing=timing,
+                                          realloc=re, reinit=ri, time_phases=time_phases, prevent_reinit=prevent_reinit,
+                                          number_of_blocks=number_of_blocks)
                                 prevent_reinit = True
                             # Print the summary of this block;
                             if benchmark_res.debug:
-                                benchmark_res.print_current_summary(name=b_name, policy=p, size=n,
-                                                                    realloc=re, reinit=ri, block_size=block_size, skip=3)
+                                benchmark_res.print_current_summary(name=b_name, size=n, number_of_gpus=number_of_gpus[0], block_size=block_size, exec_policy=exec_policy,
+                                          dependency_policy=dependency_policy, new_stream_policy=new_stream_policy, parent_stream_policy=parent_stream_policy, device_selection=device_selection,
+                                          mem_advise=mem_advise, prefetch=prefetch, stream_attach=stream_attach, timing=timing,
+                                          realloc=re, reinit=ri, time_phases=time_phases, num_blocks=number_of_blocks, skip=3)

@@ -32,18 +32,23 @@ package com.nvidia.grcuda.runtime.stream;
 
 import com.nvidia.grcuda.CUDAEvent;
 import com.nvidia.grcuda.GrCUDALogger;
+import com.nvidia.grcuda.GrCUDAOptionMap;
 import com.nvidia.grcuda.runtime.CUDARuntime;
+import com.nvidia.grcuda.runtime.Device;
+import com.nvidia.grcuda.runtime.DeviceList;
 import com.nvidia.grcuda.runtime.executioncontext.ExecutionDAG;
 import com.nvidia.grcuda.runtime.computation.GrCUDAComputationalElement;
+import com.nvidia.grcuda.runtime.stream.policy.DeviceSelectionPolicyEnum;
+import com.nvidia.grcuda.runtime.stream.policy.GrCUDAStreamPolicy;
+import com.nvidia.grcuda.runtime.stream.policy.RetrieveNewStreamPolicyEnum;
+import com.nvidia.grcuda.runtime.stream.policy.RetrieveParentStreamPolicyEnum;
 import com.oracle.truffle.api.TruffleLogger;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
@@ -52,10 +57,8 @@ import java.util.stream.Collectors;
 
 public class GrCUDAStreamManager {
 
-    /**
-     * List of {@link CUDAStream} that have been currently allocated;
-     */
-    protected List<CUDAStream> streams = new ArrayList<>();
+    private static final TruffleLogger STREAM_LOGGER = GrCUDALogger.getLogger(GrCUDALogger.STREAM_LOGGER);
+    
     /**
      * Reference to the CUDA runtime that manages the streams;
      */
@@ -69,47 +72,39 @@ public class GrCUDAStreamManager {
      */
     protected final Map<CUDAStream, Set<ExecutionDAG.DAGVertex>> activeComputationsPerStream = new HashMap<>();
 
-    private final RetrieveNewStream retrieveNewStream;
-    private final RetrieveParentStream retrieveParentStream;
-
-    public static final TruffleLogger STREAM_LOGGER = GrCUDALogger.getLogger(GrCUDALogger.STREAM_LOGGER);
-
-    public GrCUDAStreamManager(CUDARuntime runtime) { 
+    /**
+     * Handle for all the policies to assign streams and devices to a new computation that can run on CUDA stream;
+     */
+    private final GrCUDAStreamPolicy streamPolicy;
+    
+    public GrCUDAStreamManager(CUDARuntime runtime, GrCUDAOptionMap options) {
         this(runtime,
-             runtime.getContext().getOptions().getRetrieveNewStreamPolicy(),
-             runtime.getContext().getOptions().getRetrieveParentStreamPolicy(),
-             runtime.getContext().getOptions().isTimeComputation());
+             options.getRetrieveNewStreamPolicy(),
+             options.getRetrieveParentStreamPolicy(),
+             options.getDeviceSelectionPolicy(),
+             options.isTimeComputation(),
+             options.getBandwidthMatrix(),
+             options.getDataThreshold());
     }
 
     public GrCUDAStreamManager(
             CUDARuntime runtime,
             RetrieveNewStreamPolicyEnum retrieveNewStreamPolicyEnum,
             RetrieveParentStreamPolicyEnum retrieveParentStreamPolicyEnum,
-            boolean isTimeComputation) {
+            DeviceSelectionPolicyEnum deviceSelectionPolicyEnum,
+            boolean isTimeComputation,
+            String bandwidthMatrixPath,
+            double dataThreshold) {
+        this(runtime, isTimeComputation, new GrCUDAStreamPolicy(runtime, retrieveNewStreamPolicyEnum, retrieveParentStreamPolicyEnum, deviceSelectionPolicyEnum, bandwidthMatrixPath, dataThreshold));
+    }
+
+    public GrCUDAStreamManager(
+            CUDARuntime runtime,
+            boolean isTimeComputation,
+            GrCUDAStreamPolicy streamPolicy) {
         this.runtime = runtime;
         this.isTimeComputation = isTimeComputation;
-        // Get how streams are retrieved for computations without parents;
-        switch(retrieveNewStreamPolicyEnum) {
-            case FIFO:
-                this.retrieveNewStream = new FifoRetrieveStream();
-                break;
-            case ALWAYS_NEW:
-                this.retrieveNewStream = new AlwaysNewRetrieveStream();
-                break;
-            default:
-                this.retrieveNewStream = new FifoRetrieveStream();
-        }
-        // Get how streams are retrieved for computations with parents;
-        switch(retrieveParentStreamPolicyEnum) {
-            case DISJOINT:
-                this.retrieveParentStream = new DisjointRetrieveParentStream(this.retrieveNewStream);
-                break;
-            case SAME_AS_PARENT:
-                this.retrieveParentStream = new DefaultRetrieveParentStream();
-                break;
-            default:
-                this.retrieveParentStream = new DefaultRetrieveParentStream();
-        }
+        this.streamPolicy = streamPolicy;
     }
 
     /**
@@ -118,18 +113,10 @@ public class GrCUDAStreamManager {
      * @param vertex an input computation for which we want to assign a stream
      */
     public void assignStream(ExecutionDAG.DAGVertex vertex) {
-
         // If the computation cannot use customized streams, return immediately;
         if (vertex.getComputation().canUseStream()) {
-            
-            CUDAStream stream;
-            if (vertex.isStart()) {
-                // Else, if the computation doesn't have parents, provide a new stream to it;
-                stream = this.retrieveNewStream.retrieve();
-            } else {
-                // Else, compute the streams used by the parent computations.
-                stream = this.retrieveParentStream.retrieve(vertex);
-            }
+            // Else, obtain the stream (and the GPU device) for this computation from the stream policy manager;
+            CUDAStream stream = this.streamPolicy.retrieveStream(vertex);
             // Set the stream;
             vertex.getComputation().setStream(stream);
             // Update the computation counter;
@@ -151,9 +138,8 @@ public class GrCUDAStreamManager {
      */
     public void assignEventStart(ExecutionDAG.DAGVertex vertex) {
         // If the computation cannot use customized streams, return immediately;
-
         if (isTimeComputation && vertex.getComputation().canUseStream()) {
-            // cudaEventRecord is sensitive to the ctx of the device that is currently set, so we call cudaSetDevice
+            // cudaEventRecord is sensitive to the ctx of the device that is currently set, so we call cudaSetDevice;
             runtime.cudaSetDevice(vertex.getComputation().getStream().getStreamDeviceId());
             CUDAEvent event = runtime.cudaEventCreate();
             runtime.cudaEventRecord(event, vertex.getComputation().getStream());
@@ -188,7 +174,7 @@ public class GrCUDAStreamManager {
                     CUDAStream stream = additionalStream.get();
                     // If we require synchronization on the default stream, perform it in a specialized way;
                     if (stream.isDefaultStream()) {
-                        STREAM_LOGGER.finest("--\tsync stream " + stream + " by " + vertex.getComputation());
+                        STREAM_LOGGER.finest(() -> "--\tsync stream " + stream + " by " + vertex.getComputation());
                         // Synchronize the device;
                         syncDevice();
                         // All computations are now finished;
@@ -230,11 +216,11 @@ public class GrCUDAStreamManager {
                     CUDAEvent event = parent.getEventStop().get();
                     runtime.cudaStreamWaitEvent(vertex.getComputation().getStream(), event);
 
-                    STREAM_LOGGER.finest("\t* wait event on stream; stream to sync=" + stream.getStreamNumber()
+                    STREAM_LOGGER.finest(() -> "\t* wait event on stream; stream to sync=" + stream.getStreamNumber()
                             + "; stream that waits=" + vertex.getComputation().getStream().getStreamNumber()
                             + "; event=" + event.getEventNumber());
                 } else {
-                    STREAM_LOGGER.warning("\t* missing event to sync child computation=" + vertex.getComputation() +
+                    STREAM_LOGGER.warning(() -> "\t* missing event to sync child computation=" + vertex.getComputation() +
                             " and parent computation=" + parent);
                 }
             }
@@ -254,7 +240,7 @@ public class GrCUDAStreamManager {
         Set<CUDAStream> streamsToSync = getParentStreams(vertex.getParentComputations());
         // Synchronize streams;
         streamsToSync.forEach(s -> {
-            STREAM_LOGGER.finest("--\tsync stream=" + s.getStreamNumber() + " by " + vertex.getComputation());
+            STREAM_LOGGER.finest(() -> "--\tsync stream=" + s.getStreamNumber() + " by " + vertex.getComputation());
             syncStream(s);
         });
 
@@ -268,19 +254,18 @@ public class GrCUDAStreamManager {
             });
             // Now the stream is free to be re-used;
             activeComputationsPerStream.remove(s);
-            retrieveNewStream.update(s);
+            this.streamPolicy.updateNewStreamRetrieval(s);
         });
     }
 
     protected void setComputationFinishedInner(GrCUDAComputationalElement computation) {
         computation.setComputationFinished();
         if (computation.getEventStop().isPresent()) {
-            if(isTimeComputation && computation.getEventStart().isPresent()) {
+            if (isTimeComputation && computation.getEventStart().isPresent()) {
                 // Switch to the device where the computation has been done, otherwise we cannot call the cudaEventElapsedTime API;
                 runtime.cudaSetDevice(computation.getStream().getStreamDeviceId());
                 float timeMilliseconds = runtime.cudaEventElapsedTime(computation.getEventStart().get(), computation.getEventStop().get());
-                STREAM_LOGGER.info("Kernel (" + computation + ") Execution time: " + timeMilliseconds + "ms");
-                computation.setExecutionTime(computation.getStream().getStreamDeviceId(), timeMilliseconds);
+                computation.setExecutionTime(timeMilliseconds);
                 // Destroy the start event associated to this computation:
                 runtime.cudaEventDestroy(computation.getEventStart().get());
             }
@@ -288,7 +273,7 @@ public class GrCUDAStreamManager {
             runtime.cudaEventDestroy(computation.getEventStop().get());
 
         } else {
-            STREAM_LOGGER.warning("\t* missing event to destroy for computation=" + computation);
+            STREAM_LOGGER.warning(() -> "missing event to destroy for computation=" + computation);
         }
     }
 
@@ -311,7 +296,7 @@ public class GrCUDAStreamManager {
                 // If this stream doesn't have any computation associated to it, it's free to use;
                 if (activeComputationsPerStream.get(stream).isEmpty()) {
                     activeComputationsPerStream.remove(stream);
-                    retrieveNewStream.update(stream);
+                    this.streamPolicy.updateNewStreamRetrieval(stream);
                 }
             }
 
@@ -323,15 +308,6 @@ public class GrCUDAStreamManager {
                 }
             }
         }
-    }
-
-    /**
-     * Create a new {@link CUDAStream} and add it to this manager, then return it;
-     */
-    public CUDAStream createStream() {
-        CUDAStream newStream = runtime.cudaStreamCreate(streams.size());
-        streams.add(newStream);
-        return newStream;
     }
 
     /**
@@ -364,7 +340,7 @@ public class GrCUDAStreamManager {
      * Obtain the number of streams managed by this manager;
      */
     public int getNumberOfStreams() {
-        return streams.size();
+        return this.streamPolicy.getNumberOfStreams();
     }
 
     public int getNumActiveComputationsOnStream(CUDAStream stream) {
@@ -402,119 +378,26 @@ public class GrCUDAStreamManager {
         // Streams don't have any active computation;
         activeComputationsPerStream.clear();
         // All streams are free;
-        retrieveNewStream.update(streams);
+        this.streamPolicy.updateNewStreamRetrieval();
+    }
+
+    public DeviceList getDeviceList() {
+        return this.streamPolicy.getDevicesManager().getDeviceList();
+    }
+
+    public Device getDevice(int deviceId) {
+        return this.streamPolicy.getDevicesManager().getDevice(deviceId);
+    }
+
+    public GrCUDAStreamPolicy getStreamPolicy() {
+        return streamPolicy;
     }
 
     /**
      * Cleanup and deallocate the streams managed by this manager;
      */
     public void cleanup() {
-        streams.forEach(runtime::cudaStreamDestroy);
-        activeComputationsPerStream.clear();
-        retrieveNewStream.cleanup();
-        streams.clear();
-    }
-
-    /**
-     * By default, create a new stream every time;
-     */
-    private class AlwaysNewRetrieveStream extends RetrieveNewStream {
-
-        @Override
-        public CUDAStream retrieve() {
-            return createStream();
-        }
-    }
-
-    /**
-     * Keep a queue of free (currently not utilized) streams, and retrieve the oldest one added to the queue;
-     */
-    private class FifoRetrieveStream extends RetrieveNewStream {
-
-        /**
-         * Keep a queue of free streams;
-         */
-        private final Queue<CUDAStream> freeStreams = new ArrayDeque<>();
-        /**
-         * Ensure that streams in the queue are always unique;
-         */
-        private final Set<CUDAStream> uniqueFreeStreams = new HashSet<>();
-
-        @Override
-        void update(CUDAStream stream) {
-            if (!uniqueFreeStreams.contains(stream)) {
-                freeStreams.add(stream);
-                uniqueFreeStreams.add(stream);
-            }
-        }
-
-        @Override
-        void update(Collection<CUDAStream> streams) {
-            Set<CUDAStream> newStreams = streams.stream().filter(s -> !freeStreams.contains(s)).collect(Collectors.toSet());
-            freeStreams.addAll(newStreams);
-            uniqueFreeStreams.addAll(newStreams);
-        }
-
-        @Override
-        CUDAStream retrieve() {
-            if (freeStreams.isEmpty()) {
-                // Create a new stream if none is available;
-                return createStream();
-            } else {
-                // Get the first stream available, and remove it from the list of free streams;
-                CUDAStream stream = freeStreams.poll();
-                uniqueFreeStreams.remove(stream);
-                return stream;
-            }
-        }
-    }
-
-    /**
-     * By default, use the same stream as the parent computation;
-     */
-    private static class DefaultRetrieveParentStream extends RetrieveParentStream {
-
-        @Override
-        public CUDAStream retrieve(ExecutionDAG.DAGVertex vertex) {
-            return vertex.getParentComputations().get(0).getStream();
-        }
-    }
-
-    /**
-     * If a vertex has more than one children, each children is independent (otherwise the dependency would be added
-     * from one children to the other, and not from the actual parent).
-     * As such, children can be executed on different streams. In practice, this situation happens when children
-     * depends on disjoint arguments subsets of the parent kernel, e.g. K1(X,Y), K2(X), K3(Y).
-     * This policy re-uses the parent(s) stream(s) when possible,
-     * and computes other streams using the current {@link RetrieveNewStream};
-     */
-    private static class DisjointRetrieveParentStream extends RetrieveParentStream {
-        private final RetrieveNewStream retrieveNewStream;
-
-        // Keep track of computations for which we have already re-used the stream;
-        private final Set<ExecutionDAG.DAGVertex> reusedComputations = new HashSet<>();
-
-        public DisjointRetrieveParentStream(RetrieveNewStream retrieveNewStream) {
-            this.retrieveNewStream = retrieveNewStream;
-        }
-
-        @Override
-        public CUDAStream retrieve(ExecutionDAG.DAGVertex vertex) {
-            // Keep only parent vertices for which we haven't reused the stream yet;
-            List<ExecutionDAG.DAGVertex> availableParents = vertex.getParentVertices().stream()
-                    .filter(v -> !reusedComputations.contains(v))
-                    .collect(Collectors.toList());
-            // If there is at least one stream that can be re-used, take it;
-            if (!availableParents.isEmpty()) {
-                // The computation cannot be considered again;
-                reusedComputations.add(availableParents.get(0));
-                // Return the stream associated to this computation;
-                return availableParents.get(0).getComputation().getStream();
-            } else {
-                // If no parent stream can be reused, provide a new stream to this computation
-                //   (or possibly a free one, depending on the policy);
-                return retrieveNewStream.retrieve();
-            }
-        }
+        this.activeComputationsPerStream.clear();
+        this.streamPolicy.cleanup();
     }
 }

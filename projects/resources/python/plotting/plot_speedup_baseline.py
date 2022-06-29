@@ -48,7 +48,7 @@ import math
 
 import os
 from load_data import load_data, compute_speedup
-from plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
+from segretini_matplottini.src.plot_utils import COLORS, get_exp_label, get_ci_size, save_plot, remove_outliers_df_grouped
 
 
 # INPUT_DATE = "2020_09_19_grcuda"

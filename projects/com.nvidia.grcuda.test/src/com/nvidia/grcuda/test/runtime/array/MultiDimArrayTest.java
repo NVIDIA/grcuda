@@ -152,6 +152,7 @@ public class MultiDimArrayTest {
             final int numDim3 = 2;
             Value matrix = deviceArrayConstructor.execute("int", numDim1, numDim2, numDim3, "F");
             assertEquals(numDim1, matrix.getArraySize());
+            Value a = matrix.getArrayElement(0);
             assertEquals(numDim2, matrix.getArrayElement(0).getArraySize());
             assertEquals(numDim3, matrix.getArrayElement(0).getArrayElement(0).getArraySize());
             for (int i = 0; i < numDim1; i++) {

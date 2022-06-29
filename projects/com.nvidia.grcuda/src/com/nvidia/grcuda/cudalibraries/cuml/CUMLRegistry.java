@@ -46,12 +46,12 @@ import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.Namespace;
 import com.nvidia.grcuda.cudalibraries.CUDALibraryFunction;
-import com.nvidia.grcuda.runtime.stream.CUMLSetStreamFunction;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStreamCUML;
 import com.nvidia.grcuda.runtime.computation.CUDALibraryExecution;
 import com.nvidia.grcuda.functions.ExternalFunctionFactory;
 import com.nvidia.grcuda.functions.Function;
 import com.nvidia.grcuda.runtime.UnsafeHelper;
-import com.nvidia.grcuda.runtime.stream.LibrarySetStreamFunction;
+import com.nvidia.grcuda.runtime.stream.LibrarySetStream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -87,7 +87,7 @@ public class CUMLRegistry {
 
     @CompilationFinal private TruffleObject cumlSetStreamFunctionNFI;
 
-    private LibrarySetStreamFunction cumlLibrarySetStreamFunction;
+    private LibrarySetStream cumlLibrarySetStream;
 
     private Long cumlHandle = null;
 
@@ -170,7 +170,7 @@ public class CUMLRegistry {
                 throw new GrCUDAInternalException(e);
             }
         }
-        cumlLibrarySetStreamFunction = new CUMLSetStreamFunction((Function) cumlSetStreamFunctionNFI, cumlHandle);
+        cumlLibrarySetStream = new LibrarySetStreamCUML((Function) cumlSetStreamFunctionNFI, cumlHandle);
     }
 
     private void cuMLShutdown() {
@@ -206,7 +206,7 @@ public class CUMLRegistry {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             nfiFunction = factory.makeFunction(context.getCUDARuntime(), libraryPath, DEFAULT_LIBRARY_HINT);
                         }
-                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, cumlLibrarySetStreamFunction,
+                        Object result = new CUDALibraryExecution(context.getGrCUDAExecutionContext(), nfiFunction, cumlLibrarySetStream,
                                         this.createComputationArgumentWithValueList(arguments, cumlHandle)).schedule();
                         checkCUMLReturnCode(result, nfiFunction.getName());
                         return result;

@@ -49,13 +49,7 @@ public class CUDAStream extends GPUPointer {
         this.deviceId = deviceId;
     }
 
-    public CUDAStream(long rawPointer, int streamNumber) {
-        super(rawPointer);
-        this.streamNumber = streamNumber;
-        this.deviceId = 0;
-    }
-
-    public int getStreamDeviceId() {
+    public int getStreamDeviceId(){
         return this.deviceId;
     }
 
