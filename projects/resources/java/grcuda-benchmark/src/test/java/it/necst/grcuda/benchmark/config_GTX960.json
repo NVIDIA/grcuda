@@ -1,0 +1,44 @@
+{
+  "num_iter": 10,
+  "reInit": false,
+  "randomInit": false,
+  "cpuValidation": true,
+  "heap_size": 26,
+  "debug": false,
+  "nvprof_profile": false,
+  "num_elem": {
+    "B1": [20000000, 60000000, 80000000, 100000000, 120000000],
+    "B1M": [20000000, 60000000, 80000000, 100000000, 120000000],
+    "B5M": [2000000,6000000, 8000000, 10000000, 12000000],
+    "B11M": [10000, 15000, 20000]
+  },
+  "benchmarks": ["B1M","B5M","B11M"],
+  "numBlocks": {
+    "B1":  32,
+    "B1M": 64,
+    "B5M": 64,
+    "B11M": 64
+  },
+  "exec_policies" : ["async"],
+  "dependency_policies": ["with-const"],
+  "new_stream_policies": ["always-new"],
+  "parent_stream_policies": ["disjoint", "multigpu-disjoint"],
+  "choose_device_policies": ["round-robin", "stream-aware", "minmax-transfer-time"],
+  "memory_advise": ["none"],
+  "prefetch": [false],
+  "stream_attach": [false],
+  "time_computation": [false],
+  "num_gpus": [2],
+  "block_size1d": {
+    "B1": 32,
+    "B1M": 32,
+    "B5M": 1024,
+    "B11M": 256
+  },
+  "block_size2d": {
+    "B1":  8,
+    "B1M": 8,
+    "B5M": 8,
+    "B11M": 8
+  }
+}
