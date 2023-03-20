@@ -30,22 +30,38 @@
  */
 package com.nvidia.grcuda.runtime.stream.policy;
 
-public enum DeviceSelectionPolicyEnum {
-    SINGLE_GPU("single-gpu"),
-    ROUND_ROBIN("round-robin"),
-    STREAM_AWARE("stream-aware"),
-    MIN_TRANSFER_SIZE("min-transfer-size"),
-    MINMIN_TRANSFER_TIME("minmin-transfer-time"),
-    MINMAX_TRANSFER_TIME("minmax-transfer-time");
+import com.nvidia.grcuda.runtime.executioncontext.ExecutionDAG;
+import com.nvidia.grcuda.runtime.Device;
 
-    private final String name;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
-    DeviceSelectionPolicyEnum(String name) {
-        this.name = name;
+/**
+ * Basic class for multi-GPU scheduling. Simply rotate between all the available device.
+ * Not recommended for real utilization, but it can be useful for debugging
+ * or as fallback for more complex policies.
+ */
+public class RoundRobinDeviceSelectionPolicy extends DeviceSelectionPolicy {
+    private int nextDevice = 0;
+
+    public RoundRobinDeviceSelectionPolicy(GrCUDADevicesManager devicesManager) {
+        super(devicesManager);
+    }
+
+    private void increaseNextDevice(int startDevice) {
+        this.nextDevice = (startDevice + 1) % this.devicesManager.getNumberOfGPUsToUse();
+    }
+
+    public int getInternalState() {
+        return nextDevice;
     }
 
     @Override
-    public String toString() {
-        return name;
+    Device retrieveImpl(ExecutionDAG.DAGVertex vertex, List<Device> devices) {
+        // Keep increasing the internal state, but make sure that the retrieved device is among the ones in the input list;
+        Device device = devices.get(nextDevice % devices.size());
+        increaseNextDevice(nextDevice);
+        return device;
     }
 }

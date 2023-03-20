@@ -30,22 +30,23 @@
  */
 package com.nvidia.grcuda.runtime.stream.policy;
 
-public enum DeviceSelectionPolicyEnum {
-    SINGLE_GPU("single-gpu"),
-    ROUND_ROBIN("round-robin"),
-    STREAM_AWARE("stream-aware"),
-    MIN_TRANSFER_SIZE("min-transfer-size"),
-    MINMIN_TRANSFER_TIME("minmin-transfer-time"),
-    MINMAX_TRANSFER_TIME("minmax-transfer-time");
+import com.nvidia.grcuda.runtime.executioncontext.ExecutionDAG;
+import com.nvidia.grcuda.runtime.Device;
 
-    private final String name;
+import java.util.List;
 
-    DeviceSelectionPolicyEnum(String name) {
-        this.name = name;
+/**
+ * With some policies (e.g. the ones that don't support multiple GPUs), we never have to perform device selection.
+ * Simply return the currently active device;
+ */
+public class SingleDeviceSelectionPolicy extends DeviceSelectionPolicy {
+    public SingleDeviceSelectionPolicy(GrCUDADevicesManager devicesManager) {
+        super(devicesManager);
     }
 
     @Override
-    public String toString() {
-        return name;
+    Device retrieveImpl(ExecutionDAG.DAGVertex vertex, List<Device> devices) {
+        // There's only one device available, anyway;
+        return devicesManager.getCurrentGPU();
     }
 }

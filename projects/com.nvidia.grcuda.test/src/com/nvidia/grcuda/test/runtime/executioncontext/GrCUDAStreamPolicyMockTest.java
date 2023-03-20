@@ -1,3 +1,33 @@
+/*
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 package com.nvidia.grcuda.test.runtime.executioncontext;
 
 import com.nvidia.grcuda.GrCUDAOptionMap;
@@ -7,6 +37,8 @@ import com.nvidia.grcuda.runtime.Device;
 import com.nvidia.grcuda.runtime.computation.dependency.DependencyPolicyEnum;
 import com.nvidia.grcuda.runtime.stream.policy.DeviceSelectionPolicyEnum;
 import com.nvidia.grcuda.runtime.stream.policy.GrCUDAStreamPolicy;
+import com.nvidia.grcuda.runtime.stream.policy.RoundRobinDeviceSelectionPolicy;
+import com.nvidia.grcuda.runtime.stream.policy.TransferTimeDeviceSelectionPolicy;
 import com.nvidia.grcuda.runtime.stream.policy.RetrieveNewStreamPolicyEnum;
 import com.nvidia.grcuda.runtime.stream.policy.RetrieveParentStreamPolicyEnum;
 import com.nvidia.grcuda.test.util.mock.AsyncGrCUDAExecutionContextMock;
@@ -41,14 +73,14 @@ public class GrCUDAStreamPolicyMockTest {
         );
     }
 
-    private GrCUDAStreamPolicy.RoundRobinDeviceSelectionPolicy getRoundRobinPolicy(int numGPUs) {
+    private RoundRobinDeviceSelectionPolicy getRoundRobinPolicy(int numGPUs) {
         GrCUDADevicesManagerMock devicesManager = new GrCUDADevicesManagerMock(new DeviceListMock(numGPUs), numGPUs);
-        return new GrCUDAStreamPolicy.RoundRobinDeviceSelectionPolicy(devicesManager);
+        return new RoundRobinDeviceSelectionPolicy(devicesManager);
     }
 
     @Test
     public void roundRobinTest() {
-        GrCUDAStreamPolicy.RoundRobinDeviceSelectionPolicy policy = getRoundRobinPolicy(4);
+        RoundRobinDeviceSelectionPolicy policy = getRoundRobinPolicy(4);
         Device d = policy.retrieve(null);
         assertEquals(0, d.getDeviceId());
         assertEquals(1, policy.getInternalState());
@@ -126,7 +158,7 @@ public class GrCUDAStreamPolicyMockTest {
                 {45, 60, 20},
                 {10, 20, 0}
         };
-        double[][] b = ((GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy) streamPolicy.getDeviceSelectionPolicy()).getLinkBandwidth();
+        double[][] b = ((TransferTimeDeviceSelectionPolicy) streamPolicy.getDeviceSelectionPolicy()).getLinkBandwidth();
         for (int i = 0; i < b.length; i++) {
             for (int j = 0; j < b[i].length; j++) {
                 assertEquals(bGold[i][j], b[i][j], 1e-6);
@@ -137,7 +169,7 @@ public class GrCUDAStreamPolicyMockTest {
     @Test
     public void bandwidthComputationMinMaxTest() {
         AsyncGrCUDAExecutionContextMock context = createContext(2, DeviceSelectionPolicyEnum.MINMAX_TRANSFER_TIME);
-        GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
+        TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
         // If data is updated on the target device, we have infinite bandwidth (regardless of what's on the matrix diagonal);
         double b = deviceSelectionPolicy.computeBandwidth(0, new HashSet<>(Arrays.asList(0, 1, CPUDevice.CPU_DEVICE_ID)));
         assertEquals(Double.POSITIVE_INFINITY, b, 1e-6);
@@ -149,7 +181,7 @@ public class GrCUDAStreamPolicyMockTest {
     @Test
     public void bandwidthComputationMinMinTest() {
         AsyncGrCUDAExecutionContextMock context = createContext(2, DeviceSelectionPolicyEnum.MINMIN_TRANSFER_TIME);
-        GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
+        TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
         // If data is updated on the target device, we have infinite bandwidth (regardless of what's on the matrix diagonal);
         double b = deviceSelectionPolicy.computeBandwidth(0, new HashSet<>(Arrays.asList(0, 1, CPUDevice.CPU_DEVICE_ID)));
         assertEquals(Double.POSITIVE_INFINITY, b, 1e-6);
@@ -161,7 +193,7 @@ public class GrCUDAStreamPolicyMockTest {
     @Test(expected = IllegalStateException.class)
     public void bandwidthComputationWithNoUpdatedLocationTest() {
         AsyncGrCUDAExecutionContextMock context = createContext(2, DeviceSelectionPolicyEnum.MINMAX_TRANSFER_TIME);
-        GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
+        TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
         // If the data is not available on any device, give an error;
         double b = deviceSelectionPolicy.computeBandwidth(0, new HashSet<>());
     }
@@ -169,7 +201,7 @@ public class GrCUDAStreamPolicyMockTest {
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void bandwidthComputationOutOfBoundsLocationTest() {
         AsyncGrCUDAExecutionContextMock context = createContext(2, DeviceSelectionPolicyEnum.MINMAX_TRANSFER_TIME);
-        GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (GrCUDAStreamPolicy.TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
+        TransferTimeDeviceSelectionPolicy deviceSelectionPolicy = (TransferTimeDeviceSelectionPolicy) ((GrCUDAStreamPolicyMock) context.getStreamManager().getStreamPolicy()).getDeviceSelectionPolicy();
         // If the data is not available on any device, give an error;
         double b = deviceSelectionPolicy.computeBandwidth(10, new HashSet<>(Collections.singletonList(1)));
     }

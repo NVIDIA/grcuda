@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
@@ -30,22 +31,23 @@
  */
 package com.nvidia.grcuda.runtime.stream.policy;
 
-public enum DeviceSelectionPolicyEnum {
-    SINGLE_GPU("single-gpu"),
-    ROUND_ROBIN("round-robin"),
-    STREAM_AWARE("stream-aware"),
-    MIN_TRANSFER_SIZE("min-transfer-size"),
-    MINMIN_TRANSFER_TIME("minmin-transfer-time"),
-    MINMAX_TRANSFER_TIME("minmax-transfer-time");
+import com.nvidia.grcuda.runtime.executioncontext.ExecutionDAG;
+import com.nvidia.grcuda.runtime.Device;
 
-    private final String name;
+import java.util.List;
 
-    DeviceSelectionPolicyEnum(String name) {
-        this.name = name;
+/**
+ * We assign computations to the device with fewer active streams.
+ * A stream is active if there's any computation assigned to it that has not been flagged as "finished".
+ * The idea is to keep all devices equally busy, and avoid having devices that are used less than others;
+ */
+public class StreamAwareDeviceSelectionPolicy extends DeviceSelectionPolicy {
+    public StreamAwareDeviceSelectionPolicy(GrCUDADevicesManager devicesManager) {
+        super(devicesManager);
     }
 
     @Override
-    public String toString() {
-        return name;
+    Device retrieveImpl(ExecutionDAG.DAGVertex vertex, List<Device> devices) {
+        return devicesManager.findDeviceWithFewerBusyStreams(devices);
     }
 }
