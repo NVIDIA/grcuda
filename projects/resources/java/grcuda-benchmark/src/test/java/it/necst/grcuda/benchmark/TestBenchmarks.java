@@ -68,7 +68,7 @@ public class TestBenchmarks{
         br.readLine(); // discard "name" at the beginning of the output
         while((line=br.readLine())!=null){
             GPU g = GPU.valueOfName(line);
-            assertNotEquals("GPU should be present in the GPU enum",null, g);
+            assertNotEquals("There is no configuration file for the current GPU model, please add it and modify the GPU enum in TestBenchmarks.java",null, g);
             detectedGPUS.add(g);
         }
         assertEquals(1, detectedGPUS.size());
