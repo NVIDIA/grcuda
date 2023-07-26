@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -30,7 +37,7 @@ package com.nvidia.grcuda.functions;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.nvidia.grcuda.DeviceArray;
+import com.nvidia.grcuda.runtime.array.DeviceArray;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
@@ -38,7 +45,7 @@ import com.nvidia.grcuda.GrCUDAInternalException;
 import com.nvidia.grcuda.GrCUDALanguage;
 import com.nvidia.grcuda.NoneValue;
 import com.nvidia.grcuda.TypeException;
-import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -75,7 +82,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 @GenerateUncached
 abstract class MapArrayNode extends Node {
 
-    abstract Object execute(Object source, Type elementType, CUDARuntime runtime);
+    abstract Object execute(Object source, Type elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext);
 
     private static final FrameDescriptor DESCRIPTOR = new FrameDescriptor();
     private static final FrameSlot SIZE_SLOT = DESCRIPTOR.addFrameSlot("size", FrameSlotKind.Long);
@@ -150,7 +157,7 @@ abstract class MapArrayNode extends Node {
             frame.setLong(INDEX_SLOT, 0);
             frame.setObject(SOURCE_SLOT, frame.getArguments()[1]);
             frame.setObject(RESULT_SLOT, frame.getArguments()[2]);
-            loop.executeLoop(frame);
+            loop.execute(frame);
             return NoneValue.get();
         }
     }
@@ -170,7 +177,7 @@ abstract class MapArrayNode extends Node {
     }
 
     @Specialization(limit = "3")
-    Object doMap(Object source, Type elementType, CUDARuntime runtime,
+    Object doMap(Object source, Type elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext,
                     @CachedLibrary("source") InteropLibrary interop,
                     @CachedContext(GrCUDALanguage.class) @SuppressWarnings("unused") GrCUDAContext context,
                     @Cached(value = "createLoop(source)", uncached = "createUncachedLoop(source, context)") CallTarget loop) {
@@ -191,7 +198,7 @@ abstract class MapArrayNode extends Node {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException("cannot read array size");
         }
-        DeviceArray result = new DeviceArray(runtime, size, elementType);
+        DeviceArray result = new DeviceArray(grCUDAExecutionContext, size, elementType);
         loop.call(size, source, result);
         return result;
     }
@@ -205,11 +212,11 @@ abstract class MapArrayNode extends Node {
 @ExportLibrary(InteropLibrary.class)
 public final class MapDeviceArrayFunction extends Function {
 
-    private final CUDARuntime runtime;
+    private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
 
-    public MapDeviceArrayFunction(CUDARuntime runtime) {
+    public MapDeviceArrayFunction(AbstractGrCUDAExecutionContext grCUDAExecutionContext) {
         super("MapDeviceArray");
-        this.runtime = runtime;
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
     }
 
     @ExportMessage
@@ -220,7 +227,7 @@ public final class MapDeviceArrayFunction extends Function {
                     @Cached MapArrayNode mapNode) throws ArityException, UnsupportedTypeException {
         if (arguments.length < 1) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, 2, arguments.length);
         }
         String typeName;
         try {
@@ -236,13 +243,12 @@ public final class MapDeviceArrayFunction extends Function {
             throw new GrCUDAInternalException(e.getMessage());
         }
         if (arguments.length == 1) {
-            return new TypedMapDeviceArrayFunction(runtime, elementType);
+            return new TypedMapDeviceArrayFunction(grCUDAExecutionContext, elementType);
+        } else if (arguments.length == 2) {
+            return mapNode.execute(arguments[1], elementType, grCUDAExecutionContext);
         } else {
-            if (arguments.length != 2) {
-                CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(2, arguments.length);
-            }
-            return mapNode.execute(arguments[1], elementType, runtime);
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(1, 2, arguments.length);
         }
     }
 }

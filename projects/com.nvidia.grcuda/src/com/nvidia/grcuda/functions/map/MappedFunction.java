@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,6 +11,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -33,9 +40,9 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -47,26 +54,15 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 
-final class MapException extends RuntimeException implements TruffleException {
+final class MapException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -1472390370115466332L;
 
     MapException(String message) {
         super(message);
-    }
-
-    public Node getLocation() {
-        return null;
-    }
-
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
     }
 }
 
@@ -240,7 +236,7 @@ final class MapBoundArgObjectSize extends MapBoundArgObjectBase {
                     @Cached("createEqualityProfile()") PrimitiveValueProfile lengthProfile) throws ArityException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         long size;
         try {
@@ -359,7 +355,7 @@ final class MapBoundArgObjectValue extends MapBoundArgObjectBase {
                     @Cached("createEqualityProfile()") PrimitiveValueProfile lengthProfile) throws ArityException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         int length = lengthProfile.profile(args.length);
         Object[] mappedArgs = new Object[length];
@@ -447,7 +443,7 @@ final class MapBoundArgObjectMember extends MapBoundArgObjectBase {
                     @CachedLibrary(limit = "2") InteropLibrary memberInterop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         Object value = parentInterop.execute(parent, arguments);
         try {
@@ -507,7 +503,7 @@ final class MapBoundArgObjectElement extends MapBoundArgObjectBase {
                     @CachedLibrary(limit = "2") InteropLibrary elementInterop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         Object value = parentInterop.execute(parent, arguments);
         try {
@@ -519,7 +515,6 @@ final class MapBoundArgObjectElement extends MapBoundArgObjectBase {
     }
 }
 
-@ExportLibrary(InteropLibrary.class)
 final class MapArgObjectMap extends MapArgObjectBase {
     final MapArgObjectBase parent;
     final Object function;
@@ -568,7 +563,7 @@ final class MapBoundArgObjectMap extends MapBoundArgObjectBase {
                     @CachedLibrary("this.function") InteropLibrary mapInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         Object value = parentInterop.execute(parent, arguments);
         try {
@@ -644,7 +639,7 @@ final class MapBoundArgObjectShred extends MapBoundArgObjectBase {
                     @CachedLibrary("this.parent") InteropLibrary parentInterop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (arguments.length != 3) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, arguments.length);
+            throw ArityException.create(3, 3, arguments.length);
         }
         return new ShreddedObject(parentInterop.execute(parent, arguments));
     }

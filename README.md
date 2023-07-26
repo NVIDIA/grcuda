@@ -1,10 +1,9 @@
-# grCUDA: Polyglot GPU Access in GraalVM
+# GrCUDA: Polyglot GPU Access in GraalVM
 
 This Truffle language exposes GPUs to the polyglot [GraalVM](http://www.graalvm.org). The goal is to
 
-1) make data exchange between the host language and the GPU efficient without burdening the programmer.
-
-2) allow programmers to invoke _existing_ GPU kernels from their host language.
+1. Make data exchange between the host language and the GPUs efficient without burdening the programmer.
+2. Allow programmers to invoke _existing_ GPU kernels from their host language.
 
 Supported and tested GraalVM languages:
 
@@ -15,27 +14,26 @@ Supported and tested GraalVM languages:
 - Java
 - C and Rust through the Graal Sulong Component
 
-A description of grCUDA and its the features can be found in the [grCUDA documentation](docs/grcuda.md).
+A description of GrCUDA and its the features can be found in the [GrCUDA documentation](docs/grcuda.md).
 
 The [bindings documentation](docs/bindings.md) contains a tutorial that shows
 how to bind precompiled kernels to callables, compile and launch kernels.
 
 **Additional Information:**
 
-- [grCUDA: A Polyglot Language Binding for CUDA in GraalVM](https://devblogs.nvidia.com/grcuda-a-polyglot-language-binding-for-cuda-in-graalvm/). NVIDIA Developer Blog,
+- [GrCUDA: A Polyglot Language Binding for CUDA in GraalVM](https://devblogs.nvidia.com/grcuda-a-polyglot-language-binding-for-cuda-in-graalvm/). NVIDIA Developer Blog,
   November 2019.
-- [grCUDA: A Polyglot Language Binding](https://youtu.be/_lI6ubnG9FY). Presentation at Oracle CodeOne 2019, September 2019.
+- [GrCUDA: A Polyglot Language Binding](https://youtu.be/_lI6ubnG9FY). Presentation at Oracle CodeOne 2019, September 2019.
 - [Simplifying GPU Access](https://developer.nvidia.com/gtc/2020/video/s21269-vid). Presentation at NVIDIA GTC 2020, March 2020.
+- [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491). Paper at IPDPS 2021 on the GrCUDA scheduler, May 2021. [Video](https://youtu.be/QkX0FHDRyxA) of the presentation.
 
-## Using grCUDA in the GraalVM
+## Using GrCUDA in the GraalVM
 
-grCUDA can be used in the binaries of the GraalVM languages (`lli`, `graalpython`,
-`js`, `R`, and `ruby)`. The JAR file containing grCUDA must be appended to the classpath
-or copied into `jre/languages/grcuda` of the Graal installation. Note that `--jvm`
-and `--polyglot` must be specified in both cases as well.
+GrCUDA can be used in the binaries of the GraalVM languages (`lli`, `graalpython`, `js`, `R`, and `ruby`).
+The JAR file containing GrCUDA must be appended to the classpath or copied into `jre/languages/grcuda` (Java 8) or `languages/grcuda` (Java 11) of the Graal installation. 
+Note that `--jvm` and `--polyglot` must be specified in both cases as well.
 
-The following example shows how to create a GPU kernel and two device arrays
-in JavaScript (NodeJS) and invoke the kernel:
+The following example shows how to create a GPU kernel and two device arrays in JavaScript (NodeJS) and invoke the kernel:
 
 ```JavaScript
 // build kernel from CUDA C/C++ source code
@@ -46,7 +44,7 @@ __global__ void increment(int *arr, int n) {
     arr[idx] += 1;
   }
 }`
-const cu = Polyglot.eval('grcuda', 'CU') // get grCUDA namespace object
+const cu = Polyglot.eval('grcuda', 'CU') // get GrCUDA namespace object
 const incKernel = cu.buildkernel(
   kernelSource, // CUDA kernel source code string
   'increment', // kernel name
@@ -112,7 +110,7 @@ for i in range(num_elements):
 ```
 
 ```console
-nvcc --cubin  --generate-code arch=compute_75,code=sm_75 kernel.cu
+nvcc --cubin --generate-code arch=compute_75,code=sm_75 kernel.cu
 $GRAALVM_DIR/bin/graalpython --polyglot --jvm example.py
 1
 2
@@ -120,67 +118,308 @@ $GRAALVM_DIR/bin/graalpython --polyglot --jvm example.py
 100
 ```
 
-For more details on how to invoke existing GPU kernels, see the
-Documentation on [polyglot kernel launches](docs/launchkernel.md).
+For more details on how to invoke existing GPU kernels, see the Documentation on [polyglot kernel launches](docs/launchkernel.md).
 
 ## Installation
 
-grCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases) and manually copied into a GraalVM installation.
+GrCUDA can either be installed from an [existing release](#installation-from-an-existing-release), or built from the [source files](#installation-from-source-files) using the `mx` build tool.
+In both cases, it is recommended to follow these [extra steps](#additional-installations-steps) to ensure that your installation is working properly.
 
-1. Download GraalVM CE 20.0.0 for Linux `graalvm-ce-java8-linux-amd64-20.0.0.tar.gz`
-   from [GitHub](https://github.com/oracle/graal/releases) and untar it in your
+### Installation from an existing release
+
+GrCUDA can be downloaded as a binary JAR from [grcuda/releases](https://github.com/necst/grcuda/releases) and manually copied into a GraalVM installation. The original version of GrCUDA is available [here](https://github.com/NVIDIA/grcuda/releases).
+
+1. Download GraalVM CE 22.1.0 for Linux `graalvm-ce-java11-linux-amd64-21.2.0.tar.gz`
+   from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.1.0/graalvm-ce-java11-linux-amd64-22.1.0.tar.gz) and untar it in your
    installation directory.
 
-   ```console
-   cd <your installation directory>
-   tar xfz graalvm-ce-java8-linux-amd64-20.0.0.tar.gz
-   export GRAALVM_DIR=`pwd`/graalvm-ce-java8-20.0.0
-   ```
+  ```console
+  cd <your installation directory>
+  wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.1.0/graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  tar xfz graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  rm graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  export GRAALVM_DIR=`pwd`/graalvm-ce-java11-22.1.0
+  ```
 
-2. Download the grCUDA JAR from [grcuda/releases](https://github.com/NVIDIA/grcuda/releases)
+2. Download the GrCUDA JAR from [grcuda/releases](https://github.com/necst/grcuda/releases). If using the original release from [NVIDIA](https://github.com/NVIDIA/grcuda/releases), the latest features (e.g. the asynchronous scheduler, multi-GPU support) are not available. 
+<!-- Instead, follow the guide below to install GrCUDA from the source code. -->
 
-   ```console
-   cd $GRAALVM_DIR/jre/languages
-   mkdir grcuda
-   cp <download folder>/grcuda-0.1.0.jar grcuda
-   ```
+  ```console
+  cd $GRAALVM_DIR/languages
+  mkdir grcuda
+  cp <download folder>/grcuda.jar grcuda
+  ```
 
-3. Test grCUDA in Node.JS from GraalVM.
+3. Test GrCUDA in Node.JS from GraalVM.
 
-   ```console
-   cd $GRAALVM_DIR/bin
-   ./node --jvm --polyglot
-   > arr = Polyglot.eval('grcuda', 'int[5]')
-   [Array: null prototype] [ 0, 0, 0, 0, 0 ]
-   ```
+  ```console
+  cd $GRAALVM_DIR/bin
+  ./node --jvm --polyglot
+  > arr = Polyglot.eval('grcuda', 'int[5]')
+  [Array: null prototype] [ 0, 0, 0, 0, 0 ]
+  ```
 
 4. Download other GraalVM languages.
 
-   ```console
-   cd $GRAAL_VM/bin
-   ./gu available
-   ./gu install python
-   ./gu install R
-   ./gu install ruby
-   ```
+  ```console
+  cd $GRAAL_VM/bin
+  ./gu available
+  ./gu install python
+  ./gu install R
+  ./gu install ruby
+  ```
 
-## Instructions to build grCUDA from Sources
+### Installation from source files
 
-grCUDA requires the [mx build tool](https://github.com/graalvm/mx). Clone the mx
-repository and add the directory into `$PATH`, such that the `mx` can be invoked from
+If you want to build GrCUDA yourself, instead of using an existing release, you will need a couple of extra steps. 
+This section contains all the steps required to setup GrCUDA if your goal is to contribute to its development, or simply hack with it.
+For simplicity, let's assume that your installation is done in your home directory, `~`.
+
+If you are installing GrCUDA on a new machine, you can simply follow or execute `oci_setup/setup_machine_from_scratch.sh` first, and then `oci_setup/setup_graalvm.sh`. 
+Here we repeat the same steps, with additional comments. 
+The installation process has been validated with CUDA 11.4 - 11.7 and Ubuntu 20.04.
+The same `oci_setup` has a number of useful scripts to configure machines on OCI and easily use GrCUDA.
+
+1. First, download GraalVM 22.1 as above.
+
+  ```console
+  wget https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.1.0/graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  tar xfz graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  rm graalvm-ce-java11-linux-amd64-22.1.0.tar.gz
+  export GRAALVM_DIR=~/graalvm-ce-java11-22.1.0
+  ```
+
+2. To build GrCUDA, you also need a custom JDK that is used to build GraalVM.
+
+  ```console
+  wget https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-22.1-b01/labsjdk-ce-11.0.15+2-jvmci-22.1-b01-linux-amd64.tar.gz
+  tar xfz labsjdk-ce-11.0.15+2-jvmci-22.1-b01-linux-amd64.tar.gz
+  rm labsjdk-ce-11.0.15+2-jvmci-22.1-b01-linux-amd64.tar.gz
+  export JAVA_HOME=~/labsjdk-ce-11.0.15-jvmci-22.1-b01
+  ```
+  
+3. GrCUDA requires the [mx build tool](https://github.com/graalvm/mx).
+Clone the mx repository and add the directory into `$PATH`, such that the `mx` can be invoked from
 the command line.
+We checkout the commit corresponding to the current GraalVM release.
 
-Build grCUDA and the unit tests:
+  ```console
+  git clone https://github.com/graalvm/mx.git
+  cd mx
+  git checkout 722b86b8ef87fbb297f7e33ee6014bbbd3f4a3a8
+  cd ..
+  ```
+
+4. You might also want the source files for GraalVM CE, at the commit corresponding to the current release of GraalVM. This is not required for building, but if you want to modify GrCUDA's source code, it is useful to also have access to GraalVM's code.
+
+  ```console
+  git clone https://github.com/oracle/graal.git
+  cd graal
+  git checkout 84541b16ae8a8726a0e7d76c7179d94a57ed84ee
+  cd ..
+  ```
+
+5. Last but not least, build GrCUDA
+
+  ```console
+  cd <directory containing this README>
+  ./install.sh
+  ```
+
+### Additional installations steps
+
+1. **Setup your CUDA environment**
+* Install CUDA and Nvidia drivers, for example following the steps [here](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=20.04&target_type=deb_network)
+* Add the following to your environment (assuming you have installed CUDA in the default `/usr/local` location, and using the `nvcc` compiler. Add these lines to `~/.bashrc` to make them permanent.
 
 ```console
-cd <directory containing this README>
-mx build
+export CUDA_DIR=/usr/local/cuda
+export PATH=$PATH:$CUDA_DIR/bin
 ```
 
-Note that this will also checkout the graal repository.
+2. **Setup your GraalVM and GrCUDA environment**
+* Add the following to your environment (assuming you have installed the releases mentioned in step 2 and 3). Add these lines to `~/.bashrc` to make them permanent.
 
-To run unit tests:
+```console
+export PATH=~/mx:$PATH
+export JAVA_HOME=~/labsjdk-ce-11.0.15-jvmci-22.1-b01
+export GRAAL_HOME=~/graalvm-ce-java11-22.1.0
+export GRAALVM_HOME=$GRAAL_HOME
+export PATH=$GRAAL_HOME/bin:$PATH
+export PATH=$JAVA_HOME/bin:$PATH
+export GRCUDA_HOME=~/grcuda
+```
+* `source ~/.bashrc` to make changes available.
 
-```bash
+3. **Install languages for GraalVM** (optional, but recommended)
+
+```console
+gu available
+gu install native-image
+gu install llvm-toolchain
+gu install python 
+gu install nodejs
+gu rebuild-images polyglot
+```
+
+* If Graalpython is installed, create a `virtualenv` for it
+
+```console
+graalpython -m venv ~/graalpython_venv
+source ~/graalpython_venv/bin/activate
+```
+
+* Recommended: install `numpy` in Graalpython (required for running GrCUDA benchmarks)
+
+```console
+graalpython -m ginstall install setuptools;
+graalpython -m ginstall install Cython;
+graalpython -m ginstall install numpy;
+```
+
+4. **Run GrCUDA Unit tests** using 
+
+```
 mx unittest com.nvidia
+# To run a specific test, you can use
+mx unittest com.nvidia.grcuda.test.BuildKernelTest#testBuildKernelwithNFILegacytSignature
+```
+
+5. **Setup the grcuda-data submodule**
+The `grcuda-data` repository is used as a `git` submodule to store data, results, and plots for demos, benchmarks, and publications. You will need this submodule to run the full benchmark suite, and some of the demos. To setup the submodule, follow this [`README`](https://github.com/AlbertoParravicini/grcuda-data/tree/master).
+
+### Setup your IDE
+
+To develop GrCUDA, you will greatly benefit from having an IDE that allows jumping between symbols and debugging individual tests. 
+Here, we explain how to setup IntelliJ Idea.
+
+  1. `mx ideinit` from `$GRCUDA_HOME`, to setup the IDE
+  2. Open Idea and select *"open project"*, then open GrCUDA
+  3. See this [guide](https://github.com/graalvm/mx/blob/master/docs/IDE.md) to configure the syntax checker
+     * `File -> Settings -> Plugins -> Marketplace -> Search "Eclipse Code Formatter" and install it`
+  4. In IntelliJ Idea, install the Python plugin with `Settings -> Plugin -> Search "Python"`, then do `Project Structure -> SDKs -> Create a new Python 3.8 Virtual Environment`, it is used by `mx`
+  5. Select the right JVM. It should select automatically your `$JAVA_HOME`. Othewise, `Project Structures -> Modules -> Set the Module SDK (under Dependencies)` of `mx` and submodules to your Java SDK (e.g. `11`). You can pick either the `labsjdk` or `graalvm`.
+      * This is also given by the `configure` option if you try to build the project in IntelliJ Idea before setting these options. Set your project Java SDK (e.g. `11`) for those missing modules
+      * When building for the first time in Intellij Idea, you might get errors like `cannot use --export for target 1.8`, which means that some package is being build with Java 8.
+      * For these packages, there are two possible solutions. Try either of them, and stick to the one that works for you
+
+          a. For those packages (look at the log to find them), manually specify a more recent SDK (e.g. `11`) as you did in step above. If you get errors of missing symbols, follow IntelliJ's hints and export the requested packages
+
+          b. Remove the exports. `File -> Settings -> Build ... -> Compiler -> Java Compiler`, then remove all the `--export` flags.
+  7. To run tests:
+
+      a. Go to `Run (top bar) -> Edit Configurations -> Edit configuration templates -> Junit`
+
+      b. (Not always necessary) By default, Idea should use your `env`. If not, make sure to have the same. Update the `PATH` variable so that it can find `nvcc`, and export `$GRAAL_HOME`. See `setup_machine_from_scratch.sh` to find all the environment variables.
+
+      c. Modify the template Junit test configuration adding `-Djava.library.path="$GRAAL_HOME/lib"` (in Java 11) to the VM options to find `trufflenfi`
+
+      d. In IntelliJ Idea, `Run -> Edit Configurations`. Create a new JUnit configuration set to `All in package` with `com.nvidia.grcuda` as module and `com.nvidia.grcuda.test` selected below. Add `-Djava.library.path="$GRAAL_HOME/lib"` (or your version of GraalVM) if it's not already in VM options. Specify the SDK by setting the GraalVM JRE in e.g. `$GRAAL_HOME`, if not specified already.   
+      
+      e. If you change something in GrCUDA, rebuild it with `./install.sh` before running tests. That's because tests that use the GPU load the `.jar` in `$GRAAL_HOME`, which is updated by `./install.sh`    
+
+## Execute performance tests using Graalpython
+
+To measure the performance of GrCUDA on complex GPU applications, we have developed a custom benchmark suite, found in `projects/resources/python/benchmark`.
+The benchmark suite includes those used in the [DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime](https://ieeexplore.ieee.org/abstract/document/9460491) paper.
+All commands are executed from `$GRCUDA_HOME/projects/resources/python/benchmark`;
+
+Run a single benchmark with custom settings
+```console
+graalpython --jvm --polyglot --experimental-options --grcuda.ExecutionPolicy=async --grcuda.DependencyPolicy=with-const --grcuda.RetrieveNewStreamPolicy=always-new  --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10
+```
+
+Run all benchmarks
+```console
+graalpython --jvm --polyglot benchmark_wrapper.py -d -i 30 
+```
+
+To run the CUDA version of all benchmarks, build it as follows. You might want to update the GPU architecture (the `-arch` flag) inside `$GRCUDA_HOME/projects/resources/cuda/Makefile` to reflect the hardware at your disposal.
+```console
+cd $GRCUDA_HOME/projects/resources/cuda;
+make
+cd -;
+```
+
+Run the CUDA version of all benchmarks
+```console
+graalpython --jvm --polyglot benchmark_wrapper.py -d -i 30 -c
+```
+
+To print the Java Stack Trace in case of exceptions, add the following to Graalpython
+```console
+graalpython --python.ExposeInternalSources --python.WithJavaStacktrace=1 --experimental-options <your-benchmark-command>
+```
+
+Profile a specific benchmark using `nvprof`. Running `nvprof` as `sudo` might not be required, see [here](https://developer.nvidia.com/nvidia-development-tools-solutions-ERR_NVGPUCTRPERM-permission-issue-performance-counters).
+The `graalpython` benchmark offers the `--nvprof` flag: if enable, only the real computation is profiled (and not the benchmark initialization). 
+Additionally, provide `nvprof` with flags `--csv` to get a CSV output, and `--log-file bench-name_%p.csv"` to store the result.
+Not using the flag `--print-gpu-trace` will print aggregated results.
+Additional metrics can be collected by `nvprof` with e.g. `--metrics "achieved_occupancy,sm_efficiency"` ([full list](https://docs.nvidia.com/cuda/profiler-users-guide/index.html#metrics-reference)).
+GPUs with architecture starting from Turing (e.g. GTX 1660 Super) no longer allow collecting metrics with `nvprof`, but `ncu` ([link](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)) and Nsight Compute ([link](https://developer.nvidia.com/nsight-compute)).
+
+```
+sudo /usr/local/cuda/bin/nvprof --profile-from-start off --print-gpu-trace --profile-child-processes  /path/to/graalpython --jvm --polyglot --experimental-options --grcuda.InputPrefetch --grcuda.ForceStreamAttach --grcuda.RetrieveNewStreamPolicy=always-new --grcuda.ExecutionPolicy=async --grcuda.DependencyPolicy=with-const --grcuda.RetrieveParentStreamPolicy=disjoint benchmark_main.py -d -i 10 -n 4800 --no_cpu_validation --reinit false --realloc false -b b10d --block_size_1d 256 --block_size_2d 16 --nvprof
+```
+
+* Benchmarks are defined in the `projects/resources/python/benchmark/bench` folder, 
+and you can create more benchmarks by inheriting from the `Benchmark` class. 
+Individual benchmarks are executed from `benchmark_main.py`, while running all benchmark is done through `benchmark_wrapper.py`
+* The output of benchmarks is stored in a JSON (by default, located in `data/results`)
+* The benchmarking suite, through `benchmark_main.py`, supports the following options
+  1. `-d`, `--debug`: print to the console the results and details of each benchmark. False by default
+  2. `-i`, `--num_iter`: number of times that each benchmark is executed, for each combination of options. 30 by default
+  3. `-o`, `--output_path`: full path to the file where results are stored. By default results are stored in `data/results`,
+  and the file name is generated automatically
+  4. `--realloc`: if true, allocate new memory and rebuild the GPU code at each iteration. False by default
+  5. `--reinit`: if true, re-initialize the values used in each benchmark at each iteration. True by default
+  6. `-c`, `--cpu_validation`: if present, validate the result of each benchmark using the CPU (use `--no_cpu_validation` to skip it instead)
+  7. `-b`, `--benchmark`: run the benchmark only for the specified kernel. Otherwise run all benchmarks specified in `benchmark_main.py`
+  8. `-n`, `--size`: specify the input size of data used as input for each benchmark. Otherwise use the sizes specified in `benchmark_main.py`
+  9. `-r`, `--random`: initialize benchmarks randomly whenever possible. True by default
+  9. `--number_of_gpus`: Number of GPU employed for computation
+  9. `--execution_policy`: If present, run the benchmark only with the selected execution policy
+  9. `--dependency_policy`: If present, run the benchmark only with the selected dependency policy
+  9. `--new_stream`: If present, run the benchmark only with the selected new stream policy
+  9. `--parent_stream`: If present, run the benchmark only with the selected parent stream policy
+  9. `--device_selection`: If present and parent policy is data aware, run the benchmark only with the selected device selection heuristic
+  9. `--force_stream_attach`: If present, force association between arrays and CUDA streams.
+  9. `--memory_advise_policy`: Select a managed memory memAdvise flag, if multiple GPUs are available
+  9. `--prefetch`: If true, enable automatic prefetching in the benchmarks
+  10. `--block_size_1d`: number of threads per block when using 1D kernels
+  11. `--block_size_2d`: number of threads per block when using 2D kernels
+  12. `-g`, `--number_of_blocks`: number of blocks in the computation
+  13. `-p`, `--time_phases`: measure the execution time of each phase of the benchmark; note that this introduces overheads, and might influence the total execution time. Results for each phase are meaningful only for synchronous execution
+  13. `--timing`: If presentm, measure the execution time of each kernel
+  14. `--nvprof`: if present, enable profiling when using nvprof. For this option to have effect, run graalpython using nvprof, with flag '--profile-from-start off'
+	
+## DAG Scheduling Settings
+The automatic DAG scheduling of GrCUDA supports different settings that can be used for debugging or to simplify the dependency computation in some circumstances. 
+Starting from release 0.4.0, the automatic scheduler also supports the usage of multiple GPUs available in the system.
+Different options can be provided at startup, using `--experimental-options --grcuda.OptionName=value`:
+
+* `EnableComputationTimers`: measure the execution time of GPU computations; `false` by default;
+* `ExecutionPolicy`: this regulates the global scheduling policy;
+ `async` uses the DAG for asynchronous parallel execution, while `sync` executes each computation synchronously and can be used for debugging or to measure the execution time of each kernel
+* `DependencyPolicy`: choose how data dependencies between GrCUDA computations are computed;
+`with-const` considers read-only parameter, while `no-const` assumes that all arguments can be modified in a computation;
+* `RetrieveNewStreamPolicy`: choose how streams for new GrCUDA computations are created;
+ `reuse` (the default) reuses free streams whenever possible, while `always-new` creates new streams every time a computation should use a stream different from its parent
+* `RetrieveParentStreamPolicy`: choose how streams for new GrCUDA computations are obtained from parent computations;
+`same-as-parent` simply reuse the stream of one of the parent computations, while `disjoint` allows parallel scheduling of multiple child computations as long as their arguments are disjoint; `multigpu-disjoint` extends the previous policy with multi-GPU support and select the best parent device for a given computation, while `multigpu-early-disjoint` first selects the ideal GPU for the input computation, then finds if any of the reusable streams is allocated on that device.
+* `InputPrefetch`: if `true`, prefetch the data on GPUs with architecture starting from Pascal. In most cases, it improves performance. `false` by default;
+* `ForceStreamAttach`: if `true`, force association between arrays and CUDA streams. `true` by default on architectures older than Pascal, to allow concurrent CPU/GPU computation. On architectures starting from Pascal, it can improve performance, but it's `false` by default;
+* `NumberOfGPUs`: set how many GPUs can be used during computation (if available, otherwise use the max number of GPUs in the system). 1 by default;
+* `DeviceSelectionPolicy`: choose the heuristic that manages how GPU computations are mapped to devices, if multiple GPUs are available. `single-gpu` by default, it supports 5 multi-GPU policies: `round-robin` simply rotates the scheduling between GPUs, `stream-aware` selects the device with fewer ongoing computations, `min-transfer-size` maximizes data locality, while `minmin-transfer-time` and `minmax-transfer-time` minimize respectively the minimum and the maximum total transfer time; 
+* `DataThreshold`: When selecting a device with data-aware DeviceSelectionPolicies, such as min-transfer-size, do not give priority to devices that have less than this percentage of data already available. A lower percentage favors exploitation, a high percentage favors exploration. 0.1 by default (10%). 
+* `MemAdvisePolicy`: select a managed memory `memAdvise` flag, if multiple GPUs are available. Options: `read-mostly`, `preferred-location`, `none` (default);
+* `ExportDAG`: if present, dump the scheduling DAG in .dot format. Specify the destination path and the file name as value of the option (e.g. `--grcuda.ExportDAG=../ExecutionDAG`).
+* `BandwidthMatrix`: if present, sets the location of the CSV file that contains the estimated bandwidth between each CPU and GPU in the system, employed by topology-aware DeviceSelectionPolicies. By default, this is taken from  `$GRCUDA_HOME/projects/resouces/connection_graph/datasets/connection_graph.csv`, which is automatically computed during GrCUDA installation.
+
+## Publications
+
+If you use GrCUDA in your research, please cite the following publication(s). Thank you!
+
+```
+Parravicini, A., Delamare, A., Arnaboldi, M., & Santambrogio, M. D. (2021, May). DAG-based Scheduling with Resource Sharing for Multi-task Applications in a Polyglot GPU Runtime. In 2021 IEEE International Parallel and Distributed Processing Symposium (IPDPS) (pp. 111-120). IEEE.
 ```

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -28,19 +35,20 @@
  */
 package com.nvidia.grcuda.functions;
 
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.Device;
+import com.nvidia.grcuda.runtime.CUDARuntime;
+import com.nvidia.grcuda.runtime.Device;
+import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class GetDeviceFunction extends Function {
 
-    private final CUDARuntime runtime;
+    private final AbstractGrCUDAExecutionContext context;
 
-    public GetDeviceFunction(CUDARuntime runtime) {
+    public GetDeviceFunction(AbstractGrCUDAExecutionContext context) {
         super("getdevice");
-        this.runtime = runtime;
+        this.context = context;
     }
 
     @Override
@@ -48,6 +56,6 @@ public class GetDeviceFunction extends Function {
     public Object call(Object[] arguments) throws UnsupportedTypeException, ArityException {
         checkArgumentLength(arguments, 1);
         int deviceId = expectPositiveInt(arguments[0]);
-        return new Device(deviceId, runtime);
+        return context.getDevice(deviceId);
     }
 }

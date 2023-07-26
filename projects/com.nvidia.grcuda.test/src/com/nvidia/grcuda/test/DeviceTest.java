@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,6 +11,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -30,6 +37,8 @@ package com.nvidia.grcuda.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import com.nvidia.grcuda.test.util.GrCUDATestUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -38,7 +47,7 @@ public class DeviceTest {
 
     @Test
     public void testDeviceCount() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceCount = ctx.eval("grcuda", "cudaGetDeviceCount()");
             assertTrue(deviceCount.isNumber());
             assertTrue(deviceCount.asInt() > 0);
@@ -47,7 +56,7 @@ public class DeviceTest {
 
     @Test
     public void testGetDevicesLengthsMatchesDeviceCount() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value deviceCount = ctx.eval("grcuda", "cudaGetDeviceCount()");
             assertTrue(deviceCount.isNumber());
             assertTrue(deviceCount.asInt() > 0);
@@ -58,7 +67,7 @@ public class DeviceTest {
 
     @Test
     public void testGetDevicesMatchesAllGetDevice() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value devices = ctx.eval("grcuda", "getdevices()");
             Value getDevice = ctx.eval("grcuda", "getdevice");
             for (int i = 0; i < devices.getArraySize(); ++i) {
@@ -72,7 +81,7 @@ public class DeviceTest {
 
     @Test
     public void testCanReadSomeDeviceProperties() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value devices = ctx.eval("grcuda", "getdevices()");
             for (int i = 0; i < devices.getArraySize(); ++i) {
                 Value device = devices.getArrayElement(i);
@@ -95,7 +104,7 @@ public class DeviceTest {
 
     @Test
     public void testCanSelectDevice() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value devices = ctx.eval("grcuda", "getdevices()");
             if (devices.getArraySize() > 1) {
                 Value firstDevice = devices.getArrayElement(0);
@@ -118,7 +127,7 @@ public class DeviceTest {
 
     @Test
     public void testDeviceMemoryAllocationReducesReportedFreeMemory() {
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context ctx = GrCUDATestUtil.buildTestContext().build()) {
             Value device = ctx.eval("grcuda", "getdevice(0)");
             Value props = device.getMember("properties");
             device.invokeMember("setCurrent");

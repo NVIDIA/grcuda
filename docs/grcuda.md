@@ -1,12 +1,9 @@
-# grCUDA
+# GrCUDA
 
-grCUDA exposes existing GPU kernel and host functions that accept device
-objects as parameters to all GraalVM languages through the Truffle Interop Library.
-grCUDA represents device objects as flat arrays of primitive types and makes them
-accessible as array-like TruffleObjects to other Truffle languages.
+GrCUDA exposes existing GPU kernels and host functions that accept device objects as parameters to all GraalVM languages through the Truffle Interop Library.
+GrCUDA represents device objects as flat arrays of primitive types and makes them accessible as array-like TruffleObjects to other Truffle languages.
 
-grCUDA itself is an expression-oriented language. Most expressions in grCUDA,
-however, simply evaluate to function objects that can then be used in the host languages.
+GrCUDA itself is an expression-oriented language. Most expressions in GrCUDA, however, simply evaluate to function objects that can then be used in the host languages.
 
 Contents:
 
@@ -19,46 +16,40 @@ Contents:
 
 ## Device Arrays
 
-Device arrays are flat multi-dimensional arrays of primitive types. The arrays are
-can be accessed from GPU kernels and native host functions that accept GPU pointers
-as parameter. The device arrays can also accessed from host languages through the
-array constructs available in these host languages. The memory for the device
-array is CUDA-managed memory. Device arrays can be allocated
-through *array allocation expressions* and through the built-in `DeviceArray`
+Device arrays are flat multi-dimensional arrays of primitive types. 
+The arrays are can be accessed from GPU kernels and native host functions that accept GPU pointers as parameter. 
+The device arrays can also be accessed from host languages through the array constructs available in these host languages. 
+The memory for the device array is CUDA-managed memory. 
+Device arrays can be allocated through *array allocation expressions* and through the built-in `DeviceArray`
 constructor function (see [built-in functions](#built-in-functions)).
 
 ### Lifetime Considerations for the current implementation
 
-Device arrays are tied to garbage collector of the VM. Their underlying memory
-is allocated off-heap through the CUDA Runtime. Only a stub object containing the
-pointer to the off-heap memory, type, and size information etc, is kept on-heap.
+Device arrays are tied to garbage collector of the VM. 
+Their underlying memory is allocated off-heap through the CUDA Runtime. 
+Only a stub object containing the pointer to the off-heap memory, type, and size information etc, is kept on-heap.
 Therefore, the heap utilization does not reflect the off-heap utilization.
-A large device array does not have a large on-heap footprint. The garbage
-collection pass may not be initiated even though the memory utilization (off-heap)
-is high.
+A large device array does not have a large on-heap footprint. 
+The garbage collection pass may not be initiated even though the memory utilization (off-heap) is high.
 
-Just as for other native bindings, grCUDA is not able to prevent GPU kernels or
-host functions from capturing pointers to device array objects
-or their elements. Because device arrays are managed by the garbage collector,
-capturing of references in native code can potentially lead to danging references.
+Just as for other native bindings, GrCUDA is not able to prevent GPU kernels or host functions from capturing pointers to device array objects or their elements. 
+Because device arrays are managed by the garbage collector,
+capturing of references in native code can potentially lead to dangling references.
 
-The CUDA-managed memory of the device array can be **freed explicitly** by calling
-the `free()` method of `DeviceArray`. This will release the allocated memory
-through `cudaFree()`. Once the underlying memory is freed, the `DeviceArray`
-enters a defunct state. All subsequent accesses with throw an exception. The
-Boolean property `isMemoryFreed` of `DeviceArray` can be checked whether the device
-array's memory buffer has already be freed.
+The CUDA-managed memory of the device array can be **freed explicitly** by calling the `free()` method of `DeviceArray`. 
+This will release the allocated memory through `cudaFree()`.
+Once the underlying memory is freed, the `DeviceArray` enters a defunct state. 
+All subsequent accesses with throw an exception. 
+The Boolean property `isMemoryFreed` of `DeviceArray` can be checked whether the device array's memory buffer has already be freed.
 
 ### Array Allocation Expressions
 
-Device arrays are allocated using a syntax that is similar to arrays C/C++. Multi-dimensional
-arrays use row-major (C style) layout. Use `DeviceArray(type, size, 'F')`
-to create arrays with column-major (Fortran style) order.
+Device arrays are allocated using a syntax that is similar to arrays C/C++. 
+Multi-dimensional arrays use row-major (C style) layout. 
+Use `DeviceArray(type, size, 'F')` to create arrays with column-major (Fortran style) order.
 
-The array sizes must be compile-time constants, i.e., either an integer
-literal or a constant expression. One way to define the array size in array
-allocation expressions from host languages is through string interpolation
-(e.g., template strings in JavaScript).
+The array sizes must be compile-time constants, i.e., either an integer literal or a constant expression. 
+One way to define the array size in array allocation expressions from host languages is through string interpolation (e.g., template strings in JavaScript).
 
 ```C
 double[100]          // array of 10 double-precision elements
@@ -68,7 +59,7 @@ float[1000][28][28]  // array of 1000 x 28 x 28 float elements
 
 The supported data types are:
 
-| grCUDA Type  | Truffle (Java) Type | Compatible C++ Types
+| GrCUDA Type  | Truffle (Java) Type | Compatible C++ Types
 |--------------|---------------------|----------------------
 | `boolean`    | `boolean`           | `bool`, `unsigned char`
 | `char`       | `byte`              | `char`, `signed char`
@@ -78,8 +69,7 @@ The supported data types are:
 | `float`      | `float`             | `float`
 | `double`     | `double`            | `double`
 
-The polyglot expression returns a `DeviceArray` object for
-one-dimensional arrays or a `MultDimDeviceArray` for a multi-dimensional array to the host.
+The polyglot expression returns a `DeviceArray` object for one-dimensional arrays or a `MultDimDeviceArray` for a multi-dimensional array to the host.
 
 **Example in Python:**
 
@@ -133,12 +123,9 @@ matrix.getArrayElement(4).setArrayElement(3, 42.0);
 
 ## Function Invocations
 
-Function invocations are evaluated inside grCUDA the return values are passed back
-to the host language. The argument expressions that can be used in grCUDA language
-strings are currently limited to literals and constant integer expressions. For
-general function invocation, first create a grCUDA expression that returns a
-[callable](#callables) back to the host language and then invoke the callable from
-the host language.
+Function invocations are evaluated inside GrCUDA, then the return values are passed back to the host language. 
+The argument expressions that can be used in GrCUDA language strings are currently limited to literals and constant integer expressions. 
+For general function invocation, first create a GrCUDA expression that returns a [callable](#callables) back to the host language and then invoke the callable from the host language.
 
 **Example in JavaScript:**
 
@@ -154,12 +141,10 @@ const deviceArray = Polyglot.eval('grcuda', 'DeviceArray("float", 1000)')
 
 Callables are Truffle objects that can be invoked from the host language.
 A common usage pattern is to submit polyglot expression that return callables.
-Identifiers are inside a namespace. CUDA Functions reside in the root namespace
-(see [built-in functions](#built-in-functions)).
+Identifiers are inside a namespace. 
+CUDA Functions reside in the root namespace (see [built-in functions](#built-in-functions)).
 
-For device arrays and GPU pointers that are passed as arguments
-to callables, grCUDA automatically passes the underlying
-pointers to the native host or kernel functions.
+For device arrays and GPU pointers that are passed as arguments to callables, GrCUDA automatically passes the underlying pointers to the native host or kernel functions.
 
 **Example in Python:**
 
@@ -190,11 +175,12 @@ inc_kernel(160, 128)(out_ints, in_ints, 100)
 
 ## Function Namespaces
 
-grCUDA organizes functions in a hierarchical namespace, i.e., namespaces can be nested.
-The user can register additional kernel and host function into this namespace. The
-registration is not persisted across instantiations of the grCUDA language context.
+GrCUDA organizes functions in a hierarchical namespace, i.e. namespaces can be nested.
+The user can register additional kernel and host function into this namespace.
+The registration is not persisted across instantiations of the GrCUDA language context.
 
-The root namespace is called `CU`. It can be received through a polyglot expression.
+The root namespace is called `CU`. 
+It can be received through a polyglot expression.
 
 **Example in Python:**
 
@@ -206,26 +192,24 @@ cu = polyglot.eval(language='grcuda', string='CU')
 
 ## Kernel and Host Function Signatures
 
-grCUDA needs to know the signature of native kernel functions and native host
-functions to correctly pass arguments. The signature is expressed in
-*NIDL (Native Interface Definition Language)* syntax.
-The NIDL specification is used in `bind()` for host functions and in `bindkernel()`
-for kernel functions. Multiple host functions or multiple kernel function specifications
-can be combined into one single `.nidl` file, which can then be passed to `bindall()`. This call
-registers the bindings to all listed functions in the grCUDA namespace.
+GrCUDA needs to know the signature of native kernel functions and native host functions to correctly pass arguments. 
+The signature is expressed in *NIDL (Native Interface Definition Language)* syntax.
+The NIDL specification is used in `bind()` for host functions and in `bindkernel()` for kernel functions.
+Multiple host functions or multiple kernel function specifications can be combined into one single `.nidl` file, which can then be passed to `bindall()`.
+This call registers the bindings to all listed functions in the GrCUDA namespace.
 
-The NIDL signature contains the name of the function and the parameters with their
-types. Host functions also have a return type. Since GPU kernel functions always return `void`,
-the return type is omitted for kernel functions in the NIDL syntax. The parameters are primitive
-types passed by-value or are pointers to primitive values. The parameter names can be chosen
-arbitrarily. The parameter names are used to improve error messages. They do not affect the
-execution.
+The NIDL signature contains the name of the function and the parameters with their types.
+Host functions also have a return type.
+Since GPU kernel functions always return `void`, the return type is omitted for kernel functions in the NIDL syntax.
+The parameters are primitive types passed by-value or are pointers to primitive values.
+The parameter names can be chosen arbitrarily.
+The parameter names are used to improve error messages. 
+They do not affect the execution.
 
-A complete list of all supported NIDL types and their mapping to Truffle and C++ types can be found
-in the [NIDL type mapping document](typemapping.md).
+A complete list of all supported NIDL types and their mapping to Truffle and C++ types can be found in the [NIDL type mapping document](typemapping.md).
 
-Pointers are used to refer to device arrays. Device array objects passed as arguments to kernels
-or host functions automatically decay into pointers.
+Pointers are used to refer to device arrays. 
+Device array objects passed as arguments to kernels or host functions automatically decay into pointers.
 Pointer are typed and have a direction `<direction> pointer <element type>`.
 Allowed keywords for pointer directions are `in`, `out`, and `inout`.
 
@@ -235,6 +219,11 @@ NIDL              | C++
 `out pointer T`   | `T*`
 `inout pointer T` | `T*`
 
+With the `async` execution policy and the `with-const` DependencyPolicy, using the `const` and `in` signals that the input will not be modified by the kernel.
+As such, the scheduler will optimize its execution, for example by overlapping it with other kernels that access the same data but do not modify them.
+GrCUDA does not currently check that the arrays are actually unmodified! 
+It is responsibility of the user to use `const/in` correctly.
+
 **Example Host Function Signatures:**
 
 ```text
@@ -242,9 +231,9 @@ saxpy(n: sint32, alpha: float, xs: in pointer float, ys: inout pointer float): v
 ```
 
 The signature declares a host function `saxpy` that takes a signed 32-bit int `n`, a
-single precision floating point value `alpha`, wa device memory pointer `xs` to
+single precision floating point value `alpha`, a device memory pointer `xs` to
 constant float, a device memory pointer `ys` to float. The function does not return a value and,
-therefore, has the return type `void`. grCUDA looks for a C-style function definition
+therefore, has the return type `void`. GrCUDA looks for a C-style function definition
 in the shared library, i.e., it searches for the symbol `saxpy`.
 
 A matching function would be defined in C++ code as:
@@ -256,13 +245,13 @@ void saxpy(int n, float alpha, const float* xs, float *ys) { ... }
 
 If the function is implemented in C++ without C-style export, its symbol name is mangled.
 In this case, prefix the function definition with the keyword `cxx` which will instruct
-grCUDA to search for a C++ mangled symbol name.
+GrCUDA to search for a C++ mangled symbol name.
 
 ```text
 cxx predict(samples: in pointer double, labels: out pointer sint32, num_samples: uint32, weights: in pointer float, num_weights: uint32): sint32
 ```
 
-This function returns a signed 32-bit integer. Due to the `cxx` keyword, grCUDA looks for the
+This function returns a signed 32-bit integer. Due to the `cxx` keyword, GrCUDA looks for the
 symbol with the mangled name `_Z7predictPKdPijPKfj` in the shared library.
 
 C++ namespaces are also supported. The namespaces can be specified (using `::`).
@@ -293,22 +282,22 @@ update_kernel(gradient: in pointer float, weights: inout pointer float, num_weig
 This signature declaration refers to a kernel that takes a pointer `gradient` to constant float,
 a pointer `weights` to float, and a value `num_weights` as an unsigned 32-bit int.
 Note that there return type specification is missing because CUDA kernel functions do not return
-any value. grCUDA looks for the function symbol `update_kernel` in the cubin or PTX file.
+any value. GrCUDA looks for the function symbol `update_kernel` in the cubin or PTX file.
 `nvcc` uses C++ name mangling by default. The `update_kernel` function would therefore have to be
 defined as `extern "C"` in the CUDA source code.
 
-grCUDA can be instructed search for the C++ mangled name by adding `cxx` keyword.
+GrCUDA can be instructed search for the C++ mangled name by adding `cxx` keyword.
 
 ```text
 cxx predict_kernel(samples: in pointer double, labels: out pointer sint32, num_samples: uint32, weights: in pointer float, num_weights: uint32)
 ```
 
-grCUDA then searches for the symbol `_Z14predict_kernelPKdPijPKfj`.
+GrCUDA then searches for the symbol `_Z14predict_kernelPKdPijPKfj`.
 
 ### Syntax NIDL Specification Files
 
 Multiple declaration of host and kernel functions can be specified in a NIDL file and
-bound into grCUDA namespace in one single step.
+bound into GrCUDA namespace in one single step.
 
 The functions are collected in binding groups within `{  }`. The following binding groups
 exist:
@@ -414,7 +403,7 @@ cu.myfoo.c_incr_inplace_host(deviceArray, deviceArray.length)
 
 ## Built-in Functions
 
-The built-in functions are located in the root namespace of grCUDA.
+The built-in functions are located in the root namespace of GrCUDA.
 The functions are accessible directly in polyglot expression or, alternatively,
 through the `CU` root namespace object.
 
@@ -449,13 +438,13 @@ A complete example is given in the [bindings tutorial](docs/bindings.md).
 Multiple host and kernel functions can be grouped and imported into rCUDA in one single step.
 The signatures of host and kernel functions are specified NIDL files using
 [NIDL syntax](#kernel-and-host-function-signatures). All listed functions are registered in
-the grCUDA `targetNamespace`.
+the GrCUDA `targetNamespace`.
 
 ```text
 bindall(targetNamespace, fileName, nidlFileName)
 ```
 
-`targetNamespace`: grCUDA namespace into which all functions listed in the NIDL file that
+`targetNamespace`: GrCUDA namespace into which all functions listed in the NIDL file that
   are imported from `fileName` are registered.
 
 `nidlFileName`: name of the NIDL that contains specification for the host or kernel
@@ -701,7 +690,7 @@ warpSize
 
 A subset of the functions of the
 [CUDA Runtime API](https://docs.nvidia.com/cuda/cuda-runtime-api/index.html)
-are exported into the root namespace of grCUDA i.e., the `CU` object.
+are exported into the root namespace of GrCUDA i.e., the `CU` object.
 
 ```python
 opaquePointerToDeviceMemory = polyglot.eval(language='grcuda', string='cudaMalloc(1000))')
@@ -809,7 +798,7 @@ The letter S, D, C, Z designate the data type:
 
 Exposed functions from RAPIDS cuML (`libcuml.so`) are preregistered with
 in the namespace `ML`. The `cumlHandle_t` argument, is implicitly provided by
-grCUDA and, thus, must be omitted in the polyglot callable.
+GrCUDA and, thus, must be omitted in the polyglot callable.
 
 The cuML function registry can be disabled by setting `--grcuda.CuMLEnabled=false`.
 The absolute path to the `libcuml.so` shared library must be specified in  `--grcuda.CuMLLibrary=`.
@@ -819,7 +808,7 @@ Current set of **preregistered** cuML functions:
 - `void ML::cumlSpDbscanFit(DeviceArray input, int num_rows, int num_cols, float eps, int min_samples, DeviceArray labels, size_t max_bytes_per_chunk, int verbose)`
 - `void ML::cumlDbDbscanFit(DeviceArray input, int num_rows, int num_cols, double eps, int min_samples, DeviceArray labels, size_t max_bytes_per_chunk, int verbose)`
 
-## Grammar of grCUDA
+## Grammar of GrCUDA
 
 ```text
 expr ::= arrayExpression | funcCall | callable

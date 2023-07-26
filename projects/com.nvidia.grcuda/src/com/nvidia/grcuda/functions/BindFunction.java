@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -30,10 +37,10 @@ package com.nvidia.grcuda.functions;
 
 import java.util.ArrayList;
 
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
 import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.GrCUDALanguage;
-import com.nvidia.grcuda.Parameter;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.TypeException;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -84,7 +91,7 @@ public final class BindFunction extends Function {
 
         FunctionBinding binding = parseSignature(symbolName + signature);
         binding.setLibraryFileName(libraryFile);
-        HostFunction hf = new HostFunction(binding, GrCUDALanguage.getCurrentLanguage().getContextReference().get().getCUDARuntime());
+        HostFunction hf = new HostFunction(binding, GrCUDALanguage.getCurrentContext().getCUDARuntime());
         try {
             hf.resolveSymbol();
         } catch (UnknownIdentifierException e) {
@@ -124,7 +131,7 @@ public final class BindFunction extends Function {
         String returnTypeString = s.substring(typeColonPos + 1).trim();
         try {
             Type returnType = Type.fromNIDLTypeString(returnTypeString);
-            ArrayList<Parameter> paramList = Parameter.parseParameterSignature(parenSignature);
+            ArrayList<ComputationArgument> paramList = ComputationArgument.parseParameterSignature(parenSignature);
             if (isCxxSymbol) {
                 return FunctionBinding.newCxxBinding(name, paramList, returnType);
             } else {

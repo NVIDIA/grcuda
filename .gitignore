@@ -40,6 +40,13 @@ mx.grcuda/eclipse-launches
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAListener.java
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAParser.java
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/GrCUDAVisitor.java
+**.log
+/scratch
+**.nvvp
+projects/resources/cuda/bin
+data/results/*
+data/nvprof_log/*
+data/pickle/*
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDL.g4.stamp
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDL.interp
 /projects/com.nvidia.grcuda/src/com/nvidia/grcuda/parser/antlr/NIDL.tokens
@@ -50,3 +57,10 @@ mx.grcuda/eclipse-launches
 tensorrt/build
 examples/tensorrt/python/logs
 examples/tensorrt/cpp/build
+venv
+out/
+*.files
+*.csv
+grcuda_token.txt
+projects/demos/image_pipeline/cuda/build
+projects/demos/image_pipeline/img_out

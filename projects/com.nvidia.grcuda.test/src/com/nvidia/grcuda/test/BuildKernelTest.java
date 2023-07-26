@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,6 +11,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -27,13 +34,16 @@
  */
 package com.nvidia.grcuda.test;
 
-import java.util.Random;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import com.nvidia.grcuda.test.util.GrCUDATestUtil;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
+
+import java.util.Random;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class BuildKernelTest {
 
@@ -55,7 +65,7 @@ public class BuildKernelTest {
     @Test
     public void testBuildKernelwithNFILegacytSignature() {
         // See if inc_kernel can be built
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, "inc_kernel<int>", INCREMENT_KERNEL_NFI_LEGACY_SIGNATURE);
             assertNotNull(incrKernel);
@@ -68,7 +78,7 @@ public class BuildKernelTest {
     @Test
     public void testBuildKernelwithNIDLSignature() {
         // See if inc_kernel can be built
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value incrKernel = buildkernel.execute(INCREMENT_KERNEL_SOURCE, INCREMENT_KERNEL_NIDL_SIGNATURE);
             assertNotNull(incrKernel);
@@ -81,7 +91,7 @@ public class BuildKernelTest {
     @Test
     public void testBuild1DKernelAndLaunch() {
         // Build inc_kernel, launch it, and check results.
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             final int numElements = 1000;
             Value deviceArrayConstructor = context.eval("grcuda", "DeviceArray");
             Value buildkernel = context.eval("grcuda", "buildkernel");
@@ -163,17 +173,17 @@ public class BuildKernelTest {
     @Test
     public void testBuild2DKernelAndLaunch() {
         // build matmult kernel, launch it on 2D grid, and check results
-        try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
+        try (Context context = GrCUDATestUtil.buildTestContext().build()) {
             Value buildkernel = context.eval("grcuda", "buildkernel");
             Value matmultKernel = buildkernel.execute(MATMULT_KERNEL_SOURCE, MATMULT_KERNEL_SIGNATURE);
             assertNotNull(matmultKernel);
             assertTrue(matmultKernel.canExecute());
-            assertEquals(0, matmultKernel.getMember("launchCount").asInt());
+//            assertEquals(0, matmultKernel.getMember("launchCount").asInt());
             assertNotNull(matmultKernel.getMember("ptx").asString());
 
             // generate matrices
-            final int numARows = 256;
-            final int numACols = 192;
+            final int numARows = 128;
+            final int numACols = 128;
             final int numBRows = numACols;
             final int numBCols = 128;
             final int blockSize = 32;

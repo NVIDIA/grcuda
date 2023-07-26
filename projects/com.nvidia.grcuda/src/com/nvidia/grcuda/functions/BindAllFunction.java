@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -38,8 +45,8 @@ import com.nvidia.grcuda.GrCUDAContext;
 import com.nvidia.grcuda.GrCUDAException;
 import com.nvidia.grcuda.KernelBinding;
 import com.nvidia.grcuda.Namespace;
-import com.nvidia.grcuda.gpu.CUDARuntime;
-import com.nvidia.grcuda.gpu.LazyKernel;
+import com.nvidia.grcuda.runtime.LazyKernel;
+import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.parser.antlr.NIDLParser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -47,13 +54,13 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class BindAllFunction extends Function {
 
-    @SuppressWarnings("unused") private final CUDARuntime cudaRuntime;
+    @SuppressWarnings("unused") private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
 
     private final GrCUDAContext context;
 
     public BindAllFunction(GrCUDAContext context) {
         super("bindall");
-        this.cudaRuntime = context.getCUDARuntime();
+        this.grCUDAExecutionContext = context.getGrCUDAExecutionContext();
         this.context = context;
     }
 
@@ -87,10 +94,10 @@ public class BindAllFunction extends Function {
             throw new GrCUDAException("kernel and host function binding specified, can either bind kernel or host function");
         }
         if (kernelBindingPresent) {
-            bindings.forEach(binding -> namespaceTriple.leafNamespace.addKernel(new LazyKernel((KernelBinding) binding, cudaRuntime)));
+            bindings.forEach(binding -> namespaceTriple.leafNamespace.addKernel(new LazyKernel((KernelBinding) binding, grCUDAExecutionContext)));
         }
         if (functionBindingPresent) {
-            bindings.forEach(binding -> namespaceTriple.leafNamespace.addFunction(new HostFunction((FunctionBinding) binding, cudaRuntime)));
+            bindings.forEach(binding -> namespaceTriple.leafNamespace.addFunction(new HostFunction((FunctionBinding) binding, grCUDAExecutionContext.getCudaRuntime())));
         }
 
         if (namespaceTriple.childNamespace == null) {

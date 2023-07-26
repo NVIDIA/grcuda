@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -28,6 +35,8 @@
  */
 package com.nvidia.grcuda;
 
+
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionDescriptors;
 
 import com.nvidia.grcuda.nodes.ExpressionNode;
@@ -36,15 +45,17 @@ import com.nvidia.grcuda.parser.ParserAntlr;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.TruffleObject;
+
 
 /**
- * grCUDA Truffle language that exposes the GPU device and CUDA runtime to polyglot Graal languages.
+ * GrCUDA Truffle language that exposes the GPU device and CUDA runtime to polyglot Graal languages.
  */
-@TruffleLanguage.Registration(id = GrCUDALanguage.ID, name = "grcuda", version = "0.1", internal = false)
+@TruffleLanguage.Registration(id = GrCUDALanguage.ID, name = "grcuda", version = "0.1", internal = false, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
 public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
 
     public static final String ID = "grcuda";
+
+    public static final TruffleLogger LOGGER = TruffleLogger.getLogger(ID, "com.nvidia.grcuda");
 
     @Override
     protected GrCUDAContext createContext(Env env) {
@@ -52,15 +63,6 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
             throw new GrCUDAException("cannot create CUDA context without native access");
         }
         return new GrCUDAContext(env);
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        if (!(object instanceof TruffleObject)) {
-            return false;
-        }
-        TruffleObject truffleObject = (TruffleObject) object;
-        return truffleObject instanceof DeviceArray;
     }
 
     @Override
@@ -74,13 +76,35 @@ public final class GrCUDALanguage extends TruffleLanguage<GrCUDAContext> {
         return TruffleLanguage.getCurrentLanguage(GrCUDALanguage.class);
     }
 
+    public static GrCUDAContext getCurrentContext() {
+        return getCurrentContext(GrCUDALanguage.class);
+    }
+
     @Override
     protected void disposeContext(GrCUDAContext cxt) {
         cxt.disposeAll();
     }
 
     @Override
-    protected OptionDescriptors getOptionDescriptors() {
+    public OptionDescriptors getOptionDescriptors() {
+        return GrCUDALanguage.getOptionDescriptorsStatic();
+    }
+
+    /**
+     * We make the list of ooption descriptors available statically so it can be used when mocking the language, without having to create a context;
+     * @return the list of option descriptors, with default values available;
+     */
+    public static OptionDescriptors getOptionDescriptorsStatic() {
         return new GrCUDAOptionsOptionDescriptors();
+    }
+
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    @Override
+    protected void finalizeContext(GrCUDAContext context) {
+        context.cleanup();
     }
 }

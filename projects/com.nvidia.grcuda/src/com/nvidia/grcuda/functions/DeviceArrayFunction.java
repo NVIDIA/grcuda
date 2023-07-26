@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -31,13 +38,13 @@ package com.nvidia.grcuda.functions;
 import java.util.ArrayList;
 import java.util.Optional;
 
-import com.nvidia.grcuda.DeviceArray;
+import com.nvidia.grcuda.runtime.array.DeviceArray;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.GrCUDAException;
-import com.nvidia.grcuda.MultiDimDeviceArray;
 import com.nvidia.grcuda.TypeException;
-import com.nvidia.grcuda.DeviceArray.MemberSet;
-import com.nvidia.grcuda.gpu.CUDARuntime;
+import com.nvidia.grcuda.MemberSet;
+import com.nvidia.grcuda.runtime.array.MultiDimDeviceArray;
+import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -59,18 +66,18 @@ public final class DeviceArrayFunction extends Function {
 
     private static final MemberSet MEMBERS = new MemberSet(MAP);
 
-    private final CUDARuntime runtime;
+    private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
 
-    public DeviceArrayFunction(CUDARuntime runtime) {
+    public DeviceArrayFunction(AbstractGrCUDAExecutionContext grCUDAExecutionContext) {
         super("DeviceArray");
-        this.runtime = runtime;
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
     }
 
     @Override
     @TruffleBoundary
     public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
         if (arguments.length < 1) {
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, 2, arguments.length);
         }
         String typeName = expectString(arguments[0], "first argument of DeviceArray must be string (type name)");
         Type elementType;
@@ -80,13 +87,13 @@ public final class DeviceArrayFunction extends Function {
             throw new GrCUDAException(e.getMessage());
         }
         if (arguments.length == 1) {
-            return new TypedDeviceArrayFunction(runtime, elementType);
+            return new TypedDeviceArrayFunction(grCUDAExecutionContext, elementType);
         } else {
-            return createArray(arguments, 1, elementType, runtime);
+            return createArray(arguments, 1, elementType, grCUDAExecutionContext);
         }
     }
 
-    static Object createArray(Object[] arguments, int start, Type elementType, CUDARuntime runtime) throws UnsupportedTypeException {
+    static Object createArray(Object[] arguments, int start, Type elementType, AbstractGrCUDAExecutionContext grCUDAExecutionContext) throws UnsupportedTypeException {
         ArrayList<Long> elementsPerDim = new ArrayList<>();
         Optional<Boolean> useColumnMajor = Optional.empty();
         for (int i = start; i < arguments.length; ++i) {
@@ -113,10 +120,10 @@ public final class DeviceArrayFunction extends Function {
             }
         }
         if (elementsPerDim.size() == 1) {
-            return new DeviceArray(runtime, elementsPerDim.get(0), elementType);
+            return new DeviceArray(grCUDAExecutionContext, elementsPerDim.get(0), elementType);
         }
         long[] dimensions = elementsPerDim.stream().mapToLong(l -> l).toArray();
-        return new MultiDimDeviceArray(runtime, elementType, dimensions, useColumnMajor.orElse(false));
+        return new MultiDimDeviceArray(grCUDAExecutionContext, elementType, dimensions, useColumnMajor.orElse(false));
     }
 
     @ExportMessage
@@ -144,7 +151,7 @@ public final class DeviceArrayFunction extends Function {
     Object readMember(String memberName,
                     @Shared("memberName") @Cached("createIdentityProfile()") ValueProfile memberProfile) throws UnknownIdentifierException {
         if (MAP.equals(memberProfile.profile(memberName))) {
-            return new MapDeviceArrayFunction(runtime);
+            return new MapDeviceArrayFunction(grCUDAExecutionContext);
         }
         CompilerDirectives.transferToInterpreter();
         throw UnknownIdentifierException.create(memberName);

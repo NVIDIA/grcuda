@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,6 +11,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -37,7 +44,7 @@ import java.util.Optional;
 import com.nvidia.grcuda.Binding;
 import com.nvidia.grcuda.FunctionBinding;
 import com.nvidia.grcuda.KernelBinding;
-import com.nvidia.grcuda.Parameter;
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
 import com.nvidia.grcuda.Type;
 import com.nvidia.grcuda.TypeException;
 import com.nvidia.grcuda.parser.NIDLParserException;
@@ -136,7 +143,7 @@ kernels returns [ArrayList<Binding> result]
   ;
 
 kernel returns [Binding result]
-  : n=Identifier '(' pl=parameterList ')'
+  : n=Identifier '(' pl=computationArgumentList ')'
     { $result = KernelBinding.newCxxBinding($n.getText(), $pl.result); }
   ;
 
@@ -147,7 +154,7 @@ ckernels returns [ArrayList<Binding> result]
   ;
 
 ckernel returns [Binding result]
-  : n=Identifier '(' pl=parameterList ')'
+  : n=Identifier '(' pl=computationArgumentList ')'
     { $result = KernelBinding.newCBinding($n.getText(), $pl.result); }
   ;
 
@@ -162,7 +169,7 @@ hostFunctions returns [ArrayList<Binding> result]
   ;
 
 hostFunction returns [Binding result]
-  : n=Identifier '(' pl=parameterList ')' ':' rt=Identifier
+  : n=Identifier '(' pl=computationArgumentList ')' ':' rt=Identifier
     { try {
       $result = FunctionBinding.newCxxBinding($n.getText(), $pl.result,
     		  Type.fromNIDLTypeString($rt.getText()));
@@ -179,7 +186,7 @@ chostFunctions returns [ArrayList<Binding> result]
   ;
 
 chostFunction returns [Binding result]
-  : n=Identifier '(' pl=parameterList ')' ':' rt=Identifier
+  : n=Identifier '(' pl=computationArgumentList ')' ':' rt=Identifier
     { try {
       $result = FunctionBinding.newCBinding($n.getText(), $pl.result,
               Type.fromNIDLTypeString($rt.getText()));
@@ -189,8 +196,8 @@ chostFunction returns [Binding result]
     }
   ;
 
-parameterList returns [ArrayList<Parameter> result]
-  : pl=parameterList ',' paramExpr
+computationArgumentList returns [ArrayList<ComputationArgument> result]
+  : pl=computationArgumentList ',' paramExpr
     { $result = $pl.result;
       if ($paramExpr.result != null) {
         // avoids NPE during parser error
@@ -199,34 +206,34 @@ parameterList returns [ArrayList<Parameter> result]
       }
     }
   | paramExpr
-    { $result = new ArrayList<Parameter>();
+    { $result = new ArrayList<ComputationArgument>();
       $result.add($paramExpr.result);
     }
   |
-    { $result = new ArrayList<Parameter>(); }
+    { $result = new ArrayList<ComputationArgument>(); }
   ;
 
-paramExpr returns [Parameter result]
+paramExpr returns [ComputationArgument result]
   : n=Identifier ':' t=Identifier
     { try {
-        $result = Parameter.createByValueParameter($n.getText(), Type.fromNIDLTypeString($t.getText()));
+        $result = ComputationArgument.createByValueComputationArgument($n.getText(), Type.fromNIDLTypeString($t.getText()));
       } catch(TypeException e) {
         throw new NIDLParserException(e.getMessage(), filename, $t.getLine(), $t.getCharPositionInLine());
       }
     }
   | n=Identifier ':' direction 'pointer' t=Identifier
     { try {
-        $result = Parameter.createPointerParameter($n.getText(), Type.fromNIDLTypeString($t.getText()), $direction.result);
+        $result = ComputationArgument.createPointerComputationArgument($n.getText(), Type.fromNIDLTypeString($t.getText()), $direction.result);
       } catch(TypeException e) {
         throw new NIDLParserException(e.getMessage(), filename, $t.getLine(), $t.getCharPositionInLine());
       }
     }
   ;
 
-direction returns [Parameter.Kind result]
-  : 'in'    { $result = Parameter.Kind.POINTER_IN; }
-  | 'out'   { $result = Parameter.Kind.POINTER_OUT; }
-  | 'inout' { $result = Parameter.Kind.POINTER_INOUT; }
+direction returns [ComputationArgument.Kind result]
+  : 'in'    { $result = ComputationArgument.Kind.POINTER_IN; }
+  | 'out'   { $result = ComputationArgument.Kind.POINTER_OUT; }
+  | 'inout' { $result = ComputationArgument.Kind.POINTER_INOUT; }
   ;
 
 namespaceIdentifier returns [ArrayList<String> result]

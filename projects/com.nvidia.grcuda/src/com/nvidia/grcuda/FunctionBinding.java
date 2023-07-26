@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -28,6 +35,8 @@
  */
 package com.nvidia.grcuda;
 
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -36,18 +45,18 @@ public final class FunctionBinding extends Binding {
 
     private final Type returnType;
 
-    private FunctionBinding(String name, ArrayList<Parameter> parameterList,
+    private FunctionBinding(String name, ArrayList<ComputationArgument> computationArgumentList,
                     Type returnType, boolean hasCxxMangledName) {
-        super(name, parameterList, hasCxxMangledName);
+        super(name, computationArgumentList, hasCxxMangledName);
         this.returnType = returnType;
     }
 
-    public static FunctionBinding newCxxBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
-        return new FunctionBinding(name, parameterList, returnType, true);
+    public static FunctionBinding newCxxBinding(String name, ArrayList<ComputationArgument> computationArgumentList, Type returnType) {
+        return new FunctionBinding(name, computationArgumentList, returnType, true);
     }
 
-    public static FunctionBinding newCBinding(String name, ArrayList<Parameter> parameterList, Type returnType) {
-        return new FunctionBinding(name, parameterList, returnType, false);
+    public static FunctionBinding newCBinding(String name, ArrayList<ComputationArgument> computationArgumentList, Type returnType) {
+        return new FunctionBinding(name, computationArgumentList, returnType, false);
     }
 
     @Override
@@ -61,6 +70,6 @@ public final class FunctionBinding extends Binding {
     }
 
     public String toNFISignature() {
-        return "(" + Arrays.stream(parameters).map(Parameter::toNFISignatureElement).collect(Collectors.joining(", ")) + "): " + returnType.getNFITypeName();
+        return "(" + Arrays.stream(computationArguments).map(ComputationArgument::toNFISignatureElement).collect(Collectors.joining(", ")) + "): " + returnType.getNFITypeName();
     }
 }

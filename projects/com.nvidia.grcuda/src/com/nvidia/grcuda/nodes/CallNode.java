@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -61,7 +68,7 @@ public abstract class CallNode extends ExpressionNode {
         String[] functionName = identifier.getIdentifierName();
         Namespace namespace = context.getRootNamespace();
         Optional<Object> maybeFunction = namespace.lookup(functionName);
-        if (!maybeFunction.isPresent() || !(maybeFunction.get() instanceof Function)) {
+        if (maybeFunction.isEmpty() || !(maybeFunction.get() instanceof Function)) {
             CompilerDirectives.transferToInterpreter();
             throw new GrCUDAException("function '" + GrCUDAException.format(functionName) + "' not found", this);
         }

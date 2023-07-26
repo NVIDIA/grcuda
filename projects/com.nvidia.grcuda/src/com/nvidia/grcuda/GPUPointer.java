@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -33,8 +40,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+import java.util.Objects;
+
 @ExportLibrary(InteropLibrary.class)
-public final class GPUPointer implements TruffleObject {
+public class GPUPointer implements TruffleObject {
 
     private final long rawPointer;
 
@@ -53,12 +62,25 @@ public final class GPUPointer implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isPointer() {
+    public boolean isPointer() {
         return true;
     }
 
     @ExportMessage
-    long asPointer() {
+    public long asPointer() {
         return rawPointer;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        GPUPointer that = (GPUPointer) o;
+        return rawPointer == that.rawPointer;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(rawPointer);
     }
 }

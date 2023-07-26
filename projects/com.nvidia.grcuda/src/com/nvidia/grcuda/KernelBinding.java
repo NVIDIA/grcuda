@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -28,19 +35,21 @@
  */
 package com.nvidia.grcuda;
 
+import com.nvidia.grcuda.runtime.computation.ComputationArgument;
+
 import java.util.ArrayList;
 
 public final class KernelBinding extends Binding {
 
-    private KernelBinding(String name, ArrayList<Parameter> parameterList, boolean hasCxxMangledName) {
-        super(name, parameterList, hasCxxMangledName);
+    private KernelBinding(String name, ArrayList<ComputationArgument> computationArgumentList, boolean hasCxxMangledName) {
+        super(name, computationArgumentList, hasCxxMangledName);
     }
 
-    public static KernelBinding newCxxBinding(String name, ArrayList<Parameter> parameterList) {
-        return new KernelBinding(name, parameterList, true);
+    public static KernelBinding newCxxBinding(String name, ArrayList<ComputationArgument> computationArgumentList) {
+        return new KernelBinding(name, computationArgumentList, true);
     }
 
-    public static KernelBinding newCBinding(String name, ArrayList<Parameter> parameterList) {
-        return new KernelBinding(name, parameterList, false);
+    public static KernelBinding newCBinding(String name, ArrayList<ComputationArgument> computationArgumentList) {
+        return new KernelBinding(name, computationArgumentList, false);
     }
 }

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, NECSTLab, Politecnico di Milano. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -11,6 +12,12 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *  * Neither the name of NVIDIA CORPORATION nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of NECSTLab nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *  * Neither the name of Politecnico di Milano nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
  *
@@ -28,8 +35,8 @@
  */
 package com.nvidia.grcuda.functions;
 
+import com.nvidia.grcuda.runtime.executioncontext.AbstractGrCUDAExecutionContext;
 import com.nvidia.grcuda.Type;
-import com.nvidia.grcuda.gpu.CUDARuntime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
@@ -40,12 +47,12 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  */
 public final class TypedDeviceArrayFunction extends Function {
 
-    private final CUDARuntime runtime;
+    private final AbstractGrCUDAExecutionContext grCUDAExecutionContext;
     private final Type elementType;
 
-    public TypedDeviceArrayFunction(CUDARuntime runtime, Type elementType) {
+    public TypedDeviceArrayFunction(AbstractGrCUDAExecutionContext grCUDAExecutionContext, Type elementType) {
         super("TypedDeviceArray");
-        this.runtime = runtime;
+        this.grCUDAExecutionContext = grCUDAExecutionContext;
         this.elementType = elementType;
     }
 
@@ -54,8 +61,10 @@ public final class TypedDeviceArrayFunction extends Function {
     public Object call(Object[] arguments) throws ArityException, UnsupportedTypeException {
         if (arguments.length < 1) {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, arguments.length);
+            // FIXME: the maximum number of arguments is unbound (as each argument is a dimension of a N-dimensional tensor).
+            //  Truffle currently uses -1 to handle an unbound number of arguments;
+            throw ArityException.create(1, -1, arguments.length);
         }
-        return DeviceArrayFunction.createArray(arguments, 0, elementType, runtime);
+        return DeviceArrayFunction.createArray(arguments, 0, elementType, grCUDAExecutionContext);
     }
 }
